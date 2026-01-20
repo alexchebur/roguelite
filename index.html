@@ -1,198 +1,350 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Подземелья по координатам</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #1a1a2e;
-      color: #fff;
-      text-align: center;
-      overflow: hidden;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Подземелье по координатам</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+            color: #ecf0f1;
+            margin: 0;
+            padding: 12px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: start;
+        }
+        
+        .container {
+            background: rgba(44, 62, 80, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #3498db;
+            margin-bottom: 20px;
+            font-size: 22px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .coordinates {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .coord-input {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .coord-input label {
+            margin-bottom: 6px;
+            color: #3498db;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .coord-input input {
+            width: 70px;
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: rgba(52, 73, 94, 0.8);
+            color: white;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .coord-input input:focus {
+            outline: none;
+            border-color: #f1c40f;
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
+        }
+        
+        .result {
+            background: rgba(52, 73, 94, 0.8);
+            border: 2px solid #3498db;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .location-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #f1c40f;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .location-description {
+            font-size: 14px;
+            color: #bdc3c7;
+            line-height: 1.4;
+        }
 
-    h1 {
-      font-size: 1.4em;
-      margin-bottom: 12px;
-    }
+        .type-badge {
+            margin: 10px auto;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+        }
 
-    .controls {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
+        /* Цвета типов */
+        .boss { background: #ff3333; }
+        .icy { background: #7fdbff; color: #000; }
+        .cave { background: #8b4513; }
+        .dungeon { background: #555; }
+        .rogue { background: #8a2be2; color: white; }
+        .cellular { background: #32cd32; color: #000; }
+        .arena { background: #ff8c00; }
 
-    input {
-      width: 80px;
-      padding: 6px;
-      font-size: 1em;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background: #2d2d44;
-      color: white;
-      text-align: center;
-    }
+        .map {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            gap: 1px;
+            width: 100%;
+            max-width: 450px;
+            aspect-ratio: 1 / 1;
+            margin: 15px auto;
+            background: #0f0f1a;
+            padding: 4px;
+            border-radius: 8px;
+        }
 
-    button {
-      padding: 6px 12px;
-      font-size: 1em;
-      background: #4a4a8a;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border-radius: 3px;
+        }
 
-    button:hover {
-      background: #5a5a9a;
-    }
-
-    .info {
-      margin: 8px 0;
-      font-size: 0.95em;
-      color: #aaa;
-    }
-
-    .map {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 2px;
-      width: 90vw;
-      max-width: 350px;
-      margin: 0 auto;
-      aspect-ratio: 1 / 1;
-    }
-
-    .cell {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.8em;
-      background: #0f0f1a;
-      border-radius: 4px;
-    }
-
-    .type-badge {
-      margin-top: 8px;
-      font-weight: bold;
-      padding: 4px 10px;
-      border-radius: 12px;
-      display: inline-block;
-    }
-
-    .boss { background: #ff3333; }
-    .icy { background: #7fdbff; color: #000; }
-    .cave { background: #8b4513; }
-    .dungeon { background: #555; }
-    .rogue { background: #8a2be2; }
-    .cellular { background: #32cd32; }
-    .arena { background: #ff8c00; }
-  </style>
+        .generate-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+            background: linear-gradient(45deg, #3ca0db, #2c8bc9);
+        }
+        
+        .info {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .seed-info {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #95a5a6;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>🔮 Подземелье по координатам</h1>
+        
+        <div class="coordinates">
+            <div class="coord-input">
+                <label for="coordX">Координата X</label>
+                <input type="number" id="coordX" value="1" min="-1000" max="1000">
+            </div>
+            <div class="coord-input">
+                <label for="coordY">Координата Y</label>
+                <input type="number" id="coordY" value="1" min="-1000" max="1000">
+            </div>
+        </div>
+        
+        <div class="result">
+            <div class="location-name" id="locationName">Нажмите "Сгенерировать"</div>
+            <div class="location-description" id="locationDescription"></div>
+            <div class="type-badge" id="typeBadge">—</div>
+        </div>
 
-  <h1>🗺️ Подземелье по координатам</h1>
+        <div class="map" id="map"></div>
+        
+        <button class="generate-btn" onclick="generateLocation()">Сгенерировать</button>
+        <div class="info">Одинаковые координаты → одинаковое название и карта</div>
+        <div class="seed-info" id="seedInfo"></div>
+    </div>
 
-  <div class="controls">
-    <label>X: <input type="number" id="xInput" value="0" min="-999" max="999"></label>
-    <label>Y: <input type="number" id="yInput" value="0" min="-999" max="999"></label>
-    <button onclick="regenerate()">Сгенерировать</button>
-  </div>
+    <script>
+        // === База данных для названий ===
+        const NAME_COMPONENTS = {
+            themes: {
+                dark: { prefixes: ['Нек','Мор','Тар','Зар'], roots: ['али','ус','ек'], suffixes: ['тус','ган','нок'] },
+                light: { prefixes: ['Лум','Сил','Фен'], roots: ['има','ан','ор'], suffixes: ['тал','мир','лан'] },
+                underground: { prefixes: ['Ган','Гро','Тру'], roots: ['ог','ар','он'], suffixes: ['зар','рон','мак'] },
+                ancient: { prefixes: ['Ака','Эло','Ило'], roots: ['тун','мар','дал'], suffixes: ['дор','мир','зул'] }
+            },
+            locationTypes: {
+                dungeon: ['Подземелья', 'Темные катакомбы'],
+                cave: ['Пещеры', 'Глубинные пещеры'],
+                icy: ['Ледяные лабиринты', 'Хрустальные коридоры'],
+                rogue: ['Заброшенные руины', 'Древние руины'],
+                cellular: ['Органические пещеры', 'Живые полости'],
+                arena: ['Арены', 'Боевые круги'],
+                boss: ['Логово', 'Тронный зал']
+            },
+            extras: ['ма','ли','та','су','но','ре']
+        };
 
-  <div class="info">Seed: <span id="seedDisplay">0</span></div>
-  <div class="type-badge" id="typeBadge">—</div>
+        // === Типы подземелий с эмодзи ===
+        const DUNGEON_TYPES = [
+            { name: 'dungeon', weight: 14, emoji: '🧱', floor: '⬜' },
+            { name: 'cave', weight: 14, emoji: '🕳️', floor: '🟤' },
+            { name: 'icy', weight: 14, emoji: '❄️', floor: '🧊' },
+            { name: 'rogue', weight: 14, emoji: '🗡️', floor: '⬛' },
+            { name: 'cellular', weight: 14, emoji: '🧫', floor: '🟣' },
+            { name: 'arena', weight: 14, emoji: '🎪', floor: '🟥' },
+            { name: 'boss', weight: 2, emoji: '👑', floor: '🔥' }
+        ];
+        const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
 
-  <div class="map" id="map"></div>
-
-  <script>
-    // === Детерминированный генератор случайных чисел ===
-    function seededRandom(seed) {
-      let state = Math.abs(seed) || 1;
-      return function () {
-        state = (state * 1664525 + 1013904223) % 4294967296;
-        return state / 4294967296;
-      };
-    }
-
-    // === Типы подземелий и их эмодзи ===
-    const DUNGEON_TYPES = [
-      { name: 'dungeon', weight: 14, emoji: '🧱', floor: '⬜' },
-      { name: 'cave', weight: 14, emoji: '🕳️', floor: '🟤' },
-      { name: 'icy', weight: 14, emoji: '❄️', floor: '🧊' },
-      { name: 'rogue', weight: 14, emoji: '🗡️', floor: '⬛' },
-      { name: 'cellular', weight: 14, emoji: '🧫', floor: '🟣' },
-      { name: 'arena', weight: 14, emoji: '🎪', floor: '🟥' },
-      { name: 'boss', weight: 2, emoji: '👑', floor: '🔥' } // редкий!
-    ];
-
-    // Сумма весов = 100 → boss = 2%
-    const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
-
-    function selectDungeonType(rand) {
-      let r = rand() * TOTAL_WEIGHT;
-      for (const type of DUNGEON_TYPES) {
-        if (r < type.weight) return type;
-        r -= type.weight;
-      }
-      return DUNGEON_TYPES[0]; // fallback
-    }
-
-    // === Генерация карты 7x7 ===
-    function generateMap(rand, type) {
-      const size = 7;
-      const cells = [];
-      for (let i = 0; i < size * size; i++) {
-        // Простая логика: ~30% — стены/препятствия
-        if (rand() < 0.3) {
-          cells.push(type.emoji);
-        } else {
-          cells.push(type.floor);
+        // === Детерминированный генератор ===
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = Math.abs(seed) || 1;
+            }
+            next() {
+                this.seed = (this.seed * 16807) % 2147483647;
+                return (this.seed - 1) / 2147483646;
+            }
+            choice(array) {
+                return array[Math.floor(this.next() * array.length)];
+            }
+            int(min, max) {
+                return Math.floor(this.next() * (max - min + 1)) + min;
+            }
         }
-      }
-      // Центр — всегда проходим
-      cells[Math.floor(size * size / 2)] = '🚪';
-      return cells;
-    }
 
-    // === Отрисовка карты ===
-    function renderMap(cells) {
-      const mapEl = document.getElementById('map');
-      mapEl.innerHTML = '';
-      cells.forEach(cell => {
-        const div = document.createElement('div');
-        div.className = 'cell';
-        div.textContent = cell;
-        mapEl.appendChild(div);
-      });
-    }
+        function createSeed(x, y) {
+            let hash = x;
+            hash = ((hash << 5) - hash) + y;
+            return Math.abs(hash) || 1;
+        }
 
-    // === Основная функция генерации ===
-    function regenerate() {
-      const x = parseInt(document.getElementById('xInput').value) || 0;
-      const y = parseInt(document.getElementById('yInput').value) || 0;
+        // === Генерация типа подземелья ===
+        function selectDungeonType(rand) {
+            let r = rand.next() * TOTAL_WEIGHT;
+            for (const type of DUNGEON_TYPES) {
+                if (r < type.weight) return type;
+                r -= type.weight;
+            }
+            return DUNGEON_TYPES[0];
+        }
 
-      const seed = x * 10000 + y;
-      document.getElementById('seedDisplay').textContent = seed;
+        // === Генерация карты 15x15 ===
+        function generateMap(rand, type) {
+            const size = 15;
+            const cells = [];
+            for (let i = 0; i < size * size; i++) {
+                if (rand.next() < 0.35) {
+                    cells.push(type.emoji);
+                } else {
+                    cells.push(type.floor);
+                }
+            }
+            // Центр — всегда проход
+            cells[Math.floor(size * size / 2)] = '🚪';
+            return cells;
+        }
 
-      const rand = seededRandom(seed);
-      const type = selectDungeonType(rand);
+        // === Отрисовка карты ===
+        function renderMap(cells) {
+            const mapEl = document.getElementById('map');
+            mapEl.innerHTML = '';
+            cells.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = 'cell';
+                div.textContent = cell;
+                mapEl.appendChild(div);
+            });
+        }
 
-      document.getElementById('typeBadge').textContent = type.name;
-      document.getElementById('typeBadge').className = 'type-badge ' + type.name;
+        // === Генерация названия ===
+        function generateNameAndDesc(rand, typeKey) {
+            const themeKeys = Object.keys(NAME_COMPONENTS.themes);
+            const theme = NAME_COMPONENTS.themes[rand.choice(themeKeys)];
 
-      const map = generateMap(rand, type);
-      renderMap(map);
-    }
+            let name = rand.choice(theme.prefixes);
+            if (rand.next() > 0.5) name += rand.choice(theme.roots);
+            if (rand.next() > 0.5) name += rand.choice(NAME_COMPONENTS.extras);
+            name += rand.choice(theme.suffixes);
+            name = name.charAt(0).toUpperCase() + name.slice(1);
 
-    // Запуск при загрузке
-    window.onload = regenerate;
-  </script>
+            const locType = rand.choice(NAME_COMPONENTS.locationTypes[typeKey] || ['Локация']);
+            const desc = `${rand.choice(['забытая', 'проклятая', 'древняя'])}, ${rand.choice(['освещённая тусклым светом', 'полная эха', 'окутанная туманом'])}`;
 
+            return { name: `${locType} ${name}`, desc };
+        }
+
+        // === Основная функция ===
+        function generateLocation() {
+            const x = parseInt(document.getElementById('coordX').value) || 0;
+            const y = parseInt(document.getElementById('coordY').value) || 0;
+            const seed = createSeed(x, y);
+            const rand = new SeededRandom(seed);
+
+            // Сначала определяем тип подземелья
+            const dungeonType = selectDungeonType(rand);
+            const typeKey = dungeonType.name;
+
+            // Генерируем название и описание
+            const { name, desc } = generateNameAndDesc(rand, typeKey);
+
+            // Обновляем интерфейс
+            document.getElementById('locationName').textContent = name;
+            document.getElementById('locationDescription').textContent = desc;
+            const badge = document.getElementById('typeBadge');
+            badge.textContent = typeKey;
+            badge.className = 'type-badge ' + typeKey;
+
+            // Генерируем и отображаем карту
+            const map = generateMap(rand, dungeonType);
+            renderMap(map);
+
+            // Seed info
+            document.getElementById('seedInfo').textContent = `Семя: ${seed} (X: ${x}, Y: ${y})`;
+        }
+
+        // Запуск при загрузке
+        window.onload = generateLocation;
+
+        // Enter → генерация
+        document.getElementById('coordX').addEventListener('keypress', e => { if (e.key === 'Enter') generateLocation(); });
+        document.getElementById('coordY').addEventListener('keypress', e => { if (e.key === 'Enter') generateLocation(); });
+    </script>
 </body>
 </html>
