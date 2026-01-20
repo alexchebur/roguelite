@@ -478,7 +478,7 @@
             badge.textContent = dungeonType.name;
             badge.className = 'type-badge ' + dungeonType.name;
 
-            const map = generateMap(rand, dungeonType, 15);
+            const map = generateMap(rand, dungeonType, 50);
             renderMap(map);
 
             document.getElementById('seedInfo').textContent = `Семя: ${seed} (X: ${x}, Y: ${y})`;
