@@ -262,8 +262,8 @@
                 icy: ['Ледяные лабиринты', 'Хрустальные коридоры'],
                 rogue: ['Заброшенные руины', 'Древние руины'],
                 cellular: ['Органические пещеры', 'Живые полости'],
-                arena: ['Арены', 'Боевые круги'],
-                boss: ['Логово', 'Тронный зал']
+                arena: ['Арены', 'Поля битвы'],
+                boss: ['Логова', 'Тронные залы']
             },
             extras: ['ма','ли','та','су']
         };
@@ -462,7 +462,7 @@
             name += rand.choice(theme.suffixes);
             name = name.charAt(0).toUpperCase() + name.slice(1);
             const locType = rand.choice(NAME_COMPONENTS.locationTypes[typeKey] || ['Локация']);
-            const desc = `${rand.choice(['забытая', 'проклятая', 'древняя'])}, ${rand.choice(['освещённая тусклым светом', 'полная эха', 'окутанная туманом'])}`;
+            const desc = `${rand.choice(['забытые', 'проклятые', 'древние'])}, ${rand.choice(['освещённые тусклым светом', 'полные эха', 'окутанные туманом'])}`;
             return { name: `${locType} ${name}`, desc };
         }
 
