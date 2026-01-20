@@ -222,13 +222,13 @@
 
         // === Типы подземелий с эмодзи ===
         const DUNGEON_TYPES = [
-            { name: 'dungeon', weight: 14, emoji: '🧱', floor: '⬜' },
-            { name: 'cave', weight: 14, emoji: '🕳️', floor: '🟤' },
-            { name: 'icy', weight: 14, emoji: '❄️', floor: '🧊' },
-            { name: 'rogue', weight: 14, emoji: '🗡️', floor: '⬛' },
-            { name: 'cellular', weight: 14, emoji: '🧫', floor: '🟣' },
-            { name: 'arena', weight: 14, emoji: '🎪', floor: '🟥' },
-            { name: 'boss', weight: 2, emoji: '👑', floor: '🔥' }
+            { name: 'dungeon', weight: 14, emoji: '#', floor: '.' },
+            { name: 'cave', weight: 14, emoji: 'O', floor: '.' },
+            { name: 'icy', weight: 14, emoji: '%', floor: '.' },
+            { name: 'rogue', weight: 14, emoji: '^', floor: '.' },
+            { name: 'cellular', weight: 14, emoji: '0', floor: '.' },
+            { name: 'arena', weight: 14, emoji: '+', floor: '.' },
+            { name: 'boss', weight: 2, emoji: ':', floor: '.' }
         ];
         const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
 
