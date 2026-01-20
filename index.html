@@ -273,18 +273,25 @@
         }
 
         function createSeed(x, y) {
-            let hash = x;
-            hash = ((hash << 5) - hash) + y;
-            return Math.abs(hash) || 1;
+            let seed = 0;
+            seed = (seed * 31 + x) | 0;
+            seed = (seed * 31 + y) | 0;
+            seed = (seed ^ (seed >>> 13)) | 0;
+            seed = (seed * 0x5bd1e995) | 0;
+            seed = (seed ^ (seed >>> 15)) | 0;
+            return (Math.abs(seed) % 2147483647) || 1;
         }
 
         function selectDungeonType(rand) {
-            let r = rand.next() * TOTAL_WEIGHT;
+            const r = rand.next();
+            let cumulative = 0;
             for (const type of DUNGEON_TYPES) {
-                if (r < type.weight) return type;
-                r -= type.weight;
+                cumulative += type.weight / TOTAL_WEIGHT;
+                if (r < cumulative) {
+                    return type;
+                }
             }
-            return DUNGEON_TYPES[0];
+            return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
         }
 
         // === ГЕНЕРАТОР 1: Комнаты + коридоры (для dungeon, rogue, icy) ===
