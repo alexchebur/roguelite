@@ -273,23 +273,19 @@
         }
 
         function createSeed(x, y) {
-            let seed = 0;
-            seed = (seed * 31 + x) | 0;
-            seed = (seed * 31 + y) | 0;
-            seed = (seed ^ (seed >>> 13)) | 0;
-            seed = (seed * 0x5bd1e995) | 0;
-            seed = (seed ^ (seed >>> 15)) | 0;
+            // Хорошо перемешивающий хэш для целых координат
+            const seed = (x * 73856093) ^ (y * 19349663) ^ (0 * 83492791); // z=0
             return (Math.abs(seed) % 2147483647) || 1;
         }
-
         function selectDungeonType(rand) {
+            // Прогреваем генератор
+            rand.next(); rand.next(); rand.next();
+    
             const r = rand.next();
             let cumulative = 0;
             for (const type of DUNGEON_TYPES) {
                 cumulative += type.weight / TOTAL_WEIGHT;
-                if (r < cumulative) {
-                    return type;
-                }
+                if (r < cumulative) return type;
             }
             return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
         }
