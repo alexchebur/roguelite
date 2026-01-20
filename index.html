@@ -469,20 +469,25 @@
             const x = parseInt(document.getElementById('coordX').value) || 0;
             const y = parseInt(document.getElementById('coordY').value) || 0;
             const seed = createSeed(x, y);
-            const rand = new SeededRandom(seed);
 
-            const dungeonType = selectDungeonType(rand);
-            const { name, desc } = generateNameAndDesc(rand, dungeonType.name);
+            // Отдельные генераторы из одного seed'а
+            const typeRand = new SeededRandom(seed);
+            const dungeonType = selectDungeonType(typeRand);
 
+            const nameRand = new SeededRandom(seed);
+            const { name, desc } = generateNameAndDesc(nameRand, dungeonType.name);
+
+            const mapRand = new SeededRandom(seed);
+            const map = generateMap(mapRand, dungeonType, 50);
+
+            // Обновление UI
             document.getElementById('locationName').textContent = name;
             document.getElementById('locationDescription').textContent = desc;
             const badge = document.getElementById('typeBadge');
             badge.textContent = dungeonType.name;
             badge.className = 'type-badge ' + dungeonType.name;
 
-            const map = generateMap(rand, dungeonType, 50);
             renderMap(map);
-
             document.getElementById('seedInfo').textContent = `Семя: ${seed} (X: ${x}, Y: ${y})`;
         }
 
