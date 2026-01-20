@@ -16,7 +16,7 @@
             justify-content: center;
             align-items: start;
         }
-        
+    
         .container {
             background: rgba(44, 62, 80, 0.9);
             border-radius: 20px;
@@ -26,14 +26,14 @@
             width: 100%;
             text-align: center;
         }
-        
+    
         h1 {
             color: #3498db;
             margin-bottom: 20px;
             font-size: 22px;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
-        
+    
         .coordinates {
             display: flex;
             justify-content: center;
@@ -41,20 +41,20 @@
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
-        
+    
         .coord-input {
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-        
+    
         .coord-input label {
             margin-bottom: 6px;
             color: #3498db;
             font-weight: bold;
             font-size: 14px;
         }
-        
+    
         .coord-input input {
             width: 70px;
             padding: 8px;
@@ -65,13 +65,13 @@
             font-size: 16px;
             text-align: center;
         }
-        
+    
         .coord-input input:focus {
             outline: none;
             border-color: #f1c40f;
             box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
         }
-        
+    
         .result {
             background: rgba(52, 73, 94, 0.8);
             border: 2px solid #3498db;
@@ -84,7 +84,7 @@
             justify-content: center;
             transition: all 0.3s ease;
         }
-        
+    
         .location-name {
             font-size: 20px;
             font-weight: bold;
@@ -92,7 +92,7 @@
             margin-bottom: 8px;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
-        
+    
         .location-description {
             font-size: 14px;
             color: #bdc3c7;
@@ -117,25 +117,46 @@
         .cellular { background: #32cd32; color: #000; }
         .arena { background: #ff8c00; }
 
-        .map {
-            display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            gap: 1px;
+        /* === КОНТЕЙНЕР КАРТЫ === */
+        .map-container {
             width: 100%;
             max-width: 450px;
-            aspect-ratio: 1 / 1;
+            height: 450px;
             margin: 15px auto;
-            background: #0f0f1a;
-            padding: 4px;
+            overflow: auto;
+            border: 2px solid #3498db;
             border-radius: 8px;
+            background: #0f0f1a;
+            -webkit-overflow-scrolling: touch; /* плавная прокрутка на iOS */
         }
 
+        /* === СЕТКА 50×50 === */
+        .map {
+            display: grid;
+            grid-template-columns: repeat(50, minmax(0, 1fr));
+            grid-template-rows: repeat(50, minmax(0, 1fr));
+            width: min-content;
+            height: min-content;
+            gap: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* === ЯЧЕЙКА ТАЙЛА === */
         .cell {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
-            border-radius: 3px;
+            font-size: 6px;           /* уменьшенный размер эмодзи */
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+            min-width: 9px;           /* минимальный размер под символ */
+            min-height: 9px;
+            box-sizing: border-box;
+            /* Убираем все возможные отступы */
+            border: none;
+            outline: none;
         }
 
         .generate-btn {
@@ -151,19 +172,19 @@
             letter-spacing: 1px;
             box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
         }
-        
+    
         .generate-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
             background: linear-gradient(45deg, #3ca0db, #2c8bc9);
         }
-        
+    
         .info {
             margin-top: 15px;
             font-size: 12px;
             color: #7f8c8d;
         }
-        
+    
         .seed-info {
             margin-top: 8px;
             font-size: 11px;
@@ -265,7 +286,7 @@
         }
 
         // === ГЕНЕРАТОР 1: Комнаты + коридоры (для dungeon, rogue, icy) ===
-        function generateRoomCorridorMap(rand, size = 15) {
+        function generateRoomCorridorMap(rand, size = 50) {
             const grid = Array(size).fill().map(() => Array(size).fill('wall'));
             const rooms = [];
 
@@ -322,7 +343,7 @@
         }
 
         // === ГЕНЕРАТОР 2: Клеточный автомат (для cave, cellular) ===
-        function generateCellularMap(rand, size = 15) {
+        function generateCellularMap(rand, size = 50) {
             // Инициализация
             let grid = Array(size).fill().map(() => Array(size).fill('wall'));
             const fillChance = 0.45;
@@ -368,7 +389,7 @@
         }
 
         // === ГЕНЕРАТОР 3: Большая комната (arena, boss) ===
-        function generateArenaMap(rand, size = 15) {
+        function generateArenaMap(rand, size = 50) {
             const grid = Array(size).fill().map(() => Array(size).fill('wall'));
 
             // Основная арена: почти весь центр
@@ -393,7 +414,7 @@
         }
 
         // === Главный диспетчер генерации карты ===
-        function generateMap(rand, type, size = 15) {
+        function generateMap(rand, type, size = 50) {
             let rawMap; // массив из 'wall' / 'floor'
 
             if (['dungeon', 'rogue', 'icy'].includes(type.name)) {
