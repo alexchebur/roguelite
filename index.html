@@ -200,13 +200,13 @@
     </div>
 
     <script>
-        // === База данных для названий ===
+        // === База данных для названий (сокращена для краткости) ===
         const NAME_COMPONENTS = {
             themes: {
-                dark: { prefixes: ['Нек','Мор','Тар','Зар'], roots: ['али','ус','ек'], suffixes: ['тус','ган','нок'] },
-                light: { prefixes: ['Лум','Сил','Фен'], roots: ['има','ан','ор'], suffixes: ['тал','мир','лан'] },
-                underground: { prefixes: ['Ган','Гро','Тру'], roots: ['ог','ар','он'], suffixes: ['зар','рон','мак'] },
-                ancient: { prefixes: ['Ака','Эло','Ило'], roots: ['тун','мар','дал'], suffixes: ['дор','мир','зул'] }
+                dark: { prefixes: ['Нек','Мор','Тар'], roots: ['али','ус'], suffixes: ['тус','ган'] },
+                light: { prefixes: ['Лум','Сил'], roots: ['има','ан'], suffixes: ['тал','мир'] },
+                underground: { prefixes: ['Ган','Гро'], roots: ['ог','ар'], suffixes: ['зар','рон'] },
+                ancient: { prefixes: ['Ака','Эло'], roots: ['тун','мар'], suffixes: ['дор','мир'] }
             },
             locationTypes: {
                 dungeon: ['Подземелья', 'Темные катакомбы'],
@@ -217,18 +217,18 @@
                 arena: ['Арены', 'Боевые круги'],
                 boss: ['Логово', 'Тронный зал']
             },
-            extras: ['ма','ли','та','су','но','ре']
+            extras: ['ма','ли','та','су']
         };
 
-        // === Типы подземелий с эмодзи ===
+        // === Типы подземелий ===
         const DUNGEON_TYPES = [
-            { name: 'dungeon', weight: 14, emoji: '🟫', floor: '.' }, 
-            { name: 'cave', weight: 14, emoji: '⏹️', floor: '.' },
-            { name: 'icy', weight: 14, emoji: '❄️', floor: '.' },
-            { name: 'rogue', weight: 14, emoji: '🦴', floor: '.' },
-            { name: 'cellular', weight: 14, emoji: '🧿', floor: '.' },
-            { name: 'arena', weight: 14, emoji: '🌫️', floor: '.' },
-            { name: 'boss', weight: 2, emoji: '🟪', floor: '.' }
+            { name: 'dungeon', weight: 14, emoji: '🧱', floor: '⬜' },
+            { name: 'cave', weight: 14, emoji: '🕳️', floor: '🟤' },
+            { name: 'icy', weight: 14, emoji: '❄️', floor: '🧊' },
+            { name: 'rogue', weight: 14, emoji: '🗡️', floor: '⬛' },
+            { name: 'cellular', weight: 14, emoji: '🧫', floor: '🟣' },
+            { name: 'arena', weight: 14, emoji: '🎪', floor: '🟥' },
+            { name: 'boss', weight: 2, emoji: '👑', floor: '🔥' }
         ];
         const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
 
@@ -255,7 +255,6 @@
             return Math.abs(hash) || 1;
         }
 
-        // === Генерация типа подземелья ===
         function selectDungeonType(rand) {
             let r = rand.next() * TOTAL_WEIGHT;
             for (const type of DUNGEON_TYPES) {
@@ -265,20 +264,152 @@
             return DUNGEON_TYPES[0];
         }
 
-        // === Генерация карты 15x15 ===
-        function generateMap(rand, type) {
-            const size = 15;
-            const cells = [];
-            for (let i = 0; i < size * size; i++) {
-                if (rand.next() < 0.35) {
-                    cells.push(type.emoji);
-                } else {
-                    cells.push(type.floor);
+        // === ГЕНЕРАТОР 1: Комнаты + коридоры (для dungeon, rogue, icy) ===
+        function generateRoomCorridorMap(rand, size = 15) {
+            const grid = Array(size).fill().map(() => Array(size).fill('wall'));
+            const rooms = [];
+
+            const roomCount = rand.int(4, 8);
+            for (let i = 0; i < roomCount; i++) {
+                const w = rand.int(3, 6);
+                const h = rand.int(3, 6);
+                const x = rand.int(1, size - w - 1);
+                const y = rand.int(1, size - h - 1);
+
+                let overlaps = false;
+                for (const r of rooms) {
+                    if (x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (overlaps) continue;
+
+                // Вырезаем комнату
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        grid[y + dy][x + dx] = 'floor';
+                    }
+                }
+                rooms.push({x, y, w, h});
+            }
+
+            // Соединяем коридорами
+            for (let i = 1; i < rooms.length; i++) {
+                const r1 = rooms[i - 1];
+                const r2 = rooms[i];
+                const cx1 = r1.x + Math.floor(r1.w / 2);
+                const cy1 = r1.y + Math.floor(r1.h / 2);
+                const cx2 = r2.x + Math.floor(r2.w / 2);
+                const cy2 = r2.y + Math.floor(r2.h / 2);
+
+                // Горизонтальный коридор
+                const stepX = cx1 < cx2 ? 1 : -1;
+                for (let x = cx1; x !== cx2 + stepX; x += stepX) {
+                    if (x >= 0 && x < size) grid[cy1][x] = 'floor';
+                }
+                // Вертикальный коридор
+                const stepY = cy1 < cy2 ? 1 : -1;
+                for (let y = cy1; y !== cy2 + stepY; y += stepY) {
+                    if (y >= 0 && y < size) grid[y][cx2] = 'floor';
                 }
             }
+
             // Центр — всегда проход
-            cells[Math.floor(size * size / 2)] = '🚪';
-            return cells;
+            grid[Math.floor(size/2)][Math.floor(size/2)] = 'floor';
+
+            return grid.flat();
+        }
+
+        // === ГЕНЕРАТОР 2: Клеточный автомат (для cave, cellular) ===
+        function generateCellularMap(rand, size = 15) {
+            // Инициализация
+            let grid = Array(size).fill().map(() => Array(size).fill('wall'));
+            const fillChance = 0.45;
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (rand.next() < fillChance) {
+                        grid[y][x] = 'floor';
+                    }
+                }
+            }
+
+            // 4 итерации клеточного автомата
+            for (let iter = 0; iter < 4; iter++) {
+                const newGrid = Array(size).fill().map(() => Array(size).fill('wall'));
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        if (x === 0 || x === size - 1 || y === 0 || y === size - 1) {
+                            newGrid[y][x] = 'wall';
+                            continue;
+                        }
+                        let wallCount = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                if (grid[y + dy][x + dx] === 'wall') wallCount++;
+                            }
+                        }
+                        if (wallCount >= 5) {
+                            newGrid[y][x] = 'wall';
+                        } else {
+                            newGrid[y][x] = 'floor';
+                        }
+                    }
+                }
+                grid = newGrid;
+            }
+
+            // Центр — проход
+            grid[Math.floor(size/2)][Math.floor(size/2)] = 'floor';
+
+            return grid.flat();
+        }
+
+        // === ГЕНЕРАТОР 3: Большая комната (arena, boss) ===
+        function generateArenaMap(rand, size = 15) {
+            const grid = Array(size).fill().map(() => Array(size).fill('wall'));
+
+            // Основная арена: почти весь центр
+            const margin = rand.int(1, 2);
+            for (let y = margin; y < size - margin; y++) {
+                for (let x = margin; x < size - margin; x++) {
+                    grid[y][x] = 'floor';
+                }
+            }
+
+            // Добавим немного колонн (для разнообразия)
+            const colCount = rand.int(0, 6);
+            for (let i = 0; i < colCount; i++) {
+                const cx = rand.int(margin + 1, size - margin - 2);
+                const cy = rand.int(margin + 1, size - margin - 2);
+                // Не трогаем центр
+                if (Math.abs(cx - size/2) < 2 && Math.abs(cy - size/2) < 2) continue;
+                grid[cy][cx] = 'wall';
+            }
+
+            return grid.flat();
+        }
+
+        // === Главный диспетчер генерации карты ===
+        function generateMap(rand, type, size = 15) {
+            let rawMap; // массив из 'wall' / 'floor'
+
+            if (['dungeon', 'rogue', 'icy'].includes(type.name)) {
+                rawMap = generateRoomCorridorMap(rand, size);
+            } else if (['cave', 'cellular'].includes(type.name)) {
+                rawMap = generateCellularMap(rand, size);
+            } else if (['arena', 'boss'].includes(type.name)) {
+                rawMap = generateArenaMap(rand, size);
+            } else {
+                rawMap = Array(size * size).fill('floor'); // fallback
+            }
+
+            // Преобразуем в эмодзи
+            return rawMap.map(cell => 
+                cell === 'wall' ? type.emoji : type.floor
+            );
         }
 
         // === Отрисовка карты ===
@@ -317,32 +448,22 @@
             const seed = createSeed(x, y);
             const rand = new SeededRandom(seed);
 
-            // Сначала определяем тип подземелья
             const dungeonType = selectDungeonType(rand);
-            const typeKey = dungeonType.name;
+            const { name, desc } = generateNameAndDesc(rand, dungeonType.name);
 
-            // Генерируем название и описание
-            const { name, desc } = generateNameAndDesc(rand, typeKey);
-
-            // Обновляем интерфейс
             document.getElementById('locationName').textContent = name;
             document.getElementById('locationDescription').textContent = desc;
             const badge = document.getElementById('typeBadge');
-            badge.textContent = typeKey;
-            badge.className = 'type-badge ' + typeKey;
+            badge.textContent = dungeonType.name;
+            badge.className = 'type-badge ' + dungeonType.name;
 
-            // Генерируем и отображаем карту
-            const map = generateMap(rand, dungeonType);
+            const map = generateMap(rand, dungeonType, 15);
             renderMap(map);
 
-            // Seed info
             document.getElementById('seedInfo').textContent = `Семя: ${seed} (X: ${x}, Y: ${y})`;
         }
 
-        // Запуск при загрузке
         window.onload = generateLocation;
-
-        // Enter → генерация
         document.getElementById('coordX').addEventListener('keypress', e => { if (e.key === 'Enter') generateLocation(); });
         document.getElementById('coordY').addEventListener('keypress', e => { if (e.key === 'Enter') generateLocation(); });
     </script>
