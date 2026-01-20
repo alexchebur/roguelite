@@ -291,17 +291,22 @@
         }
 
         // === ГЕНЕРАТОР 1: Комнаты + коридоры (для dungeon, rogue, icy) ===
+
         function generateRoomCorridorMap(rand, size = 50) {
             const grid = Array(size).fill().map(() => Array(size).fill('wall'));
             const rooms = [];
 
-            const roomCount = rand.int(4, 8);
+            // 🔼 Увеличили количество комнат
+            const roomCount = rand.int(12, 20); // было 4–8 → теперь 12–20
+
             for (let i = 0; i < roomCount; i++) {
-                const w = rand.int(3, 6);
-                const h = rand.int(3, 6);
+                // 🔼 Уменьшили минимальный размер комнат
+                const w = rand.int(2, 5); // было 3–6 → теперь 2–5
+                const h = rand.int(2, 5);
                 const x = rand.int(1, size - w - 1);
                 const y = rand.int(1, size - h - 1);
 
+                // Проверка наложения (оставляем)
                 let overlaps = false;
                 for (const r of rooms) {
                     if (x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y) {
@@ -317,32 +322,38 @@
                         grid[y + dy][x + dx] = 'floor';
                     }
                 }
-                rooms.push({x, y, w, h});
+        rooms.push({x, y, w, h});
             }
 
-            // Соединяем коридорами
-            for (let i = 1; i < rooms.length; i++) {
-                const r1 = rooms[i - 1];
-                const r2 = rooms[i];
-                const cx1 = r1.x + Math.floor(r1.w / 2);
-                const cy1 = r1.y + Math.floor(r1.h / 2);
-                const cx2 = r2.x + Math.floor(r2.w / 2);
-                const cy2 = r2.y + Math.floor(r2.h / 2);
+            // 🔼 Улучшенное соединение: соединяем каждую комнату со случайной другой
+            if (rooms.length > 1) {
+                for (let i = 0; i < rooms.length; i++) {
+                    const r1 = rooms[i];
+                    // Выбираем случайную другую комнату
+                    const otherIndex = (i + 1 + rand.int(1, rooms.length - 1)) % rooms.length;
+                    const r2 = rooms[otherIndex];
 
-                // Горизонтальный коридор
-                const stepX = cx1 < cx2 ? 1 : -1;
-                for (let x = cx1; x !== cx2 + stepX; x += stepX) {
-                    if (x >= 0 && x < size) grid[cy1][x] = 'floor';
-                }
-                // Вертикальный коридор
-                const stepY = cy1 < cy2 ? 1 : -1;
-                for (let y = cy1; y !== cy2 + stepY; y += stepY) {
-                    if (y >= 0 && y < size) grid[y][cx2] = 'floor';
+                    const cx1 = r1.x + Math.floor(r1.w / 2);
+                    const cy1 = r1.y + Math.floor(r1.h / 2);
+                    const cx2 = r2.x + Math.floor(r2.w / 2);
+                    const cy2 = r2.y + Math.floor(r2.h / 2);
+
+                    // Горизонтальный коридор
+                    const stepX = cx1 <= cx2 ? 1 : -1;
+                    for (let x = cx1; stepX > 0 ? x <= cx2 : x >= cx2; x += stepX) {
+                        if (x >= 0 && x < size) grid[cy1][x] = 'floor';
+                    }
+                    // Вертикальный коридор
+                    const stepY = cy1 <= cy2 ? 1 : -1;
+                    for (let y = cy1; stepY > 0 ? y <= cy2 : y >= cy2; y += stepY) {
+                        if (y >= 0 && y < size) grid[y][cx2] = 'floor';
+                    }
                 }
             }
 
             // Центр — всегда проход
-            grid[Math.floor(size/2)][Math.floor(size/2)] = 'floor';
+            const center = Math.floor(size / 2);
+            grid[center][center] = 'floor';
 
             return grid.flat();
         }
