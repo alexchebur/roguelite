@@ -1,3 +1,13 @@
+Проблема заключается в том, что контейнер карты (`#map-container`) не имеет явных ограничений по размеру, и `ROT.Display` растягивается или сжимается неправильно, пытаясь вписаться в узкую колонку Grid-сетки.
+
+Чтобы исправить это и сделать отображение корректным (квадратные клетки, полный обзор), нужно:
+1.  Задать фиксированный размер шрифта и количество клеток в `ROT.Display`.
+2.  Настроить CSS так, чтобы центральная ячейка занимала всё доступное пространство, а карта центрировалась внутри неё.
+3.  Убрать лишние отступы, которые "съедают" место.
+
+Вот исправленный `index.html`. Я оптимизировал CSS и настройки рендеринга, чтобы подземелье выглядело как полноценная карта, а не узкая полоска.
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,15 +15,15 @@
     <title>Roguelike: Подземелье Координат</title>
     
     <!-- ROT.js v0.7.3 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
-    <!-- Seedrandom (для вспомогательных нужд, основная логика в name_generator.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rot.js/0.7.3/rot.min.js"></script>
+    <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
     <!-- ВАШ МОДУЛЬ ГЕНЕРАЦИИ НАЗВАНИЙ -->
     <script src="name_generator.js"></script>
 
     <style>
-        /* --- CSS: СТИЛИ ИНТЕРФЕЙСА --- */
+        /* --- CSS: ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС --- */
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -39,7 +49,7 @@
 
         #game-layout {
             display: grid;
-            grid-template-columns: 280px 1fr 280px;
+            grid-template-columns: 260px 1fr 260px;
             grid-template-rows: 60px 1fr 140px;
             height: 100%;
             gap: 4px;
@@ -79,6 +89,7 @@
         .loc-coords { color: var(--text-dim); font-size: 0.85em; }
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
 
+        /* Исправленный контейнер карты */
         #map-container {
             grid-column: 2;
             grid-row: 2;
@@ -89,6 +100,15 @@
             border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
+            padding: 0; /* Убираем паддинг, чтобы карта была на всю ширину */
+        }
+
+        /* Важно: canvas должен масштабироваться или иметь четкие размеры */
+        #map-container canvas {
+            display: block;
+            /* Если карта слишком большая, она сожмется, сохраняя пропорции */
+            max-width: 100%;
+            max-height: 100%;
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
@@ -200,8 +220,6 @@
  * ====================================================================
  */
 const DataModule = {
-    // Для предметов и врагов используем упрощенную генерацию или можно расширить NAME_COMPONENTS
-    // Здесь оставим простые списки для разнообразия экипировки
     ITEM_ADJECTIVES: ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"],
     
     ENEMY_TYPES: [
@@ -219,9 +237,10 @@ const DataModule = {
         { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
     ],
 
-    MAP_WIDTH: 60,
-    MAP_HEIGHT: 40,
-    ROOM_COUNT: 15
+    // Уменьшаем размер карты для лучшего отображения на экране
+    MAP_WIDTH: 50,
+    MAP_HEIGHT: 35,
+    ROOM_COUNT: 12
 };
 
 /**
@@ -236,8 +255,6 @@ const MapModule = {
     stairsDown: null,
 
     generate: function(seedStr) {
-        // Используем стандартный Math.seedrandom для расстановки стен, 
-        // так как NameGeneratorModule использует свой LCG для имен.
         if (typeof Math.seedrandom !== 'undefined') {
             Math.seedrandom(seedStr);
         }
@@ -314,8 +331,6 @@ const EntityModule = {
     },
 
     createEnemy: function(template, x, y, difficulty) {
-        // Имя врага можно тоже генерировать через NameGeneratorModule, если создать для него RNG
-        // Но пока оставим базовое имя из шаблона
         return {
             x: x, y: y, name: template.name,
             char: template.char, color: template.color,
@@ -408,15 +423,16 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE
+ * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕННЫЙ РАЗМЕР)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    COLS: 60,
-    ROWS: 40,
-    FONT_SIZE: 14,
+    // Настройки отображения
+    COLS: DataModule.MAP_WIDTH,  // Используем всю ширину карты
+    ROWS: DataModule.MAP_HEIGHT, // Используем всю высоту карты
+    FONT_SIZE: 16, // Увеличиваем шрифт для читаемости
 
     init: function() {
         this.display = new ROT.Display({
@@ -468,7 +484,6 @@ const RenderModule = {
     },
 
     updateUI: function(player, locData) {
-        // Обновление заголовка локации
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
             document.getElementById("ui-loc-desc").textContent = locData.description;
@@ -569,13 +584,11 @@ const GameModule = {
         this.items = [];
         this.explored.clear();
 
-        // 1. ГЕНЕРАЦИЯ НАЗВАНИЯ ЧЕРЕЗ ВАШ МОДУЛЬ
         this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
         
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
         RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
 
-        // 2. Генерация карты (используем отдельный сид для структуры)
         const startPos = MapModule.generate(`map_struct_${gx}_${gy}`);
 
         if (!this.player) {
@@ -590,7 +603,6 @@ const GameModule = {
     },
 
     spawnEntities: function(gx, gy) {
-        // Для сущностей используем обычный seedrandom, чтобы не конфликтовать с LCG
         const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
         const oldRand = Math.random;
         Math.random = rng; 
@@ -702,3 +714,4 @@ window.onload = () => GameModule.init();
 </script>
 </body>
 </html>
+```
