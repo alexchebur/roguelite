@@ -1,10 +1,10 @@
 /**
  * МОДУЛЬ ГЕНЕРАЦИИ НАЗВАНИЙ (name_generator.js)
- * Основан на предоставленном коде с темами (dark, light, underground и т.д.)
+ * Содержит единственный экземпляр SeededRandom и createSeed
  */
 
+// База данных для генерации (из вашего примера)
 const NAME_COMPONENTS = {
-    // Тематические наборы слогов
     themes: {
         dark: {
             name: 'Мрачный мир',
@@ -32,7 +32,6 @@ const NAME_COMPONENTS = {
         }
     },
     
-    // Типы локаций
     locationTypes: {
         dungeon: ['Подземелья', 'Темные подземелья', 'Заброшенные катакомбы', 'Тайные подземелья', 'Проклятые подземелья', 'Затопленные катакомбы', 'Древние подземелья', 'Запечатанные подземелья', 'Зловещие катакомбы', 'Темные лабиринты', 'Зловещие казематы'],
         cave: ['Пещеры', 'Темные пещеры', 'Глубинные пещеры', 'Кристальные пещеры', 'Лавовые пещеры', 'Ледяные пещеры', 'Биолюминесцентные пещеры', 'Затопленные пещеры', 'Вулканические пещеры', 'Кварцевые пещеры'],
@@ -43,14 +42,13 @@ const NAME_COMPONENTS = {
         boss: ['Логова', 'Тронные залы', 'Святилища', 'Цитадели', 'Крепости', 'Дворцы', 'Храмы', 'Священные гроты', 'Тронные комнаты', 'Святилища владыки']
     },
     
-    // Дополнительные слоги для длинных имен
     extras: ['ма', 'ли', 'та', 'су', 'но', 'ре', 'ки', 'до', 'ве', 'ша', 'ну', 'ра', 'се', 'ту', 'го', 'ба', 'да', 'фа', 'га', 'ха', 'йя', 'кья', 'лиа', 'нья', 'пья', 'сье', 'вье', 'зиа', 'вха', 'уа']
 };
 
-// Детерминированный генератор случайных чисел (LCG)
+// Детерминированный генератор случайных чисел (LCG) - ЕДИНЫЙ ЭКЗЕМПЛЯР
 class SeededRandom {
     constructor(seed) {
-        this.seed = Math.abs(seed) || 1; // Избегаем seed = 0
+        this.seed = Math.abs(seed) || 1;
     }
     
     next() {
@@ -68,29 +66,21 @@ class SeededRandom {
     }
 }
 
-// Создание уникального семени из координат
+// Создание уникального семени из координат (Улучшенная версия)
 function createSeed(x, y) {
-    let hash = x;
-    hash = ((hash << 5) - hash) + y;
-    hash = ((hash << 5) - hash) + (x * y);
-    return Math.abs(hash) || 1;
+    const seed = (x * 73856093) ^ (y * 19349663);
+    return (Math.abs(seed) % 2147483647) || 1;
 }
 
 // Генератор названий
 const NameGeneratorModule = {
     generateName(random, theme) {
         let name = '';
-        
-        // Сколько частей будет в имени (2-5)
         const partCount = random.int(2, 5);
-        
-        // Первый слог всегда из префиксов
         name += random.choice(theme.prefixes);
         
-        // Средние слоги (0-3 штуки)
         const middleCount = Math.max(0, partCount - 2);
         for (let i = 0; i < middleCount; i++) {
-            // Чередуем между корнями и дополнительными слогами
             if (random.next() > 0.5 && theme.roots.length > 0) {
                 name += random.choice(theme.roots);
             } else {
@@ -98,7 +88,6 @@ const NameGeneratorModule = {
             }
         }
         
-        // Последний слог всегда из суффиксов
         if (partCount > 1) {
             name += random.choice(theme.suffixes);
         }
@@ -151,7 +140,6 @@ const NameGeneratorModule = {
         return NAME_COMPONENTS.themes[themeKey];
     },
 
-    // Основной метод для получения данных локации по координатам
     generateLocationData(x, y) {
         const seed = createSeed(x, y);
         const rng = new SeededRandom(seed);
