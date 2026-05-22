@@ -1,7 +1,12 @@
 /**
  * МОДУЛЬ ГЕНЕРАЦИИ ПОДЗЕМЕЛИЙ (dungeon_generator.js)
- * Включает выбор типа, алгоритмы генерации и маппинг тайлов.
+ * Использует SeededRandom и createSeed из name_generator.js
  */
+
+// Проверка зависимостей
+if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
+    console.error("Ошибка: name_generator.js должен быть загружен перед dungeon_generator.js");
+}
 
 const DUNGEON_TYPES = [
     { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: '.', wallChar: '#', floorColor: '#333', wallColor: '#555' }, 
@@ -15,32 +20,9 @@ const DUNGEON_TYPES = [
 
 const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
 
-// Детерминированный RNG (LCG)
-class SeededRandom {
-    constructor(seed) {
-        this.seed = Math.abs(seed) || 1;
-    }
-    next() {
-        this.seed = (this.seed * 16807) % 2147483647;
-        return (this.seed - 1) / 2147483646;
-    }
-    choice(array) {
-        return array[Math.floor(this.next() * array.length)];
-    }
-    int(min, max) {
-        return Math.floor(this.next() * (max - min + 1)) + min;
-    }
-}
-
-// Хэш-функция для координат
-function createSeed(x, y) {
-    const seed = (x * 73856093) ^ (y * 19349663);
-    return (Math.abs(seed) % 2147483647) || 1;
-}
-
 // Выбор типа подземелья на основе веса
 function selectDungeonType(rand) {
-    // "Прогреваем" генератор, чтобы тип не зависел только от первых бит
+    // "Прогреваем" генератор
     rand.next(); rand.next(); rand.next();
     
     const r = rand.next();
@@ -54,7 +36,7 @@ function selectDungeonType(rand) {
 
 // === АЛГОРИТМЫ ГЕНЕРАЦИИ ===
 
-// 1. Комнаты и коридоры (стандартный roguelike)
+// 1. Комнаты и коридоры
 function generateRoomCorridorMap(rand, width, height) {
     const grid = Array(height).fill().map(() => Array(width).fill(1)); // 1 = стена
     const rooms = [];
@@ -143,7 +125,7 @@ function generateCellularMap(rand, width, height) {
     return grid;
 }
 
-// 3. Арена (открытое пространство с препятствиями)
+// 3. Арена
 function generateArenaMap(rand, width, height) {
     const grid = Array(height).fill().map(() => Array(width).fill(1));
     const margin = 2;
@@ -175,14 +157,6 @@ function generateArenaMap(rand, width, height) {
 // === ОСНОВНОЙ ЭКСПОРТ ===
 
 const DungeonGeneratorModule = {
-    /**
-     * Генерирует данные уровня по координатам
-     * @param {number} x - глобальная X
-     * @param {number} y - глобальная Y
-     * @param {number} width - ширина карты
-     * @param {number} height - высота карты
-     * @returns {Object} { mapData, dungeonType, startPos }
-     */
     generateLevel: function(x, y, width, height) {
         const seedVal = createSeed(x, y);
         const rand = new SeededRandom(seedVal);
@@ -190,24 +164,22 @@ const DungeonGeneratorModule = {
         // 1. Выбираем тип
         const dungeonType = selectDungeonType(rand);
         
-        // 2. Генерируем геометрию в зависимости от типа
+        // 2. Генерируем геометрию
         let mapGrid;
         if (dungeonType.name === 'cellular') {
             mapGrid = generateCellularMap(rand, width, height);
         } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
             mapGrid = generateArenaMap(rand, width, height);
         } else {
-            // dungeon, cave, icy, rogue используют комнаты
             mapGrid = generateRoomCorridorMap(rand, width, height);
         }
         
-        // 3. Находим точку старта (первая найденная пустая клетка near center или просто первая)
+        // 3. Находим точку старта
         let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
         
         // Если центр стена, ищем ближайший пол
         if (mapGrid[startPos.y][startPos.x] === 1) {
             let found = false;
-            // Поиск спиралью или просто сканирование
             for(let r=1; r<Math.max(width,height); r++) {
                 for(let dy=-r; dy<=r; dy++) {
                     for(let dx=-r; dx<=r; dx++) {
@@ -225,11 +197,8 @@ const DungeonGeneratorModule = {
             }
         }
 
-        // Преобразуем в формат, удобный для игры (1D или 2D массив с объектами тайлов, если нужно)
-        // Но для rot.js и нашей логики лучше оставить 2D массив 0/1 и отдельно хранить тип для отрисовки
-        
         return {
-            mapData: mapGrid, // 2D array: 0=floor, 1=wall
+            mapData: mapGrid,
             dungeonType: dungeonType,
             startPos: startPos,
             seed: seedVal
