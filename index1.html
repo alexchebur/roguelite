@@ -2,367 +2,749 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор названий локаций (координаты)</title>
+    <title>Roguelike: Подземелье Координат</title>
+    
+    <!-- ROT.js v0.7.3 -->
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
+    <!-- Seedrandom -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
+
     <style>
+        /* --- CSS: ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС --- */
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --danger: #f85149;
+            --gold: #d29922;
+            --font-stack: 'Consolas', 'Monaco', monospace;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
-            color: #ecf0f1;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-stack);
             margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .container {
-            background: rgba(44, 62, 80, 0.9);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        h1 {
-            color: #3498db;
-            margin-bottom: 25px;
-            font-size: 24px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .coordinates {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .coord-input {
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            overflow: hidden; /* Важно: убираем скролл страницы */
         }
-        
-        .coord-input label {
-            margin-bottom: 8px;
-            color: #3498db;
-            font-weight: bold;
+
+        /* Сетка layout: фиксированные пропорции */
+        #game-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: 50px 1fr 140px; /* Header, Main, Footer/MiniMap */
+            height: 100%;
+            gap: 4px;
+            padding: 4px;
+            box-sizing: border-box;
         }
-        
-        .coord-input input {
-            width: 80px;
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             padding: 10px;
-            border: 2px solid #3498db;
-            border-radius: 8px;
-            background: rgba(52, 73, 94, 0.8);
-            color: white;
-            font-size: 16px;
-            text-align: center;
-        }
-        
-        .coord-input input:focus {
-            outline: none;
-            border-color: #f1c40f;
-            box-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
-        }
-        
-        .result {
-            background: rgba(52, 73, 94, 0.8);
-            border: 2px solid #3498db;
-            border-radius: 15px;
-            padding: 25px;
-            margin: 20px 0;
-            min-height: 120px;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            transition: all 0.3s ease;
         }
-        
-        .location-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #f1c40f;
-            margin-bottom: 10px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-        
-        .location-description {
-            font-size: 16px;
-            color: #bdc3c7;
-            line-height: 1.4;
-        }
-        
-        .generate-btn {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
+
+        h3 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
             letter-spacing: 1px;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
         }
-        
-        .generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
-            background: linear-gradient(45deg, #3ca0db, #2c8bc9);
+
+        /* Header */
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
         }
-        
-        .generate-btn:active {
-            transform: translateY(0);
+        .loc-info { text-align: right; }
+        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
+        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
+
+        /* Map Container - занимает все доступное место по центру */
+        #map-container {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
         }
+
+        /* Stats & Equip */
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .val-hp { color: var(--danger); }
+        .val-atk { color: var(--gold); }
+        .val-def { color: var(--accent); }
         
-        .info {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #7f8c8d;
+        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
+        .equip-item { color: var(--gold); }
+
+        /* Inventory & Log */
+        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
+        .inv-item {
+            padding: 3px 5px;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        
-        .seed-info {
-            margin-top: 10px;
+        .inv-item:hover { background: rgba(255,255,255,0.1); }
+
+        #log-list {
+            overflow-y: auto;
+            flex: 1;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
+        .log-combat { color: var(--danger); }
+        .log-loot { color: var(--gold); }
+        .log-info { color: var(--accent); }
+
+        /* Minimap Panel */
+        #minimap-panel {
+            grid-column: 1;
+            grid-row: 3;
+            display: flex;
+            flex-direction: column;
+        }
+        #minimap { 
+            width: 100%; 
+            height: 100%; 
+            background: #000; 
+            border-radius: 4px;
+            image-rendering: pixelated; /* Чтобы пиксели были четкими */
+        }
+
+        /* Footer Controls */
+        footer {
+            grid-column: 2 / 4;
+            grid-row: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
             font-size: 12px;
-            color: #95a5a6;
+            color: var(--text-dim);
         }
+        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🔮 Генератор названий локаций (координаты)</h1>
-        
-        <div class="coordinates">
-            <div class="coord-input">
-                <label for="coordX">Координата X</label>
-                <input type="number" id="coordX" value="1" min="-1000" max="1000">
-            </div>
-            <div class="coord-input">
-                <label for="coordY">Координата Y</label>
-                <input type="number" id="coordY" value="1" min="-1000" max="1000">
-            </div>
+
+<div id="game-layout">
+    <header class="panel">
+        <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
+        <div class="loc-info">
+            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
+            <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
         </div>
-        
-        <div class="result">
-            <div class="location-name" id="locationName">Нажмите "Сгенерировать"</div>
-            <div class="location-description" id="locationDescription"></div>
-        </div>
-        
-        <button class="generate-btn" onclick="generateLocation()">Сгенерировать</button>
-        <div class="info">Одинаковые координаты всегда дают одинаковый результат</div>
-        <div class="seed-info" id="seedInfo"></div>
+    </header>
+
+    <!-- Левая панель: Статы и Экипировка -->
+    <div class="panel" style="grid-row: 2;">
+        <h3>Персонаж</h3>
+        <div id="ui-stats"></div>
+        <h3 style="margin-top: 15px;">Экипировка</h3>
+        <div id="ui-equip"></div>
     </div>
 
-    <script>
-        // База данных для генерации (удвоенное количество вариантов)
-        const NAME_COMPONENTS = {
-            // Тематические наборы слогов
-            themes: {
-                dark: {
-                    name: 'Мрачный мир',
-                    prefixes: ['Нек', 'Мор', 'Тар', 'Зар', 'Дру', 'Вор', 'Кри', 'Стр', 'Бла', 'Гро', 'Шад', 'Кул', 'Вам', 'Лик', 'Рав', 'Дем', 'Фен', 'Гул', 'Хор', 'Зом'],
-                    roots: ['али', 'ус', 'ек', 'ит', 'ум', 'ар', 'он', 'ис', 'ат', 'ен', 'ок', 'ур', 'ил', 'аш', 'ез', 'ин', 'оп', 'ук', 'ам', 'ир'],
-                    suffixes: ['тус', 'ган', 'нок', 'гар', 'зор', 'мак', 'вул', 'дур', 'мор', 'зул', 'рак', 'док', 'вел', 'зар', 'ник', 'лок', 'мар', 'ток', 'рук', 'зак']
-                },
-                light: {
-                    name: 'Светлый мир',
-                    prefixes: ['Лум', 'Сил', 'Фен', 'Пра', 'Кри', 'Ли', 'Ари', 'Эли', 'Ори', 'Су', 'Лай', 'Сол', 'Рей', 'Аур', 'Люк', 'Ним', 'Вал', 'Сеар', 'Три', 'Кел'],
-                    roots: ['има', 'ан', 'ор', 'ен', 'ур', 'ол', 'ик', 'ас', 'ем', 'ир', 'ал', 'ис', 'ет', 'ун', 'ам', 'ел', 'ин', 'ос', 'ат', 'ев'],
-                    suffixes: ['тал', 'мир', 'лан', 'мус', 'дек', 'вел', 'рил', 'тор', 'нис', 'лис', 'ран', 'виэл', 'зар', 'нок', 'рик', 'маэр', 'веэль', 'тик', 'нуэр', 'заль']
-                },
-                underground: {
-                    name: 'Подземный мир',
-                    prefixes: ['Ган', 'Гро', 'Тру', 'Стр', 'Бла', 'Дур', 'Кар', 'Мар', 'Раг', 'Туг', 'Двар', 'Гном', 'Краг', 'Морг', 'Тор', 'Ург', 'Барг', 'Грак', 'Фрог', 'Мург'],
-                    roots: ['ог', 'ар', 'он', 'ис', 'ат', 'ук', 'ак', 'ор', 'ам', 'ад', 'уг', 'аг', 'ог', 'умм', 'йяр', 'окх', 'йюр', 'аам', 'ауг', 'од'],
-                    suffixes: ['зар', 'рон', 'мак', 'тор', 'кул', 'дак', 'раг', 'зуг', 'мок', 'дур', 'гар', 'дхаур', 'мук', 'тхунд', 'кхульг', 'даг', 'рьяг', 'зорг', 'миг', 'дорр']
-                },
-                ancient: {
-                    name: 'Древний мир',
-                    prefixes: ['Ака', 'Эло', 'Ило', 'Ура', 'Оме', 'Ха', 'Тха', 'Жа', 'Рха', 'Ша', 'Атл', 'Лем', 'Му', 'Ра', 'Сет', 'Ос', 'Ир', 'Ан', 'Ка', 'Та'],
-                    roots: ['тун', 'мар', 'дал', 'вор', 'кул', 'зан', 'мор', 'тал', 'рен', 'вал', 'флун', 'мер', 'дьел', 'фор', 'кхуль', 'зайн', 'мойр', 'тхайл', 'жен', 'воль'],
-                    suffixes: ['дор', 'мир', 'зул', 'кар', 'мал', 'нор', 'рил', 'тор', 'вак', 'зур', 'доур', 'миэр', 'цзуль', 'кайр', 'майль', 'нойд', 'рииль', 'тхойн', 'факх', 'цзур']
-                }
-            },
-            
-            // Типы локаций (удвоено)
-            locationTypes: {
-                dungeon: ['Подземелья', 'Темные подземелья', 'Заброшенные катакомбы', 'Тайные подземелья', 'Проклятые подземелья', 'Затопленные катакомбы', 'Древние подземелья', 'Запечатанные подземелья', 'Зловещие катакомбы', 'Темные лабиринты', 'Зловещие казематы'],
-                cave: ['Пещеры', 'Темные пещеры', 'Глубинные пещеры', 'Кристальные пещеры', 'Лавовые пещеры', 'Ледяные пещеры', 'Биолюминесцентные пещеры', 'Затопленные пещеры', 'Вулканические пещеры', 'Кварцевые пещеры'],
-                icey: ['Ледяные лабиринты', 'Хрустальные коридоры', 'Ледяные тоннели', 'Морозные лабиринты', 'Снежные коридоры', 'Ледяные катакомбы', 'Хрустальные лабиринты', 'Морозные тоннели', 'Ледяные залы', 'Снежные лабиринты'],
-                rogue: ['Заброшенные руины', 'Древние руины', 'Разрушенные залы', 'Покинутые руины', 'Обвалившиеся руины', 'Заросшие руины', 'Разрушенные храмы', 'Забытые дворцы', 'Обрушившиеся арки', 'Разрушенные крепости'],
-                cellular: ['Органические пещеры', 'Живые пещеры', 'Пульсирующие полости', 'Биологические пещеры', 'Грибные пещеры', 'Корневые полости', 'Слизевые пещеры', 'Грибковые полости', 'Органические тоннели', 'Живые лабиринты'],
-                arena: ['Арены', 'Кровавые арены', 'Боевые арены', 'Смертельные арены', 'Гладиаторские арены', 'Круговые арены', 'Подземные арены', 'Кровавые колизеи', 'Боевые круги', 'Арены смерти'],
-                boss: ['Логова', 'Тронные залы', 'Святилища', 'Цитадели', 'Крепости', 'Дворцы', 'Храмы', 'Священные гроты', 'Тронные комнаты', 'Святилища владыки']
-            },
-            
-            // Дополнительные слоги для длинных имен (удвоено)
-            extras: ['ма', 'ли', 'та', 'су', 'но', 'ре', 'ки', 'до', 'ве', 'ша', 'ну', 'ра', 'се', 'ту', 'го', 'ба', 'да', 'фа', 'га', 'ха', 'йя', 'кья', 'лиа', 'нья', 'пья', 'сье', 'вье', 'зиа', 'вха', 'уа']
+    <!-- Центр: Карта -->
+    <div id="map-container"></div>
+
+    <!-- Правая панель: Инвентарь и Лог -->
+    <div class="panel" style="grid-row: 2 / 4;">
+        <h3>Инвентарь</h3>
+        <div id="inventory-list"></div>
+        <h3 style="margin-top: 10px;">Журнал событий</h3>
+        <div id="log-list"></div>
+    </div>
+
+    <!-- Низ слева: Миникарта -->
+    <div id="minimap-panel" class="panel">
+        <h3>Карта мира</h3>
+        <canvas id="minimap"></canvas>
+    </div>
+
+    <footer class="panel">
+        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
+        <span><kbd>Space</kbd> Пропуск хода</span>
+        <span><kbd>Click</kbd> Использовать предмет</span>
+    </footer>
+</div>
+
+<script>
+/**
+ * ====================================================================
+ * МОДУЛЬ 1: DATA MODULE
+ * ====================================================================
+ */
+const DataModule = {
+    ADJECTIVES: ["Мрачный", "Древний", "Забытый", "Проклятый", "Святой", "Ядовитый", "Огненный", "Ледяной", "Темный", "Дикий", "Безмолвный", "Кровавый"],
+    PLACES: ["Склеп", "Чертог", "Лаборатория", "Улей", "Курган", "Бастион", "Храм", "Лабиринт", "Грот", "Цитадель", "Арсенал"],
+    
+    ENEMY_TYPES: [
+        { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
+        { name: "Скелет", char: "s", color: "#B0BEC5", hp: [15, 25], atk: [3, 6], def: [1, 2] },
+        { name: "Орк",    char: "O", color: "#8BC34A", hp: [30, 50], atk: [6, 10], def: [2, 4] },
+        { name: "Призрак",char: "G", color: "#7C4DFF", hp: [10, 15], atk: [5, 8], def: [0, 1] },
+        { name: "Дракон", char: "D", color: "#FF5722", hp: [80, 120], atk: [15, 25], def: [5, 10] }
+    ],
+
+    ITEM_TYPES: [
+        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
+        { type: "armor",  char: "]", color: "#9E9E9E", baseName: "Броня", stat: "def", val: [1, 3] },
+        { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
+        { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
+    ],
+
+    // Настройки карты (размер в клетках)
+    MAP_WIDTH: 60,
+    MAP_HEIGHT: 40,
+    ROOM_COUNT: 15
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 2: NAME GENERATOR
+ * ====================================================================
+ */
+const NameGenModule = {
+    rng: null,
+
+    setSeed: function(seedString) {
+        if (typeof Math.seedrandom !== 'undefined') {
+            this.rng = new Math.seedrandom(seedString);
+        } else {
+            this.rng = Math.random;
+        }
+    },
+
+    random: function() {
+        return this.rng();
+    },
+
+    pick: function(array) {
+        return array[Math.floor(this.random() * array.length)];
+    },
+
+    getLocationName: function(x, y) {
+        this.setSeed(`loc_${x}_${y}`);
+        const adj = this.pick(DataModule.ADJECTIVES);
+        const noun = this.pick(DataModule.PLACES);
+        return `${adj} ${noun}`;
+    },
+
+    getItemName: function(baseName) {
+        const adj = this.pick(DataModule.ADJECTIVES);
+        return `${adj} ${baseName}`;
+    },
+
+    getEnemyName: function(baseName) {
+        if (this.random() > 0.7) {
+            const adj = this.pick(DataModule.ADJECTIVES);
+            return `${adj} ${baseName}`;
+        }
+        return baseName;
+    }
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 3: MAP MODULE
+ * ====================================================================
+ */
+const MapModule = {
+    map: [],
+    rooms: [],
+    stairsUp: null,
+    stairsDown: null,
+
+    generate: function(seedStr) {
+        NameGenModule.setSeed(seedStr);
+
+        if (typeof ROT === 'undefined') {
+            alert("Ошибка: Библиотека ROT.js не загрузилась.");
+            throw new Error("ROT.js missing");
+        }
+
+        const digger = new ROT.Map.Digger(DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, {
+            roomWidth: [4, 8],
+            roomHeight: [4, 8],
+            roomCount: DataModule.ROOM_COUNT
+        });
+
+        this.map = [];
+        for(let y=0; y<DataModule.MAP_HEIGHT; y++) {
+            this.map[y] = new Array(DataModule.MAP_WIDTH).fill(1);
+        }
+
+        digger.create((x, y, value) => {
+            this.map[y][x] = value;
+        });
+
+        this.rooms = digger.getRooms();
+
+        if (this.rooms.length > 0) {
+            const r = this.rooms[0];
+            this.stairsDown = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
+        }
+        if (this.rooms.length > 1) {
+            const r = this.rooms[this.rooms.length-1];
+            this.stairsUp = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
+        }
+
+        const startRoom = this.rooms[1] || this.rooms[0];
+        return {
+            x: Math.floor((startRoom._x1 + startRoom._x2)/2),
+            y: Math.floor((startRoom._y1 + startRoom._y2)/2)
         };
+    },
 
-        // Детерминированный генератор случайных чисел
-        class SeededRandom {
-            constructor(seed) {
-                this.seed = Math.abs(seed) || 1; // Избегаем seed = 0
+    isWall: function(x, y) {
+        if (x < 0 || x >= DataModule.MAP_WIDTH || y < 0 || y >= DataModule.MAP_HEIGHT) return true;
+        return this.map[y][x] === 1;
+    },
+
+    getRandomFloor: function() {
+        let x, y;
+        do {
+            x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+            y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+        } while (this.isWall(x, y));
+        return {x, y};
+    }
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 4: ENTITY MODULE
+ * ====================================================================
+ */
+const EntityModule = {
+    createPlayer: function(x, y) {
+        return {
+            x: x, y: y,
+            char: "@", color: "#FFF",
+            hp: 50, maxHp: 50,
+            atk: 5, def: 2,
+            level: 1, xp: 0,
+            inventory: [],
+            equipment: { weapon: null, armor: null }
+        };
+    },
+
+    createEnemy: function(template, x, y, difficulty) {
+        const name = NameGenModule.getEnemyName(template.name);
+        const hp = Math.floor((template.hp[0] + Math.random()*(template.hp[1]-template.hp[0])) * difficulty);
+        const atk = Math.floor((template.atk[0] + Math.random()*(template.atk[1]-template.atk[0])) * difficulty);
+        const def = Math.floor((template.def[0] + Math.random()*(template.def[1]-template.def[0])) * difficulty);
+
+        return {
+            x: x, y: y, name: name,
+            char: template.char, color: template.color,
+            hp: hp, maxHp: hp, atk: atk, def: def,
+            isEnemy: true
+        };
+    },
+
+    createItem: function(template, x, y) {
+        const name = NameGenModule.getItemName(template.baseName);
+        const val = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
+        
+        return {
+            x: x, y: y, name: name,
+            char: template.char, color: template.color,
+            type: template.type,
+            stat: template.stat,
+            effect: template.effect,
+            val: val,
+            isItem: true
+        };
+    }
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 5: COMBAT MODULE
+ * ====================================================================
+ */
+const CombatModule = {
+    attack: function(attacker, defender, logFn) {
+        let dmg = Math.max(1, attacker.atk - defender.def);
+        let crit = Math.random() < 0.1;
+        if (crit) dmg = Math.floor(dmg * 1.5);
+
+        defender.hp -= dmg;
+        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit?" (КРИТ)!":"."}`, "combat");
+
+        if (defender.hp <= 0) {
+            logFn(`${defender.name || "Враг"} погибает!`, "info");
+            return true;
+        }
+        return false;
+    },
+
+    useItem: function(player, index, logFn, updateUiFn) {
+        const item = player.inventory[index];
+        if (!item) return;
+
+        let used = false;
+
+        if (item.effect === "heal") {
+            player.hp = Math.min(player.maxHp, player.hp + item.val);
+            logFn(`Вы выпили ${item.name}. HP +${item.val}.`, "loot");
+            used = true;
+        } else if (item.effect === "buff_atk") {
+            player.atk += item.val;
+            logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
+            used = true;
+        } else if (item.type === "weapon") {
+            if (player.equipment.weapon) {
+                player.atk -= player.equipment.weapon.val;
+                player.inventory.push(player.equipment.weapon);
             }
-            
-            next() {
-                this.seed = (this.seed * 16807) % 2147483647;
-                return (this.seed - 1) / 2147483646;
+            player.equipment.weapon = item;
+            player.atk += item.val;
+            logFn(`Вы взяли ${item.name}. Атака +${item.val}.`, "loot");
+            used = true;
+        } else if (item.type === "armor") {
+            if (player.equipment.armor) {
+                player.def -= player.equipment.armor.val;
+                player.inventory.push(player.equipment.armor);
             }
+            player.equipment.armor = item;
+            player.def += item.val;
+            logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
+            used = true;
+        }
+
+        if (used) {
+            player.inventory.splice(index, 1);
+            updateUiFn();
+        }
+    }
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 6: RENDER MODULE (ИСПРАВЛЕННЫЙ РАЗМЕР)
+ * ====================================================================
+ */
+const RenderModule = {
+    display: null,
+    fov: null,
+    // Настройки отображения: подбираем под размер экрана
+    // При шрифте 14px и карте 60x40 клеток, нам нужно около 840x560 пикселей.
+    // Центральная панель достаточно большая для этого.
+    COLS: 60,
+    ROWS: 40,
+    FONT_SIZE: 14,
+
+    init: function() {
+        this.display = new ROT.Display({
+            width: this.COLS,
+            height: this.ROWS,
+            fontSize: this.FONT_SIZE,
+            fontFamily: "Consolas, monospace",
+            fg: "#ccc",
+            bg: "#000"
+        });
+        
+        const container = document.getElementById("map-container");
+        container.innerHTML = ""; // Очистка перед добавлением
+        container.appendChild(this.display.getContainer());
+        
+        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+    },
+
+    draw: function(player, enemies, items) {
+        this.display.clear();
+        const visible = new Set();
+
+        // Радиус обзора
+        this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
+            if (vis) visible.add(`${x},${y}`);
+        });
+
+        // Отрисовка тайлов
+        visible.forEach(key => {
+            const [x, y] = key.split(',').map(Number);
+            let ch = ".", fg = "#333";
+            if (MapModule.isWall(x, y)) { ch = "#"; fg = "#555"; }
             
-            choice(array) {
-                const index = Math.floor(this.next() * array.length);
-                return array[index];
+            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { ch = ">"; fg = "#FFF"; }
+            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { ch = "<"; fg = "#888"; }
+
+            this.display.draw(x, y, ch, fg);
+        });
+
+        // Предметы
+        items.forEach(i => {
+            if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
+        });
+
+        // Враги
+        enemies.forEach(e => {
+            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
+        });
+
+        // Игрок
+        this.display.draw(player.x, player.y, player.char, player.color);
+
+        return visible;
+    },
+
+    updateUI: function(player) {
+        document.getElementById("ui-stats").innerHTML = `
+            <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
+            <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
+            <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
+            <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
+        `;
+        const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
+        const a = player.equipment.armor ? player.equipment.armor.name : "—";
+        document.getElementById("ui-equip").innerHTML = `
+            <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
+            <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
+        `;
+        const invDiv = document.getElementById("inventory-list");
+        invDiv.innerHTML = "";
+        if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
+        player.inventory.forEach((item, idx) => {
+            const div = document.createElement("div");
+            div.className = "inv-item";
+            div.style.color = item.color;
+            div.textContent = `${item.char} ${item.name} (+${item.val})`;
+            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player));
+            invDiv.appendChild(div);
+        });
+    },
+
+    log: function(msg, type="info") {
+        const list = document.getElementById("log-list");
+        const div = document.createElement("div");
+        div.className = `log-msg log-${type}`;
+        div.textContent = `> ${msg}`;
+        list.prepend(div);
+        if (list.children.length > 50) list.lastChild.remove();
+    },
+
+    drawMinimap: function(player, explored) {
+        const cvs = document.getElementById("minimap");
+        // Масштабируем canvas под размер родителя
+        const rect = cvs.parentElement.getBoundingClientRect();
+        cvs.width = rect.width - 20; // минус padding
+        cvs.height = rect.height - 40; // минус заголовок и padding
+
+        const ctx = cvs.getContext("2d");
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
+        
+        const cw = cvs.width / DataModule.MAP_WIDTH;
+        const ch = cvs.height / DataModule.MAP_HEIGHT;
+
+        explored.forEach(k => {
+            const [x,y] = k.split(',').map(Number);
+            ctx.fillStyle = MapModule.isWall(x,y) ? "#333" : "#111";
+            ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
+        });
+        // Игрок
+        ctx.fillStyle = "#0F0";
+        ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
+    }
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 7: GAME MODULE
+ * ====================================================================
+ */
+const GameModule = {
+    player: null,
+    enemies: [],
+    items: [],
+    globalX: 0,
+    globalY: 0,
+    explored: new Set(),
+    busy: false,
+
+    init: function() {
+        try {
+            RenderModule.init();
+        } catch (e) {
+            console.error(e);
+            return;
+        }
+        
+        this.globalX = Math.floor(Math.random() * 10);
+        this.globalY = Math.floor(Math.random() * 10);
+        
+        this.loadLevel(this.globalX, this.globalY);
+        
+        window.addEventListener("keydown", (e) => this.handleInput(e));
+        RenderModule.log("Игра загружена. Используйте стрелки.", "info");
+    },
+
+    loadLevel: function(gx, gy) {
+        this.globalX = gx;
+        this.globalY = gy;
+        this.enemies = [];
+        this.items = [];
+        this.explored.clear();
+
+        const locName = NameGenModule.getLocationName(gx, gy);
+        document.getElementById("ui-loc-name").textContent = locName;
+        document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
+        RenderModule.log(`Локация: ${locName}`, "info");
+
+        const startPos = MapModule.generate(`map_${gx}_${gy}`);
+
+        if (!this.player) {
+            this.player = EntityModule.createPlayer(startPos.x, startPos.y);
+        } else {
+            this.player.x = startPos.x;
+            this.player.y = startPos.y;
+        }
+
+        this.spawnEntities(gx, gy);
+        this.renderFrame();
+    },
+
+    spawnEntities: function(gx, gy) {
+        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
+        const oldRand = Math.random;
+        Math.random = rng; 
+
+        const diff = 1 + (Math.abs(gx) + Math.abs(gy)) * 0.1;
+
+        for(let i=0; i<6; i++) {
+            const pos = MapModule.getRandomFloor();
+            if (pos.x === this.player.x && pos.y === this.player.y) continue;
+            const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
+            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, diff));
+        }
+
+        for(let i=0; i<4; i++) {
+            const pos = MapModule.getRandomFloor();
+            const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
+            this.items.push(EntityModule.createItem(type, pos.x, pos.y));
+        }
+
+        Math.random = oldRand;
+    },
+
+    handleInput: function(e) {
+        if (this.busy || this.player.hp <= 0) return;
+        
+        let dx=0, dy=0;
+        if (e.key==="ArrowUp") dy=-1;
+        if (e.key==="ArrowDown") dy=1;
+        if (e.key==="ArrowLeft") dx=-1;
+        if (e.key==="ArrowRight") dx=1;
+        
+        if (dx!==0 || dy!==0 || e.key===" ") {
+            e.preventDefault();
+            this.processTurn(dx, dy);
+        }
+    },
+
+    processTurn: function(dx, dy) {
+        const nx = this.player.x + dx;
+        const ny = this.player.y + dy;
+
+        if (MapModule.isWall(nx, ny)) return;
+
+        const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
+        if (enemy) {
+            CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
+        } else {
+            this.player.x = nx;
+            this.player.y = ny;
+
+            const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
+            if (idx !== -1) {
+                const item = this.items[idx];
+                this.player.inventory.push(item);
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+                this.items.splice(idx, 1);
             }
-            
-            int(min, max) {
-                return Math.floor(this.next() * (max - min + 1)) + min;
+
+            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
+                RenderModule.log("Вы поднимаетесь выше...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
+                return;
+            }
+            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
+                RenderModule.log("Вы спускаетесь ниже...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
+                return;
             }
         }
 
-        // Создание уникального семени из координат
-        function createSeed(x, y) {
-            // Простая хэш-функция для координат
-            let hash = x;
-            hash = ((hash << 5) - hash) + y;
-            hash = ((hash << 5) - hash) + (x * y);
-            return Math.abs(hash) || 1;
-        }
-
-        // Генератор названий
-        class NameGenerator {
-            static generateName(random, theme) {
-                let name = '';
-                
-                // Сколько частей будет в имени (2-5)
-                const partCount = random.int(2, 5);
-                
-                // Первый слог всегда из префиксов
-                name += random.choice(theme.prefixes);
-                
-                // Средние слоги (0-3 штуки)
-                const middleCount = Math.max(0, partCount - 2);
-                for (let i = 0; i < middleCount; i++) {
-                    // Чередуем между корнями и дополнительными слогами
-                    if (random.next() > 0.5 && theme.roots.length > 0) {
-                        name += random.choice(theme.roots);
-                    } else {
-                        name += random.choice(NAME_COMPONENTS.extras);
+        this.enemies.forEach(e => {
+            if (e.hp<=0) return;
+            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
+            if (dist < 8) {
+                if (dist===1) {
+                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
+                } else {
+                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
+                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
+                    let next = null;
+                    astar.compute(e.x, e.y, (x,y) => {
+                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
+                    });
+                    if (next) {
+                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
+                            e.x = next.x; e.y = next.y;
+                        }
                     }
                 }
-                
-                // Последний слог всегда из суффиксов
-                if (partCount > 1) {
-                    name += random.choice(theme.suffixes);
-                }
-                
-                return name.charAt(0).toUpperCase() + name.slice(1);
             }
-            
-            static getLocationType(random) {
-                const typeKeys = Object.keys(NAME_COMPONENTS.locationTypes);
-                const randomType = random.choice(typeKeys);
-                const typeVariants = NAME_COMPONENTS.locationTypes[randomType];
-                return random.choice(typeVariants);
-            }
-            
-            static generateDescription(random) {
-                const descriptors = [
-                    'проклятые', 'забытые', 'древние', 'кровавые', 'темные', 'вечные',
-                    'таинственные', 'опасные', 'зловещие', 'мрачные', 'заброшенные',
-                    'волшебные', 'священные', 'тайные', 'неприступные', 'легендарные',
-                    'зачарованные', 'проклятые вечностью', 'окутанные мраком', 'испещренные рунами', 'хранящие древние тайны',
-                    'наполненные эхом прошлого', 'пропитанные магией', 'защищенные древними заклятиями', 'резонирующие от криков ужаса', 'окутанные вечным туманом',
-                    'хранящие сокровища', 'полные ловушек', 'непостижимые', 'запретные', 'тающие во времени', 'нечестивые', 'колдовские', 'эпические', 'мифические', 'скрытые'
-                ];
-                
-                const atmospheres = [
-                    'наполненные эхом шагов', 'освещенные тусклым светом',
-                    'пропитанные зловонием', 'вибрирующие от магии',
-                    'покрытые паутиной', 'украшенные древними рунами',
-                    'испещренные трещинами', 'окутанные вечным туманом',
-                    'резонирующие от криков прошлого', 'хранящие древние тайны',
-                    'полные ловушек и загадок', 'защищенные древними заклятиями',
-                    'эхом отзывающиеся на каждый шепот', 'мерцающие от скрытой энергии',
-                    'испускающие холодный ветер', 'наполненные странными звуками',
-                    'окрашенные в неестественные цвета', 'вибрирующие от скрытой угрозы',
-                    'наполненные призрачными фигурами', 'испускающие запах древности',
-                    'окутанные паутиной времени', 'пропитанные кровью предыдущих искателей приключений',
-                    'мерцающие от магических разрядов', 'наполненные странными шепотами',
-                    'испускающие зловещее сияние', 'вибрирующие от древней силы'
-                ];
-                
-                const descriptor = random.choice(descriptors);
-                const atmosphere = random.choice(atmospheres);
-                
-                return `${descriptor}, ${atmosphere}`;
-            }
-            
-            static getRandomTheme(random) {
-                const themeKeys = Object.keys(NAME_COMPONENTS.themes);
-                const themeKey = random.choice(themeKeys);
-                return NAME_COMPONENTS.themes[themeKey];
-            }
-        }
+        });
 
-        // Основная функция генерации
-        function generateLocation() {
-            // Получаем координаты из полей ввода
-            const x = parseInt(document.getElementById('coordX').value) || 0;
-            const y = parseInt(document.getElementById('coordY').value) || 0;
-            
-            // Создаем уникальное семя из координат
-            const seed = createSeed(x, y);
-            
-            // Создаем детерминированный генератор
-            const random = new SeededRandom(seed);
-            
-            // Получаем случайную тему (детерминированную для этих координат)
-            const theme = NameGenerator.getRandomTheme(random);
-            
-            // Генерируем название
-            const name = NameGenerator.generateName(random, theme);
-            
-            // Получаем тип локации
-            const locationType = NameGenerator.getLocationType(random);
-            
-            // Генерируем описание
-            const description = NameGenerator.generateDescription(random);
-            
-            // Обновляем интерфейс
-            document.getElementById('locationName').textContent = `${locationType} ${name}`;
-            document.getElementById('locationDescription').textContent = description;
-            document.getElementById('seedInfo').textContent = `Семя: ${seed} (X: ${x}, Y: ${y})`;
-            
-            // Добавляем анимацию
-            const resultDiv = document.querySelector('.result');
-            resultDiv.style.transform = 'scale(1.02)';
-            resultDiv.style.boxShadow = '0 0 20px rgba(52, 152, 219, 0.6)';
-            setTimeout(() => {
-                resultDiv.style.transform = 'scale(1)';
-                resultDiv.style.boxShadow = '0 0 15px rgba(52, 152, 219, 0.4)';
-            }, 300);
-        }
-
-        // Генерируем первое название при загрузке
-        window.onload = function() {
-            generateLocation();
-        };
+        if (this.player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
         
-        // Также генерируем при изменении координат (Enter)
-        document.getElementById('coordX').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') generateLocation();
-        });
-        document.getElementById('coordY').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') generateLocation();
-        });
-    </script>
+        this.renderFrame();
+    },
+
+    renderFrame: function() {
+        const vis = RenderModule.draw(this.player, this.enemies, this.items);
+        vis.forEach(k => this.explored.add(k));
+        RenderModule.updateUI(this.player);
+        RenderModule.drawMinimap(this.player, this.explored);
+    }
+};
+
+// Запуск
+window.onload = () => GameModule.init();
+
+</script>
 </body>
 </html>
-
