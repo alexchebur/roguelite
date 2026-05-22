@@ -509,4 +509,210 @@ const RenderModule = {
         });
     },
 
-    log: function
+    log: function(msg, type="info") {
+        const list = document.getElementById("log-list");
+        const div = document.createElement("div");
+        div.className = `log-msg log-${type}`;
+        div.textContent = `> ${msg}`;
+        list.prepend(div);
+        if (list.children.length > 50) list.lastChild.remove();
+    },
+
+    drawMinimap: function(player, explored) {
+        const cvs = document.getElementById("minimap");
+        const rect = cvs.parentElement.getBoundingClientRect();
+        cvs.width = rect.width - 20; 
+        cvs.height = rect.height - 40; 
+
+        const ctx = cvs.getContext("2d");
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
+        
+        const cw = cvs.width / DataModule.MAP_WIDTH;
+        const ch = cvs.height / DataModule.MAP_HEIGHT;
+
+        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
+
+        explored.forEach(k => {
+            const [x,y] = k.split(',').map(Number);
+            // Используем цвета текущего типа подземелья для миникарты
+            ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
+            ctx.globalAlpha = 0.5; // Полупрозрачность для карты
+            ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
+            ctx.globalAlpha = 1.0;
+        });
+        ctx.fillStyle = "#0F0";
+        ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
+    }
+};
+
+/**
+ * ====================================================================
+ * МОДУЛЬ 6: GAME MODULE
+ * ====================================================================
+ */
+const GameModule = {
+    player: null,
+    enemies: [],
+    items: [],
+    globalX: 0,
+    globalY: 0,
+    currentLocData: null,
+    explored: new Set(),
+    busy: false,
+
+    init: function() {
+        try {
+            RenderModule.init();
+        } catch (e) {
+            console.error(e);
+            return;
+        }
+        
+        this.globalX = Math.floor(Math.random() * 10);
+        this.globalY = Math.floor(Math.random() * 10);
+        
+        this.loadLevel(this.globalX, this.globalY);
+        
+        window.addEventListener("keydown", (e) => this.handleInput(e));
+        RenderModule.log("Игра загружена. Используйте стрелки.", "info");
+    },
+
+    loadLevel: function(gx, gy) {
+        this.globalX = gx;
+        this.globalY = gy;
+        this.enemies = [];
+        this.items = [];
+        this.explored.clear();
+
+        // 1. Генерация названия
+        this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
+        
+        // 2. Генерация карты и типа через новый модуль
+        const startPos = MapModule.generate(gx, gy);
+        
+        document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
+        RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
+
+        if (!this.player) {
+            this.player = EntityModule.createPlayer(startPos.x, startPos.y);
+        } else {
+            this.player.x = startPos.x;
+            this.player.y = startPos.y;
+        }
+
+        this.spawnEntities(gx, gy);
+        this.renderFrame();
+    },
+
+    spawnEntities: function(gx, gy) {
+        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
+        const oldRand = Math.random;
+        Math.random = rng; 
+
+        const diff = 1 + (Math.abs(gx) + Math.abs(gy)) * 0.1;
+
+        for(let i=0; i<6; i++) {
+            const pos = MapModule.getRandomFloor(this.player);
+            if (pos.x === this.player.x && pos.y === this.player.y) continue;
+            const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
+            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, diff));
+        }
+
+        for(let i=0; i<4; i++) {
+            const pos = MapModule.getRandomFloor(this.player);
+            const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
+            this.items.push(EntityModule.createItem(type, pos.x, pos.y));
+        }
+
+        Math.random = oldRand;
+    },
+
+    handleInput: function(e) {
+        if (this.busy || this.player.hp <= 0) return;
+        
+        let dx=0, dy=0;
+        if (e.key==="ArrowUp") dy=-1;
+        if (e.key==="ArrowDown") dy=1;
+        if (e.key==="ArrowLeft") dx=-1;
+        if (e.key==="ArrowRight") dx=1;
+        
+        if (dx!==0 || dy!==0 || e.key===" ") {
+            e.preventDefault();
+            this.processTurn(dx, dy);
+        }
+    },
+
+    processTurn: function(dx, dy) {
+        const nx = this.player.x + dx;
+        const ny = this.player.y + dy;
+
+        if (MapModule.isWall(nx, ny)) return;
+
+        const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
+        if (enemy) {
+            CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
+        } else {
+            this.player.x = nx;
+            this.player.y = ny;
+
+            const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
+            if (idx !== -1) {
+                const item = this.items[idx];
+                this.player.inventory.push(item);
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+                this.items.splice(idx, 1);
+            }
+
+            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
+                RenderModule.log("Вы поднимаетесь выше...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
+                return;
+            }
+            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
+                RenderModule.log("Вы спускаетесь ниже...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
+                return;
+            }
+        }
+
+        this.enemies.forEach(e => {
+            if (e.hp<=0) return;
+            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
+            if (dist < 8) {
+                if (dist===1) {
+                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
+                } else {
+                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
+                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
+                    let next = null;
+                    astar.compute(e.x, e.y, (x,y) => {
+                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
+                    });
+                    if (next) {
+                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
+                            e.x = next.x; e.y = next.y;
+                        }
+                    }
+                }
+            }
+        });
+
+        if (this.player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+        
+        this.renderFrame();
+    },
+
+    renderFrame: function() {
+        const vis = RenderModule.draw(this.player, this.enemies, this.items);
+        vis.forEach(k => this.explored.add(k));
+        RenderModule.updateUI(this.player, this.currentLocData);
+        RenderModule.drawMinimap(this.player, this.explored);
+    }
+};
+
+// Запуск
+window.onload = () => GameModule.init();
+
+</script>
+</body>
+</html>
