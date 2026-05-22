@@ -1,181 +1,180 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Подземелье Координат</title>
-<!-- Rot.js -->
-<script src="https://cdn.jsdelivr.net/npm/rot.js@0.7.3/rot.min.js"></script>
-<!-- Seedrandom для детерминированной генерации -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Roguelike: Подземелье Координат</title>
+    <!-- Подключаем библиотеки -->
+    <script src="https://cdn.jsdelivr.net/npm/rot.js@0.7.3/rot.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
 
-<style>
-/* ============================================================
-   CSS: ТЕМНАЯ ТЕМА И ЛЕЙАУТ
-   ============================================================ */
-:root {
-    --bg-main: #0d1117;
-    --bg-panel: #161b22;
-    --border: #30363d;
-    --text-main: #c9d1d9;
-    --text-dim: #8b949e;
-    --accent: #58a6ff;
-    --danger: #f85149;
-    --success: #3fb950;
-    --gold: #d29922;
-    --font: 'Consolas', 'Monaco', monospace;
-}
+    <style>
+        /* --- CSS: СТИЛИ ИНТЕРФЕЙСА --- */
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --danger: #f85149;
+            --gold: #d29922;
+            --font-stack: 'Consolas', 'Monaco', monospace;
+        }
 
-body {
-    background: var(--bg-main);
-    color: var(--text-main);
-    font-family: var(--font);
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-stack);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-#app-container {
-    display: grid;
-    grid-template-columns: 250px 1fr 250px;
-    grid-template-rows: 50px 1fr 150px;
-    height: 100%;
-    gap: 5px;
-    padding: 5px;
-    box-sizing: border-box;
-}
+        /* Сетка layout */
+        #game-layout {
+            display: grid;
+            grid-template-columns: 260px 1fr 260px;
+            grid-template-rows: 60px 1fr 150px;
+            height: 100%;
+            gap: 4px;
+            padding: 4px;
+            box-sizing: border-box;
+        }
 
-/* Header */
-header {
-    grid-column: 1 / -1;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    border-radius: 4px;
-}
-.loc-info { text-align: right; }
-.loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-.loc-coords { color: var(--text-dim); font-size: 0.9em; }
+        /* Общие стили панелей */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
-/* Panels */
-.panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 10px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-}
-.panel h3 {
-    margin-top: 0;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 5px;
-    font-size: 14px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-}
+        h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
 
-/* Stats */
-.stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
-.val-hp { color: var(--danger); }
-.val-str { color: var(--gold); }
-.val-def { color: var(--accent); }
+        /* Header */
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        .loc-info { text-align: right; }
+        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.2em; }
+        .loc-coords { color: var(--text-dim); font-size: 0.9em; }
 
-/* Map Area */
-#map-wrapper {
-    grid-column: 2;
-    grid-row: 2;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #000;
-    border: 1px solid var(--border);
-    position: relative;
-    overflow: hidden;
-}
+        /* Map Container */
+        #map-container {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
 
-/* Logs & Inventory */
-#log-container { font-size: 12px; line-height: 1.4; }
-.log-entry { margin-bottom: 2px; }
-.log-combat { color: var(--danger); }
-.log-loot { color: var(--gold); }
-.log-info { color: var(--accent); }
+        /* Stats & Equip */
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+        .val-hp { color: var(--danger); }
+        .val-atk { color: var(--gold); }
+        .val-def { color: var(--accent); }
+        
+        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
+        .equip-item { color: var(--gold); }
 
-.inv-item {
-    background: rgba(255,255,255,0.05);
-    padding: 5px;
-    margin-bottom: 4px;
-    cursor: pointer;
-    border-radius: 3px;
-    font-size: 12px;
-}
-.inv-item:hover { background: rgba(255,255,255,0.1); }
+        /* Inventory & Log */
+        #inventory-list { overflow-y: auto; flex: 1; margin-bottom: 10px; }
+        .inv-item {
+            padding: 4px;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        .inv-item:hover { background: rgba(255,255,255,0.1); }
 
-/* Footer Controls */
-footer {
-    grid-column: 1 / -1;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    font-size: 12px;
-    color: var(--text-dim);
-}
-kbd {
-    background: #333;
-    padding: 2px 6px;
-    border-radius: 3px;
-    color: #fff;
-}
-</style>
+        #log-list {
+            overflow-y: auto;
+            flex: 2;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column-reverse; /* Новые снизу */
+        }
+        .log-msg { margin-bottom: 2px; line-height: 1.3; }
+        .log-combat { color: var(--danger); }
+        .log-loot { color: var(--gold); }
+        .log-info { color: var(--accent); }
+
+        /* Footer */
+        footer {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; }
+
+        /* Canvas for Minimap */
+        #minimap { width: 100%; height: 100%; background: #000; }
+    </style>
 </head>
 <body>
 
-<div id="app-container">
-    <header>
-        <div>👾 Roguelike JS</div>
+<div id="game-layout">
+    <header class="panel">
+        <div style="font-weight:bold; font-size:18px;">👾 Roguelike JS</div>
         <div class="loc-info">
-            <div id="ui-loc-name" class="loc-name">Загрузка...</div>
+            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
             <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
         </div>
     </header>
 
-    <!-- Left Panel: Stats -->
-    <div class="panel">
-        <h3>Герой</h3>
+    <!-- Левая панель: Статы и Экипировка -->
+    <div class="panel" style="grid-row: 2;">
+        <h3>Персонаж</h3>
         <div id="ui-stats"></div>
-        <h3 style="margin-top:15px">Экипировка</h3>
+        <h3 style="margin-top: 20px;">Экипировка</h3>
         <div id="ui-equip"></div>
     </div>
 
-    <!-- Center: Map -->
-    <div id="map-wrapper"></div>
+    <!-- Центр: Карта -->
+    <div id="map-container"></div>
 
-    <!-- Right Panel: Inv & Log -->
+    <!-- Правая панель: Инвентарь и Лог -->
     <div class="panel" style="grid-row: 2 / 4;">
         <h3>Инвентарь</h3>
-        <div id="ui-inventory"></div>
-        <h3 style="margin-top:15px">Журнал</h3>
-        <div id="log-container"></div>
+        <div id="inventory-list"></div>
+        <h3>Журнал событий</h3>
+        <div id="log-list"></div>
     </div>
 
-    <!-- Bottom Left: Minimap placeholder if needed, or empty -->
-    <div class="panel" style="grid-column: 1; grid-row: 3;">
-        <h3>Миникарта</h3>
-        <canvas id="minimap" width="230" height="130"></canvas>
+    <!-- Низ слева: Миникарта -->
+    <div class="panel" style="grid-row: 3;">
+        <h3>Карта мира</h3>
+        <canvas id="minimap"></canvas>
     </div>
 
-    <footer>
-        <span><kbd>Arrows</kbd> Движение</span>
-        <span><kbd>Space</kbd> Ждать</span>
+    <footer class="panel">
+        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
+        <span><kbd>Space</kbd> Пропуск хода</span>
         <span><kbd>Click</kbd> Использовать предмет</span>
     </footer>
 </div>
@@ -183,27 +182,16 @@ kbd {
 <script>
 /**
  * ====================================================================
- * МОДУЛЬ 1: ДАННЫЕ (DATA MODULE)
- * Здесь хранятся все константы, словари и конфиги.
+ * МОДУЛЬ 1: DATA MODULE (Данные и Конфигурация)
+ * Здесь хранятся списки слов, типы врагов и настройки игры.
  * ====================================================================
  */
 const DataModule = {
-    // Слова для генерации названий
-    ADJECTIVES: ["Мрачный", "Древний", "Забытый", "Проклятый", "Святой", "Ядовитый", "Огненный", "Ледяной", "Темный", "Дикий", "Безмолвный"],
-    PLACES: ["Склеп", "Чертог", "Лаборатория", "Улей", "Курган", "Бастион", "Храм", "Лабиринт", "Грот", "Цитадель"],
-    ENEMIES: ["Гоблин", "Скелет", "Орк", "Призрак", "Демон", "Паук", "Змей", "Рыцарь", "Маг", "Вор"],
-    ITEMS: ["Меч", "Топор", "Щит", "Шлем", "Кольцо", "Амулет", "Зелье", "Свиток", "Кинжал", "Посох"],
-
-    // Конфиг карты
-    MAP: {
-        width: 60,  // Размер карты в клетках (не пикселях)
-        height: 40,
-        roomMin: 4,
-        roomMax: 8,
-        roomCount: 15
-    },
-
-    // Типы врагов (базовые статы)
+    // Словари для генерации названий (ваша логика)
+    ADJECTIVES: ["Мрачный", "Древний", "Забытый", "Проклятый", "Святой", "Ядовитый", "Огненный", "Ледяной", "Темный", "Дикий", "Безмолвный", "Кровавый"],
+    PLACES: ["Склеп", "Чертог", "Лаборатория", "Улей", "Курган", "Бастион", "Храм", "Лабиринт", "Грот", "Цитадель", "Арсенал"],
+    
+    // Враги
     ENEMY_TYPES: [
         { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
         { name: "Скелет", char: "s", color: "#B0BEC5", hp: [15, 25], atk: [3, 6], def: [1, 2] },
@@ -212,118 +200,115 @@ const DataModule = {
         { name: "Дракон", char: "D", color: "#FF5722", hp: [80, 120], atk: [15, 25], def: [5, 10] }
     ],
 
-    // Типы предметов
+    // Предметы
     ITEM_TYPES: [
-        { type: "weapon", char: "/", color: "#FFD700", nameBase: "Оружие", stat: "atk", val: [2, 5] },
-        { type: "armor",  char: "]", color: "#9E9E9E", nameBase: "Броня",  stat: "def", val: [1, 3] },
-        { type: "potion_hp", char: "!", color: "#f44336", nameBase: "Зелье лечения", effect: "heal", val: [10, 20] },
-        { type: "potion_str", char: "!", color: "#ff9800", nameBase: "Зелье силы", effect: "buff_atk", val: [1, 2] }
-    ]
+        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
+        { type: "armor",  char: "]", color: "#9E9E9E", baseName: "Броня", stat: "def", val: [1, 3] },
+        { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
+        { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
+    ],
+
+    // Настройки карты
+    MAP_WIDTH: 60,
+    MAP_HEIGHT: 40,
+    ROOM_COUNT: 15
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 2: ГЕНЕРАТОР ИМЕН (NAME GEN MODULE)
- * Использует seedrandom для создания одинаковых имен по координатам.
+ * МОДУЛЬ 2: NAME GENERATOR (Генератор имен)
+ * Использует SeedRandom для детерминизма от координат.
  * ====================================================================
  */
 const NameGenModule = {
     rng: null,
 
-    // Инициализация сида строкой (например, "map_5_5")
-    initSeed(seedString) {
+    // Установить сид (зерно) для генератора
+    setSeed: function(seedString) {
         this.rng = new Math.seedrandom(seedString);
     },
 
-    // Получить случайное число 0..1
-    random() {
+    // Получить случайное число
+    random: function() {
         return this.rng();
     },
 
-    // Выбрать случайный элемент из массива
-    pick(array) {
+    // Выбрать случайный элемент массива
+    pick: function(array) {
         return array[Math.floor(this.random() * array.length)];
     },
 
-    // Сгенерировать имя локации
-    generateLocationName(x, y) {
-        this.initSeed(`loc_${x}_${y}`);
+    // Сгенерировать название локации по координатам
+    getLocationName: function(x, y) {
+        this.setSeed(`loc_${x}_${y}`);
         const adj = this.pick(DataModule.ADJECTIVES);
         const noun = this.pick(DataModule.PLACES);
         return `${adj} ${noun}`;
     },
 
-    // Сгенерировать имя предмета
-    generateItemName(baseType) {
-        // Используем тот же RNG, что был инициализирован при спавне предмета
+    // Сгенерировать название предмета
+    getItemName: function(baseName) {
+        // Используем текущий сид (который был установлен при спавне предмета)
         const adj = this.pick(DataModule.ADJECTIVES);
-        return `${adj} ${baseType}`;
+        return `${adj} ${baseName}`;
     },
 
     // Сгенерировать имя врага
-    generateEnemyName(baseType) {
+    getEnemyName: function(baseName) {
         if (this.random() > 0.7) {
             const adj = this.pick(DataModule.ADJECTIVES);
-            return `${adj} ${baseType}`;
+            return `${adj} ${baseName}`;
         }
-        return baseType;
+        return baseName;
     }
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 3: КАРТА (MAP MODULE)
- * Генерация подземелья, лестниц, проверка проходимости.
+ * МОДУЛЬ 3: MAP MODULE (Генерация подземелья)
  * ====================================================================
  */
 const MapModule = {
-    mapData: [], // 2D массив: 1=стена, 0=пол
+    map: [],
     rooms: [],
-    stairsUp: null,   // {x, y} -> увеличивает координаты мира
-    stairsDown: null, // {x, y} -> уменьшает координаты мира
-    width: DataModule.MAP.width,
-    height: DataModule.MAP.height,
+    stairsUp: null,   // Выход на уровень выше (координаты +1)
+    stairsDown: null, // Выход на уровень ниже (координаты -1)
 
-    generate(seedStr) {
-        // 1. Инициализируем RNG для этой карты
-        NameGenModule.initSeed(seedStr);
-        
-        // 2. Создаем карту через rot.js Digger
-        const digger = new ROT.Map.Digger(this.width, this.height, {
-            roomWidth: [DataModule.MAP.roomMin, DataModule.MAP.roomMax],
-            roomHeight: [DataModule.MAP.roomMin, DataModule.MAP.roomMax],
-            roomCount: DataModule.MAP.roomCount
+    generate: function(seedStr) {
+        // 1. Инициализируем генератор имен этим сидом
+        NameGenModule.setSeed(seedStr);
+
+        // 2. Генерируем карту rot.js
+        const digger = new ROT.Map.Digger(DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, {
+            roomWidth: [4, 8],
+            roomHeight: [4, 8],
+            roomCount: DataModule.ROOM_COUNT
         });
 
-        this.mapData = [];
-        for(let y=0; y<this.height; y++) this.mapData[y] = new Array(this.width).fill(1);
+        this.map = [];
+        for(let y=0; y<DataModule.MAP_HEIGHT; y++) {
+            this.map[y] = new Array(DataModule.MAP_WIDTH).fill(1); // 1 = стена
+        }
 
         digger.create((x, y, value) => {
-            this.mapData[y][x] = value; // value: 0=floor, 1=wall
+            this.map[y][x] = value; // 0 = пол
         });
 
         this.rooms = digger.getRooms();
 
-        // 3. Размещаем лестницы
-        // Лестница ВНИЗ (в предыдущий уровень, координаты -1) - в первой комнате
+        // 3. Определяем лестницы
+        // Лестница ВНИЗ (на предыдущий уровень) - в первой комнате
         if (this.rooms.length > 0) {
-            const r1 = this.rooms[0];
-            this.stairsDown = { 
-                x: Math.floor((r1._x1 + r1._x2)/2), 
-                y: Math.floor((r1._y1 + r1._y2)/2) 
-            };
+            const r = this.rooms[0];
+            this.stairsDown = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
         }
-
-        // Лестница ВВЕРХ (в следующий уровень, координаты +1) - в последней комнате
+        // Лестница ВВЕРХ (на следующий уровень) - в последней комнате
         if (this.rooms.length > 1) {
-            const rLast = this.rooms[this.rooms.length - 1];
-            this.stairsUp = { 
-                x: Math.floor((rLast._x1 + rLast._x2)/2), 
-                y: Math.floor((rLast._y1 + rLast._y2)/2) 
-            };
+            const r = this.rooms[this.rooms.length-1];
+            this.stairsUp = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
         }
 
-        // Возвращаем точку старта игрока (вторая комната, если есть, иначе первая)
+        // Возвращаем точку старта игрока (вторая комната)
         const startRoom = this.rooms[1] || this.rooms[0];
         return {
             x: Math.floor((startRoom._x1 + startRoom._x2)/2),
@@ -331,16 +316,16 @@ const MapModule = {
         };
     },
 
-    isWall(x, y) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return true;
-        return this.mapData[y][x] === 1;
+    isWall: function(x, y) {
+        if (x < 0 || x >= DataModule.MAP_WIDTH || y < 0 || y >= DataModule.MAP_HEIGHT) return true;
+        return this.map[y][x] === 1;
     },
 
-    getRandomFloor() {
+    getRandomFloor: function() {
         let x, y;
         do {
-            x = Math.floor(Math.random() * this.width);
-            y = Math.floor(Math.random() * this.height);
+            x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+            y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
         } while (this.isWall(x, y));
         return {x, y};
     }
@@ -348,58 +333,48 @@ const MapModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 4: СУЩНОСТИ (ENTITY MODULE)
- * Игрок и Враги.
+ * МОДУЛЬ 4: ENTITY MODULE (Сущности)
  * ====================================================================
  */
 const EntityModule = {
-    createPlayer(x, y) {
+    createPlayer: function(x, y) {
         return {
             x: x, y: y,
             char: "@", color: "#FFF",
             hp: 50, maxHp: 50,
             atk: 5, def: 2,
-            level: 1, xp: 0, nextLevelXp: 50,
+            level: 1, xp: 0,
             inventory: [],
             equipment: { weapon: null, armor: null }
         };
     },
 
-    createEnemy(typeTemplate, x, y, difficultyMultiplier) {
-        // Генерируем имя
-        const name = NameGenModule.generateEnemyName(typeTemplate.name);
-        
-        // Скалируем статы
-        const hp = Math.floor((typeTemplate.hp[0] + Math.random() * (typeTemplate.hp[1] - typeTemplate.hp[0])) * difficultyMultiplier);
-        const atk = Math.floor((typeTemplate.atk[0] + Math.random() * (typeTemplate.atk[1] - typeTemplate.atk[0])) * difficultyMultiplier);
-        const def = Math.floor((typeTemplate.def[0] + Math.random() * (typeTemplate.def[1] - typeTemplate.def[0])) * difficultyMultiplier);
+    createEnemy: function(template, x, y, difficulty) {
+        const name = NameGenModule.getEnemyName(template.name);
+        // Скалирование статов
+        const hp = Math.floor((template.hp[0] + Math.random()*(template.hp[1]-template.hp[0])) * difficulty);
+        const atk = Math.floor((template.atk[0] + Math.random()*(template.atk[1]-template.atk[0])) * difficulty);
+        const def = Math.floor((template.def[0] + Math.random()*(template.def[1]-template.def[0])) * difficulty);
 
         return {
-            x: x, y: y,
-            name: name,
-            char: typeTemplate.char,
-            color: typeTemplate.color,
-            hp: hp, maxHp: hp,
-            atk: atk, def: def,
+            x: x, y: y, name: name,
+            char: template.char, color: template.color,
+            hp: hp, maxHp: hp, atk: atk, def: def,
             isEnemy: true
         };
     },
 
-    createItem(template, x, y) {
-        // Генерируем уникальное имя
-        const fullName = NameGenModule.generateItemName(template.nameBase);
+    createItem: function(template, x, y) {
+        const name = NameGenModule.getItemName(template.baseName);
+        const val = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
         
-        // Рандомное значение эффекта
-        const val = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
-
         return {
-            x: x, y: y,
-            name: fullName,
-            char: template.char,
-            color: template.color,
+            x: x, y: y, name: name,
+            char: template.char, color: template.color,
             type: template.type,
-            stat: template.stat, // 'atk', 'def' или 'heal'
-            effectVal: val,
+            stat: template.stat, // 'atk', 'def'
+            effect: template.effect, // 'heal', 'buff'
+            val: val,
             isItem: true
         };
     }
@@ -407,219 +382,188 @@ const EntityModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: БОЕВАЯ СИСТЕМА (COMBAT MODULE)
+ * МОДУЛЬ 5: COMBAT MODULE (Боевка и Предметы)
  * ====================================================================
  */
 const CombatModule = {
-    // Атака attacker -> defender
-    attack(attacker, defender, logCallback) {
-        // Формула: Урон = Атака - Защита (минимум 1)
-        let damage = Math.max(1, attacker.atk - defender.def);
-        
-        // Шанс крита 10%
-        let isCrit = Math.random() < 0.1;
-        if (isCrit) damage = Math.floor(damage * 1.5);
+    attack: function(attacker, defender, logFn) {
+        let dmg = Math.max(1, attacker.atk - defender.def);
+        let crit = Math.random() < 0.1;
+        if (crit) dmg = Math.floor(dmg * 1.5);
 
-        defender.hp -= damage;
-
-        const critText = isCrit ? " (КРИТ!)" : "";
-        const msg = `${attacker.name || "Игрок"} бьет ${defender.name || "врага"} на ${damage}${critText}.`;
-        logCallback(msg, "combat");
+        defender.hp -= dmg;
+        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit?" (КРИТ)!":"."}`, "combat");
 
         if (defender.hp <= 0) {
-            logCallback(`${defender.name || "Враг"} погибает!`, "info");
+            logFn(`${defender.name || "Враг"} погибает!`, "info");
             return true; // Убит
         }
         return false;
     },
 
-    // Использование предмета
-    useItem(player, itemIndex, logCallback) {
-        const item = player.inventory[itemIndex];
+    useItem: function(player, index, logFn, updateUiFn) {
+        const item = player.inventory[index];
         if (!item) return;
 
         let used = false;
 
-        if (item.type === "potion_hp") {
-            const heal = item.effectVal;
-            player.hp = Math.min(player.maxHp, player.hp + heal);
-            logCallback(`Вы выпили ${item.name} и восстановили ${heal} HP.`, "loot");
+        if (item.effect === "heal") {
+            player.hp = Math.min(player.maxHp, player.hp + item.val);
+            logFn(`Вы выпили ${item.name}. HP +${item.val}.`, "loot");
             used = true;
-        } 
-        else if (item.type === "potion_str") {
-            player.atk += item.effectVal;
-            logCallback(`Вы выпили ${item.name}. Сила +${item.effectVal}.`, "loot");
+        } else if (item.effect === "buff_atk") {
+            player.atk += item.val;
+            logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
             used = true;
-        }
-        else if (item.type === "weapon") {
-            // Экипировка оружия
+        } else if (item.type === "weapon") {
             if (player.equipment.weapon) {
-                player.atk -= player.equipment.weapon.effectVal; // Снимаем старое
+                player.atk -= player.equipment.weapon.val;
                 player.inventory.push(player.equipment.weapon);
             }
             player.equipment.weapon = item;
-            player.atk += item.effectVal;
-            logCallback(`Вы взяли в руки ${item.name}. Атака +${item.effectVal}.`, "loot");
-            used = true; // Предмет экипирован, удаляем из инвентаря
-        }
-        else if (item.type === "armor") {
-            // Экипировка брони
+            player.atk += item.val;
+            logFn(`Вы взяли ${item.name}. Атака +${item.val}.`, "loot");
+            used = true;
+        } else if (item.type === "armor") {
             if (player.equipment.armor) {
-                player.def -= player.equipment.armor.effectVal;
+                player.def -= player.equipment.armor.val;
                 player.inventory.push(player.equipment.armor);
             }
             player.equipment.armor = item;
-            player.def += item.effectVal;
-            logCallback(`Вы надели ${item.name}. Защита +${item.effectVal}.`, "loot");
+            player.def += item.val;
+            logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
             used = true;
         }
 
         if (used) {
-            player.inventory.splice(itemIndex, 1);
-            RenderModule.updateUI();
+            player.inventory.splice(index, 1);
+            updateUiFn();
         }
     }
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 6: ОТРИСОВКА (RENDER MODULE)
+ * МОДУЛЬ 6: RENDER MODULE (Отрисовка)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    
-    init() {
+
+    init: function() {
+        if (typeof ROT === 'undefined') {
+            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте интернет.");
+            return;
+        }
         this.display = new ROT.Display({
-            width: 60, // Ширина дисплея в символах
-            height: 30, // Высота дисплея
+            width: 60, height: 30,
             fontSize: 14,
             fontFamily: "Consolas",
-            fg: "#ccc",
-            bg: "#000"
+            fg: "#ccc", bg: "#000"
         });
-        document.getElementById("map-wrapper").appendChild(this.display.getContainer());
-        
-        // FOV (Field of View)
-        this.fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
+        document.getElementById("map-container").appendChild(this.display.getContainer());
+        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
-    drawMap(player, enemies, items) {
+    draw: function(player, enemies, items) {
         this.display.clear();
-        
-        // Расчет видимости
-        const visibleCells = new Set();
+        const visible = new Set();
+
+        // FOV
         this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
-            if (vis) visibleCells.add(`${x},${y}`);
+            if (vis) visible.add(`${x},${y}`);
         });
 
-        // Отрисовка тайлов
-        for (let [key, _] of visibleCells) {
+        // Тайлы
+        visible.forEach(key => {
             const [x, y] = key.split(',').map(Number);
-            let char = ".";
-            let color = "#333";
+            let ch = ".", fg = "#333";
+            if (MapModule.isWall(x, y)) { ch = "#"; fg = "#555"; }
+            
+            // Лестницы
+            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { ch = ">"; fg = "#FFF"; }
+            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { ch = "<"; fg = "#888"; }
 
-            if (MapModule.isWall(x, y)) {
-                char = "#";
-                color = "#555";
-            } else {
-                // Проверка на лестницы
-                if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) {
-                    char = ">"; color = "#FFF"; // Вверх
-                } else if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) {
-                    char = "<"; color = "#888"; // Вниз
-                }
-            }
-            this.display.draw(x, y, char, color);
-        }
+            this.display.draw(x, y, ch, fg);
+        });
 
-        // Предметы (только если видны)
-        items.forEach(item => {
-            if (visibleCells.has(`${item.x},${item.y}`)) {
-                this.display.draw(item.x, item.y, item.char, item.color);
-            }
+        // Предметы
+        items.forEach(i => {
+            if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
         });
 
         // Враги
-        enemies.forEach(enemy => {
-            if (enemy.hp > 0 && visibleCells.has(`${enemy.x},${enemy.y}`)) {
-                this.display.draw(enemy.x, enemy.y, enemy.char, enemy.color);
-            }
+        enemies.forEach(e => {
+            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
         });
 
         // Игрок
         this.display.draw(player.x, player.y, player.char, player.color);
-        
-        return visibleCells; // Возвращаем для миникарты
+
+        return visible;
     },
 
-    updateUI() {
-        const p = GameModule.player;
-        
+    updateUI: function(player) {
         // Статы
         document.getElementById("ui-stats").innerHTML = `
-            <div class="stat-row"><span>HP</span> <span class="val-hp">${p.hp} / ${p.maxHp}</span></div>
-            <div class="stat-row"><span>Атака</span> <span class="val-str">${p.atk}</span></div>
-            <div class="stat-row"><span>Защита</span> <span class="val-def">${p.def}</span></div>
-            <div class="stat-row"><span>Уровень</span> <span>${p.level}</span></div>
+            <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
+            <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
+            <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
+            <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
         `;
-
         // Экипировка
-        const w = p.equipment.weapon ? p.equipment.weapon.name : "Нет";
-        const a = p.equipment.armor ? p.equipment.armor.name : "Нет";
+        const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
+        const a = player.equipment.armor ? player.equipment.armor.name : "—";
         document.getElementById("ui-equip").innerHTML = `
-            <div class="stat-row"><span>Рука:</span> <span style="color:#aaa">${w}</span></div>
-            <div class="stat-row"><span>Тело:</span> <span style="color:#aaa">${a}</span></div>
+            <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
+            <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
         `;
-
         // Инвентарь
-        const invDiv = document.getElementById("ui-inventory");
+        const invDiv = document.getElementById("inventory-list");
         invDiv.innerHTML = "";
-        if (p.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555'>Пусто</div>";
-        p.inventory.forEach((item, idx) => {
+        if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555'>Пусто</div>";
+        player.inventory.forEach((item, idx) => {
             const div = document.createElement("div");
             div.className = "inv-item";
             div.style.color = item.color;
-            div.textContent = `${item.char} ${item.name} (+${item.effectVal})`;
-            div.onclick = () => CombatModule.useItem(p, idx, this.log);
+            div.textContent = `${item.char} ${item.name} (+${item.val})`;
+            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player));
             invDiv.appendChild(div);
         });
     },
 
-    log(msg, type="info") {
-        const container = document.getElementById("log-container");
+    log: function(msg, type="info") {
+        const list = document.getElementById("log-list");
         const div = document.createElement("div");
-        div.className = `log-entry log-${type}`;
+        div.className = `log-msg log-${type}`;
         div.textContent = `> ${msg}`;
-        container.prepend(div);
-        if (container.children.length > 50) container.lastChild.remove();
+        list.prepend(div);
+        if (list.children.length > 50) list.lastChild.remove();
     },
 
-    drawMinimap(player, exploredSet) {
+    drawMinimap: function(player, explored) {
         const cvs = document.getElementById("minimap");
         const ctx = cvs.getContext("2d");
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
+        
+        const cw = cvs.width / DataModule.MAP_WIDTH;
+        const ch = cvs.height / DataModule.MAP_HEIGHT;
 
-        const cellW = cvs.width / MapModule.width;
-        const cellH = cvs.height / MapModule.height;
-
-        exploredSet.forEach(key => {
-            const [x, y] = key.split(',').map(Number);
-            ctx.fillStyle = MapModule.isWall(x, y) ? "#333" : "#111";
-            ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
+        explored.forEach(k => {
+            const [x,y] = k.split(',').map(Number);
+            ctx.fillStyle = MapModule.isWall(x,y) ? "#333" : "#111";
+            ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
         });
-
         // Игрок
         ctx.fillStyle = "#0F0";
-        ctx.fillRect(player.x * cellW, player.y * cellH, cellW+1, cellH+1);
+        ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
     }
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 7: ГЛАВНЫЙ ЦИКЛ (GAME MODULE)
+ * МОДУЛЬ 7: GAME MODULE (Основной цикл)
  * ====================================================================
  */
 const GameModule = {
@@ -628,42 +572,39 @@ const GameModule = {
     items: [],
     globalX: 0,
     globalY: 0,
-    exploredCells: new Set(),
-    isProcessing: false,
+    explored: new Set(),
+    busy: false,
 
-    init() {
+    init: function() {
         RenderModule.init();
         
-        // Старт со случайных координат
+        // Начальные координаты
         this.globalX = Math.floor(Math.random() * 10);
         this.globalY = Math.floor(Math.random() * 10);
         
         this.loadLevel(this.globalX, this.globalY);
         
-        // Обработчик клавиш
         window.addEventListener("keydown", (e) => this.handleInput(e));
-        
-        RenderModule.log("Добро пожаловать в Подземелье Координат!", "info");
+        RenderModule.log("Игра загружена. Используйте стрелки.", "info");
     },
 
-    loadLevel(gx, gy) {
+    loadLevel: function(gx, gy) {
         this.globalX = gx;
         this.globalY = gy;
         this.enemies = [];
         this.items = [];
-        this.exploredCells.clear();
+        this.explored.clear();
 
-        // 1. Название уровня
-        const locName = NameGenModule.generateLocationName(gx, gy);
+        // 1. Название локации
+        const locName = NameGenModule.getLocationName(gx, gy);
         document.getElementById("ui-loc-name").textContent = locName;
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
-        RenderModule.log(`Вы вошли в локацию: ${locName}`, "info");
+        RenderModule.log(`Локация: ${locName}`, "info");
 
-        // 2. Генерация карты
-        // Сид зависит от координат, чтобы карта была всегда одинаковой для этих координат
+        // 2. Карта
         const startPos = MapModule.generate(`map_${gx}_${gy}`);
 
-        // 3. Создание игрока (если первый раз) или перемещение
+        // 3. Игрок
         if (!this.player) {
             this.player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -671,156 +612,131 @@ const GameModule = {
             this.player.y = startPos.y;
         }
 
-        // 4. Спавн врагов и предметов (используем тот же NameGen seed внутри MapModule.generate, 
-        // но для сущностей лучше иметь свой под-сид, чтобы они не менялись от порядка вызова)
-        this.spawnEntities(`entities_${gx}_${gy}`);
+        // 4. Сущности (Враги и Предметы)
+        this.spawnEntities(gx, gy);
 
-        RenderModule.updateUI();
         this.renderFrame();
     },
 
-    spawnEntities(seed) {
-        // Временный RNG для расстановки вещей
-        const rng = new Math.seedrandom(seed);
-        // Хакинг Math.random для использования нашего RNG внутри функций создания
-        const oldRandom = Math.random;
-        Math.random = rng;
+    spawnEntities: function(gx, gy) {
+        // Используем отдельный сид для сущностей, но зависимый от координат
+        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
+        const oldRand = Math.random;
+        Math.random = rng; // Подменяем random для генерации
 
-        // Сложность зависит от удаленности от 0,0
-        const difficulty = 1 + (Math.abs(this.globalX) + Math.abs(this.globalY)) * 0.2;
+        const diff = 1 + (Math.abs(gx) + Math.abs(gy)) * 0.1;
 
         // Враги
-        const enemyCount = 5 + Math.floor(Math.random() * 5);
-        for(let i=0; i<enemyCount; i++) {
+        for(let i=0; i<6; i++) {
             const pos = MapModule.getRandomFloor();
-            // Не спавнить на игроке
             if (pos.x === this.player.x && pos.y === this.player.y) continue;
-            
             const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, difficulty));
+            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, diff));
         }
 
         // Предметы
-        const itemCount = 3 + Math.floor(Math.random() * 4);
-        for(let i=0; i<itemCount; i++) {
+        for(let i=0; i<4; i++) {
             const pos = MapModule.getRandomFloor();
             const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
             this.items.push(EntityModule.createItem(type, pos.x, pos.y));
         }
 
-        // Возвращаем Math.random
-        Math.random = oldRandom;
+        Math.random = oldRand; // Возвращаем random
     },
 
-    handleInput(e) {
-        if (this.isProcessing || this.player.hp <= 0) return;
-
-        let dx = 0, dy = 0;
-        if (e.key === "ArrowUp") dy = -1;
-        if (e.key === "ArrowDown") dy = 1;
-        if (e.key === "ArrowLeft") dx = -1;
-        if (e.key === "ArrowRight") dx = 1;
-        if (e.key === " ") { /* Wait */ } 
-        else if (dx === 0 && dy === 0) return;
-
-        e.preventDefault();
-        this.processTurn(dx, dy);
+    handleInput: function(e) {
+        if (this.busy || this.player.hp <= 0) return;
+        
+        let dx=0, dy=0;
+        if (e.key==="ArrowUp") dy=-1;
+        if (e.key==="ArrowDown") dy=1;
+        if (e.key==="ArrowLeft") dx=-1;
+        if (e.key==="ArrowRight") dx=1;
+        
+        if (dx!==0 || dy!==0 || e.key===" ") {
+            e.preventDefault();
+            this.processTurn(dx, dy);
+        }
     },
 
-    processTurn(dx, dy) {
-        const newX = this.player.x + dx;
-        const newY = this.player.y + dy;
+    processTurn: function(dx, dy) {
+        const nx = this.player.x + dx;
+        const ny = this.player.y + dy;
 
-        // 1. Проверка стен
-        if (MapModule.isWall(newX, newY)) return;
+        if (MapModule.isWall(nx, ny)) return;
 
-        // 2. Проверка врагов (Атака)
-        const enemy = this.enemies.find(e => e.hp > 0 && e.x === newX && e.y === newY);
+        // Атака?
+        const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
         if (enemy) {
-            CombatModule.attack(this.player, enemy, (msg, type) => RenderModule.log(msg, type));
-            if (enemy.hp <= 0) {
-                // XP Gain logic could go here
-            }
+            CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
         } else {
-            // 3. Движение
-            this.player.x = newX;
-            this.player.y = newY;
+            // Движение
+            this.player.x = nx;
+            this.player.y = ny;
 
-            // Подбор предметов
-            const itemIdx = this.items.findIndex(i => i.x === newX && i.y === newY);
-            if (itemIdx !== -1) {
-                const item = this.items[itemIdx];
+            // Лут
+            const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
+            if (idx !== -1) {
+                const item = this.items[idx];
                 this.player.inventory.push(item);
-                RenderModule.log(`Вы подобрали: ${item.name}`, "loot");
-                this.items.splice(itemIdx, 1);
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+                this.items.splice(idx, 1);
             }
 
-            // Проверка лестниц
-            if (MapModule.stairsUp && newX === MapModule.stairsUp.x && newY === MapModule.stairsUp.y) {
-                RenderModule.log("Вы поднимаетесь на уровень выше...", "info");
-                setTimeout(() => this.loadLevel(this.globalX + 1, this.globalY + 1), 100);
+            // Лестницы
+            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
+                RenderModule.log("Вы поднимаетесь выше...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
                 return;
             }
-            if (MapModule.stairsDown && newX === MapModule.stairsDown.x && newY === MapModule.stairsDown.y) {
-                RenderModule.log("Вы спускаетесь на уровень ниже...", "info");
-                setTimeout(() => this.loadLevel(this.globalX - 1, this.globalY - 1), 100);
+            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
+                RenderModule.log("Вы спускаетесь ниже...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
                 return;
             }
         }
 
-        // 4. Ход врагов
-        this.enemies.forEach(enemy => {
-            if (enemy.hp <= 0) return;
-            
-            const dist = Math.abs(enemy.x - this.player.x) + Math.abs(enemy.y - this.player.y);
-            if (dist < 8) { // Агро-радиус
-                if (dist === 1) {
-                    CombatModule.attack(enemy, this.player, (msg, type) => RenderModule.log(msg, type));
+        // Ход врагов
+        this.enemies.forEach(e => {
+            if (e.hp<=0) return;
+            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
+            if (dist < 8) {
+                if (dist===1) {
+                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    // Простое движение к игроку
+                    // Pathfinding
                     const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
-                        (x,y) => !MapModule.isWall(x,y), {topology: 8});
-                    
-                    let nextStep = null;
-                    astar.compute(enemy.x, enemy.y, (x, y) => {
-                        if (!nextStep && (x !== enemy.x || y !== enemy.y)) {
-                            nextStep = {x, y};
-                        }
+                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
+                    let next = null;
+                    astar.compute(e.x, e.y, (x,y) => {
+                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
                     });
-
-                    if (nextStep) {
-                        // Проверка, не занято ли место другим врагом
-                        const blocked = this.enemies.some(e => e !== enemy && e.hp > 0 && e.x === nextStep.x && e.y === nextStep.y);
-                        if (!blocked) {
-                            enemy.x = nextStep.x;
-                            enemy.y = nextStep.y;
+                    if (next) {
+                         // Простая проверка занятости клетки
+                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
+                            e.x = next.x; e.y = next.y;
                         }
                     }
                 }
             }
         });
 
-        if (this.player.hp <= 0) {
-            RenderModule.log("ВЫ ПОГИБЛИ. Обновите страницу.", "combat");
-        }
-
+        if (this.player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+        
         this.renderFrame();
     },
 
-    renderFrame() {
-        const visible = RenderModule.drawMap(this.player, this.enemies, this.items);
-        // Добавляем видимые клетки в исследованные
-        visible.forEach(k => this.exploredCells.add(k));
-        
-        RenderModule.updateUI();
-        RenderModule.drawMinimap(this.player, this.exploredCells);
+    renderFrame: function() {
+        const vis = RenderModule.draw(this.player, this.enemies, this.items);
+        vis.forEach(k => this.explored.add(k));
+        RenderModule.updateUI(this.player);
+        RenderModule.drawMinimap(this.player, this.explored);
     }
 };
 
-// Запуск игры после загрузки страницы
+// Запуск
 window.onload = () => GameModule.init();
 
 </script>
 </body>
 </html>
-
