@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
-    <!-- Подключаем библиотеки -->
-    <script src="https://cdn.jsdelivr.net/npm/rot.js@0.7.3/rot.min.js"></script>
+    
+    <!-- ИСПРАВЛЕННАЯ ССЫЛКА НА ROT.JS v0.7.3 (совместима с кодом) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rot.js/0.7.3/rot.min.js"></script>
+    <!-- Seedrandom для детерминированной генерации -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
 
     <style>
@@ -183,15 +185,12 @@
 /**
  * ====================================================================
  * МОДУЛЬ 1: DATA MODULE (Данные и Конфигурация)
- * Здесь хранятся списки слов, типы врагов и настройки игры.
  * ====================================================================
  */
 const DataModule = {
-    // Словари для генерации названий (ваша логика)
     ADJECTIVES: ["Мрачный", "Древний", "Забытый", "Проклятый", "Святой", "Ядовитый", "Огненный", "Ледяной", "Темный", "Дикий", "Безмолвный", "Кровавый"],
     PLACES: ["Склеп", "Чертог", "Лаборатория", "Улей", "Курган", "Бастион", "Храм", "Лабиринт", "Грот", "Цитадель", "Арсенал"],
     
-    // Враги
     ENEMY_TYPES: [
         { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
         { name: "Скелет", char: "s", color: "#B0BEC5", hp: [15, 25], atk: [3, 6], def: [1, 2] },
@@ -200,7 +199,6 @@ const DataModule = {
         { name: "Дракон", char: "D", color: "#FF5722", hp: [80, 120], atk: [15, 25], def: [5, 10] }
     ],
 
-    // Предметы
     ITEM_TYPES: [
         { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
         { type: "armor",  char: "]", color: "#9E9E9E", baseName: "Броня", stat: "def", val: [1, 3] },
@@ -208,7 +206,6 @@ const DataModule = {
         { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
     ],
 
-    // Настройки карты
     MAP_WIDTH: 60,
     MAP_HEIGHT: 40,
     ROOM_COUNT: 15
@@ -216,29 +213,30 @@ const DataModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 2: NAME GENERATOR (Генератор имен)
- * Использует SeedRandom для детерминизма от координат.
+ * МОДУЛЬ 2: NAME GENERATOR
  * ====================================================================
  */
 const NameGenModule = {
     rng: null,
 
-    // Установить сид (зерно) для генератора
     setSeed: function(seedString) {
-        this.rng = new Math.seedrandom(seedString);
+        // Проверка наличия библиотеки seedrandom
+        if (typeof Math.seedrandom === 'undefined') {
+            console.error("Seedrandom not loaded!");
+            this.rng = Math.random; // Fallback
+        } else {
+            this.rng = new Math.seedrandom(seedString);
+        }
     },
 
-    // Получить случайное число
     random: function() {
         return this.rng();
     },
 
-    // Выбрать случайный элемент массива
     pick: function(array) {
         return array[Math.floor(this.random() * array.length)];
     },
 
-    // Сгенерировать название локации по координатам
     getLocationName: function(x, y) {
         this.setSeed(`loc_${x}_${y}`);
         const adj = this.pick(DataModule.ADJECTIVES);
@@ -246,14 +244,11 @@ const NameGenModule = {
         return `${adj} ${noun}`;
     },
 
-    // Сгенерировать название предмета
     getItemName: function(baseName) {
-        // Используем текущий сид (который был установлен при спавне предмета)
         const adj = this.pick(DataModule.ADJECTIVES);
         return `${adj} ${baseName}`;
     },
 
-    // Сгенерировать имя врага
     getEnemyName: function(baseName) {
         if (this.random() > 0.7) {
             const adj = this.pick(DataModule.ADJECTIVES);
@@ -265,20 +260,24 @@ const NameGenModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 3: MAP MODULE (Генерация подземелья)
+ * МОДУЛЬ 3: MAP MODULE
  * ====================================================================
  */
 const MapModule = {
     map: [],
     rooms: [],
-    stairsUp: null,   // Выход на уровень выше (координаты +1)
-    stairsDown: null, // Выход на уровень ниже (координаты -1)
+    stairsUp: null,
+    stairsDown: null,
 
     generate: function(seedStr) {
-        // 1. Инициализируем генератор имен этим сидом
         NameGenModule.setSeed(seedStr);
 
-        // 2. Генерируем карту rot.js
+        // Проверка ROT
+        if (typeof ROT === 'undefined') {
+            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету.");
+            throw new Error("ROT.js missing");
+        }
+
         const digger = new ROT.Map.Digger(DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, {
             roomWidth: [4, 8],
             roomHeight: [4, 8],
@@ -287,28 +286,24 @@ const MapModule = {
 
         this.map = [];
         for(let y=0; y<DataModule.MAP_HEIGHT; y++) {
-            this.map[y] = new Array(DataModule.MAP_WIDTH).fill(1); // 1 = стена
+            this.map[y] = new Array(DataModule.MAP_WIDTH).fill(1);
         }
 
         digger.create((x, y, value) => {
-            this.map[y][x] = value; // 0 = пол
+            this.map[y][x] = value;
         });
 
         this.rooms = digger.getRooms();
 
-        // 3. Определяем лестницы
-        // Лестница ВНИЗ (на предыдущий уровень) - в первой комнате
         if (this.rooms.length > 0) {
             const r = this.rooms[0];
             this.stairsDown = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
         }
-        // Лестница ВВЕРХ (на следующий уровень) - в последней комнате
         if (this.rooms.length > 1) {
             const r = this.rooms[this.rooms.length-1];
             this.stairsUp = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
         }
 
-        // Возвращаем точку старта игрока (вторая комната)
         const startRoom = this.rooms[1] || this.rooms[0];
         return {
             x: Math.floor((startRoom._x1 + startRoom._x2)/2),
@@ -333,7 +328,7 @@ const MapModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 4: ENTITY MODULE (Сущности)
+ * МОДУЛЬ 4: ENTITY MODULE
  * ====================================================================
  */
 const EntityModule = {
@@ -351,7 +346,6 @@ const EntityModule = {
 
     createEnemy: function(template, x, y, difficulty) {
         const name = NameGenModule.getEnemyName(template.name);
-        // Скалирование статов
         const hp = Math.floor((template.hp[0] + Math.random()*(template.hp[1]-template.hp[0])) * difficulty);
         const atk = Math.floor((template.atk[0] + Math.random()*(template.atk[1]-template.atk[0])) * difficulty);
         const def = Math.floor((template.def[0] + Math.random()*(template.def[1]-template.def[0])) * difficulty);
@@ -372,8 +366,8 @@ const EntityModule = {
             x: x, y: y, name: name,
             char: template.char, color: template.color,
             type: template.type,
-            stat: template.stat, // 'atk', 'def'
-            effect: template.effect, // 'heal', 'buff'
+            stat: template.stat,
+            effect: template.effect,
             val: val,
             isItem: true
         };
@@ -382,7 +376,7 @@ const EntityModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: COMBAT MODULE (Боевка и Предметы)
+ * МОДУЛЬ 5: COMBAT MODULE
  * ====================================================================
  */
 const CombatModule = {
@@ -396,7 +390,7 @@ const CombatModule = {
 
         if (defender.hp <= 0) {
             logFn(`${defender.name || "Враг"} погибает!`, "info");
-            return true; // Убит
+            return true;
         }
         return false;
     },
@@ -444,7 +438,7 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 6: RENDER MODULE (Отрисовка)
+ * МОДУЛЬ 6: RENDER MODULE
  * ====================================================================
  */
 const RenderModule = {
@@ -452,10 +446,6 @@ const RenderModule = {
     fov: null,
 
     init: function() {
-        if (typeof ROT === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте интернет.");
-            return;
-        }
         this.display = new ROT.Display({
             width: 60, height: 30,
             fontSize: 14,
@@ -470,56 +460,47 @@ const RenderModule = {
         this.display.clear();
         const visible = new Set();
 
-        // FOV
         this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // Тайлы
         visible.forEach(key => {
             const [x, y] = key.split(',').map(Number);
             let ch = ".", fg = "#333";
             if (MapModule.isWall(x, y)) { ch = "#"; fg = "#555"; }
             
-            // Лестницы
             if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { ch = ">"; fg = "#FFF"; }
             if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { ch = "<"; fg = "#888"; }
 
             this.display.draw(x, y, ch, fg);
         });
 
-        // Предметы
         items.forEach(i => {
             if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
         });
 
-        // Враги
         enemies.forEach(e => {
             if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
         });
 
-        // Игрок
         this.display.draw(player.x, player.y, player.char, player.color);
 
         return visible;
     },
 
     updateUI: function(player) {
-        // Статы
         document.getElementById("ui-stats").innerHTML = `
             <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
             <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
             <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
             <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
         `;
-        // Экипировка
         const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
         const a = player.equipment.armor ? player.equipment.armor.name : "—";
         document.getElementById("ui-equip").innerHTML = `
             <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
             <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
         `;
-        // Инвентарь
         const invDiv = document.getElementById("inventory-list");
         invDiv.innerHTML = "";
         if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555'>Пусто</div>";
@@ -555,7 +536,6 @@ const RenderModule = {
             ctx.fillStyle = MapModule.isWall(x,y) ? "#333" : "#111";
             ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
         });
-        // Игрок
         ctx.fillStyle = "#0F0";
         ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
     }
@@ -563,7 +543,7 @@ const RenderModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 7: GAME MODULE (Основной цикл)
+ * МОДУЛЬ 7: GAME MODULE
  * ====================================================================
  */
 const GameModule = {
@@ -576,9 +556,13 @@ const GameModule = {
     busy: false,
 
     init: function() {
-        RenderModule.init();
+        try {
+            RenderModule.init();
+        } catch (e) {
+            console.error(e);
+            return;
+        }
         
-        // Начальные координаты
         this.globalX = Math.floor(Math.random() * 10);
         this.globalY = Math.floor(Math.random() * 10);
         
@@ -595,16 +579,13 @@ const GameModule = {
         this.items = [];
         this.explored.clear();
 
-        // 1. Название локации
         const locName = NameGenModule.getLocationName(gx, gy);
         document.getElementById("ui-loc-name").textContent = locName;
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
         RenderModule.log(`Локация: ${locName}`, "info");
 
-        // 2. Карта
         const startPos = MapModule.generate(`map_${gx}_${gy}`);
 
-        // 3. Игрок
         if (!this.player) {
             this.player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -612,21 +593,17 @@ const GameModule = {
             this.player.y = startPos.y;
         }
 
-        // 4. Сущности (Враги и Предметы)
         this.spawnEntities(gx, gy);
-
         this.renderFrame();
     },
 
     spawnEntities: function(gx, gy) {
-        // Используем отдельный сид для сущностей, но зависимый от координат
         const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
         const oldRand = Math.random;
-        Math.random = rng; // Подменяем random для генерации
+        Math.random = rng; 
 
         const diff = 1 + (Math.abs(gx) + Math.abs(gy)) * 0.1;
 
-        // Враги
         for(let i=0; i<6; i++) {
             const pos = MapModule.getRandomFloor();
             if (pos.x === this.player.x && pos.y === this.player.y) continue;
@@ -634,14 +611,13 @@ const GameModule = {
             this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, diff));
         }
 
-        // Предметы
         for(let i=0; i<4; i++) {
             const pos = MapModule.getRandomFloor();
             const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
             this.items.push(EntityModule.createItem(type, pos.x, pos.y));
         }
 
-        Math.random = oldRand; // Возвращаем random
+        Math.random = oldRand;
     },
 
     handleInput: function(e) {
@@ -665,16 +641,13 @@ const GameModule = {
 
         if (MapModule.isWall(nx, ny)) return;
 
-        // Атака?
         const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
         if (enemy) {
             CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
         } else {
-            // Движение
             this.player.x = nx;
             this.player.y = ny;
 
-            // Лут
             const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
             if (idx !== -1) {
                 const item = this.items[idx];
@@ -683,7 +656,6 @@ const GameModule = {
                 this.items.splice(idx, 1);
             }
 
-            // Лестницы
             if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
                 RenderModule.log("Вы поднимаетесь выше...", "info");
                 setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
@@ -696,7 +668,6 @@ const GameModule = {
             }
         }
 
-        // Ход врагов
         this.enemies.forEach(e => {
             if (e.hp<=0) return;
             const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
@@ -704,7 +675,6 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    // Pathfinding
                     const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
@@ -712,7 +682,6 @@ const GameModule = {
                         if (!next && (x!==e.x||y!==e.y)) next={x,y};
                     });
                     if (next) {
-                         // Простая проверка занятости клетки
                         if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
                             e.x = next.x; e.y = next.y;
                         }
