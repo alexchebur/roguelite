@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ROT.js v0.7.3 -->
+    <!-- ROT.js v2.2.1 -->
     <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
@@ -14,7 +14,7 @@
     <script src="dungeon_generator.js"></script>
 
     <style>
-        /* --- CSS: СТИЛИ ИНТЕРФЕЙСА --- */
+        /* --- CSS: АДАПТИВНАЯ КАРТА --- */
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -81,25 +81,38 @@
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* Исправленный контейнер
-    
+        /* --- ИСПРАВЛЕННЫЙ КОНТЕЙНЕР КАРТЫ --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             background: #000;
             border: 1px solid var(--border-color);
             position: relative;
-            overflow: auto;          /* Прокрутка при недостатке места */
+            overflow: hidden;
             padding: 0;
+            
+            /* Важно: Flex для центрирования содержимого */
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
+        /* Canvas растягивается на весь контейнер, сохраняя пропорции */
         #map-container canvas {
             display: block;
-            /* Убираем max-width/max-height — canvas имеет свой реальный размер */
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Карта впишется в область, не обрезаясь */
+            image-rendering: pixelated; /* Четкие пиксели при масштабировании */
         }
+
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .val-hp { color: var(--danger); }
+        .val-atk { color: var(--gold); }
+        .val-def { color: var(--accent); }
+        
+        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
+        .equip-item { color: var(--gold); }
 
         #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
         .inv-item {
@@ -199,7 +212,7 @@
 <script>
 /**
  * ====================================================================
- * МОДУЛЬ 1: DATA MODULE (Предметы и Враги)
+ * МОДУЛЬ 1: DATA MODULE
  * ====================================================================
  */
 const DataModule = {
@@ -220,31 +233,28 @@ const DataModule = {
         { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
     ],
 
-    // Размеры карты теперь управляются DungeonGeneratorModule, но здесь зададим дефолт для UI
+    // Размеры карты строго 50x50
     MAP_WIDTH: 50,
-    MAP_HEIGHT: 35
+    MAP_HEIGHT: 50
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 2: MAP WRAPPER (Обертка над DungeonGenerator)
+ * МОДУЛЬ 2: MAP WRAPPER
  * ====================================================================
  */
 const MapModule = {
-    currentMapData: null, // 2D array from generator
+    currentMapData: null,
     currentDungeonType: null,
     stairsUp: null,
     stairsDown: null,
 
-    // Вызываем генератор
     generate: function(gx, gy) {
         const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
         
         this.currentMapData = result.mapData;
         this.currentDungeonType = result.dungeonType;
         
-        // Лестницы пока ставим случайно в свободные клетки (упрощенно)
-        // В идеале они должны быть частью генерации, но для совместимости:
         this.stairsDown = this._findRandomFloor(result.startPos);
         this.stairsUp = this._findRandomFloor(result.startPos, true);
 
@@ -271,7 +281,6 @@ const MapModule = {
                 if (excludePos && x === excludePos.x && y === excludePos.y) {
                     attempts++; continue;
                 }
-                // Если нужно далеко от старта
                 if (far && excludePos) {
                     const dist = Math.abs(x - excludePos.x) + Math.abs(y - excludePos.y);
                     if (dist < 10) { attempts++; continue; }
@@ -395,18 +404,24 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (С УЧЕТОМ ТИПА ПОДЗЕМЕЛЬЯ)
+ * МОДУЛЬ 5: RENDER MODULE (АДАПТИВНЫЙ ПОД ROTJS V2)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    COLS: DataModule.MAP_WIDTH,
-    ROWS: DataModule.MAP_HEIGHT,
-    FONT_SIZE: 16,
+    COLS: 50,
+    ROWS: 50,
+    FONT_SIZE: 14, // Оптимальный размер для 50x50 на большинстве экранов
 
     init: function() {
-        this.display = new ROT.Display({
+        // Проверка на наличие библиотеки ROTJS (v2)
+        if (typeof ROTJS === 'undefined') {
+            alert("Ошибка: Библиотека ROT.js (v2) не загрузилась. Проверьте интернет.");
+            throw new Error("ROTJS missing");
+        }
+
+        this.display = new ROTJS.Display({
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
@@ -419,7 +434,8 @@ const RenderModule = {
         container.innerHTML = ""; 
         container.appendChild(this.display.getContainer());
         
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        // FOV также использует ROTJS
+        this.fov = new ROTJS.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
     draw: function(player, enemies, items) {
@@ -445,7 +461,6 @@ const RenderModule = {
                 bg = "#000";
             }
             
-            // Лестницы
             if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { 
                 ch = ">"; fg = "#FFF"; 
             }
@@ -526,9 +541,8 @@ const RenderModule = {
 
         explored.forEach(k => {
             const [x,y] = k.split(',').map(Number);
-            // Используем цвета текущего типа подземелья для миникарты
             ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5; // Полупрозрачность для карты
+            ctx.globalAlpha = 0.5;
             ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
             ctx.globalAlpha = 1.0;
         });
@@ -576,10 +590,8 @@ const GameModule = {
         this.items = [];
         this.explored.clear();
 
-        // 1. Генерация названия
         this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
         
-        // 2. Генерация карты и типа через новый модуль
         const startPos = MapModule.generate(gx, gy);
         
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
@@ -674,7 +686,8 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
+                    // AStar в ROTJS v2
+                    const astar = new ROTJS.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
                     astar.compute(e.x, e.y, (x,y) => {
