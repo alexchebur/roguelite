@@ -440,10 +440,9 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (с камерой / viewport)
+ * МОДУЛЬ 5: RENDER MODULE (с безопасным viewport)
  * ====================================================================
  */
-
 const RenderModule = {
     display: null,
     fov: null,
@@ -496,11 +495,11 @@ const RenderModule = {
         const mapW = DataModule.MAP_WIDTH;
         const mapH = DataModule.MAP_HEIGHT;
         
-        if (mapW <= 0 || mapH <= 0) {
-            console.error("Invalid map dimensions", mapW, mapH);
+        if (!player || mapW <= 0 || mapH <= 0) {
             return new Set();
         }
         
+        // Безопасное вычисление камеры
         let camX = Math.floor(player.x - this.VIEW_W / 2);
         let camY = Math.floor(player.y - this.VIEW_H / 2);
         
@@ -513,6 +512,7 @@ const RenderModule = {
         if (mapW <= this.VIEW_W) camX = 0;
         if (mapH <= this.VIEW_H) camY = 0;
         
+        // Вычисление FOV
         const visible = new Set();
         try {
             this.fov.compute(player.x, player.y, 12, (x, y, r, vis) => {
@@ -523,8 +523,9 @@ const RenderModule = {
             return visible;
         }
         
+        // Получение типа подземелья с безопасным fallback
         let dtype = MapModule.currentDungeonType;
-        if (!dtype) {
+        if (!dtype || typeof dtype !== 'object') {
             dtype = {
                 wallChar: "#",
                 wallColor: "#555",
@@ -533,21 +534,25 @@ const RenderModule = {
             };
         }
         
-        for (let sx = 0; sx < this.VIEW_W; sx++) {
-            for (let sy = 0; sy < this.VIEW_H; sy++) {
+        // Отрисовка клеток в области камеры
+        for (let sy = 0; sy < this.VIEW_H; sy++) {
+            for (let sx = 0; sx < this.VIEW_W; sx++) {
                 const gx = camX + sx;
                 const gy = camY + sy;
                 
-                if (gx >= mapW || gy >= mapH || gx < 0 || gy < 0) {
-                    this.display.draw(sx, sy, "", "#000", "#000");
+                // Проверка границ карты
+                if (gx < 0 || gy < 0 || gx >= mapW || gy >= mapH) {
+                    this.display.draw(sx, sy, " ", "#000", "#000");
                     continue;
                 }
                 
+                // Туман войны (невидимые клетки)
                 if (!visible.has(`${gx},${gy}`)) {
-                    this.display.draw(sx, sy, "", "#000", "#000");
+                    this.display.draw(sx, sy, " ", "#000", "#000");
                     continue;
                 }
                 
+                // Определение символа клетки
                 let ch, fg;
                 try {
                     if (MapModule.isWall(gx, gy)) {
@@ -562,41 +567,39 @@ const RenderModule = {
                     fg = "#f00";
                 }
                 
-                if (MapModule.stairsUp && gx === MapModule.stairsUp.x && gy === MapModule.stairsUp.y) { 
-                    ch = ">"; 
-                    fg = "#FFF"; 
+                // Лестницы
+                if (MapModule.stairsUp && gx === MapModule.stairsUp.x && gy === MapModule.stairsUp.y) {
+                    ch = ">";
+                    fg = "#FFF";
                 }
-                if (MapModule.stairsDown && gx === MapModule.stairsDown.x && gy === MapModule.stairsDown.y) { 
-                    ch = "<"; 
-                    fg = "#888"; 
+                if (MapModule.stairsDown && gx === MapModule.stairsDown.x && gy === MapModule.stairsDown.y) {
+                    ch = "<";
+                    fg = "#888";
                 }
                 
-                try {
-                    this.display.draw(sx, sy, ch, fg, "#000");
-                } catch(e) {
-                    console.error("Display draw error", e);
-                }
+                this.display.draw(sx, sy, ch, fg, "#000");
             }
         }
         
-        const drawEntity = (entity, char, color) => {
-            if (!entity) return;
+        // Функция отрисовки сущности
+        const drawEntity = (entity, customChar, customColor) => {
+            if (!entity || typeof entity.x !== 'number' || typeof entity.y !== 'number') return;
             const gx = entity.x, gy = entity.y;
-            if (gx >= camX && gx < camX + this.VIEW_W && gy >= camY && gy < camY + this.VIEW_H) {
-                const sx = gx - camX, sy = gy - camY;
-                if (visible.has(`${gx},${gy}`)) {
-                    try {
-                        this.display.draw(sx, sy, char || entity.char, color || entity.color);
-                    } catch(e) {
-                        console.error("Entity draw error", e);
-                    }
+            if (gx < camX || gx >= camX + this.VIEW_W || gy < camY || gy >= camY + this.VIEW_H) return;
+            const sx = gx - camX, sy = gy - camY;
+            if (visible.has(`${gx},${gy}`)) {
+                try {
+                    this.display.draw(sx, sy, customChar || entity.char, customColor || entity.color);
+                } catch(e) {
+                    // ignore draw error
                 }
             }
         };
         
-        if (items && items.forEach) items.forEach(i => drawEntity(i, i.char, i.color));
-        if (npcs && npcs.forEach) npcs.forEach(n => drawEntity(n, n.char, n.color));
-        if (enemies && enemies.forEach) enemies.forEach(e => { if (e && e.hp > 0) drawEntity(e, e.char, e.color); });
+        // Отрисовка всех сущностей
+        if (items && Array.isArray(items)) items.forEach(i => drawEntity(i, i.char, i.color));
+        if (npcs && Array.isArray(npcs)) npcs.forEach(n => drawEntity(n, n.char, n.color));
+        if (enemies && Array.isArray(enemies)) enemies.forEach(e => { if (e && e.hp > 0) drawEntity(e, e.char, e.color); });
         
         drawEntity(player, player.char, player.color);
         
@@ -605,80 +608,105 @@ const RenderModule = {
 
     updateUI: function(player, locData) {
         if (locData) {
-            document.getElementById("ui-loc-desc").textContent = locData.description;
-            document.getElementById("ui-loc-name").textContent = locData.fullName;
-            document.getElementById("ui-loc-type").textContent = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
+            const descEl = document.getElementById("ui-loc-desc");
+            const nameEl = document.getElementById("ui-loc-name");
+            const typeEl = document.getElementById("ui-loc-type");
+            if (descEl) descEl.textContent = locData.description;
+            if (nameEl) nameEl.textContent = locData.fullName;
+            if (typeEl) typeEl.textContent = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
         }
 
-        document.getElementById("ui-stats").innerHTML = `
-            <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
-            <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
-            <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
-            <div class="stat-row"><span>Скорость</span> <span class="val-spd">${player.speed}</span></div>
-            <div class="stat-row"><span>Крит</span> <span class="val-crit">${Math.round(player.critChance*100)}%</span></div>
-            <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
-        `;
+        const statsEl = document.getElementById("ui-stats");
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
+                <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
+                <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
+                <div class="stat-row"><span>Скорость</span> <span class="val-spd">${player.speed}</span></div>
+                <div class="stat-row"><span>Крит</span> <span class="val-crit">${Math.round(player.critChance*100)}%</span></div>
+                <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
+            `;
+        }
         
         const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
         const a = player.equipment.armor ? player.equipment.armor.name : "—";
-        document.getElementById("ui-equip").innerHTML = `
-            <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
-            <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
-        `;
+        const equipEl = document.getElementById("ui-equip");
+        if (equipEl) {
+            equipEl.innerHTML = `
+                <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
+                <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
+            `;
+        }
         
         const invDiv = document.getElementById("inventory-list");
-        invDiv.innerHTML = "";
-        if (player.inventory.length === 0) {
-            invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
-        } else {
-            player.inventory.forEach((item, idx) => {
-                const div = document.createElement("div");
-                div.className = "inv-item";
-                div.style.color = item.color;
-                div.textContent = `${item.char} ${item.name} (+${item.val})`;
-                div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData));
-                invDiv.appendChild(div);
-            });
+        if (invDiv) {
+            invDiv.innerHTML = "";
+            if (player.inventory.length === 0) {
+                invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
+            } else {
+                player.inventory.forEach((item, idx) => {
+                    const div = document.createElement("div");
+                    div.className = "inv-item";
+                    div.style.color = item.color;
+                    div.textContent = `${item.char} ${item.name} (+${item.val})`;
+                    div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData));
+                    invDiv.appendChild(div);
+                });
+            }
         }
     },
 
     log: function(msg, type="info") {
         const list = document.getElementById("log-list");
+        if (!list) return;
         const div = document.createElement("div");
         div.className = `log-msg log-${type}`;
         div.textContent = `> ${msg}`;
         list.prepend(div);
-        if (list.children.length > 50) list.lastChild.remove();
+        while (list.children.length > 50) list.lastChild?.remove();
     },
 
     drawMinimap: function(player, explored) {
         const cvs = document.getElementById("minimap");
+        if (!cvs || !cvs.parentElement) return;
+        
         const rect = cvs.parentElement.getBoundingClientRect();
-        cvs.width = rect.width - 20; 
-        cvs.height = rect.height - 40; 
+        if (rect.width <= 0 || rect.height <= 0) return;
+        
+        cvs.width = Math.max(20, rect.width - 20);
+        cvs.height = Math.max(20, rect.height - 40);
 
         const ctx = cvs.getContext("2d");
+        if (!ctx) return;
+        
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         
-        const cw = cvs.width / DataModule.MAP_WIDTH;
-        const ch = cvs.height / DataModule.MAP_HEIGHT;
-        const dtype = MapModule.currentDungeonType || { wallColor: "#555", floorColor: "#333" };
+        const cw = Math.max(1, cvs.width / DataModule.MAP_WIDTH);
+        const ch = Math.max(1, cvs.height / DataModule.MAP_HEIGHT);
+        
+        let dtype = MapModule.currentDungeonType;
+        if (!dtype) dtype = { wallColor: "#555", floorColor: "#333" };
 
-        explored.forEach(k => {
-            const [x, y] = k.split(',').map(Number);
-            ctx.fillStyle = MapModule.isWall(x, y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5;
-            ctx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
-            ctx.globalAlpha = 1.0;
-        });
+        if (explored && explored.forEach) {
+            explored.forEach(k => {
+                const parts = k.split(',');
+                const x = parseInt(parts[0], 10);
+                const y = parseInt(parts[1], 10);
+                if (isNaN(x) || isNaN(y)) return;
+                try {
+                    ctx.fillStyle = MapModule.isWall(x, y) ? dtype.wallColor : dtype.floorColor;
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
+                    ctx.globalAlpha = 1.0;
+                } catch(e) {}
+            });
+        }
         
         ctx.fillStyle = "#0F0";
         ctx.fillRect(player.x * cw, player.y * ch, cw + 1, ch + 1);
     }
-};
-
-*/GameModule
+};*/GameModule
     
 const GameModule = {
     player: null,
