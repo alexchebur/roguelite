@@ -15,6 +15,7 @@
     <script src="dungeon_generator.js"></script>
     <script src="worldCurve.js"></script>
     <script src="effect_system.js"></script>
+    <script src="npc_generator.js"></script>
 
     <style>
         /* --- CSS: АДАПТИВНАЯ КАРТА НА ВЕСЬ ЭКРАН --- */
@@ -594,6 +595,7 @@ const GameModule = {
     player: null,
     enemies: [],
     items: [],
+    npcs: [],
     globalX: 0,
     globalY: 0,
     currentLocData: null,
@@ -669,6 +671,23 @@ const GameModule = {
             // Передаем gx, gy для расчета силы предмета
             this.items.push(EntityModule.createItem(type, pos.x, pos.y, gx, gy));
         }
+
+    
+        this.npcs = []; // Очищаем старых NPC
+    
+        // Пытаемся создать NPC для этого уровня
+        const npcData = NpcGeneratorModule.generateNPC(gx, gy, this.player);
+    
+        if (npcData) {
+            // Находим свободное место для NPC
+            const pos = MapModule.getRandomFloor(this.player);
+            // Проверка, чтобы не попасть во врага или предмет (упрощенно)
+            npcData.x = pos.x;
+            npcData.y = pos.y;
+            this.npcs.push(npcData);
+            RenderModule.log(`Вы заметили: ${npcData.name}`, "info");
+        }
+},
 
         Math.random = oldRand;
     },
