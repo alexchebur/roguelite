@@ -470,7 +470,7 @@ const RenderModule = {
         this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
-    draw: function(player, enemies, items) {
+    draw: function(player, enemies, items, npcs) {
         this.display.clear();
         const visible = new Set();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
