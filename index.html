@@ -14,6 +14,7 @@
     <script src="name_generator.js"></script>
     <script src="dungeon_generator.js"></script>
     <script src="worldCurve.js"></script>
+    <script src="effect_system.js"></script>
 
     <style>
         /* --- CSS: АДАПТИВНАЯ КАРТА НА ВЕСЬ ЭКРАН --- */
@@ -314,6 +315,7 @@ const EntityModule = {
             speed: 10, // Базовая скорость
             critChance: 0.05, // 5%
             critDamage: 1.5, // 150%
+            effects: [],
             level: 1, xp: 0,
             inventory: [],
             equipment: { weapon: null, armor: null }
@@ -332,6 +334,7 @@ const EntityModule = {
             atk: Math.floor(template.atk * difficulty), 
             def: Math.floor(template.def * difficulty),
             speed: template.speed || 10,
+            effects: [],
             isEnemy: true
         };
     },
@@ -719,12 +722,24 @@ const GameModule = {
                 RenderModule.log("Вы спускаетесь ниже (Y+1)...", "info");
                 setTimeout(()=>this.loadLevel(this.globalX, this.globalY + 1), 100);
                 return;
+        // 1. Обработка эффектов ИГРОКА (в начале или конце его хода)
+        EffectSystemModule.processEffects(this.player, (msg, type) => RenderModule.log(msg, type));
+
+        // ... проверка смерти игрока после эффектов ...
+        if (this.player.hp <= 0) {
+            RenderModule.log("ВЫ ПОГИБЛИ.", "combat");
+            this.renderFrame();
+            return;
+        }
             }
         }
 
         // Ход врагов
         this.enemies.forEach(e => {
             if (e.hp<=0) return;
+            // Обработка эффектов ВРАГА перед действием
+            EffectSystemModule.processEffects(e, (msg, type) => RenderModule.log(msg, type));
+            if (e.hp <= 0) return; // Враг умер от эффекта (например, горения)
             const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
             if (dist < 8) {
                 if (dist===1) {
