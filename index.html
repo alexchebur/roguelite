@@ -1,16 +1,13 @@
-
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ROT.js v2.2.1 -->
     <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
-    <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
-    <!-- ВАШИ МОДУЛИ -->
     <script src="name_generator.js"></script>
     <script src="dungeon_generator.js"></script>
     <script src="worldCurve.js"></script>
@@ -18,7 +15,6 @@
     <script src="npc_generator.js"></script>
 
     <style>
-        /* --- CSS: АДАПТИВНАЯ КАРТА НА ВЕСЬ ЭКРАН --- */
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -44,8 +40,8 @@
 
         #game-layout {
             display: grid;
-            grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 60px 1fr 140px;
+            grid-template-columns: 260px minmax(300px, 1fr) 260px;
+            grid-template-rows: 60px auto 140px;
             height: 100%;
             gap: 4px;
             padding: 4px;
@@ -85,26 +81,29 @@
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* --- КОНТЕЙНЕР КАРТЫ --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
             background: #000;
             border: 1px solid var(--border-color);
             position: relative;
-            overflow: hidden;
             padding: 0;
             display: flex;
-            /* justify-content: center;
-            /* align-items: center;
+            justify-content: center;
+            align-items: center;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: calc(100vh - 208px);
+            justify-self: center;
+            align-self: center;
         }
 
         #map-container canvas {
             display: block;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
-            image-rendering: pixelated;
+            image-rendering: crisp-edges;
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
@@ -170,9 +169,18 @@
         }
         kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
 
+        @media (max-width: 768px) {
+            #game-layout {
+                grid-template-columns: 200px minmax(250px, 1fr) 200px;
+            }
+            #map-container {
+                max-width: calc(100vh - 160px);
+            }
+        }
     </style>
 </head>
-<body>
+```
+
 
 <div id="game-layout">
     <header class="panel">
