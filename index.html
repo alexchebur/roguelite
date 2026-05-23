@@ -5,7 +5,7 @@
     <title>Roguelike: Подземелье Координат</title>
     
     <!-- ROT.js v2.2.1 -->
-    <script src="rot.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
@@ -14,7 +14,7 @@
     <script src="dungeon_generator.js"></script>
 
     <style>
-        /* --- CSS: АДАПТИВНАЯ КАРТА --- */
+        /* --- CSS: АДАПТИВНАЯ КАРТА НА ВЕСЬ ЭКРАН --- */
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -91,19 +91,19 @@
             overflow: hidden;
             padding: 0;
             
-            /* Важно: Flex для центрирования содержимого */
+            /* Flex для центрирования canvas */
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* Canvas растягивается на весь контейнер, сохраняя пропорции */
+        /* Canvas занимает всё доступное место, сохраняя пропорции */
         #map-container canvas {
             display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* Карта впишется в область, не обрезаясь */
-            image-rendering: pixelated; /* Четкие пиксели при масштабировании */
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain; /* Важно: вписывает карту в контейнер */
+            image-rendering: pixelated; /* Четкость при масштабировании */
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
@@ -233,7 +233,6 @@ const DataModule = {
         { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
     ],
 
-    // Размеры карты строго 50x50
     MAP_WIDTH: 50,
     MAP_HEIGHT: 50
 };
@@ -404,7 +403,7 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (АДАПТИВНЫЙ ПОД ROTJS V2)
+ * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕН ПОД ROT v2)
  * ====================================================================
  */
 const RenderModule = {
@@ -412,16 +411,17 @@ const RenderModule = {
     fov: null,
     COLS: 50,
     ROWS: 50,
-    FONT_SIZE: 14, // Оптимальный размер для 50x50 на большинстве экранов
+    FONT_SIZE: 14,
 
     init: function() {
-        // Проверка на наличие библиотеки ROTJS (v2)
-        if (typeof ROTJS === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js (v2) не загрузилась. Проверьте интернет.");
-            throw new Error("ROTJS missing");
+        // Проверка наличия библиотеки. В rot.js v2 глобальный объект - ROT.
+        if (typeof ROT === 'undefined') {
+            console.error("ROT object not found. Library failed to load.");
+            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету или блокировщики рекламы.");
+            throw new Error("ROT.js missing");
         }
 
-        this.display = new ROTJS.Display({
+        this.display = new ROT.Display({
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
@@ -434,8 +434,7 @@ const RenderModule = {
         container.innerHTML = ""; 
         container.appendChild(this.display.getContainer());
         
-        // FOV также использует ROTJS
-        this.fov = new ROTJS.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
     draw: function(player, enemies, items) {
@@ -686,8 +685,7 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    // AStar в ROTJS v2
-                    const astar = new ROTJS.Path.AStar(this.player.x, this.player.y, 
+                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
                     astar.compute(e.x, e.y, (x,y) => {
