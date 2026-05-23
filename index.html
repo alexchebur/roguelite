@@ -440,14 +440,14 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE
+ * МОДУЛЬ 5: RENDER MODULE (с камерой / viewport)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    COLS: 50,
-    ROWS: 50,
+    VIEW_W: 30,          // ширина видимой области в клетках
+    VIEW_H: 30,          // высота видимой области в клетках
     FONT_SIZE: 14,
 
     init: function() {
@@ -457,9 +457,10 @@ const RenderModule = {
             throw new Error("ROT.js missing");
         }
 
+        // Создаём дисплей с размерами viewport
         this.display = new ROT.Display({
-            width: this.COLS,
-            height: this.ROWS,
+            width: this.VIEW_W,
+            height: this.VIEW_H,
             fontSize: this.FONT_SIZE,
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
@@ -470,56 +471,85 @@ const RenderModule = {
         container.innerHTML = ""; 
         container.appendChild(this.display.getContainer());
         
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        // FOV использует глобальные координаты карты (всё равно)
+        this.fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
     },
 
     draw: function(player, enemies, items, npcs) {
         this.display.clear();
+        
+        // 1. Получить глобальные размеры карты
+        const mapW = DataModule.MAP_WIDTH;
+        const mapH = DataModule.MAP_HEIGHT;
+        
+        // 2. Рассчитать камеру (левая верхняя клетка окна)
+        let camX = Math.floor(player.x - this.VIEW_W / 2);
+        let camY = Math.floor(player.y - this.VIEW_H / 2);
+        // Ограничиваем, чтобы камера не выходила за пределы карты
+        camX = Math.min(Math.max(0, camX), mapW - this.VIEW_W);
+        camY = Math.min(Math.max(0, camY), mapH - this.VIEW_H);
+        
+        // 3. Вычислить поле зрения (глобальные координаты)
         const visible = new Set();
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-
         this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
-
-        visible.forEach(key => {
-            const [x, y] = key.split(',').map(Number);
-            let ch, fg, bg;
-
-            if (MapModule.isWall(x, y)) {
-                ch = dtype.wallChar;
-                fg = dtype.wallColor;
-                bg = "#000";
-            } else {
-                ch = dtype.floorChar;
-                fg = dtype.floorColor;
-                bg = "#000";
+        
+        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
+        
+        // 4. Отрисовка клеток в области камеры
+        for (let sx = 0; sx < this.VIEW_W; sx++) {
+            for (let sy = 0; sy < this.VIEW_H; sy++) {
+                const gx = camX + sx;
+                const gy = camY + sy;
+                if (gx >= mapW || gy >= mapH) continue;
+                
+                // Если клетка не в поле зрения – не рисуем (оставляем чёрной)
+                if (!visible.has(`${gx},${gy}`)) {
+                    // можно нарисовать пустоту или туман войны (пока просто фон)
+                    this.display.draw(sx, sy, "", "#000", "#000");
+                    continue;
+                }
+                
+                let ch, fg;
+                if (MapModule.isWall(gx, gy)) {
+                    ch = dtype.wallChar;
+                    fg = dtype.wallColor;
+                } else {
+                    ch = dtype.floorChar;
+                    fg = dtype.floorColor;
+                }
+                
+                // Лестницы
+                if (MapModule.stairsUp && gx === MapModule.stairsUp.x && gy === MapModule.stairsUp.y) { 
+                    ch = ">"; fg = "#FFF"; 
+                }
+                if (MapModule.stairsDown && gx === MapModule.stairsDown.x && gy === MapModule.stairsDown.y) { 
+                    ch = "<"; fg = "#888"; 
+                }
+                
+                this.display.draw(sx, sy, ch, fg, "#000");
             }
-            
-            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { 
-                ch = ">"; fg = "#FFF"; 
+        }
+        
+        // 5. Отрисовка сущностей (только видимые и попадающие в окно)
+        const drawEntity = (entity, char, color) => {
+            const gx = entity.x, gy = entity.y;
+            if (gx >= camX && gx < camX + this.VIEW_W && gy >= camY && gy < camY + this.VIEW_H) {
+                const sx = gx - camX, sy = gy - camY;
+                if (visible.has(`${gx},${gy}`)) {
+                    this.display.draw(sx, sy, char, color);
+                }
             }
-            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { 
-                ch = "<"; fg = "#888"; 
-            }
-
-            this.display.draw(x, y, ch, fg, bg);
-        });
-
-        items.forEach(i => {
-            if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
-        });
-        npcs.forEach(npc => {
-            if (visible.has(`${npc.x},${npc.y}`)) {
-                this.display.draw(npc.x, npc.y, npc.char, npc.color);
-            }
-        });
-        enemies.forEach(e => {
-            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
-        });
-
-        this.display.draw(player.x, player.y, player.char, player.color);
-
+        };
+        
+        items.forEach(i => drawEntity(i, i.char, i.color));
+        npcs.forEach(n => drawEntity(n, n.char, n.color));
+        enemies.forEach(e => { if (e.hp > 0) drawEntity(e, e.char, e.color); });
+        
+        // Игрок
+        drawEntity(player, player.char, player.color);
+        
         return visible;
     },
 
@@ -530,7 +560,6 @@ const RenderModule = {
             document.getElementById("ui-loc-type").textContent = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
         }
 
-        // Обновленные статы с новыми полями
         document.getElementById("ui-stats").innerHTML = `
             <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
             <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
@@ -578,7 +607,6 @@ const RenderModule = {
         
         const cw = cvs.width / DataModule.MAP_WIDTH;
         const ch = cvs.height / DataModule.MAP_HEIGHT;
-
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
 
         explored.forEach(k => {
@@ -593,11 +621,8 @@ const RenderModule = {
     }
 };
 
-/**
- * ====================================================================
- * МОДУЛЬ 6: GAME MODULE
- * ====================================================================
- */
+*/GameModule
+    
 const GameModule = {
     player: null,
     enemies: [],
