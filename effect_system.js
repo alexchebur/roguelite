@@ -1,6 +1,6 @@
 /**
  * МОДУЛЬ СИСТЕМЫ ЭФФЕКТОВ (effect_system.js)
- * Управляет временными состояниями существ (баффы, дебаффы, DoT - damage over time).
+ * Управляет временными состояниями существ (баффы, дебаффы, DoT).
  */
 
 const EffectSystemModule = (function() {
@@ -8,14 +8,14 @@ const EffectSystemModule = (function() {
 
     // Типы эффектов
     const EFFECT_TYPES = {
-        BUFF: 'buff',       // Усиление (увеличивает статы)
-        DEBUFF: 'debuff',   // Ослабление (уменьшает статы)
-        DOT: 'dot',         // Урон со временем (горение, яд)
-        HOT: 'hot'          // Лечение со временем (регенерация)
+        BUFF: 'buff',       // Усиление
+        DEBUFF: 'debuff',   // Ослабление
+        DOT: 'dot',         // Урон со временем
+        HOT: 'hot'          // Лечение со временем
     };
 
     /**
-     * Создает объект эффекта
+     * Фабрика создания эффекта
      */
     function createEffect(id, name, type, duration, data, color) {
         return {
@@ -29,12 +29,11 @@ const EffectSystemModule = (function() {
     }
 
     /**
-     * Добавляет эффект к существу.
+     * Добавляет эффект к существу
      */
     function addEffect(entity, effect) {
         if (!entity.effects) entity.effects = [];
 
-        // Проверяем, есть ли уже такой эффект
         const existing = entity.effects.find(e => e.id === effect.id);
         
         if (existing) {
@@ -58,15 +57,14 @@ const EffectSystemModule = (function() {
     }
 
     /**
-     * Обрабатывает все активные эффекты существа.
-     * Вызывать один раз за ход для каждого существа.
+     * Обрабатывает тики эффектов (урон/лечение) и уменьшает длительность
      */
     function processEffects(entity, logFn) {
         if (!entity.effects || entity.effects.length === 0) return;
 
-        // Проходимся по копии массива, так как эффекты могут удаляться
+        // Проходим по копии массива, чтобы безопасно удалять элементы
         [...entity.effects].forEach(effect => {
-            // 1. Применяем мгновенный эффект хода (урон/лечение)
+            // 1. Применяем мгновенный эффект (урон или лечение)
             if (effect.type === EFFECT_TYPES.DOT) {
                 const dmg = effect.data.power || 1;
                 entity.hp -= dmg;
@@ -82,7 +80,7 @@ const EffectSystemModule = (function() {
             // 2. Уменьшаем длительность
             effect.duration--;
 
-            // 3. Удаляем, если истек
+            // 3. Удаляем, если время вышло
             if (effect.duration <= 0) {
                 removeEffect(entity, effect.id);
                 if (logFn) logFn(`Действие ${effect.name} на ${entity.name} закончилось.`, "info");
@@ -91,7 +89,7 @@ const EffectSystemModule = (function() {
     }
 
     /**
-     * Получает суммарный модификатор к стату от всех активных баффов/дебаффов
+     * Получает суммарный бонус к стату от баффов/дебаффов
      */
     function getStatModifier(entity, statName) {
         if (!entity.effects) return 0;
@@ -104,7 +102,7 @@ const EffectSystemModule = (function() {
         return mod;
     }
 
-    // --- Фабрика стандартных эффектов (примеры) ---
+    // --- Функции-конструкторы стандартных эффектов ---
 
     function createBurn(duration, power) {
         return createEffect('burn', 'Горение', EFFECT_TYPES.DOT, duration, { power: power }, '#ff5500');
@@ -126,14 +124,14 @@ const EffectSystemModule = (function() {
         return createEffect('regen', 'Регенерация', EFFECT_TYPES.HOT, duration, { power: power }, '#00ffaa');
     }
 
-    // ПУБЛИЧНЫЙ ИНТЕРФЕЙС
+    // === ПУБЛИЧНЫЙ ИНТЕРФЕЙС ===
     return {
         addEffect: addEffect,
         removeEffect: removeEffect,
         processEffects: processEffects,
         getStatModifier: getStatModifier,
         
-        // Экспортируем фабрику для удобства вызова: EffectSystemModule.Effects.createBurn(...)
+        // Группируем конструкторы в объекте Effects
         Effects: {
             createBurn: createBurn,
             createPoison: createPoison,
@@ -142,4 +140,5 @@ const EffectSystemModule = (function() {
             createRegen: createRegen
         }
     };
+
 })();
