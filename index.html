@@ -37,54 +37,30 @@
             color: var(--text-main);
             font-family: var(--font-stack);
             margin: 0;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
             padding: 8px;
         }
 
-        /* Основная сетка: три колонки, верхняя панель через всю ширину */
+        /* Основная сетка 3x3 */
         .game-grid {
             display: grid;
-            grid-template-columns: 260px 1fr 280px;
-            grid-template-rows: auto 1fr auto;
+            grid-template-columns: 1fr 3fr 1fr;
+            grid-template-rows: 1fr 3fr 1fr;
             gap: 8px;
-            max-width: 100%;
-            height: calc(100vh - 16px);
+            height: 100%;
+            width: 100%;
         }
 
-        /* Верхняя панель — на всю ширину сетки */
-        .top-panel {
-            grid-column: 1 / -1;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        /* Левая панель (статы + экипировка + миникарта) */
-        .left-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        /* Центр — квадратная карта */
-        .map-center {
+        /* Центрирование canvas */
+        .canvas-cell {
             display: flex;
             justify-content: center;
             align-items: center;
             background: #000;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            padding: 0;
+            overflow: hidden;
         }
 
         #map-container {
@@ -97,36 +73,61 @@
 
         #map-container canvas {
             display: block;
-            width: 100%;
-            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
             object-fit: contain;
             image-rendering: crisp-edges;
-            border-radius: 4px;
         }
 
-        /* Правая панель (инвентарь + лог) */
-        .right-panel {
+        /* Общие стили для всех панелей */
+        .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 10px;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
         }
 
-        /* Нижняя панель (футер) — на всю ширину, но под правой панелью */
-        .footer-panel {
-            grid-column: 1 / -1;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px 16px;
-            display: flex;
+        /* Верхняя панель */
+        .top-panel {
+            grid-column: 2;
+            grid-row: 1;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Нижняя панель */
+        .bottom-panel {
+            grid-column: 2;
+            grid-row: 3;
+            flex-direction: row;
             justify-content: center;
+            align-items: center;
             gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
+        }
+
+        /* Левая панель */
+        .left-panel {
+            grid-column: 1;
+            grid-row: 1 / 4;
+        }
+
+        /* Правая панель */
+        .right-panel {
+            grid-column: 3;
+            grid-row: 1 / 4;
+        }
+
+        /* Canvas занимает центральную ячейку */
+        .canvas-cell {
+            grid-column: 2;
+            grid-row: 2;
         }
 
         h3 {
@@ -238,31 +239,57 @@
             border: 1px solid #444;
         }
 
-        /* Адаптив для вертикальных экранов */
-        @media (max-width: 900px) {
+        /* Адаптив для мобильных */
+        @media (max-width: 768px) {
+            body {
+                padding: 4px;
+            }
             .game-grid {
-                grid-template-columns: 220px 1fr 240px;
-                gap: 6px;
+                gap: 4px;
+            }
+            .panel {
+                padding: 6px;
+            }
+            h3 {
+                font-size: 11px;
+            }
+            .stat-row, .equip-slot {
+                font-size: 10px;
+            }
+            .inv-item {
+                font-size: 9px;
+            }
+            .top-panel, .bottom-panel {
+                padding: 6px;
+            }
+            .loc-name {
+                font-size: 12px;
+            }
+            .loc-desc, .loc-type, .loc-coords {
+                font-size: 9px;
+            }
+            kbd {
+                padding: 1px 4px;
+                font-size: 10px;
             }
         }
 
-        @media (max-width: 768px) {
+        /* Для очень узких экранов перестраиваем в колонку */
+        @media (max-width: 600px) {
             .game-grid {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto auto auto;
-                height: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                overflow-y: auto;
             }
-            .top-panel {
-                grid-column: 1;
+            .left-panel, .right-panel, .top-panel, .canvas-cell, .bottom-panel {
+                width: 100%;
             }
-            .left-panel, .map-center, .right-panel, .footer-panel {
-                grid-column: 1;
-            }
-            .map-center {
-                min-height: 60vh;
+            .canvas-cell {
+                min-height: 300px;
             }
             .left-panel, .right-panel {
-                max-height: 300px;
+                max-height: 200px;
             }
         }
     </style>
