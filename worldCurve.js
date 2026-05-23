@@ -1,5 +1,5 @@
 /**
- * МОДУЛЬ МИРОВОЙ КРИВОЙ (world_curve.js)
+ * МОДУЛЬ МИРОВОЙ КРИВОЙ (worldCurve.js)
  * Зависит от: name_generator.js (SeededRandom, createSeed)
  * 
  * Отвечает за прогрессивную сложность врагов, силу предметов и статы игрока.
@@ -7,30 +7,21 @@
  */
 
 if (typeof SeededRandom === 'undefined') {
-    console.error("Ошибка: name_generator.js должен быть загружен перед world_curve.js");
+    console.error("Ошибка: name_generator.js должен быть загружен перед worldCurve.js");
 }
 
 const WorldCurveModule = (function() {
     'use strict';
 
-    // Базовые константы
-    const BASE_PLAYER_HP = 20;
-    const BASE_PLAYER_ATK = 3;
-    const BASE_PLAYER_DEF = 1;
-    
     // Типы математических кривых
     const CURVES = {
         LINEAR: 'linear',       // Равномерный рост
         EXPONENTIAL: 'exp',     // Быстрый рост (для сложности врагов)
-        LOGARITHMIC: 'log',     // Медленный рост (для защиты, чтобы не было неуязвимости)
-        STEP: 'step'            // Ступенчатый рост (каждые N уровней)
+        LOGARITHMIC: 'log'      // Медленный рост (для защиты)
     };
 
     /**
      * Внутренняя функция расчета значения по кривой
-     * @param {string} type - тип кривой
-     * @param {number} x - входное значение (уровень/глубина)
-     * @param {object} params - параметры кривой {a, b, c}
      */
     function calculate(type, x, params) {
         const a = params.a || 1;
@@ -42,33 +33,16 @@ const WorldCurveModule = (function() {
                 return a * x + b;
             
             case CURVES.EXPONENTIAL:
-                // a * e^(b*x) + c, но ограничиваем, чтобы не взорвалось
+                // Ограниченный экспоненциальный рост
                 return a * Math.pow(1.15, x) + c; 
             
             case CURVES.LOGARITHMIC:
-                // a * ln(x + 1) + b
+                // Логарифмический рост (замедляется с уровнем)
                 return a * Math.log(x + 1) + b;
-            
-            case CURVES.STEP:
-                // Рост каждые 'step' единиц
-                const stepSize = params.step || 5;
-                const steps = Math.floor(x / stepSize);
-                return a * steps + b;
                 
             default:
                 return x;
         }
-    }
-
-    /**
-     * Получение RNG для конкретной точки мира
-     * Используем createSeed из name_generator.js
-     */
-    function getRNG(x, y) {
-        // Создаем уникальный сид для мета-данных этого уровня
-        // Добавляем смещение 9999, чтобы не конфликтовать с генерацией карты
-        const metaSeed = createSeed(x, y) + 9999; 
-        return new SeededRandom(metaSeed);
     }
 
     return {
@@ -76,7 +50,7 @@ const WorldCurveModule = (function() {
          * Получить базовое HP игрока для данного уровня
          */
         getPlayerBaseHP: function(level) {
-            // Линейный рост HP
+            // Линейный рост: 5 * уровень + 15. На 1 ур = 20 HP.
             return Math.floor(calculate(CURVES.LINEAR, level, { a: 5, b: 15 }));
         },
 
@@ -84,7 +58,7 @@ const WorldCurveModule = (function() {
          * Получить базовую Атаку игрока
          */
         getPlayerBaseAtk: function(level) {
-            // Медленный линейный рост
+            // Медленный линейный рост: 0.5 * уровень + 2. На 1 ур = 2.5 (округлится до 2).
             return Math.floor(calculate(CURVES.LINEAR, level, { a: 0.5, b: 2 }));
         },
 
@@ -92,23 +66,31 @@ const WorldCurveModule = (function() {
          * Получить базовую Защиту игрока
          */
         getPlayerBaseDef: function(level) {
-            // Логарифмический рост, чтобы защита не превышала атаку врагов слишком сильно
+            // Логарифмический рост, чтобы защита не становилась имбой.
             return Math.floor(calculate(CURVES.LOGARITHMIC, level, { a: 1.5, b: 0 }));
         },
 
         /**
-         * Получить множитель сложности врагов для данной глубины
-         * Глубина рассчитывается как манхэттенское расстояние от центра (0,0)
+         * Получить множитель сложности врагов для данной глубины (координаты x, y)
          */
         getEnemyMultiplier: function(x, y) {
             const depth = Math.abs(x) + Math.abs(y);
-            // Враги становятся сильнее экспоненциально
-            // На глубине 10 множитель будет ~4.0
+            // Экспоненциальный рост сложности.
+            // На глубине 10 множитель будет примерно 4.0
             return calculate(CURVES.EXPONENTIAL, depth, { a: 1.0, b: 0.15, c: 0 });
         },
 
         /**
-         * Множитель ценности золота/лута
+         * Множитель силы предметов (качества) от глубины
+         */
+        getItemPowerMultiplier: function(x, y) {
+            const depth = Math.abs(x) + Math.abs(y);
+            // Линейный рост качества предметов
+            return calculate(CURVES.LINEAR, depth, { a: 0.1, b: 1.0 });
+        },
+
+        /**
+         * Множитель золота
          */
         getGoldMultiplier: function(x, y) {
             const depth = Math.abs(x) + Math.abs(y);
@@ -116,31 +98,21 @@ const WorldCurveModule = (function() {
         },
 
         /**
-         * Множитель силы предметов (качества)
-         */
-        getItemPowerMultiplier: function(x, y) {
-            const depth = Math.abs(x) + Math.abs(y);
-            // Предметы становятся лучше линейно, но медленно
-            return calculate(CURVES.LINEAR, depth, { a: 0.1, b: 1.0 });
-        },
-
-        /**
          * Проверка: является ли этот уровень "Хабом" (безопасной зоной)
-         * Хабы появляются каждые 5 шагов по глубине
+         * Хабы появляются каждые 5 уровней глубины
          */
         isHubLevel: function(x, y) {
             const depth = Math.abs(x) + Math.abs(y);
-            // Хаб, если глубина кратна 5, но не 0 (старт)
             return depth > 0 && depth % 5 === 0;
         },
 
         /**
          * Генерация параметров "тренда" мира для этого уровня
-         * Например: "Уровень проклят магией" или "Уровень богат железом"
-         * Возвращает объект с модификаторами
          */
         getWorldTrend: function(x, y) {
-            const rng = getRNG(x, y);
+            // Используем createSeed из name_generator.js для детерминизма
+            const metaSeed = createSeed(x, y) + 9999; 
+            const rng = new SeededRandom(metaSeed);
             const roll = rng.next();
             
             if (roll < 0.1) {
