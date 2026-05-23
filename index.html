@@ -1,8 +1,9 @@
-```html
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Roguelike: Подземелье Координат</title>
     
     <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
@@ -15,6 +16,10 @@
     <script src="npc_generator.js"></script>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -32,30 +37,136 @@
             color: var(--text-main);
             font-family: var(--font-stack);
             margin: 0;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
         }
 
-        #game-layout {
-            display: grid;
-            grid-template-columns: 260px minmax(300px, 1fr) 260px;
-            grid-template-rows: 60px auto 140px;
-            height: 100%;
-            gap: 4px;
-            padding: 4px;
-            box-sizing: border-box;
+        /* Главный контейнер — карта в центре, панели вокруг */
+        #game-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            max-width: 100%;
+            max-height: 100vh;
+            flex-wrap: wrap;
         }
 
-        .panel {
+        /* Левая панель — фиксированная ширина, подстраивается по высоте под карту */
+        .side-panel {
+            width: 240px;
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 10px;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
+            align-self: stretch;
+            overflow-y: auto;
+            max-height: calc(100vh - 16px);
+        }
+
+        /* Центр — квадратная карта */
+        .map-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 1;
+            min-width: 300px;
+        }
+
+        #map-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: calc(100vh - 80px);
+            max-height: calc(100vh - 80px);
+        }
+
+        #map-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: crisp-edges;
+            border-radius: 4px;
+        }
+
+        /* Верхняя панель с информацией о локации */
+        .top-bar {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 16px;
+            margin-bottom: 8px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .loc-info {
+            text-align: right;
+        }
+        .loc-name {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .loc-coords {
+            color: var(--text-dim);
+            font-size: 0.85em;
+        }
+        .loc-desc {
+            color: var(--text-dim);
+            font-size: 0.8em;
+            font-style: italic;
+            margin-top: 2px;
+        }
+        .loc-type {
+            color: var(--gold);
+            font-size: 0.8em;
+            margin-top: 2px;
+        }
+
+        /* Правая панель — инвентарь + лог */
+        .right-panel {
+            width: 260px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-self: stretch;
+            overflow-y: auto;
+            max-height: calc(100vh - 16px);
+        }
+
+        /* Нижняя панель с управлением */
+        .footer-bar {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 16px;
+            margin-top: 8px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
         }
 
         h3 {
@@ -68,55 +179,33 @@
             letter-spacing: 1px;
         }
 
-        header {
-            grid-column: 1 / -1;
+        .stat-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 0 15px;
+            margin-bottom: 5px;
+            font-size: 13px;
         }
-        .loc-info { text-align: right; }
-        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
-        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
-        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
-
-        #map-container {
-            grid-column: 2;
-            grid-row: 2;
-            background: #000;
-            border: 1px solid var(--border-color);
-            position: relative;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            aspect-ratio: 1 / 1;
-            width: 100%;
-            max-width: calc(100vh - 208px);
-            justify-self: center;
-            align-self: center;
-        }
-
-        #map-container canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            image-rendering: crisp-edges;
-        }
-
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
         .val-def { color: var(--accent); }
         .val-spd { color: #aaffaa; }
         .val-crit { color: #ffaa00; }
-        
-        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
-        .equip-item { color: var(--gold); }
 
-        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
+        .equip-slot {
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #aaa;
+        }
+        .equip-item {
+            color: var(--gold);
+        }
+
+        #inventory-list {
+            overflow-y: auto;
+            flex: 1;
+            max-height: 200px;
+            margin-bottom: 10px;
+        }
         .inv-item {
             padding: 3px 5px;
             background: rgba(255,255,255,0.05);
@@ -128,7 +217,9 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .inv-item:hover { background: rgba(255,255,255,0.1); }
+        .inv-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
 
         #log-list {
             overflow-y: auto;
@@ -136,50 +227,78 @@
             font-size: 11px;
             display: flex;
             flex-direction: column-reverse;
+            max-height: 300px;
         }
-        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
+        .log-msg {
+            margin-bottom: 2px;
+            line-height: 1.2;
+            word-wrap: break-word;
+        }
         .log-combat { color: var(--danger); }
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
         .log-crit { color: #ffaa00; font-weight: bold; }
 
-        #minimap-panel {
-            grid-column: 1;
-            grid-row: 3;
-            display: flex;
-            flex-direction: column;
-        }
-        #minimap { 
-            width: 100%; 
-            height: 100%; 
-            background: #000; 
+        #minimap {
+            width: 100%;
+            background: #000;
             border-radius: 4px;
             image-rendering: pixelated;
+            margin-top: 10px;
+            aspect-ratio: 1 / 1;
         }
 
-        footer {
-            grid-column: 2 / 4;
-            grid-row: 3;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
+        kbd {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            border: 1px solid #444;
         }
-        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
+
+        /* Адаптив для вертикальных экранов и мобильных */
+        @media (max-width: 900px) {
+            body {
+                padding: 4px;
+            }
+            .side-panel, .right-panel {
+                width: 200px;
+            }
+            .top-bar {
+                font-size: 12px;
+            }
+        }
 
         @media (max-width: 768px) {
-            #game-layout {
-                grid-template-columns: 200px minmax(250px, 1fr) 200px;
+            #game-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .side-panel, .right-panel {
+                width: 100%;
+                max-height: 200px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .side-panel > div, .right-panel > div {
+                flex: 1;
+                min-width: 120px;
+            }
+            .map-wrapper {
+                order: -1;
             }
             #map-container {
-                max-width: calc(100vh - 160px);
+                max-width: 90vw;
+                max-height: 90vw;
+            }
+            .top-bar, .footer-bar {
+                font-size: 10px;
+                padding: 6px 12px;
             }
         }
     </style>
 </head>
-```
 
 
 <div id="game-layout">
