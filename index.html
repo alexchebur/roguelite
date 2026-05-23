@@ -1,3 +1,15 @@
+Вот полный, обновленный код `index.html`.
+
+**Что сделано:**
+1.  **Интегрирован `WorldCurveModule`**: Теперь сложность врагов, сила предметов и характеристики игрока зависят от координат (глубины) по формулам из модуля.
+2.  **Добавлены новые статы**: В сущности (игрок и враги) добавлены `speed`, `critChance`, `critDamage`.
+3.  **Обновлен бой**: Реализован расчет критических ударов.
+4.  **Исправлен баг с лестницами**: Раньше игра вела на `(x+1, y+1)`, теперь корректно: Вверх -> `(x, y-1)`, Вниз -> `(x, y+1)`.
+5.  **UI обновлен**: Добавлено отображение Скорости и Шанса крита.
+
+Сохраните этот код как `index.html`. Убедитесь, что `name_generator.js`, `dungeon_generator.js` и `worldCurve.js` лежат в той же папке.
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -12,7 +24,6 @@
     <!-- ВАШИ МОДУЛИ -->
     <script src="name_generator.js"></script>
     <script src="dungeon_generator.js"></script>
-    <!-- После name_generator.js и перед game.js -->
     <script src="worldCurve.js"></script>
 
     <style>
@@ -83,7 +94,7 @@
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* --- ИСПРАВЛЕННЫЙ КОНТЕЙНЕР КАРТЫ --- */
+        /* --- КОНТЕЙНЕР КАРТЫ --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
@@ -92,26 +103,25 @@
             position: relative;
             overflow: hidden;
             padding: 0;
-            
-            /* Flex для центрирования canvas */
             display: flex;
-            /*justify-content: center;
-            /*align-items: center;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Canvas занимает всё доступное место, сохраняя пропорции */
         #map-container canvas {
             display: block;
             width: 100% !important;
             height: 100% !important;
-            object-fit: contain; /* Важно: вписывает карту в контейнер */
-            image-rendering: pixelated; /* Четкость при масштабировании */
+            object-fit: contain;
+            image-rendering: pixelated;
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
         .val-def { color: var(--accent); }
+        .val-spd { color: #aaffaa; }
+        .val-crit { color: #ffaa00; }
         
         .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
         .equip-item { color: var(--gold); }
@@ -141,6 +151,7 @@
         .log-combat { color: var(--danger); }
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
+        .log-crit { color: #ffaa00; font-weight: bold; }
 
         #minimap-panel {
             grid-column: 1;
@@ -220,12 +231,13 @@
 const DataModule = {
     ITEM_ADJECTIVES: ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"],
     
+    // Базовые типы врагов (значения будут умножаться WorldCurve)
     ENEMY_TYPES: [
-        { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
-        { name: "Скелет", char: "s", color: "#B0BEC5", hp: [15, 25], atk: [3, 6], def: [1, 2] },
-        { name: "Орк",    char: "O", color: "#8BC34A", hp: [30, 50], atk: [6, 10], def: [2, 4] },
-        { name: "Призрак",char: "G", color: "#7C4DFF", hp: [10, 15], atk: [5, 8], def: [0, 1] },
-        { name: "Дракон", char: "D", color: "#FF5722", hp: [80, 120], atk: [15, 25], def: [5, 10] }
+        { name: "Гоблин", char: "g", color: "#4CAF50", hp: 10, atk: 2, def: 0, speed: 9 },
+        { name: "Скелет", char: "s", color: "#B0BEC5", hp: 15, atk: 3, def: 1, speed: 10 },
+        { name: "Орк",    char: "O", color: "#8BC34A", hp: 30, atk: 6, def: 2, speed: 8 },
+        { name: "Призрак",char: "G", color: "#7C4DFF", hp: 12, atk: 5, def: 0, speed: 12 },
+        { name: "Дракон", char: "D", color: "#FF5722", hp: 80, atk: 15, def: 5, speed: 11 }
     ],
 
     ITEM_TYPES: [
@@ -256,6 +268,7 @@ const MapModule = {
         this.currentMapData = result.mapData;
         this.currentDungeonType = result.dungeonType;
         
+        // Лестницы
         this.stairsDown = this._findRandomFloor(result.startPos);
         this.stairsUp = this._findRandomFloor(result.startPos, true);
 
@@ -296,38 +309,52 @@ const MapModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 3: ENTITY MODULE
+ * МОДУЛЬ 3: ENTITY MODULE (С НОВЫМИ СТАТАМИ)
  * ====================================================================
  */
 const EntityModule = {
     createPlayer: function(x, y) {
+        // Используем WorldCurve для получения базовых статов 1-го уровня
         return {
             x: x, y: y,
             char: "@", color: "#FFF",
-            hp: 50, maxHp: 50,
-            atk: 5, def: 2,
+            hp: WorldCurveModule.getPlayerBaseHP(1), 
+            maxHp: WorldCurveModule.getPlayerBaseHP(1),
+            atk: WorldCurveModule.getPlayerBaseAtk(1), 
+            def: WorldCurveModule.getPlayerBaseDef(1),
+            speed: 10, // Базовая скорость
+            critChance: 0.05, // 5%
+            critDamage: 1.5, // 150%
             level: 1, xp: 0,
             inventory: [],
             equipment: { weapon: null, armor: null }
         };
     },
 
-    createEnemy: function(template, x, y, difficulty) {
+    createEnemy: function(template, x, y, gx, gy) {
+        // Рассчитываем множитель сложности на основе координат
+        const difficulty = WorldCurveModule.getEnemyMultiplier(gx, gy);
+        
         return {
             x: x, y: y, name: template.name,
             char: template.char, color: template.color,
-            hp: Math.floor(template.hp[0] * difficulty), 
-            maxHp: Math.floor(template.hp[0] * difficulty),
-            atk: Math.floor(template.atk[0] * difficulty), 
-            def: Math.floor(template.def[0] * difficulty),
+            hp: Math.floor(template.hp * difficulty), 
+            maxHp: Math.floor(template.hp * difficulty),
+            atk: Math.floor(template.atk * difficulty), 
+            def: Math.floor(template.def * difficulty),
+            speed: template.speed || 10,
             isEnemy: true
         };
     },
 
-    createItem: function(template, x, y) {
+    createItem: function(template, x, y, gx, gy) {
         const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
         const name = `${adj} ${template.baseName}`;
-        const val = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
+        
+        // Сила предмета зависит от глубины
+        const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
+        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
+        const finalVal = Math.max(1, Math.floor(baseVal * itemMult));
         
         return {
             x: x, y: y, name: name,
@@ -335,7 +362,7 @@ const EntityModule = {
             type: template.type,
             stat: template.stat,
             effect: template.effect,
-            val: val,
+            val: finalVal,
             isItem: true
         };
     }
@@ -343,17 +370,29 @@ const EntityModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 4: COMBAT MODULE
+ * МОДУЛЬ 4: COMBAT MODULE (С КРИТАМИ)
  * ====================================================================
  */
 const CombatModule = {
     attack: function(attacker, defender, logFn) {
+        // Расчет крита
+        const isCrit = Math.random() < (attacker.critChance || 0.05);
+        const critMult = isCrit ? (attacker.critDamage || 1.5) : 1.0;
+        
         let dmg = Math.max(1, attacker.atk - defender.def);
-        let crit = Math.random() < 0.1;
-        if (crit) dmg = Math.floor(dmg * 1.5);
+        dmg = Math.floor(dmg * critMult);
 
         defender.hp -= dmg;
-        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit?" (КРИТ)!":"."}`, "combat");
+        
+        let msg = `${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}.`;
+        let type = "combat";
+        
+        if (isCrit) {
+            msg = `💥 КРИТ! ${attacker.name || "Вы"} наносит ${dmg} урона!`;
+            type = "crit";
+        }
+
+        logFn(msg, type);
 
         if (defender.hp <= 0) {
             logFn(`${defender.name || "Враг"} погибает!`, "info");
@@ -405,7 +444,7 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕН ПОД ROT v2)
+ * МОДУЛЬ 5: RENDER MODULE
  * ====================================================================
  */
 const RenderModule = {
@@ -416,10 +455,9 @@ const RenderModule = {
     FONT_SIZE: 14,
 
     init: function() {
-        // Проверка наличия библиотеки. В rot.js v2 глобальный объект - ROT.
         if (typeof ROT === 'undefined') {
-            console.error("ROT object not found. Library failed to load.");
-            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету или блокировщики рекламы.");
+            console.error("ROT object not found.");
+            alert("Ошибка: Библиотека ROT.js не загрузилась.");
             throw new Error("ROT.js missing");
         }
 
@@ -492,10 +530,13 @@ const RenderModule = {
             document.getElementById("ui-loc-type").textContent = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
         }
 
+        // Обновленные статы с новыми полями
         document.getElementById("ui-stats").innerHTML = `
             <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
             <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
             <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
+            <div class="stat-row"><span>Скорость</span> <span class="val-spd">${player.speed}</span></div>
+            <div class="stat-row"><span>Крит</span> <span class="val-crit">${Math.round(player.critChance*100)}%</span></div>
             <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
         `;
         const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
@@ -575,8 +616,9 @@ const GameModule = {
             return;
         }
         
-        this.globalX = Math.floor(Math.random() * 10);
-        this.globalY = Math.floor(Math.random() * 10);
+        // Старт в случайной точке near 0,0
+        this.globalX = 0;
+        this.globalY = 0;
         
         this.loadLevel(this.globalX, this.globalY);
         
@@ -591,13 +633,16 @@ const GameModule = {
         this.items = [];
         this.explored.clear();
 
+        // Генерация названия и описания локации
         this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
         
+        // Генерация карты
         const startPos = MapModule.generate(gx, gy);
         
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
         RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
 
+        // Создание или перемещение игрока
         if (!this.player) {
             this.player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -605,28 +650,32 @@ const GameModule = {
             this.player.y = startPos.y;
         }
 
+        // Спавн сущностей с учетом координат для WorldCurve
         this.spawnEntities(gx, gy);
         this.renderFrame();
     },
 
     spawnEntities: function(gx, gy) {
+        // Используем seedrandom для детерминированного спавна на уровне
         const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
         const oldRand = Math.random;
         Math.random = rng; 
 
-        const diff = 1 + (Math.abs(gx) + Math.abs(gy)) * 0.1;
-
+        // Спавн врагов
         for(let i=0; i<6; i++) {
             const pos = MapModule.getRandomFloor(this.player);
             if (pos.x === this.player.x && pos.y === this.player.y) continue;
             const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, diff));
+            // Передаем gx, gy для расчета сложности
+            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, gx, gy));
         }
 
+        // Спавн предметов
         for(let i=0; i<4; i++) {
             const pos = MapModule.getRandomFloor(this.player);
             const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
-            this.items.push(EntityModule.createItem(type, pos.x, pos.y));
+            // Передаем gx, gy для расчета силы предмета
+            this.items.push(EntityModule.createItem(type, pos.x, pos.y, gx, gy));
         }
 
         Math.random = oldRand;
@@ -653,13 +702,16 @@ const GameModule = {
 
         if (MapModule.isWall(nx, ny)) return;
 
+        // Проверка атаки
         const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
         if (enemy) {
             CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
         } else {
+            // Движение
             this.player.x = nx;
             this.player.y = ny;
 
+            // Подбор предмета
             const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
             if (idx !== -1) {
                 const item = this.items[idx];
@@ -668,18 +720,20 @@ const GameModule = {
                 this.items.splice(idx, 1);
             }
 
+            // Переход по лестницам (ИСПРАВЛЕНО)
             if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
-                RenderModule.log("Вы поднимаетесь выше...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
+                RenderModule.log("Вы поднимаетесь выше (Y-1)...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX, this.globalY - 1), 100);
                 return;
             }
             if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
-                RenderModule.log("Вы спускаетесь ниже...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
+                RenderModule.log("Вы спускаетесь ниже (Y+1)...", "info");
+                setTimeout(()=>this.loadLevel(this.globalX, this.globalY + 1), 100);
                 return;
             }
         }
 
+        // Ход врагов
         this.enemies.forEach(e => {
             if (e.hp<=0) return;
             const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
@@ -687,6 +741,7 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
+                    // Простой поиск пути
                     const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
@@ -721,3 +776,4 @@ window.onload = () => GameModule.init();
 </script>
 </body>
 </html>
+```
