@@ -787,6 +787,7 @@ const GameModule = {
                 RenderModule.log("Вы спускаетесь ниже (Y+1)...", "info");
                 setTimeout(()=>this.loadLevel(this.globalX, this.globalY + 1), 100);
                 return;
+            }
         // 1. Обработка эффектов ИГРОКА (в начале или конце его хода)
         EffectSystemModule.processEffects(this.player, (msg, type) => RenderModule.log(msg, type));
 
