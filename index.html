@@ -3,7 +3,6 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Roguelike: Подземелье Координат</title>
     
     <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
@@ -16,10 +15,6 @@
     <script src="npc_generator.js"></script>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -38,96 +33,29 @@
             font-family: var(--font-stack);
             margin: 0;
             height: 100vh;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
-            padding: 8px;
         }
 
-        /* Основная сетка 3x3 */
-        .game-grid {
+        #game-layout {
             display: grid;
-            grid-template-columns: 1fr 3fr 1fr;
-            grid-template-rows: 1fr 3fr 1fr;
-            gap: 8px;
+            grid-template-columns: 260px 1fr 260px;
+            grid-template-rows: 60px 1fr 140px;
             height: 100%;
-            width: 100%;
+            gap: 4px;
+            padding: 4px;
+            box-sizing: border-box;
         }
 
-        /* Центрирование canvas */
-        .canvas-cell {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        #map-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #map-container canvas {
-            display: block;
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            image-rendering: crisp-edges;
-        }
-
-        /* Общие стили для всех панелей */
         .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 10px;
-            overflow-y: auto;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-        }
-
-        /* Верхняя панель */
-        .top-panel {
-            grid-column: 2;
-            grid-row: 1;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        /* Нижняя панель */
-        .bottom-panel {
-            grid-column: 2;
-            grid-row: 3;
-            flex-direction: row;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-        }
-
-        /* Левая панель */
-        .left-panel {
-            grid-column: 1;
-            grid-row: 1 / 4;
-        }
-
-        /* Правая панель */
-        .right-panel {
-            grid-column: 3;
-            grid-row: 1 / 4;
-        }
-
-        /* Canvas занимает центральную ячейку */
-        .canvas-cell {
-            grid-column: 2;
-            grid-row: 2;
         }
 
         h3 {
@@ -140,56 +68,53 @@
             letter-spacing: 1px;
         }
 
-        .loc-info {
-            text-align: right;
-        }
-        .loc-name {
-            color: var(--accent);
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-        .loc-coords {
-            color: var(--text-dim);
-            font-size: 0.85em;
-        }
-        .loc-desc {
-            color: var(--text-dim);
-            font-size: 0.8em;
-            font-style: italic;
-            margin-top: 2px;
-        }
-        .loc-type {
-            color: var(--gold);
-            font-size: 0.8em;
-            margin-top: 2px;
-        }
-
-        .stat-row {
+        header {
+            grid-column: 1 / -1;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 13px;
+            align-items: center;
+            padding: 0 15px;
         }
+        .loc-info { text-align: right; }
+        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
+        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
+        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
+        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
+
+        #map-container {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        #map-container canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
         .val-def { color: var(--accent); }
         .val-spd { color: #aaffaa; }
         .val-crit { color: #ffaa00; }
+        
+        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
+        .equip-item { color: var(--gold); }
 
-        .equip-slot {
-            font-size: 12px;
-            margin-bottom: 4px;
-            color: #aaa;
-        }
-        .equip-item {
-            color: var(--gold);
-        }
-
-        #inventory-list {
-            overflow-y: auto;
-            flex: 1;
-            margin-bottom: 10px;
-        }
+        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
         .inv-item {
             padding: 3px 5px;
             background: rgba(255,255,255,0.05);
@@ -201,9 +126,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .inv-item:hover {
-            background: rgba(255,255,255,0.1);
-        }
+        .inv-item:hover { background: rgba(255,255,255,0.1); }
 
         #log-list {
             overflow-y: auto;
@@ -212,86 +135,37 @@
             display: flex;
             flex-direction: column-reverse;
         }
-        .log-msg {
-            margin-bottom: 2px;
-            line-height: 1.2;
-            word-wrap: break-word;
-        }
+        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
         .log-combat { color: var(--danger); }
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
         .log-crit { color: #ffaa00; font-weight: bold; }
 
-        #minimap {
-            width: 100%;
-            background: #000;
+        #minimap-panel {
+            grid-column: 1;
+            grid-row: 3;
+            display: flex;
+            flex-direction: column;
+        }
+        #minimap { 
+            width: 100%; 
+            height: 100%; 
+            background: #000; 
             border-radius: 4px;
             image-rendering: pixelated;
-            margin-top: 10px;
-            aspect-ratio: 1 / 1;
         }
 
-        kbd {
-            background: #333;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #fff;
-            border: 1px solid #444;
+        footer {
+            grid-column: 2 / 4;
+            grid-row: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
         }
-
-        /* Адаптив для мобильных */
-        @media (max-width: 768px) {
-            body {
-                padding: 4px;
-            }
-            .game-grid {
-                gap: 4px;
-            }
-            .panel {
-                padding: 6px;
-            }
-            h3 {
-                font-size: 11px;
-            }
-            .stat-row, .equip-slot {
-                font-size: 10px;
-            }
-            .inv-item {
-                font-size: 9px;
-            }
-            .top-panel, .bottom-panel {
-                padding: 6px;
-            }
-            .loc-name {
-                font-size: 12px;
-            }
-            .loc-desc, .loc-type, .loc-coords {
-                font-size: 9px;
-            }
-            kbd {
-                padding: 1px 4px;
-                font-size: 10px;
-            }
-        }
-
-        /* Для очень узких экранов перестраиваем в колонку */
-        @media (max-width: 600px) {
-            .game-grid {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-                overflow-y: auto;
-            }
-            .left-panel, .right-panel, .top-panel, .canvas-cell, .bottom-panel {
-                width: 100%;
-            }
-            .canvas-cell {
-                min-height: 300px;
-            }
-            .left-panel, .right-panel {
-                max-height: 200px;
-            }
-        }
+        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
     </style>
 </head>
 ```
