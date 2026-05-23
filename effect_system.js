@@ -16,12 +16,6 @@ const EffectSystemModule = (function() {
 
     /**
      * Создает объект эффекта
-     * @param {string} id - уникальный идентификатор (напр. 'burn', 'haste')
-     * @param {string} name - отображаемое имя
-     * @param {string} type - тип эффекта из EFFECT_TYPES
-     * @param {number} duration - сколько ходов осталось
-     * @param {object} data - дополнительные данные (сила урона, модификаторы статов)
-     * @param {string} color - цвет для отображения в логе/UI
      */
     function createEffect(id, name, type, duration, data, color) {
         return {
@@ -36,9 +30,6 @@ const EffectSystemModule = (function() {
 
     /**
      * Добавляет эффект к существу.
-     * Если такой же эффект уже есть, обновляет длительность (или силу, если нужно).
-     * @param {object} entity - существо (игрок или враг)
-     * @param {object} effect - объект эффекта
      */
     function addEffect(entity, effect) {
         if (!entity.effects) entity.effects = [];
@@ -47,9 +38,9 @@ const EffectSystemModule = (function() {
         const existing = entity.effects.find(e => e.id === effect.id);
         
         if (existing) {
-            // Обновляем длительность (берем максимум или сумму - на выбор, здесь максимум)
+            // Обновляем длительность (берем максимум)
             existing.duration = Math.max(existing.duration, effect.duration);
-            // Можно также обновить силу (data), если эффект стал сильнее
+            // Если новый эффект сильнее, обновляем данные
             if (effect.data.power > existing.data.power) {
                 existing.data = effect.data;
             }
@@ -67,16 +58,11 @@ const EffectSystemModule = (function() {
     }
 
     /**
-     * Обрабатывает все активные эффекты существа в конце/начале хода.
-     * Вызывать один раз за ход для каждого активного существа.
-     * @param {object} entity - существо
-     * @param {function} logFn - функция логирования (опционально)
-     * @returns {object} результат обработки { damageTaken: 0, healed: 0, statChanges: {} }
+     * Обрабатывает все активные эффекты существа.
+     * Вызывать один раз за ход для каждого существа.
      */
     function processEffects(entity, logFn) {
         if (!entity.effects || entity.effects.length === 0) return;
-
-        const results = { damageTaken: 0, healed: 0 };
 
         // Проходимся по копии массива, так как эффекты могут удаляться
         [...entity.effects].forEach(effect => {
@@ -84,14 +70,12 @@ const EffectSystemModule = (function() {
             if (effect.type === EFFECT_TYPES.DOT) {
                 const dmg = effect.data.power || 1;
                 entity.hp -= dmg;
-                results.damageTaken += dmg;
                 if (logFn) logFn(`${entity.name} получает ${dmg} урона от ${effect.name}.`, "combat");
             } 
             else if (effect.type === EFFECT_TYPES.HOT) {
                 const heal = effect.data.power || 1;
                 const oldHp = entity.hp;
                 entity.hp = Math.min(entity.maxHp, entity.hp + heal);
-                results.healed += (entity.hp - oldHp);
                 if (logFn && (entity.hp - oldHp) > 0) logFn(`${entity.name} восстанавливает ${heal} HP.`, "info");
             }
 
@@ -108,11 +92,8 @@ const EffectSystemModule = (function() {
 
     /**
      * Получает суммарный модификатор к стату от всех активных баффов/дебаффов
-     * Например, если есть 'haste' (+2 speed) и 'slow' (-1 speed), вернет +1.
-     * @param {object} entity 
-     * @param {string} statName - 'atk', 'def', 'speed' и т.д.
      */
-    getStatModifier(entity, statName) {
+    function getStatModifier(entity, statName) {
         if (!entity.effects) return 0;
         let mod = 0;
         entity.effects.forEach(e => {
@@ -121,43 +102,44 @@ const EffectSystemModule = (function() {
             }
         });
         return mod;
-    },
+    }
 
     // --- Фабрика стандартных эффектов (примеры) ---
 
-    createBurn: function(duration, power) {
+    function createBurn(duration, power) {
         return createEffect('burn', 'Горение', EFFECT_TYPES.DOT, duration, { power: power }, '#ff5500');
-    },
+    }
 
-    createPoison: function(duration, power) {
+    function createPoison(duration, power) {
         return createEffect('poison', 'Яд', EFFECT_TYPES.DOT, duration, { power: power }, '#00ff00');
-    },
+    }
 
-    createHaste: function(duration, speedBonus) {
+    function createHaste(duration, speedBonus) {
         return createEffect('haste', 'Спешка', EFFECT_TYPES.BUFF, duration, { stats: { speed: speedBonus } }, '#ffff00');
-    },
+    }
 
-    createWeakness: function(duration, atkPenalty) {
+    function createWeakness(duration, atkPenalty) {
         return createEffect('weakness', 'Слабость', EFFECT_TYPES.DEBUFF, duration, { stats: { atk: -atkPenalty } }, '#888888');
-    },
+    }
 
-    createRegen: function(duration, power) {
+    function createRegen(duration, power) {
         return createEffect('regen', 'Регенерация', EFFECT_TYPES.HOT, duration, { power: power }, '#00ffaa');
     }
 
+    // ПУБЛИЧНЫЙ ИНТЕРФЕЙС
     return {
         addEffect: addEffect,
         removeEffect: removeEffect,
         processEffects: processEffects,
         getStatModifier: getStatModifier,
         
-        // Экспортируем фабрику для удобства
+        // Экспортируем фабрику для удобства вызова: EffectSystemModule.Effects.createBurn(...)
         Effects: {
-            createBurn: this.createBurn,
-            createPoison: this.createPoison,
-            createHaste: this.createHaste,
-            createWeakness: this.createWeakness,
-            createRegen: this.createRegen
+            createBurn: createBurn,
+            createPoison: createPoison,
+            createHaste: createHaste,
+            createWeakness: createWeakness,
+            createRegen: createRegen
         }
     };
 })();
