@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -38,58 +38,61 @@
             font-family: var(--font-stack);
             margin: 0;
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 8px;
         }
 
-        /* Главный контейнер — карта в центре, панели вокруг */
-        #game-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        /* Основная сетка: три колонки, верхняя панель через всю ширину */
+        .game-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr 280px;
+            grid-template-rows: auto 1fr auto;
             gap: 8px;
             max-width: 100%;
-            max-height: 100vh;
-            flex-wrap: wrap;
+            height: calc(100vh - 16px);
         }
 
-        /* Левая панель — фиксированная ширина, подстраивается по высоте под карту */
-        .side-panel {
-            width: 240px;
+        /* Верхняя панель — на всю ширину сетки */
+        .top-panel {
+            grid-column: 1 / -1;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Левая панель (статы + экипировка + миникарта) */
+        .left-panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 10px;
             display: flex;
             flex-direction: column;
-            align-self: stretch;
             overflow-y: auto;
-            max-height: calc(100vh - 16px);
         }
 
         /* Центр — квадратная карта */
-        .map-wrapper {
+        .map-center {
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            flex-shrink: 1;
-            min-width: 300px;
+            align-items: center;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0;
         }
 
         #map-container {
-            background: #000;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
+            width: 100%;
+            height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
-            aspect-ratio: 1 / 1;
-            width: 100%;
-            max-width: calc(100vh - 80px);
-            max-height: calc(100vh - 80px);
         }
 
         #map-container canvas {
@@ -101,19 +104,39 @@
             border-radius: 4px;
         }
 
-        /* Верхняя панель с информацией о локации */
-        .top-bar {
+        /* Правая панель (инвентарь + лог) */
+        .right-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Нижняя панель (футер) — на всю ширину, но под правой панелью */
+        .footer-panel {
+            grid-column: 1 / -1;
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 8px 16px;
-            margin-bottom: 8px;
-            width: 100%;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        h3 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            letter-spacing: 1px;
         }
 
         .loc-info {
@@ -140,45 +163,6 @@
             margin-top: 2px;
         }
 
-        /* Правая панель — инвентарь + лог */
-        .right-panel {
-            width: 260px;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-self: stretch;
-            overflow-y: auto;
-            max-height: calc(100vh - 16px);
-        }
-
-        /* Нижняя панель с управлением */
-        .footer-bar {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px 16px;
-            margin-top: 8px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-
-        h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 4px;
-            letter-spacing: 1px;
-        }
-
         .stat-row {
             display: flex;
             justify-content: space-between;
@@ -203,7 +187,6 @@
         #inventory-list {
             overflow-y: auto;
             flex: 1;
-            max-height: 200px;
             margin-bottom: 10px;
         }
         .inv-item {
@@ -227,7 +210,6 @@
             font-size: 11px;
             display: flex;
             flex-direction: column-reverse;
-            max-height: 300px;
         }
         .log-msg {
             margin-bottom: 2px;
@@ -256,62 +238,36 @@
             border: 1px solid #444;
         }
 
-        /* Адаптив для вертикальных экранов и мобильных */
+        /* Адаптив для вертикальных экранов */
         @media (max-width: 900px) {
-            body {
-                padding: 4px;
-            }
-            .side-panel, .right-panel {
-                width: 200px;
-            }
-            .top-bar {
-                font-size: 12px;
+            .game-grid {
+                grid-template-columns: 220px 1fr 240px;
+                gap: 6px;
             }
         }
 
         @media (max-width: 768px) {
-            #game-container {
-                flex-direction: column;
-                align-items: stretch;
+            .game-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto;
+                height: auto;
             }
-            .side-panel, .right-panel {
-                width: 100%;
-                max-height: 200px;
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 10px;
+            .top-panel {
+                grid-column: 1;
             }
-            .side-panel > div, .right-panel > div {
-                flex: 1;
-                min-width: 120px;
+            .left-panel, .map-center, .right-panel, .footer-panel {
+                grid-column: 1;
             }
-            .map-wrapper {
-                order: -1;
+            .map-center {
+                min-height: 60vh;
             }
-            #map-container {
-                max-width: 90vw;
-                max-height: 90vw;
-            }
-            .top-bar, .footer-bar {
-                font-size: 10px;
-                padding: 6px 12px;
+            .left-panel, .right-panel {
+                max-height: 300px;
             }
         }
     </style>
 </head>
-
-
-<div id="game-layout">
-    <header class="panel">
-        <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
-        <div class="loc-info">
-            <div id="ui-loc-type" class="loc-type"></div>
-            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <div id="ui-loc-desc" class="loc-desc"></div>
-            <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
-        </div>
-    </header>
-
+```
     <div class="panel" style="grid-row: 2;">
         <h3>Персонаж</h3>
         <div id="ui-stats"></div>
