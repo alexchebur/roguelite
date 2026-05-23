@@ -654,45 +654,59 @@ const GameModule = {
     },
 
     spawnEntities: function(gx, gy) {
-        // Используем seedrandom для детерминированного спавна на уровне
+        // 1. Инициализация детерминированного генератора для этого уровня
         const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
         const oldRand = Math.random;
         Math.random = rng; 
 
-        // Спавн врагов
-        for(let i=0; i<6; i++) {
+        // Очищаем списки перед спавном
+        this.enemies = [];
+        this.items = [];
+        this.npcs = [];
+
+        // 2. Спавн врагов
+        for(let i = 0; i < 6; i++) {
             const pos = MapModule.getRandomFloor(this.player);
+            // Простая проверка, чтобы не спавнить врага прямо на игроке
             if (pos.x === this.player.x && pos.y === this.player.y) continue;
-            const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            // Передаем gx, gy для расчета сложности
+            
+            const typeIndex = Math.floor(Math.random() * DataModule.ENEMY_TYPES.length);
+            const type = DataModule.ENEMY_TYPES[typeIndex];
+            
+            // Передаем gx, gy для расчета сложности через WorldCurve
             this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, gx, gy));
         }
 
-        // Спавн предметов
-        for(let i=0; i<4; i++) {
+        // 3. Спавн предметов
+        for(let i = 0; i < 4; i++) {
             const pos = MapModule.getRandomFloor(this.player);
-            const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
+            const typeIndex = Math.floor(Math.random() * DataModule.ITEM_TYPES.length);
+            const type = DataModule.ITEM_TYPES[typeIndex];
+            
             // Передаем gx, gy для расчета силы предмета
             this.items.push(EntityModule.createItem(type, pos.x, pos.y, gx, gy));
         }
 
-    
-        this.npcs = []; // Очищаем старых NPC
-    
-        // Пытаемся создать NPC для этого уровня
+        // 4. Спавн NPC (использует свой собственный сид внутри модуля, но мы вызываем его здесь)
+        // NpcGeneratorModule сам решит, будет ли NPC на этом уровне (шанс 30%)
         const npcData = NpcGeneratorModule.generateNPC(gx, gy, this.player);
     
         if (npcData) {
             // Находим свободное место для NPC
             const pos = MapModule.getRandomFloor(this.player);
-            // Проверка, чтобы не попасть во врага или предмет (упрощенно)
-            npcData.x = pos.x;
-            npcData.y = pos.y;
-            this.npcs.push(npcData);
-            RenderModule.log(`Вы заметили: ${npcData.name}`, "info");
+            
+            // Проверка: не спавнить NPC там, где уже есть враг (упрощенно)
+            const isOccupied = this.enemies.some(e => e.x === pos.x && e.y === pos.y);
+            
+            if (!isOccupied) {
+                npcData.x = pos.x;
+                npcData.y = pos.y;
+                this.npcs.push(npcData);
+                RenderModule.log(`Вы заметили: ${npcData.name}`, "info");
+            }
         }
-},
 
+        // 5. Возвращаем стандартный Math.random
         Math.random = oldRand;
     },
 
