@@ -506,7 +506,11 @@ const RenderModule = {
         items.forEach(i => {
             if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
         });
-
+        npcs.forEach(npc => {
+            if (visible.has(`${npc.x},${npc.y}`)) {
+                this.display.draw(npc.x, npc.y, npc.char, npc.color);
+            }
+        });
         enemies.forEach(e => {
             if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
         });
@@ -786,7 +790,7 @@ const GameModule = {
     },
 
     renderFrame: function() {
-        const vis = RenderModule.draw(this.player, this.enemies, this.items);
+        const vis = RenderModule.draw(this.player, this.enemies, this.items, this.npcs);
         vis.forEach(k => this.explored.add(k));
         RenderModule.updateUI(this.player, this.currentLocData);
         RenderModule.drawMinimap(this.player, this.explored);
