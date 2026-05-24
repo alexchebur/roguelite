@@ -74,11 +74,12 @@
             letter-spacing: 1px;
         }
         header {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 15px;
+            grid-column: 1 / -1; /* от первой до последней колонки */
+            grid-row: 1; /* первая строка */
+            /* Добавляем отрицательные марджины, чтобы "вылезти" за границы */
+            margin: 0 calc(-1 * var(--gap) - var(--padding));
+            box-sizing: border-box;
+            padding: 15px; /* ваш оригинальный padding */
         }
         .loc-info { text-align: right; }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
