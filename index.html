@@ -491,25 +491,32 @@ function generateLevelData(x, y) {
         }
     }
 
-    // 6. Генерация предметов (НОВАЯ ЛОГИКА)
+    // 6. Генерация предметов (ОБНОВЛЕННАЯ ЛОГИКА: Случайное размещение)
     const items = [];
+    
     // Шанс спавна предмета на уровне (базовый + бонус от тренда)
     let itemSpawnChance = 0.3 + (depth * 0.01); 
     if (trend.magicFindMult) itemSpawnChance *= trend.magicFindMult;
     
-    // Количество попыток спавна предметов
-    const itemAttempts = 10 + Math.floor(depth / 2);
+    // Количество попыток спавна предметов (чем глубже, тем больше попыток)
+    const itemAttempts = 15 + Math.floor(depth / 2);
     
     for (let i = 0; i < itemAttempts; i++) {
-        if (rng.next() > itemSpawnChance) continue; // Не спавним в этой попытке
+        // Решаем, спавнить ли предмет в этой попытке
+        if (rng.next() > itemSpawnChance) continue; 
 
         let ix, iy;
         let attempts = 0;
+        // Ищем свободное место
         do {
             ix = rng.int(1, MAP_WIDTH - 2);
             iy = rng.int(1, MAP_HEIGHT - 2);
             attempts++;
-            // Проверка: пол, не старт, нет другого предмета, нет врага
+            // Проверка условий занятости клетки:
+            // 1. Это должен быть пол (0)
+            // 2. Не точка старта игрока
+            // 3. Там нет другого уже созданного предмета
+            // 4. Там нет врага
         } while (
             (dungeonData.mapData[iy][ix] !== 0 || 
              (ix === dungeonData.startPos.x && iy === dungeonData.startPos.y) ||
@@ -518,11 +525,12 @@ function generateLevelData(x, y) {
             ) && attempts < 50
         );
 
+        // Если место найдено быстро (менее 50 попыток), создаем предмет
         if (attempts < 50) {
-            // Выбор типа предмета
+            // Выбор типа предмета из базы
             const itemTemplate = ITEM_TYPES[rng.int(0, ITEM_TYPES.length - 1)];
             
-            // Копируем объект, чтобы не мутировать базу
+            // Копируем объект, чтобы не мутировать базу данных
             const newItem = { ...itemTemplate };
             newItem.x = ix;
             newItem.y = iy;
