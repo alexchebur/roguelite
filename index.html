@@ -82,6 +82,7 @@
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
         /* --- КАРТА (ОБНОВЛЕНО ДЛЯ МАСШТАБИРОВАНИЯ) --- */
+        /* --- КАРТА --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
@@ -92,21 +93,17 @@
             border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
-            
-            /* Занимаем все доступное место в центральной ячейке грида */
             width: 100%;
             height: 100%;
+            /* Убран aspect-ratio: 1/1, чтобы использовать всё доступное пространство грида */
         }
 
-        /* Canvas масштабируется через JS transform, но должен иметь абсолютное позиционирование для корректной работы scale */
         #map-container canvas {
             display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            transform-origin: top left; /* Точка отсчета трансформации */
-            image-rendering: pixelated; /* Сохраняем четкость пикселей */
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transform-origin: center center; /* Масштабирование от центра */
+            image-rendering: pixelated;
+            /* Убраны position: absolute и width/height 100% !important, 
+               чтобы flexbox и transform работали корректно */
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
@@ -411,15 +408,15 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО: КАМЕРА СЛЕДУЕТ ЗА ИГРОКОМ)
+ * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО: ПОЛНАЯ ОТРИСОВКА ОКНА + КАМЕРА)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    COLS: 50,  // Видимая ширина в клетках
-    ROWS: 50,  // Видимая высота в клетках
-    FONT_SIZE: 14,
+    COLS: 60,   // Увеличили ширину видимого окна
+    ROWS: 40,   // Увеличили высоту видимого окна
+    FONT_SIZE: 14, // Чуть уменьшили шрифт для лучшей вместимости
 
     init: function() {
         if (typeof ROT === 'undefined') {
@@ -438,125 +435,110 @@ const RenderModule = {
         
         const container = document.getElementById("map-container");
         container.innerHTML = ""; 
-        container.appendChild(this.display.getContainer());
+        const canvas = this.display.getContainer();
+        container.appendChild(canvas);
         
-        // Инициализация FOV
         this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
         
         // --- МАСШТАБИРОВАНИЕ ---
-        const canvas = this.display.getContainer();
-        
         const resizeGame = () => {
-            const frameWidth = container.clientWidth;
-            const frameHeight = container.clientHeight;
+            const fw = container.clientWidth;
+            const fh = container.clientHeight;
+            const cw = canvas.width;
+            const ch = canvas.height;
             
-            // Вычисляем масштаб, чтобы вписать игру в экран с сохранением пропорций
-            const scaleX = frameWidth / canvas.width;
-            const scaleY = frameHeight / canvas.height;
-            const scale = Math.min(scaleX, scaleY);
-
-            // Применяем трансформацию
+            const scale = Math.min(fw / cw, fh / ch);
             canvas.style.transform = `scale(${scale})`;
-            // Центрируем canvas внутри контейнера через CSS (уже сделано в style)
         };
 
         window.addEventListener("resize", resizeGame);
-        setTimeout(resizeGame, 0);
+        setTimeout(resizeGame, 50); // Небольшая задержка для гарантии расчёта layout
     },
 
-    // Helper: Вычисляет смещение камеры, чтобы игрок был в центре
     getCameraOffset: function(player) {
-        const centerX = Math.floor(this.COLS / 2);
-        const centerY = Math.floor(this.ROWS / 2);
         return {
-            x: player.x - centerX,
-            y: player.y - centerY
+            x: player.x - Math.floor(this.COLS / 2),
+            y: player.y - Math.floor(this.ROWS / 2)
         };
     },
 
     draw: function(player, enemies, items) {
         this.display.clear();
-        const visible = new Set();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
+        const cam = this.getCameraOffset(player);
 
-        // 1. Вычисляем видимость (FOV) в мировых координатах
-        this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
+        // 1. Вычисляем видимость (увеличили радиус до 15)
+        const visible = new Set();
+        this.fov.compute(player.x, player.y, 15, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 2. Вычисляем смещение камеры
-        const cam = this.getCameraOffset(player);
+        // 2. Рисуем ВЕСЬ экран (COLS x ROWS), а не только видимые клетки
+        for (let sy = 0; sy < this.ROWS; sy++) {
+            for (let sx = 0; sx < this.COLS; sx++) {
+                const wx = sx + cam.x; // Мировая X
+                const wy = sy + cam.y; // Мировая Y
+                
+                // Пропускаем, если вышли за границы мира
+                if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
-        // 3. Рендерим карту
-        // Проходим по видимым клеткам FOV
-        visible.forEach(key => {
-            const [wx, wy] = key.split(',').map(Number); // World X, World Y
-            
-            // Преобразуем мировые координаты в экранные
-            const dx = wx - cam.x;
-            const dy = wy - cam.y;
-
-            // Рисуем только если клетка попадает в экран
-            if (dx >= 0 && dx < this.COLS && dy >= 0 && dy < this.ROWS) {
+                const isVisible = visible.has(`${wx},${wy}`);
                 let ch, fg, bg;
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
-                    fg = dtype.wallColor;
+                    // Если клетка не видна, делаем её тёмной, но НЕ скрываем
+                    fg = isVisible ? dtype.wallColor : '#222'; 
                     bg = "#000";
                 } else {
                     ch = dtype.floorChar;
-                    fg = dtype.floorColor;
+                    fg = isVisible ? dtype.floorColor : '#111';
                     bg = "#000";
                 }
                 
                 // Лестницы
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) { 
-                    ch = ">"; fg = "#FFF"; 
+                    ch = ">"; fg = isVisible ? "#FFF" : "#333"; 
                 }
                 if (MapModule.stairsDown && wx === MapModule.stairsDown.x && wy === MapModule.stairsDown.y) { 
-                    ch = "<"; fg = "#888"; 
+                    ch = "<"; fg = isVisible ? "#888" : "#222"; 
                 }
 
-                this.display.draw(dx, dy, ch, fg, bg);
+                this.display.draw(sx, sy, ch, fg, bg);
             }
-        });
+        }
 
-        // 4. Рендерим предметы
+        // 3. Рисуем предметы (поверх карты)
         items.forEach(i => {
-            if (visible.has(`${i.x},${i.y}`)) {
-                const dx = i.x - cam.x;
-                const dy = i.y - cam.y;
-                if (dx >= 0 && dx < this.COLS && dy >= 0 && dy < this.ROWS) {
-                    this.display.draw(dx, dy, i.char, i.color);
-                }
+            const sx = i.x - cam.x;
+            const sy = i.y - cam.y;
+            if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS && visible.has(`${i.x},${i.y}`)) {
+                this.display.draw(sx, sy, i.char, i.color);
             }
         });
 
-        // 5. Рендерим врагов
+        // 4. Рисуем врагов
         enemies.forEach(e => {
-            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) {
-                const dx = e.x - cam.x;
-                const dy = e.y - cam.y;
-                if (dx >= 0 && dx < this.COLS && dy >= 0 && dy < this.ROWS) {
-                    this.display.draw(dx, dy, e.char, e.color);
+            if (e.hp > 0) {
+                const sx = e.x - cam.x;
+                const sy = e.y - cam.y;
+                if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS && visible.has(`${e.x},${e.y}`)) {
+                    this.display.draw(sx, sy, e.char, e.color);
                 }
             }
         });
 
-        // 6. Рендерим игрока (всегда в центре экрана)
-        const centerScreenX = Math.floor(this.COLS / 2);
-        const centerScreenY = Math.floor(this.ROWS / 2);
-        this.display.draw(centerScreenX, centerScreenY, player.char, player.color);
+        // 5. Игрок всегда в центре экрана
+        this.display.draw(Math.floor(this.COLS / 2), Math.floor(this.ROWS / 2), player.char, player.color);
 
         return visible;
     },
 
+    // ... (остальные методы updateUI, log, drawMinimap оставляем без изменений) ...
     updateUI: function(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
             document.getElementById("ui-loc-desc").textContent = locData.description;
-            
             let typeText = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
                 typeText += ` | ${worldTrend.name}`;
@@ -566,7 +548,6 @@ const RenderModule = {
             }
             document.getElementById("ui-loc-type").textContent = typeText;
         }
-
         document.getElementById("ui-stats").innerHTML = `
             <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
             <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
@@ -606,15 +587,11 @@ const RenderModule = {
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20; 
         cvs.height = rect.height - 40; 
-
         const ctx = cvs.getContext("2d");
         ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
-        
         const cw = cvs.width / DataModule.MAP_WIDTH;
         const ch = cvs.height / DataModule.MAP_HEIGHT;
-
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-
         explored.forEach(k => {
             const [x,y] = k.split(',').map(Number);
             ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
