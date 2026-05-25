@@ -2,855 +2,835 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Roguelike: Подземелье Координат</title>
-    
-    <!-- ROT.js v2.2.1 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
-    <!-- Seedrandom -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
-    
-    <!-- ВАШИ МОДУЛИ -->
-    <script src="name_generator.js"></script>
-    <script src="dungeon_generator.js"></script>
-    <script src="worldCurve.js"></script>
-
     <style>
         :root {
-            --bg-color: #0d1117;
-            --panel-bg: #161b22;
-            --border-color: #30363d;
-            --text-main: #c9d1d9;
-            --text-dim: #8b949e;
-            --accent: #58a6ff;
-            --danger: #f85149;
-            --gold: #d29922;
-            --font-stack: 'Consolas', 'Monaco', monospace;
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --accent-color: #4caf50;
+            --danger-color: #f44336;
+            --ui-bg: #2d2d2d;
+            --border-color: #444;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-stack);
             margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
             overflow: hidden;
+            user-select: none;
         }
 
-        #game-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 100px 1fr 140px;
-            height: 100%;
-            gap: 4px;
-            padding: 4px;
-            box-sizing: border-box;
-        }
-
-        .panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
+        /* Верхняя панель: Координаты и Название */
+        #header {
             padding: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            color: var(--text-dim);
+            background-color: var(--ui-bg);
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 4px;
-            letter-spacing: 1px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        #location-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+        #coords-display {
+            font-size: 0.9em;
+            color: #888;
+        }
+        #world-trend {
+            font-size: 0.8em;
+            margin-top: 4px;
+            font-style: italic;
         }
 
-        header {
-            grid-column: 1 / -1;
-            display: flex;
-            flex-direction: column; 
-            justify-content: space-between;
-            align-items: center;
-            text-align: center;
-            padding: 10px 15px; 
-        }
-        .loc-info { text-align: center; width: 100% }
-        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
-        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
-        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
-        
-        #map-container {
-            grid-column: 2;
-            grid-row: 2;
+        /* Основная область игры */
+        #game-container {
+            flex-grow: 1;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #000;
-            border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
-            width: 100%;
-            height: 100%;
+            background: #000;
         }
 
-        #map-container canvas {
-            display: block;
-            transform-origin: center center;
-            image-rendering: pixelated;
+        canvas {
+            image-rendering: pixelated; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
-        .val-hp { color: var(--danger); }
-        .val-atk { color: var(--gold); }
-        .val-def { color: var(--accent); }
-        
-        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
-        .equip-item { color: var(--gold); }
-
-        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
-        .inv-item {
-            padding: 3px 5px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 3px;
-            cursor: pointer;
-            font-size: 11px;
-            border-radius: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        /* Панель статов и инвентаря */
+        #stats-panel {
+            padding: 10px;
+            background-color: var(--ui-bg);
+            border-top: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+            flex-shrink: 0;
         }
-        .inv-item:hover { background: rgba(255,255,255,0.1); }
 
-        #log-list {
-            overflow-y: auto;
-            flex: 1;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column-reverse;
-        }
-        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
-        .log-combat { color: var(--danger); }
-        .log-loot { color: var(--gold); }
-        .log-info { color: var(--accent); }
-
-        #minimap-panel {
-            grid-column: 1;
-            grid-row: 3;
-            display: flex;
-            flex-direction: column;
-        }
-        #minimap { 
-            width: 100%; 
-            height: 100%; 
-            background: #000; 
+        .stat-box {
+            background: rgba(0,0,0,0.2);
+            padding: 5px;
             border-radius: 4px;
-            image-rendering: pixelated;
         }
 
-        footer {
-            grid-column: 2 / 4;
-            grid-row: 3;
+        .stat-row {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
+            justify-content: space-between;
+            margin-bottom: 2px;
         }
-        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
+
+        #inventory-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+            min-height: 30px;
+        }
+
+        .inv-item {
+            background: #444;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            cursor: pointer;
+            border: 1px solid #555;
+        }
+        .inv-item:hover { background: #555; }
+        .inv-item.weapon { border-color: #ff9800; }
+        .inv-item.armor { border-color: #2196f3; }
+        .inv-item.consumable { border-color: #4caf50; }
+
+        /* Лог событий */
+        #log-container {
+            height: 80px;
+            overflow-y: auto;
+            padding: 5px 10px;
+            background: #111;
+            font-size: 0.8em;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .log-entry { margin-bottom: 2px; }
+        .log-combat { color: #ff5252; }
+        .log-loot { color: #ffd740; }
+        .log-info { color: #888; }
+
+        /* Управление */
+        #controls {
+            padding: 10px;
+            background-color: var(--ui-bg);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        
+        button {
+            background: #444;
+            border: 1px solid #555;
+            color: white;
+            padding: 15px 0;
+            font-size: 1.2em;
+            border-radius: 5px;
+            touch-action: manipulation;
+        }
+        button:active { background: #666; }
+        #btn-up { grid-column: 2; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-wait { grid-column: 2; grid-row: 2; font-size: 0.9em; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 3; }
+
+        /* Модальное окно перехода */
+        #transition-modal {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        #transition-content {
+            background: var(--ui-bg);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--accent-color);
+            max-width: 80%;
+        }
+        #next-level-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: var(--accent-color);
+            border: none;
+            color: black;
+            font-weight: bold;
+        }
 
     </style>
+    <!-- Подключаем внешние модули -->
+    <script src="name_generator.js"></script>
+    <script src="dungeon_generator.js"></script>
+    <script src="worldCurve.js"></script>
 </head>
 <body>
 
-<div id="game-layout">
-    <header class="panel">
-        <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
-        <div class="loc-info">
-            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <div id="ui-loc-type" class="loc-type"></div>
-            <div id="ui-loc-desc" class="loc-desc"></div>
-            <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
+    <div id="header">
+        <div id="location-name">Инициализация...</div>
+        <div id="coords-display">X: 0, Y: 0</div>
+        <div id="world-trend"></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="transition-modal">
+            <div id="transition-content">
+                <h2 id="trans-title">Уровень пройден!</h2>
+                <p id="trans-desc">Вы нашли лестницу вниз.</p>
+                <button id="next-level-btn">Спуститься</button>
+            </div>
         </div>
-    </header>
-
-    <div class="panel" style="grid-row: 2;">
-        <h3>Персонаж</h3>
-        <div id="ui-stats"></div>
-        <h3 style="margin-top: 15px;">Экипировка</h3>
-        <div id="ui-equip"></div>
     </div>
 
-    <div id="map-container"></div>
-
-
-    <div class="panel" style="grid-row: 2;">
-        <h3>Инвентарь</h3>
-        <div id="inventory-list"></div>
-        <h3 style="margin-top: 10px;">Журнал событий</h3>
-        <div id="log-list"></div>
+    <div id="stats-panel">
+        <div class="stat-box">
+            <div class="stat-row"><span>HP:</span> <span id="hp-val">100/100</span></div>
+            <div class="stat-row"><span>ATK:</span> <span id="atk-val">5</span></div>
+            <div class="stat-row"><span>DEF:</span> <span id="def-val">0</span></div>
+            <div class="stat-row"><span>LVL:</span> <span id="lvl-val">1</span></div>
+        </div>
+        <div class="stat-box">
+            <div style="margin-bottom:5px; font-weight:bold;">Инвентарь</div>
+            <div id="inventory-list"></div>
+        </div>
     </div>
-    <div id="minimap-panel" class="panel">
-        <h3>Карта мира</h3>
-        <canvas id="minimap"></canvas>
-    </div>
 
-    <footer class="panel">
-        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
-        <span><kbd>Space</kbd> Пропуск хода</span>
-        <span><kbd>Click</kbd> Использовать предмет</span>
-    </footer>
-</div>
+    <div id="log-container"></div>
+
+    <div id="controls">
+        <button id="btn-up">↑</button>
+        <button id="btn-left">←</button>
+        <button id="btn-wait">Ждать</button>
+        <button id="btn-right">→</button>
+        <button id="btn-down">↓</button>
+    </div>
 
 <script>
 /**
- * ====================================================================
- * МОДУЛЬ 1: DATA MODULE
- * ====================================================================
+ * ОСНОВНОЙ СКРИПТ ИГРЫ
+ * Интегрирует NameGenerator, DungeonGenerator и WorldCurve
  */
-const DataModule = {
-    ITEM_ADJECTIVES: ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"],
-    
-    ENEMY_TYPES: [
-        { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
-        { name: "Скелет", char: "s", color: "#B0BEC5", hp: [15, 25], atk: [3, 6], def: [1, 2] },
-        { name: "Орк",    char: "O", color: "#8BC34A", hp: [30, 50], atk: [6, 10], def: [2, 4] },
-        { name: "Призрак",char: "G", color: "#7C4DFF", hp: [10, 15], atk: [5, 8], def: [0, 1] },
-        { name: "Дракон", char: "D", color: "#FF5722", hp: [80, 120], atk: [15, 25], def: [5, 10] }
-    ],
 
-    ITEM_TYPES: [
-        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
-        { type: "armor",  char: "]", color: "#9E9E9E", baseName: "Броня", stat: "def", val: [1, 3] },
-        { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
-        { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
-    ],
+// --- КОНФИГУРАЦИЯ ---
+const TILE_SIZE = 24;
+const VIEW_WIDTH = 15; // Ширина видимой области в тайлах
+const VIEW_HEIGHT = 15;
+const MAP_WIDTH = 40;
+const MAP_HEIGHT = 40;
 
-    MAP_WIDTH: 100,
-    MAP_HEIGHT: 100
+// --- СОСТОЯНИЕ ИГРЫ ---
+const gameState = {
+    player: {
+        x: 0, y: 0,
+        hp: 100, maxHp: 100,
+        baseAtk: 5, baseDef: 0,
+        level: 1, xp: 0, nextLevelXp: 100,
+        inventory: [],
+        equipment: { weapon: null, armor: null }
+    },
+    currentLevel: {
+        x: 0, y: 0,
+        map: [],
+        items: [], // {x, y, type, data}
+        enemies: [], // {x, y, hp, maxHp, atk, def, name, symbol}
+        stairs: {x: 0, y: 0},
+        visited: new Set(), // "x,y"
+        theme: null,
+        trend: null
+    },
+    camera: { x: 0, y: 0 },
+    isGameOver: false
 };
 
-/**
- * ====================================================================
- * МОДУЛЬ 2: MAP WRAPPER
- * ====================================================================
- */
-const MapModule = {
-    currentMapData: null,
-    currentDungeonType: null,
-    stairsUp: null,
-    stairsDown: null,
+// --- БАЗЫ ДАННЫХ ПРЕДМЕТОВ И ВРАГОВ ---
+const ITEM_TYPES = [
+    { id: 'potion_hp', name: 'Зелье лечения', type: 'consumable', effect: 'heal', val: 20, symbol: '♥', color: '#f44336' },
+    { id: 'sword_iron', name: 'Железный меч', type: 'weapon', slot: 'weapon', atk: 3, symbol: '†', color: '#ccc' },
+    { id: 'shield_wood', name: 'Деревянный щит', type: 'armor', slot: 'armor', def: 2, symbol: '🛡', color: '#8d6e63' },
+    { id: 'ring_power', name: 'Кольцо силы', type: 'accessory', slot: 'accessory', atk: 1, symbol: '☀', color: '#ffd700' }
+];
 
-    generate: function(gx, gy) {
-        const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
-        
-        this.currentMapData = result.mapData;
-        this.currentDungeonType = result.dungeonType;
-        
-        const levelSeed = `lvl_${gx}_${gy}`;
-        this.stairsDown = this._findRandomFloor(result.startPos, false, levelSeed + '_down');
-        this.stairsUp = this._findRandomFloor(result.startPos, true, levelSeed + '_up');
+const ENEMY_TEMPLATES = [
+    { name: 'Крыса', hp: 15, atk: 3, def: 0, symbol: 'r', color: '#a1887f' },
+    { name: 'Гоблин', hp: 30, atk: 5, def: 1, symbol: 'g', color: '#4caf50' },
+    { name: 'Скелет', hp: 45, atk: 8, def: 2, symbol: 's', color: '#e0e0e0' },
+    { name: 'Орк', hp: 80, atk: 12, def: 4, symbol: 'O', color: '#2e7d32' },
+    { name: 'Тролль', hp: 150, atk: 18, def: 8, symbol: 'T', color: '#1b5e20' }
+];
 
-        return result.startPos;
-    },
+// --- СИСТЕМНЫЕ ФУНКЦИИ ---
 
-    isWall: function(x, y) {
-        if (!this.currentMapData) return true;
-        if (x < 0 || x >= DataModule.MAP_WIDTH || y < 0 || y >= DataModule.MAP_HEIGHT) return true;
-        return this.currentMapData[y][x] === 1;
-    },
+function log(msg, type='info') {
+    const container = document.getElementById('log-container');
+    const div = document.createElement('div');
+    div.className = `log-entry log-${type}`;
+    div.innerText = `> ${msg}`;
+    container.prepend(div);
+    if (container.children.length > 50) container.lastChild.remove();
+}
 
-    getRandomFloor: function(excludePos) {
-        return this._findRandomFloor(excludePos);
-    },
-
-    _findRandomFloor: function(excludePos, far=false, seed=null) {
-        if (!seed) seed = `stairs_${this.currentDungeonType?.name || 'default'}`;
+function updateUI() {
+    // Stats
+    const p = gameState.player;
+    // Расчет полных статов с экипировкой
+    let totalAtk = p.baseAtk;
+    let totalDef = p.baseDef;
     
-        const rng = new Math.seedrandom(seed);
+    if (p.equipment.weapon) totalAtk += p.equipment.weapon.atk || 0;
+    if (p.equipment.armor) totalDef += p.equipment.armor.def || 0;
+
+    document.getElementById('hp-val').innerText = `${p.hp}/${p.maxHp}`;
+    document.getElementById('atk-val').innerText = totalAtk;
+    document.getElementById('def-val').innerText = totalDef;
+    document.getElementById('lvl-val').innerText = p.level;
+
+    // Inventory
+    const invList = document.getElementById('inventory-list');
+    invList.innerHTML = '';
+    p.inventory.forEach((item, idx) => {
+        const el = document.createElement('div');
+        el.className = `inv-item ${item.type}`;
+        el.innerText = item.name;
+        el.onclick = () => useItem(idx);
+        invList.appendChild(el);
+    });
+
+    // Header Info
+    const lvl = gameState.currentLevel;
+    document.getElementById('coords-display').innerText = `X: ${lvl.x}, Y: ${lvl.y}`;
+    if (lvl.theme) {
+        document.getElementById('location-name').innerText = lvl.theme.fullName;
+        document.getElementById('location-name').style.color = lvl.trend ? lvl.trend.color : '#4caf50';
+    }
+    if (lvl.trend) {
+        document.getElementById('world-trend').innerText = `Эффект: ${lvl.trend.name}`;
+        document.getElementById('world-trend').style.color = lvl.trend.color;
+    }
+}
+
+function renderMap() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Настройка размера канваса
+    canvas.width = VIEW_WIDTH * TILE_SIZE;
+    canvas.height = VIEW_HEIGHT * TILE_SIZE;
+
+    // Очистка
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const p = gameState.player;
+    const lvl = gameState.currentLevel;
+    const map = lvl.map;
+
+    // Центрирование камеры
+    const camX = Math.max(0, Math.min(MAP_WIDTH - VIEW_WIDTH, p.x - Math.floor(VIEW_WIDTH/2)));
+    const camY = Math.max(0, Math.min(MAP_HEIGHT - VIEW_HEIGHT, p.y - Math.floor(VIEW_HEIGHT/2)));
+
+    gameState.camera.x = camX;
+    gameState.camera.y = camY;
+
+    // Отрисовка тайлов
+    for (let y = 0; y < VIEW_HEIGHT; y++) {
+        for (let x = 0; x < VIEW_WIDTH; x++) {
+            const mapX = camX + x;
+            const mapY = camY + y;
+
+            if (mapY >= 0 && mapY < MAP_HEIGHT && mapX >= 0 && mapX < MAP_WIDTH) {
+                const tile = map[mapY][mapX];
+                const px = x * TILE_SIZE;
+                const py = y * TILE_SIZE;
+
+                // Пол
+                ctx.fillStyle = lvl.dungeonType.floorColor;
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+                // Стена
+                if (tile === 1) {
+                    ctx.fillStyle = lvl.dungeonType.wallColor;
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    // Эффект объема
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.fillRect(px, py + TILE_SIZE - 4, TILE_SIZE, 4);
+                }
+                
+                // Туман войны (простой вариант - затемнение не посещенного)
+                // Для простоты пока рисуем все, но можно добавить проверку visited
+            }
+        }
+    }
+
+    // Отрисовка объектов (Предметы, Лестница, Враги, Игрок)
+    // Порядок важен: Предметы -> Лестница -> Враги -> Игрок
+    
+    // 1. Предметы
+    lvl.items.forEach(item => {
+        if (isVisible(item.x, item.y)) {
+            drawEntity(item.x, item.y, item.symbol, item.color);
+        }
+    });
+
+    // 2. Лестница
+    if (isVisible(lvl.stairs.x, lvl.stairs.y)) {
+        drawEntity(lvl.stairs.x, lvl.stairs.y, '≡', '#fff');
+    }
+
+    // 3. Враги
+    lvl.enemies.forEach(en => {
+        if (en.hp > 0 && isVisible(en.x, en.y)) {
+            drawEntity(en.x, en.y, en.symbol, en.color);
+            // HP Bar
+            const screenX = (en.x - camX) * TILE_SIZE;
+            const screenY = (en.y - camY) * TILE_SIZE;
+            const hpPct = en.hp / en.maxHp;
+            ctx.fillStyle = 'red';
+            ctx.fillRect(screenX, screenY - 4, TILE_SIZE, 3);
+            ctx.fillStyle = '#0f0';
+            ctx.fillRect(screenX, screenY - 4, TILE_SIZE * hpPct, 3);
+        }
+    });
+
+    // 4. Игрок
+    drawEntity(p.x, p.y, '@', '#ffeb3b');
+}
+
+function isVisible(x, y) {
+    return x >= gameState.camera.x && x < gameState.camera.x + VIEW_WIDTH &&
+           y >= gameState.camera.y && y < gameState.camera.y + VIEW_HEIGHT;
+}
+
+function drawEntity(mapX, mapY, char, color) {
+    const ctx = document.getElementById('gameCanvas').getContext('2d');
+    const screenX = (mapX - gameState.camera.x) * TILE_SIZE;
+    const screenY = (mapY - gameState.camera.y) * TILE_SIZE;
+    
+    ctx.fillStyle = color;
+    ctx.font = `${TILE_SIZE-2}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(char, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2 + 2);
+}
+
+// --- ГЕНЕРАЦИЯ УРОВНЯ ---
+
+function generateLevelData(x, y) {
+    // 1. Получаем данные подземелья из модуля
+    const dungeonData = DungeonGeneratorModule.generateLevel(x, y, MAP_WIDTH, MAP_HEIGHT);
+    
+    // 2. Получаем название и описание
+    const locationData = NameGeneratorModule.generateLocationData(x, y);
+    
+    // 3. Получаем тренд мира
+    const trend = WorldCurveModule.getWorldTrend(x, y);
+
+    // 4. Создаем ЕДИНЫЙ генератор для этого уровня для всех сущностей
+    // Используем seed самого подземелья, чтобы все было согласовано
+    const rng = new SeededRandom(dungeonData.seed);
+
+    // 5. Генерация врагов
+    const enemies = [];
+    const depth = Math.abs(x) + Math.abs(y);
+    // Количество врагов растет с глубиной
+    const enemyCount = 5 + Math.floor(depth / 2) + rng.int(0, 3); 
+    
+    for (let i = 0; i < enemyCount; i++) {
+        // Выбираем шаблон врага в зависимости от сложности
+        // Чем больше глубина, тем более сильные индексы доступны
+        const maxTemplateIdx = Math.min(ENEMY_TEMPLATES.length - 1, Math.floor(depth / 3));
+        const template = ENEMY_TEMPLATES[rng.int(0, maxTemplateIdx)];
+        
+        // Ищем свободную клетку
+        let ex, ey;
         let attempts = 0;
-    
-        while(attempts < 1000) {
-            const x = Math.floor(rng() * DataModule.MAP_WIDTH);
-            const y = Math.floor(rng() * DataModule.MAP_HEIGHT);
-        
-            if (this.currentMapData[y][x] === 0) {
-                if (excludePos && x === excludePos.x && y === excludePos.y) {
-                    attempts++; continue;
-                }
-                if (far && excludePos) {
-                    const dist = Math.abs(x - excludePos.x) + Math.abs(y - excludePos.y);
-                    if (dist < 10) { attempts++; continue; }
-                }
-                return {x, y};
-            }
+        do {
+            ex = rng.int(1, MAP_WIDTH - 2);
+            ey = rng.int(1, MAP_HEIGHT - 2);
             attempts++;
-        }
-        return excludePos || {x:0, y:0};
-    }
-};
+        } while ((dungeonData.mapData[ey][ex] !== 0 || (ex === dungeonData.startPos.x && ey === dungeonData.startPos.y)) && attempts < 100);
 
-/**
- * ====================================================================
- * МОДУЛЬ 3: ENTITY MODULE (ИСПРАВЛЕННЫЙ)
- * ====================================================================
- */
-const EntityModule = {
-    createPlayer: function(x, y) {
-        return {
-            x: x, y: y,
-            char: "@", color: "#FFF",
-            hp: 5000, maxHp: 5000,
-            atk: 5, def: 2,
-            level: 1, xp: 0,
-            inventory: [],
-            equipment: { weapon: null, armor: null }
-        };
-    },
-
-    createEnemy: function(template, x, y, difficultyMult) {
-        const hp = Math.floor(template.hp[0] * difficultyMult);
-        const atk = Math.floor(template.atk[0] * difficultyMult);
-        const def = Math.floor(template.def[0] * difficultyMult);
-
-        return {
-            x: x, y: y, name: template.name,
-            char: template.char, color: template.color,
-            hp: hp, maxHp: hp,
-            atk: atk, def: def,
-            isEnemy: true
-        };
-    },
-
-    createItem: function(template, x, y, itemPowerMult) {
-        const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-        const name = `${adj} ${template.baseName}`;
-        
-        const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
-        const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
-        
-        return {
-            x: x, y: y, name: name,
-            char: template.char, color: template.color,
-            type: template.type,
-            stat: template.stat,
-            effect: template.effect,
-            val: finalVal,
-            isItem: true
-        };
-    },
-
-    // ✅ НОВЫЙ МЕТОД: Безопасное размещение врагов с проверкой дистанции
-    spawnEnemies: function(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3) {
-        const height = mapGrid.length;
-        const width = mapGrid[0].length;
-        const validTiles = [];
-
-        // 1. Собираем все клетки пола, отступая от игрока
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (mapGrid[y][x] === 0) {
-                    const distToStart = Math.abs(x - startPos.x) + Math.abs(y - startPos.y);
-                    if (distToStart >= 4) { // Зона безопасности 4 клетки вокруг игрока
-                        validTiles.push({x, y});
-                    }
-                }
-            }
-        }
-
-        // 2. Перемешиваем массив клеток (Fisher-Yates), чтобы убрать предсказуемость
-        for (let i = validTiles.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
-        }
-
-        // 3. Размещаем врагов с строгой проверкой дистанции
-        const placedEnemies = [];
-        const occupiedCoords = [];
-
-        for (const tile of validTiles) {
-            if (placedEnemies.length >= count) break;
-
-            let tooClose = false;
-            for (const occ of occupiedCoords) {
-                // Манхэттенское расстояние: |x1-x2| + |y1-y2|
-                if (Math.abs(tile.x - occ.x) + Math.abs(tile.y - occ.y) < minDist) {
-                    tooClose = true;
-                    break;
-                }
-            }
-
-            if (!tooClose) {
-                occupiedCoords.push({x: tile.x, y: tile.y});
-                // Выбираем случайный шаблон врага
-                const template = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)];
-                placedEnemies.push(this.createEnemy(template, tile.x, tile.y, difficultyMult));
-            }
-        }
-
-        return placedEnemies;
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 4: COMBAT MODULE
- * ====================================================================
- */
-const CombatModule = {
-    attack: function(attacker, defender, logFn) {
-        let dmg = Math.max(1, attacker.atk - defender.def);
-        let crit = Math.random() < 0.1;
-        if (crit) dmg = Math.floor(dmg * 1.5);
-
-        defender.hp -= dmg;
-        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit?" (КРИТ)!":"."}`, "combat");
-
-        if (defender.hp <= 0) {
-            logFn(`${defender.name || "Враг"} погибает!`, "info");
-            return true;
-        }
-        return false;
-    },
-
-    useItem: function(player, index, logFn, updateUiFn) {
-        const item = player.inventory[index];
-        if (!item) return;
-
-        let used = false;
-
-        if (item.effect === "heal") {
-            player.hp = Math.min(player.maxHp, player.hp + item.val);
-            logFn(`Вы выпили ${item.name}. HP +${item.val}.`, "loot");
-            used = true;
-        } else if (item.effect === "buff_atk") {
-            player.atk += item.val;
-            logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
-            used = true;
-        } else if (item.type === "weapon") {
-            if (player.equipment.weapon) {
-                player.atk -= player.equipment.weapon.val;
-                player.inventory.push(player.equipment.weapon);
-            }
-            player.equipment.weapon = item;
-            player.atk += item.val;
-            logFn(`Вы взяли ${item.name}. Атака +${item.val}.`, "loot");
-            used = true;
-        } else if (item.type === "armor") {
-            if (player.equipment.armor) {
-                player.def -= player.equipment.armor.val;
-                player.inventory.push(player.equipment.armor);
-            }
-            player.equipment.armor = item;
-            player.def += item.val;
-            logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
-            used = true;
-        }
-
-        if (used) {
-            player.inventory.splice(index, 1);
-            updateUiFn();
-        }
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE
- * ====================================================================
- */
-const RenderModule = {
-    display: null,
-    fov: null,
-    COLS: 60,
-    ROWS: 40,
-    FONT_SIZE: 14,
-
-    init: function() {
-        if (typeof ROT === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js не загрузилась.");
-            throw new Error("ROT missing");
-        }
-
-        this.display = new ROT.Display({
-            width: this.COLS,
-            height: this.ROWS,
-            fontSize: this.FONT_SIZE,
-            fontFamily: "Consolas, monospace",
-            fg: "#ccc",
-            bg: "#000"
-        });
-        
-        const container = document.getElementById("map-container");
-        container.innerHTML = ""; 
-        const canvas = this.display.getContainer();
-        container.appendChild(canvas);
-        
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
-        
-        const resizeGame = () => {
-            const fw = container.clientWidth;
-            const fh = container.clientHeight;
-            const cw = canvas.width;
-            const ch = canvas.height;
+        if (attempts < 100) {
+            // Применяем множители сложности из WorldCurve
+            const mult = WorldCurveModule.getEnemyMultiplier(x, y);
             
-            const scale = Math.min(fw / cw, fh / ch);
-            canvas.style.transform = `scale(${scale})`;
-        };
-
-        window.addEventListener("resize", resizeGame);
-        setTimeout(resizeGame, 50);
-    },
-
-    getCameraOffset: function(player) {
-        return {
-            x: player.x - Math.floor(this.COLS / 2),
-            y: player.y - Math.floor(this.ROWS / 2)
-        };
-    },
-
-    draw: function(player, enemies, items) {
-        this.display.clear();
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-        const cam = this.getCameraOffset(player);
-
-        const visible = new Set();
-        this.fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
-            if (vis) visible.add(`${x},${y}`);
-        });
-
-        for (let sy = 0; sy < this.ROWS; sy++) {
-            for (let sx = 0; sx < this.COLS; sx++) {
-                const wx = sx + cam.x;
-                const wy = sy + cam.y;
-                
-                if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
-
-                const isVisible = visible.has(`${wx},${wy}`);
-                let ch, fg, bg;
-
-                if (MapModule.isWall(wx, wy)) {
-                    ch = dtype.wallChar;
-                    fg = isVisible ? dtype.wallColor : '#222'; 
-                    bg = "#000";
-                } else {
-                    ch = dtype.floorChar;
-                    fg = isVisible ? dtype.floorColor : '#111';
-                    bg = "#000";
-                }
-                
-                if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) { 
-                    ch = ">"; fg = isVisible ? "#FFF" : "#333"; 
-                }
-                if (MapModule.stairsDown && wx === MapModule.stairsDown.x && wy === MapModule.stairsDown.y) { 
-                    ch = "<"; fg = isVisible ? "#888" : "#222"; 
-                }
-
-                this.display.draw(sx, sy, ch, fg, bg);
-            }
+            enemies.push({
+                x: ex, y: ey,
+                name: template.name,
+                symbol: template.symbol,
+                color: template.color,
+                maxHp: Math.floor(template.hp * mult * (trend.enemyHpMult || 1)),
+                hp: Math.floor(template.hp * mult * (trend.enemyHpMult || 1)),
+                atk: Math.floor(template.atk * mult * (trend.enemyAtkMult || 1)),
+                def: Math.floor(template.def * mult)
+            });
         }
-
-        items.forEach(i => {
-            const sx = i.x - cam.x;
-            const sy = i.y - cam.y;
-            if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS && visible.has(`${i.x},${i.y}`)) {
-                this.display.draw(sx, sy, i.char, i.color);
-            }
-        });
-
-        enemies.forEach(e => {
-            if (e.hp > 0) {
-                const sx = e.x - cam.x;
-                const sy = e.y - cam.y;
-                if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS && visible.has(`${e.x},${e.y}`)) {
-                    this.display.draw(sx, sy, e.char, e.color);
-                }
-            }
-        });
-
-        this.display.draw(Math.floor(this.COLS / 2), Math.floor(this.ROWS / 2), player.char, player.color);
-
-        return visible;
-    },
-
-    updateUI: function(player, locData, worldTrend) {
-        if (locData) {
-            document.getElementById("ui-loc-name").textContent = locData.fullName;
-            document.getElementById("ui-loc-desc").textContent = locData.description;
-            let typeText = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
-            if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                typeText += ` | ${worldTrend.name}`;
-                document.getElementById("ui-loc-name").style.color = worldTrend.color;
-            } else {
-                document.getElementById("ui-loc-name").style.color = "var(--accent)";
-            }
-            document.getElementById("ui-loc-type").textContent = typeText;
-        }
-        document.getElementById("ui-stats").innerHTML = `
-            <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
-            <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
-            <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
-            <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
-        `;
-        const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
-        const a = player.equipment.armor ? player.equipment.armor.name : "—";
-        document.getElementById("ui-equip").innerHTML = `
-            <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
-            <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
-        `;
-        const invDiv = document.getElementById("inventory-list");
-        invDiv.innerHTML = "";
-        if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
-        player.inventory.forEach((item, idx) => {
-            const div = document.createElement("div");
-            div.className = "inv-item";
-            div.style.color = item.color;
-            div.textContent = `${item.char} ${item.name} (+${item.val})`;
-            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData, worldTrend));
-            invDiv.appendChild(div);
-        });
-    },
-
-    log: function(msg, type="info") {
-        const list = document.getElementById("log-list");
-        const div = document.createElement("div");
-        div.className = `log-msg log-${type}`;
-        div.textContent = `> ${msg}`;
-        list.prepend(div);
-        if (list.children.length > 50) list.lastChild.remove();
-    },
-
-    drawMinimap: function(player, explored) {
-        const cvs = document.getElementById("minimap");
-        const rect = cvs.parentElement.getBoundingClientRect();
-        cvs.width = rect.width - 20; 
-        cvs.height = rect.height - 40; 
-        const ctx = cvs.getContext("2d");
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
-        const cw = cvs.width / DataModule.MAP_WIDTH;
-        const ch = cvs.height / DataModule.MAP_HEIGHT;
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-        explored.forEach(k => {
-            const [x,y] = k.split(',').map(Number);
-            ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5;
-            ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
-            ctx.globalAlpha = 1.0;
-        });
-        ctx.fillStyle = "#0F0";
-        ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
     }
-};
 
-/**
- * ====================================================================
- * МОДУЛЬ 6: GAME MODULE (ИСПРАВЛЕННЫЙ СПАВН)
- * ====================================================================
- */
-const GameModule = {
-    player: null,
-    enemies: [],
-    items: [],
-    globalX: 0,
-    globalY: 0,
-    currentLocData: null,
-    currentWorldTrend: null,
-    explored: new Set(),
-    busy: false,
-    lastGlobalX: null,
-    lastGlobalY: null,
+    // 6. Генерация предметов (НОВАЯ ЛОГИКА)
+    const items = [];
+    // Шанс спавна предмета на уровне (базовый + бонус от тренда)
+    let itemSpawnChance = 0.3 + (depth * 0.01); 
+    if (trend.magicFindMult) itemSpawnChance *= trend.magicFindMult;
+    
+    // Количество попыток спавна предметов
+    const itemAttempts = 10 + Math.floor(depth / 2);
+    
+    for (let i = 0; i < itemAttempts; i++) {
+        if (rng.next() > itemSpawnChance) continue; // Не спавним в этой попытке
 
-    init: function() {
-        try {
-            RenderModule.init();
-        } catch (e) {
-            console.error(e);
-            return;
-        }
-        
-        this.globalX = Math.floor(Math.random() * 10);
-        this.globalY = Math.floor(Math.random() * 10);
-        
-        this.loadLevel(this.globalX, this.globalY);
-        
-        window.addEventListener("keydown", (e) => this.handleInput(e));
-        RenderModule.log("Игра загружена. Используйте стрелки.", "info");
-    },
-
-    loadLevel: function(gx, gy) {
-        this.lastGlobalX = this.globalX;
-        this.lastGlobalY = this.globalY;
-        this.globalX = gx;
-        this.globalY = gy;
-        this.enemies = [];
-        this.items = [];
-        this.explored.clear();
-
-        this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
-        this.currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
-        
-        const startPos = MapModule.generate(gx, gy);
-        
-        document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
-        RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
-        if (this.currentWorldTrend.name !== "Обычный уровень") {
-            RenderModule.log(`Тренд мира: ${this.currentWorldTrend.name}`, "event");
-        }
-
-        let spawnPos;
-
-        if (!this.player) {
-            spawnPos = startPos;
-            this.player = EntityModule.createPlayer(spawnPos.x, spawnPos.y);
-        } else {
-            const dx = gx - this.lastGlobalX;
-            const dy = gy - this.lastGlobalY;
-
-            // ИСПРАВЛЕНО: Логика спавна у лестниц
-            if (dx > 0 || dy > 0) {
-                // Поднялись выше -> спавн у лестницы ВНИЗ (<)
-                spawnPos = MapModule.stairsDown;
-            } else if (dx < 0 || dy < 0) {
-                // Спустились ниже -> спавн у лестницы ВВЕРХ (>)
-                spawnPos = MapModule.stairsUp;
-            } else {
-                spawnPos = startPos;
-            }
-
-            if (!spawnPos) {
-                spawnPos = startPos;
-                RenderModule.log("Ошибка навигации: лестница не найдена, спавн в центре.", "combat");
-            }
-
-            this.player.x = spawnPos.x;
-            this.player.y = spawnPos.y;
-        }
-
-        // ✅ ИСПОЛЬЗУЕМ НОВЫЙ УМНЫЙ СПАВН
-        this.spawnEntities(gx, gy);
-        this.renderFrame();
-    },
-
-    // ✅ ПЕРЕПИСАННАЯ ФУНКЦИЯ СПАВНА
-    spawnEntities: function(gx, gy) {
-        // Враги: используем новый метод с проверкой дистанции
-        const enemyCount = 8; // Можно менять количество
-        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
-        
-        // Вызываем умный спавнер из EntityModule
-        this.enemies = EntityModule.spawnEnemies(
-            MapModule.currentMapData, 
-            this.player, 
-            DataModule.ENEMY_TYPES, 
-            enemyCount, 
-            enemyMult,
-            3 // Минимальная дистанция между врагами
+        let ix, iy;
+        let attempts = 0;
+        do {
+            ix = rng.int(1, MAP_WIDTH - 2);
+            iy = rng.int(1, MAP_HEIGHT - 2);
+            attempts++;
+            // Проверка: пол, не старт, нет другого предмета, нет врага
+        } while (
+            (dungeonData.mapData[iy][ix] !== 0 || 
+             (ix === dungeonData.startPos.x && iy === dungeonData.startPos.y) ||
+             items.some(it => it.x === ix && it.y === iy) ||
+             enemies.some(e => e.x === ix && e.y === iy)
+            ) && attempts < 50
         );
 
-        // Предметы: оставляем простой рандом, так как они не двигаются и не мешают друг другу
-        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
-        const oldRand = Math.random;
-        Math.random = rng; 
+        if (attempts < 50) {
+            // Выбор типа предмета
+            const itemTemplate = ITEM_TYPES[rng.int(0, ITEM_TYPES.length - 1)];
+            
+            // Копируем объект, чтобы не мутировать базу
+            const newItem = { ...itemTemplate };
+            newItem.x = ix;
+            newItem.y = iy;
+            
+            // Масштабирование силы предмета от глубины
+            const powerMult = WorldCurveModule.getItemPowerMultiplier(x, y);
+            
+            if (newItem.type === 'weapon' && newItem.atk) {
+                newItem.atk = Math.max(1, Math.floor(newItem.atk * powerMult));
+                newItem.name = `+${newItem.atk} ${newItem.name}`;
+            } else if (newItem.type === 'armor' && newItem.def) {
+                newItem.def = Math.max(1, Math.floor(newItem.def * powerMult));
+                newItem.name = `+${newItem.def} ${newItem.name}`;
+            } else if (newItem.type === 'consumable' && newItem.val) {
+                 // Зелья лечат больше на глубине
+                 newItem.val = Math.floor(newItem.val * powerMult);
+            }
 
-        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
-        for(let i=0; i<4; i++) {
-            const pos = MapModule.getRandomFloor(this.player);
-            const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
-            this.items.push(EntityModule.createItem(type, pos.x, pos.y, itemMult));
+            items.push(newItem);
         }
-
-        Math.random = oldRand;
-    },
-
-    handleInput: function(e) {
-        if (this.busy || this.player.hp <= 0) return;
-        
-        let dx=0, dy=0;
-        if (e.key==="ArrowUp") dy=-1;
-        if (e.key==="ArrowDown") dy=1;
-        if (e.key==="ArrowLeft") dx=-1;
-        if (e.key==="ArrowRight") dx=1;
-        
-        if (dx!==0 || dy!==0 || e.key===" ") {
-            e.preventDefault();
-            this.processTurn(dx, dy);
-        }
-    },
-
-    processTurn: function(dx, dy) {
-        const nx = this.player.x + dx;
-        const ny = this.player.y + dy;
-
-        if (MapModule.isWall(nx, ny)) return;
-
-        const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
-        if (enemy) {
-            CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
-        } else {
-            this.player.x = nx;
-            this.player.y = ny;
-
-            const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
-            if (idx !== -1) {
-                const item = this.items[idx];
-                this.player.inventory.push(item);
-                RenderModule.log(`Подобрано: ${item.name}`, "loot");
-                this.items.splice(idx, 1);
-            }
-
-            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
-                RenderModule.log("Вы поднимаетесь выше...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
-                return;
-            }
-            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
-                RenderModule.log("Вы спускаетесь ниже...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
-                return;
-            }
-        }
-
-        this.enemies.forEach(e => {
-            if (e.hp<=0) return;
-            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
-            if (dist < 8) {
-                if (dist===1) {
-                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
-                } else {
-                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
-                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
-                    let next = null;
-                    astar.compute(e.x, e.y, (x,y) => {
-                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
-                    });
-                    if (next) {
-                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
-                            e.x = next.x; e.y = next.y;
-                        }
-                    }
-                }
-            }
-        });
-
-        if (this.player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
-        
-        this.renderFrame();
-    },
-
-    renderFrame: function() {
-        const vis = RenderModule.draw(this.player, this.enemies, this.items);
-        vis.forEach(k => this.explored.add(k));
-        RenderModule.updateUI(this.player, this.currentLocData, this.currentWorldTrend);
-        RenderModule.drawMinimap(this.player, this.explored);
     }
+
+    // 7. Лестница (подальше от старта)
+    let sx, sy;
+    let dist = 0;
+    do {
+        sx = rng.int(1, MAP_WIDTH - 2);
+        sy = rng.int(1, MAP_HEIGHT - 2);
+        dist = Math.abs(sx - dungeonData.startPos.x) + Math.abs(sy - dungeonData.startPos.y);
+    } while (dungeonData.mapData[sy][sx] !== 0 || dist < 10);
+
+
+    return {
+        x: x, y: y,
+        map: dungeonData.mapData,
+        startPos: dungeonData.startPos,
+        dungeonType: dungeonData.dungeonType,
+        theme: locationData,
+        trend: trend,
+        enemies: enemies,
+        items: items,
+        stairs: { x: sx, y: sy }
+    };
+}
+
+function enterLevel(x, y) {
+    const data = generateLevelData(x, y);
+    gameState.currentLevel = data;
+    gameState.player.x = data.startPos.x;
+    gameState.player.y = data.startPos.y;
+    
+    // Восстановление HP при переходе на новый уровень (опционально, или только в хабах)
+    if (WorldCurveModule.isHubLevel(x, y)) {
+        gameState.player.hp = gameState.player.maxHp;
+        log("Вы вошли в безопасную зону. Здоровье восстановлено.", "info");
+    } else {
+        log(`Вы прибыли в: ${data.theme.fullName}`, "info");
+    }
+    
+    updateUI();
+    renderMap();
+}
+
+// --- ИГРОВАЯ ЛОГИКА ---
+
+function movePlayer(dx, dy) {
+    if (gameState.isGameOver) return;
+
+    const p = gameState.player;
+    const newX = p.x + dx;
+    const newY = p.y + dy;
+    const lvl = gameState.currentLevel;
+
+    // Проверка стен
+    if (lvl.map[newY][newX] === 1) {
+        return; // Стена
+    }
+
+    // Проверка врагов (Атака)
+    const enemy = lvl.enemies.find(e => e.x === newX && e.y === newY && e.hp > 0);
+    if (enemy) {
+        attackEnemy(enemy);
+        renderMap();
+        return;
+    }
+
+    // Движение
+    p.x = newX;
+    p.y = newY;
+
+    // Подбор предметов
+    const itemIdx = lvl.items.findIndex(i => i.x === newX && i.y === newY);
+    if (itemIdx !== -1) {
+        const item = lvl.items[itemIdx];
+        pickupItem(item, itemIdx);
+    }
+
+    // Переход на следующий уровень
+    if (newX === lvl.stairs.x && newY === lvl.stairs.y) {
+        showTransition();
+        return;
+    }
+
+    // Ход врагов
+    processEnemyTurn();
+    
+    updateUI();
+    renderMap();
+}
+
+function attackEnemy(enemy) {
+    const p = gameState.player;
+    let totalAtk = p.baseAtk;
+    if (p.equipment.weapon) totalAtk += p.equipment.weapon.atk;
+
+    // Критический удар?
+    const isCrit = Math.random() < 0.1;
+    let dmg = Math.max(1, totalAtk - enemy.def);
+    if (isCrit) dmg = Math.floor(dmg * 1.5);
+
+    enemy.hp -= dmg;
+    
+    let msg = `Вы нанесли ${enemy.name} ${dmg} урона.`;
+    if (isCrit) msg += " КРИТИЧЕСКИЙ УДАР!";
+    log(msg, "combat");
+
+    // Анимация удара (просто текст в логе пока)
+    
+    if (enemy.hp <= 0) {
+        log(`${enemy.name} погибает!`, "combat");
+        // Опыт
+        gainXp(10 + Math.floor(Math.abs(gameState.currentLevel.x) + Math.abs(gameState.currentLevel.y)));
+    }
+}
+
+function processEnemyTurn() {
+    const p = gameState.player;
+    const lvl = gameState.currentLevel;
+    const trend = lvl.trend;
+
+    lvl.enemies.forEach(e => {
+        if (e.hp <= 0) return;
+
+        const dist = Math.abs(e.x - p.x) + Math.abs(e.y - p.y);
+        
+        // Если игрок рядом (атака)
+        if (dist === 1) {
+            let enemyAtk = e.atk;
+            if (trend && trend.enemyAtkMult) enemyAtk = Math.floor(enemyAtk * trend.enemyAtkMult);
+
+            let totalDef = p.baseDef;
+            if (p.equipment.armor) totalDef += p.equipment.armor.def;
+
+            const dmg = Math.max(0, enemyAtk - totalDef);
+            if (dmg > 0) {
+                p.hp -= dmg;
+                log(`${e.name} наносит вам ${dmg} урона!`, "combat");
+            } else {
+                log(`${e.name} атакует, но броня поглощает урон.`, "info");
+            }
+
+            if (p.hp <= 0) {
+                p.hp = 0;
+                gameOver();
+            }
+        } 
+        // Если далеко, движение к игроку (простое)
+        else if (dist < 8) {
+            let dx = 0, dy = 0;
+            if (e.x < p.x) dx = 1;
+            else if (e.x > p.x) dx = -1;
+            else if (e.y < p.y) dy = 1;
+            else if (e.y > p.y) dy = -1;
+
+            // Простая проверка коллизий для врага
+            const nextX = e.x + dx;
+            const nextY = e.y + dy;
+            
+            // Враги не ходят сквозь стены и других врагов
+            const isWall = lvl.map[nextY][nextX] === 1;
+            const isOtherEnemy = lvl.enemies.some(other => other !== e && other.hp > 0 && other.x === nextX && other.y === nextY);
+            const isPlayer = (nextX === p.x && nextY === p.y); // Уже обработано выше, но на всякий случай
+
+            if (!isWall && !isOtherEnemy && !isPlayer) {
+                e.x = nextX;
+                e.y = nextY;
+            }
+        }
+    });
+}
+
+function pickupItem(item, index) {
+    const p = gameState.player;
+    if (p.inventory.length >= 10) {
+        log("Инвентарь полон!", "info");
+        return;
+    }
+    
+    // Удаляем с карты
+    gameState.currentLevel.items.splice(index, 1);
+    
+    // Добавляем в инвентарь
+    p.inventory.push(item);
+    log(`Вы подобрали: ${item.name}`, "loot");
+    updateUI();
+}
+
+function useItem(index) {
+    const p = gameState.player;
+    const item = p.inventory[index];
+
+    if (item.type === 'consumable') {
+        if (item.effect === 'heal') {
+            const healAmount = item.val;
+            p.hp = Math.min(p.maxHp, p.hp + healAmount);
+            log(`Вы выпили ${item.name} и восстановили ${healAmount} HP.`, "info");
+        }
+        // Удаляем предмет
+        p.inventory.splice(index, 1);
+    } 
+    else if (item.type === 'weapon' || item.type === 'armor') {
+        // Экипировка
+        const slot = item.slot; // weapon or armor
+        const oldItem = p.equipment[slot];
+        
+        // Снимаем старое (возвращаем в инвентарь)
+        if (oldItem) {
+            p.inventory.push(oldItem);
+        }
+        
+        // Надеваем новое
+        p.equipment[slot] = item;
+        // Удаляем из инвентаря тот предмет, который надели
+        p.inventory.splice(index, 1);
+        
+        log(`Вы экипировали ${item.name}.`, "info");
+    }
+
+    updateUI();
+}
+
+function gainXp(amount) {
+    const p = gameState.player;
+    p.xp += amount;
+    if (p.xp >= p.nextLevelXp) {
+        p.level++;
+        p.xp -= p.nextLevelXp;
+        p.nextLevelXp = Math.floor(p.nextLevelXp * 1.5);
+        
+        // Рост статов
+        p.maxHp += 10;
+        p.hp = p.maxHp;
+        p.baseAtk += 1;
+        p.baseDef += 1;
+        
+        log(`УРОВЕНЬ ПОВЫШЕН! Теперь вы ${p.level} уровня.`, "loot");
+    }
+}
+
+function showTransition() {
+    const modal = document.getElementById('transition-modal');
+    const btn = document.getElementById('next-level-btn');
+    modal.style.display = 'flex';
+    
+    btn.onclick = () => {
+        modal.style.display = 'none';
+        // Определяем направление прогресса. Для простоты всегда идем "глубже" по X
+        // В реальной игре можно выбирать стороны света
+        enterLevel(gameState.currentLevel.x + 1, gameState.currentLevel.y);
+    };
+}
+
+function gameOver() {
+    gameState.isGameOver = true;
+    alert("GAME OVER! Вы пали в бою.");
+    location.reload();
+}
+
+// --- УПРАВЛЕНИЕ ---
+
+document.getElementById('btn-up').onclick = () => movePlayer(0, -1);
+document.getElementById('btn-down').onclick = () => movePlayer(0, 1);
+document.getElementById('btn-left').onclick = () => movePlayer(-1, 0);
+document.getElementById('btn-right').onclick = () => movePlayer(1, 0);
+document.getElementById('btn-wait').onclick = () => {
+    log("Вы ждете...", "info");
+    processEnemyTurn();
+    renderMap();
 };
 
-// Запуск
-window.onload = () => GameModule.init();
+// Клавиатура
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'w') movePlayer(0, -1);
+    if (e.key === 'ArrowDown' || e.key === 's') movePlayer(0, 1);
+    if (e.key === 'ArrowLeft' || e.key === 'a') movePlayer(-1, 0);
+    if (e.key === 'ArrowRight' || e.key === 'd') movePlayer(1, 0);
+    if (e.key === ' ') {
+        log("Вы ждете...", "info");
+        processEnemyTurn();
+        renderMap();
+    }
+});
+
+// --- ЗАПУСК ---
+window.onload = () => {
+    // Старт в координатах 0,0
+    enterLevel(0, 0);
+};
 
 </script>
 </body>
