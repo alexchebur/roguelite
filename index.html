@@ -825,23 +825,47 @@ const GameModule = {
                 return;
             }
         }
-
+        
+        // --- НАЧАЛО ИЗМЕНЕНИЙ В PROCESS TURN ---
+        
+        
+        // Враги накапливают очки
+        
         this.enemies.forEach(e => {
-            if (e.hp<=0) return;
-            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
-            if (dist < 8) {
-                if (dist===1) {
-                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
-                } else {
-                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
-                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
-                    let next = null;
-                    astar.compute(e.x, e.y, (x,y) => {
-                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
-                    });
-                    if (next) {
-                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
-                            e.x = next.x; e.y = next.y;
+            if (e.hp <= 0) return;
+
+            // Накопление очков действия
+            e.actionPoints += e.speed;
+
+            // Если накопил достаточно для хода
+            if (e.actionPoints >= e.maxActionPoints) {
+                e.actionPoints -= e.maxActionPoints; // Сбрасываем счетчик (с сохранением остатка)
+
+                const dist = Math.abs(e.x - this.player.x) + Math.abs(e.y - this.player.y);
+                
+                if (dist < 8) { // Радиус агро
+                    if (dist === 1) {
+                        // Атака
+                        CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
+                    } else {
+                        // Движение к игроку
+                        const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
+                            (x,y)=>!MapModule.isWall(x,y), {topology:8});
+                        let next = null;
+                        astar.compute(e.x, e.y, (x,y) => {
+                            if (!next && (x!==e.x||y!==e.y)) next={x,y};
+                        });
+                        
+                        // Проверка, не занята ли клетка другим врагом
+                        if (next) {
+                            const isBlocked = this.enemies.some(other => 
+                                other !== e && other.hp > 0 && other.x === next.x && other.y === next.y
+                            );
+                            
+                            if (!isBlocked) {
+                                e.x = next.x; 
+                                e.y = next.y;
+                            }
                         }
                     }
                 }
@@ -852,6 +876,8 @@ const GameModule = {
         
         this.renderFrame();
     },
+
+
 
     renderFrame: function() {
         const vis = RenderModule.draw(this.player, this.enemies, this.items);
