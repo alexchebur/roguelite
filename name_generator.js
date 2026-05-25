@@ -150,7 +150,7 @@ const NameGeneratorModule = {
         const description = this.generateDescription(rng);
         
         return {
-            fullName: `${namePart} ${typePart}`,
+            fullName: `${typePart} ${namePart}`,
             description: description,
             themeName: theme.name,
             seed: seed
