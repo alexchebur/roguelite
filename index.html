@@ -42,11 +42,12 @@
         overflow: hidden;
     }
 
-    /* СЕТКА 3×3: 9 ЯЧЕЕК ОДИНАКОВОГО РАЗМЕРА */
+    /* СЕТКА 3×3: ВЕРХНИЙ РЯД = 1/2 ВЫСОТЫ СРЕДНЕГО/НИЖНЕГО */
     #game-layout {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: 1fr 1fr 1fr;
+        /* 1fr : 2fr : 2fr = верхний ряд в 2 раза меньше остальных */
+        grid-template-rows: 1fr 2fr 2fr;
         width: 100vw;
         height: 100vh;
         gap: 4px;
@@ -272,7 +273,7 @@
 <body>
 
 <div id="game-layout">
-    <!-- РЯД 1 -->
+    <!-- РЯД 1 (высота = 1fr) -->
     <div id="panel-1" class="panel">
         <div class="game-title">👾 Roguelike JS</div>
     </div>
@@ -286,7 +287,7 @@
         <div id="ui-loc-coords">X: 0, Y: 0</div>
     </div>
 
-    <!-- РЯД 2 -->
+    <!-- РЯД 2 (высота = 2fr) -->
     <div id="panel-4" class="panel">
         <h3>Персонаж</h3>
         <div id="ui-stats"></div>
@@ -303,7 +304,7 @@
         <div id="inventory-list"></div>
     </div>
 
-    <!-- РЯД 3 -->
+    <!-- РЯД 3 (высота = 2fr) -->
     <div id="panel-7" class="panel">
         <h3>Карта</h3>
         <canvas id="minimap"></canvas>
