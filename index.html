@@ -411,20 +411,19 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (ОБНОВЛЕНО: ДОБАВЛЕНО МАСШТАБИРОВАНИЕ)
+ * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО: КАМЕРА СЛЕДУЕТ ЗА ИГРОКОМ)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    COLS: 50,
-    ROWS: 50,
-    FONT_SIZE: 20,
+    COLS: 50,  // Видимая ширина в клетках
+    ROWS: 50,  // Видимая высота в клетках
+    FONT_SIZE: 16,
 
     init: function() {
-        // Проверка на наличие библиотеки ROT (стандартное имя для rot.js)
         if (typeof ROT === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету.");
+            alert("Ошибка: Библиотека ROT.js не загрузилась.");
             throw new Error("ROT missing");
         }
 
@@ -439,33 +438,40 @@ const RenderModule = {
         
         const container = document.getElementById("map-container");
         container.innerHTML = ""; 
+        container.appendChild(this.display.getContainer());
         
+        // Инициализация FOV
+        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        
+        // --- МАСШТАБИРОВАНИЕ ---
         const canvas = this.display.getContainer();
-        container.appendChild(canvas);
-
-        // --- РЕАЛИЗАЦИЯ МАСШТАБИРОВАНИЯ (RECOMMENDATION) ---
-        function resizeGame() {
+        
+        const resizeGame = () => {
             const frameWidth = container.clientWidth;
             const frameHeight = container.clientHeight;
             
-            // Вычисляем коэффициенты масштабирования
+            // Вычисляем масштаб, чтобы вписать игру в экран с сохранением пропорций
             const scaleX = frameWidth / canvas.width;
             const scaleY = frameHeight / canvas.height;
-            
-            // Выбираем минимальный коэффициент, чтобы игра поместилась целиком
             const scale = Math.min(scaleX, scaleY);
 
             // Применяем трансформацию
             canvas.style.transform = `scale(${scale})`;
-        }
+            // Центрируем canvas внутри контейнера через CSS (уже сделано в style)
+        };
 
-        // Слушаем изменение размера окна
         window.addEventListener("resize", resizeGame);
-        // Вызываем сразу при инициализации
-        // Небольшая задержка, чтобы DOM успел отрисоваться
         setTimeout(resizeGame, 0);
-        
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+    },
+
+    // Helper: Вычисляет смещение камеры, чтобы игрок был в центре
+    getCameraOffset: function(player) {
+        const centerX = Math.floor(this.COLS / 2);
+        const centerY = Math.floor(this.ROWS / 2);
+        return {
+            x: player.x - centerX,
+            y: player.y - centerY
+        };
     },
 
     draw: function(player, enemies, items) {
@@ -473,43 +479,75 @@ const RenderModule = {
         const visible = new Set();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
 
+        // 1. Вычисляем видимость (FOV) в мировых координатах
         this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
+        // 2. Вычисляем смещение камеры
+        const cam = this.getCameraOffset(player);
+
+        // 3. Рендерим карту
+        // Проходим по видимым клеткам FOV
         visible.forEach(key => {
-            const [x, y] = key.split(',').map(Number);
-            let ch, fg, bg;
-
-            if (MapModule.isWall(x, y)) {
-                ch = dtype.wallChar;
-                fg = dtype.wallColor;
-                bg = "#000";
-            } else {
-                ch = dtype.floorChar;
-                fg = dtype.floorColor;
-                bg = "#000";
-            }
+            const [wx, wy] = key.split(',').map(Number); // World X, World Y
             
-            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { 
-                ch = ">"; fg = "#FFF"; 
-            }
-            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { 
-                ch = "<"; fg = "#888"; 
-            }
+            // Преобразуем мировые координаты в экранные
+            const dx = wx - cam.x;
+            const dy = wy - cam.y;
 
-            this.display.draw(x, y, ch, fg, bg);
+            // Рисуем только если клетка попадает в экран
+            if (dx >= 0 && dx < this.COLS && dy >= 0 && dy < this.ROWS) {
+                let ch, fg, bg;
+
+                if (MapModule.isWall(wx, wy)) {
+                    ch = dtype.wallChar;
+                    fg = dtype.wallColor;
+                    bg = "#000";
+                } else {
+                    ch = dtype.floorChar;
+                    fg = dtype.floorColor;
+                    bg = "#000";
+                }
+                
+                // Лестницы
+                if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) { 
+                    ch = ">"; fg = "#FFF"; 
+                }
+                if (MapModule.stairsDown && wx === MapModule.stairsDown.x && wy === MapModule.stairsDown.y) { 
+                    ch = "<"; fg = "#888"; 
+                }
+
+                this.display.draw(dx, dy, ch, fg, bg);
+            }
         });
 
+        // 4. Рендерим предметы
         items.forEach(i => {
-            if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
+            if (visible.has(`${i.x},${i.y}`)) {
+                const dx = i.x - cam.x;
+                const dy = i.y - cam.y;
+                if (dx >= 0 && dx < this.COLS && dy >= 0 && dy < this.ROWS) {
+                    this.display.draw(dx, dy, i.char, i.color);
+                }
+            }
         });
 
+        // 5. Рендерим врагов
         enemies.forEach(e => {
-            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
+            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) {
+                const dx = e.x - cam.x;
+                const dy = e.y - cam.y;
+                if (dx >= 0 && dx < this.COLS && dy >= 0 && dy < this.ROWS) {
+                    this.display.draw(dx, dy, e.char, e.color);
+                }
+            }
         });
 
-        this.display.draw(player.x, player.y, player.char, player.color);
+        // 6. Рендерим игрока (всегда в центре экрана)
+        const centerScreenX = Math.floor(this.COLS / 2);
+        const centerScreenY = Math.floor(this.ROWS / 2);
+        this.display.draw(centerScreenX, centerScreenY, player.char, player.color);
 
         return visible;
     },
