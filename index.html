@@ -472,7 +472,7 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (С ЭМОДЗИ-МАППИНГОМ)
+ * МОДУЛЬ 5: RENDER MODULE (ФИНАЛЬНАЯ ВЕРСИЯ С ЗАТЕМНЕНИЕМ И ФИКСОМ СТАРТА)
  * ====================================================================
  */
 const RenderModule = {
@@ -480,27 +480,20 @@ const RenderModule = {
     fov: null,
     COLS: 60,
     ROWS: 40,
-    FONT_SIZE: 14, // Увеличим шрифт, так как эмодзи могут быть мелкими в некоторых браузерах
+    FONT_SIZE: 16, // Чуть крупнее для эмодзи
 
     // 🗺️ МАППИНГ СИМВОЛОВ
     EMOJI_MAP: {
-        // Окружение
-        '.': '⬛',   // Пол (темный квадрат для контраста)
+        '.': '⬛',   // Пол
         '#': '🧱',   // Стена
         '>': '🔼',   // Лестница вверх
         '<': '🔽',   // Лестница вниз
-        
-        // Игрок
-        '@': '🧙‍♂️', // Маг/Герой
-
-        // Враги
+        '@': '🧙‍♂️', // Игрок
         'g': '👺',   // Гоблин
         's': '💀',   // Скелет
         'O': '👹',   // Орк
         'G': '👻',   // Призрак
         'D': '🐉',   // Дракон
-
-        // Предметы
         '/': '⚔️',   // Оружие
         ']': '🛡️',   // Броня
         '!': '🧪'    // Зелье
@@ -516,9 +509,10 @@ const RenderModule = {
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
-            fontFamily: "Segoe UI Emoji, Apple Color Emoji, sans-serif", // Шрифты для поддержки эмодзи
+            fontFamily: "Segoe UI Emoji, Apple Color Emoji, sans-serif",
             fg: "#ccc",
-            bg: "#000"
+            bg: "#000",
+            spacing: 1.0 // Важно для эмодзи, чтобы они не слипались
         });
         
         const container = document.getElementById("map-container");
@@ -548,50 +542,37 @@ const RenderModule = {
         };
     },
 
+    // 🔦 Функция затемнения HEX цвета
+    dimColor: function(hex, factor) {
+        if (!hex || hex.length < 7) return "#444"; // Fallback
+        try {
+            const c = hex.replace('#', '');
+            const r = parseInt(c.substring(0, 2), 16);
+            const g = parseInt(c.substring(2, 4), 16);
+            const b = parseInt(c.substring(4, 6), 16);
+            
+            const nr = Math.max(0, Math.min(255, Math.floor(r * factor)));
+            const ng = Math.max(0, Math.min(255, Math.floor(g * factor)));
+            const nb = Math.max(0, Math.min(255, Math.floor(b * factor)));
+            
+            return `#${nr.toString(16).padStart(2,'0')}${ng.toString(16).padStart(2,'0')}${nb.toString(16).padStart(2,'0')}`;
+        } catch (e) {
+            return "#444";
+        }
+    },
+
     draw: function(player, enemies, items) {
         this.display.clear();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = this.getCameraOffset(player);
 
-        // 1. Вычисляем видимость (то, что игрок видит СЕЙЧАС)
+        // 1. Вычисляем видимость
         const visible = new Set();
         this.fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 🔦 Функция затемнения цвета (hex -> darker hex)
-        const dimColor = (hex, factor = 0.3) => {
-            // Убираем # и парсим RGB
-            const c = hex.replace('#', '');
-            const r = parseInt(c.substring(0, 2), 16);
-            const g = parseInt(c.substring(2, 4), 16);
-            const b = parseInt(c.substring(4, 6), 16);
-            // Затемняем каждый канал
-            const nr = Math.floor(r * factor);
-            const ng = Math.floor(g * factor);
-            const nb = Math.floor(b * factor);
-            // Собираем обратно в hex
-            return `#${nr.toString(16).padStart(2,'0')}${ng.toString(16).padStart(2,'0')}${nb.toString(16).padStart(2,'0')}`;
-        };
-
-        // 🎭 Функция получения символа с учётом видимости
-        const getDisplayChar = (char, isVisible, isExplored) => {
-            if (!isExplored) return ' '; // Неисследованное = пусто
-            return this.EMOJI_MAP[char] || char;
-        };
-
-        // 🎨 Функция получения цвета с учётом видимости
-        const getDisplayColor = (color, isVisible, isExplored, distance = 0) => {
-            if (!isExplored) return '#111';
-            if (!isVisible) return dimColor(color, 0.25);
-    
-            // Плавное затемнение по дистанции (опционально)
-            const maxView = 25;
-            const distFactor = 1 - (distance / maxView) * 0.4; // До 40% затемнения на краю обзора
-            return dimColor(color, distFactor);
-        };
-
-        // 2. Рисуем карту (пол/стены)
+        // 2. Рисуем карту
         for (let sy = 0; sy < this.ROWS; sy++) {
             for (let sx = 0; sx < this.COLS; sx++) {
                 const wx = sx + cam.x;
@@ -605,62 +586,69 @@ const RenderModule = {
 
                 let ch, fg, bg = "#000";
 
+                // Если клетка не исследована - рисуем пустоту или очень темный фон
+                if (!isExplored) {
+                    this.display.draw(sx, sy, " ", "#000", "#000");
+                    continue;
+                }
+
+                // Определение символа и цвета
                 if (MapModule.isWall(wx, wy)) {
-                    ch = '#';
-                    fg = getDisplayColor(dtype.wallColor, isVisible, isExplored);
+                    ch = this.EMOJI_MAP['#'];
+                    // Стены затемняем сильно, если не видны
+                    fg = isVisible ? dtype.wallColor : this.dimColor(dtype.wallColor, 0.3);
                 } else {
                     // Лестницы
                     if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
-                        ch = '>';
-                        fg = getDisplayColor("#FFF", isVisible, isExplored);
+                        ch = this.EMOJI_MAP['>'];
+                        fg = isVisible ? "#FFF" : this.dimColor("#FFF", 0.3);
                     } else if (MapModule.stairsDown && wx === MapModule.stairsDown.x && wy === MapModule.stairsDown.y) {
-                        ch = '<';
-                        fg = getDisplayColor("#888", isVisible, isExplored);
+                        ch = this.EMOJI_MAP['<'];
+                        fg = isVisible ? "#888" : this.dimColor("#888", 0.3);
                     } else {
-                        ch = '.';
-                        fg = getDisplayColor(dtype.floorColor, isVisible, isExplored);
+                        ch = this.EMOJI_MAP['.'];
+                        fg = isVisible ? dtype.floorColor : this.dimColor(dtype.floorColor, 0.3);
                     }
                 }
                 
-                this.display.draw(sx, sy, getDisplayChar(ch, isVisible, isExplored), fg, bg);
+                this.display.draw(sx, sy, ch, fg, bg);
             }
         }
 
-        // 3. Рисуем предметы (только если клетка исследована)
+        // 3. Рисуем предметы
         items.forEach(i => {
             const sx = i.x - cam.x;
             const sy = i.y - cam.y;
             if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS) {
                 const key = `${i.x},${i.y}`;
-                const isVisible = visible.has(key);
-                const isExplored = GameModule.explored.has(key);
-                
-                if (isExplored) {
-                    const fg = getDisplayColor(i.color, isVisible, isExplored);
-                    this.display.draw(sx, sy, getDisplayChar(i.char, isVisible, isExplored), fg);
+                if (GameModule.explored.has(key)) {
+                    const isVisible = visible.has(key);
+                    const fg = isVisible ? i.color : this.dimColor(i.color, 0.4);
+                    this.display.draw(sx, sy, this.EMOJI_MAP[i.char] || i.char, fg);
                 }
             }
         });
 
-        // 4. Рисуем врагов (только если клетка исследована)
+        // 4. Рисуем врагов
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
                 const sy = e.y - cam.y;
                 if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS) {
                     const key = `${e.x},${e.y}`;
-                    const isVisible = visible.has(key);
-                    const isExplored = GameModule.explored.has(key);
-                    
-                    if (isExplored) {
-                        const fg = getDisplayColor(e.color, isVisible, isExplored);
-                        this.display.draw(sx, sy, getDisplayChar(e.char, isVisible, isExplored), fg);
+                    // Врагов рисуем только если клетка исследована (или видима)
+                    if (GameModule.explored.has(key) || visible.has(key)) {
+                        const isVisible = visible.has(key);
+                        // Если враг не виден, но был исследован - он "призрак" (очень тусклый)
+                        // Или можно скрывать совсем, если хотите хардкор. Сейчас делаем тусклым.
+                        const fg = isVisible ? e.color : this.dimColor(e.color, 0.2);
+                        this.display.draw(sx, sy, this.EMOJI_MAP[e.char] || e.char, fg);
                     }
                 }
             }
         });
 
-        // 5. Игрок (всегда яркий, в центре)
+        // 5. Игрок (всегда яркий)
         this.display.draw(
             Math.floor(this.COLS / 2), 
             Math.floor(this.ROWS / 2), 
@@ -671,7 +659,6 @@ const RenderModule = {
         return visible;
     },
 
-    // ... (остальные методы updateUI, log, drawMinimap остаются без изменений) ...
     updateUI: function(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
