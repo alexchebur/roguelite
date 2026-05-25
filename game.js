@@ -11,7 +11,6 @@ const GameModule = (function() {
     let busy = false;
     let lastGlobalX = null;
     let lastGlobalY = null;
-    let animationFrame = null;
 
     function init() {
         try {
@@ -27,14 +26,11 @@ const GameModule = (function() {
         loadLevel(globalX, globalY);
 
         window.addEventListener("keydown", (e) => handleInput(e));
-        
-        // Добавляем обработчики сенсорного управления
         addTouchControls();
         
         RenderModule.log("Игра загружена. Используйте стрелки или касайтесь карты для движения.", "info");
     }
 
-    // НОВЫЙ МЕТОД: добавление сенсорного управления
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
         const canvas = mapContainer.querySelector("canvas");
@@ -45,124 +41,46 @@ const GameModule = (function() {
         }
         
         canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault(); // предотвращаем прокрутку страницы
+            e.preventDefault();
             
             if (busy || player.hp <= 0) return;
             
-            // Получаем координаты касания относительно canvas
             const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0];
             
-            // Определяем масштаб canvas
-            const scale = parseFloat(canvas.style.transform.replace("scale(", "").replace(")", "")) || 1;
+            // Координаты касания относительно canvas (в пикселях)
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
             
-            // Вычисляем координаты касания в пикселях canvas
-            const canvasX = (touch.clientX - rect.left) / scale;
-            const canvasY = (touch.clientY - rect.top) / scale;
+            // Центр canvas (позиция игрока на экране)
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
             
-            // Определяем размер ячейки в пикселях
-            const cellWidth = canvas.width / RenderModule.COLS;
-            const cellHeight = canvas.height / RenderModule.ROWS;
+            // Определяем направление: dx, dy
+            let dx = 0, dy = 0;
             
-            // Получаем индекс клетки на экране (относительно камеры)
-            const screenCol = Math.floor(canvasX / cellWidth);
-            const screenRow = Math.floor(canvasY / cellHeight);
+            // Вычисляем отклонение от центра
+            const offsetX = touchX - centerX;
+            const offsetY = touchY - centerY;
             
-            // Получаем смещение камеры
-            const cam = RenderModule.getCameraOffset(player);
-            
-            // Вычисляем мировые координаты целевой клетки
-            const targetX = screenCol + cam.x;
-            const targetY = screenRow + cam.y;
-            
-            // Проверяем, не за пределами ли карты
-            if (targetX < 0 || targetX >= DataModule.MAP_WIDTH || 
-                targetY < 0 || targetY >= DataModule.MAP_HEIGHT) {
-                return;
+            // Определяем главное направление (по максимальному отклонению)
+            if (Math.abs(offsetX) > Math.abs(offsetY)) {
+                // Горизонтальное направление
+                dx = offsetX > 0 ? 1 : -1;
+            } else {
+                // Вертикальное направление
+                dy = offsetY > 0 ? 1 : -1;
             }
             
-            // Запускаем движение к цели
-            startMovementToTarget(targetX, targetY);
+            // Делаем шаг
+            processTurn(dx, dy);
         });
         
-        // Добавляем подсказку для мобильных устройств
         if (isMobileDevice()) {
-            RenderModule.log("💡 Подсказка: коснитесь любой клетки на карте, чтобы двигаться к ней", "info");
+            RenderModule.log("💡 Коснитесь левой/правой/верхней/нижней части экрана для движения", "info");
         }
     }
     
-    // НОВЫЙ МЕТОД: движение по прямой к цели
-    function startMovementToTarget(targetX, targetY) {
-        if (busy || player.hp <= 0) return;
-        
-        // Останавливаем предыдущую анимацию
-        if (animationFrame) {
-            cancelAnimationFrame(animationFrame);
-        }
-        
-        // Проверяем, достижима ли цель (не стена)
-        if (MapModule.isWall(targetX, targetY)) {
-            RenderModule.log("Нельзя двигаться сквозь стены!", "combat");
-            return;
-        }
-        
-        // Вычисляем направление к цели
-        let dx = 0, dy = 0;
-        if (targetX > player.x) dx = 1;
-        else if (targetX < player.x) dx = -1;
-        if (targetY > player.y) dy = 1;
-        else if (targetY < player.y) dy = -1;
-        
-        // Если цель совпадает с текущей позицией
-        if (dx === 0 && dy === 0) return;
-        
-        // Анимируем движение
-        function moveStep() {
-            if (busy || player.hp <= 0) {
-                animationFrame = null;
-                return;
-            }
-            
-            // Проверяем, достигли ли цели
-            if (player.x === targetX && player.y === targetY) {
-                animationFrame = null;
-                return;
-            }
-            
-            // Проверяем, не нужно ли скорректировать направление
-            let newDx = dx, newDy = dy;
-            
-            // Если дошли до координаты цели по X, двигаемся только по Y
-            if ((dx === 1 && player.x >= targetX) || (dx === -1 && player.x <= targetX)) {
-                newDx = 0;
-            }
-            // Если дошли до координаты цели по Y, двигаемся только по X
-            if ((dy === 1 && player.y >= targetY) || (dy === -1 && player.y <= targetY)) {
-                newDy = 0;
-            }
-            
-            // Если обнулились оба направления - достигли цели
-            if (newDx === 0 && newDy === 0) {
-                animationFrame = null;
-                return;
-            }
-            
-            // Делаем один шаг
-            processTurn(newDx, newDy);
-            
-            // Если игрок жив и ещё не достиг цели, продолжаем движение
-            if (player.hp > 0 && (player.x !== targetX || player.y !== targetY) && !busy) {
-                animationFrame = requestAnimationFrame(() => moveStep());
-            } else {
-                animationFrame = null;
-            }
-        }
-        
-        // Запускаем движение
-        moveStep();
-    }
-    
-    // НОВАЯ ФУНКЦИЯ: определение мобильного устройства
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
@@ -235,7 +153,6 @@ const GameModule = (function() {
         Math.random = rng;
 
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
-        // Используем новый метод спавна предметов, если он есть в EntityModule
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
@@ -246,7 +163,6 @@ const GameModule = (function() {
                 3
             );
         } else {
-            // Fallback на старую логику
             for (let i = 0; i < 4; i++) {
                 const pos = MapModule.getRandomFloor(player);
                 const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
@@ -260,19 +176,14 @@ const GameModule = (function() {
     function handleInput(e) {
         if (busy || player.hp <= 0) return;
         
-        let dx=0, dy=0;
-        if (e.key==="ArrowUp") dy=-1;
-        if (e.key==="ArrowDown") dy=1;
-        if (e.key==="ArrowLeft") dx=-1;
-        if (e.key==="ArrowRight") dx=1;
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowUp") dy = -1;
+        if (e.key === "ArrowDown") dy = 1;
+        if (e.key === "ArrowLeft") dx = -1;
+        if (e.key === "ArrowRight") dx = 1;
         
-        if (dx!==0 || dy!==0 || e.key===" ") {
+        if (dx !== 0 || dy !== 0 || e.key === " ") {
             e.preventDefault();
-            // Останавливаем анимацию при ручном управлении
-            if (animationFrame) {
-                cancelAnimationFrame(animationFrame);
-                animationFrame = null;
-            }
             processTurn(dx, dy);
         }
     }
@@ -283,14 +194,14 @@ const GameModule = (function() {
 
         if (MapModule.isWall(nx, ny)) return;
 
-        const enemy = enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
+        const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
-            CombatModule.attack(player, enemy, (m,t)=>RenderModule.log(m,t));
+            CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
         } else {
             player.x = nx;
             player.y = ny;
 
-            const idx = items.findIndex(i => i.x===nx && i.y===ny);
+            const idx = items.findIndex(i => i.x === nx && i.y === ny);
             if (idx !== -1) {
                 const item = items[idx];
                 player.inventory.push(item);
@@ -298,37 +209,35 @@ const GameModule = (function() {
                 items.splice(idx, 1);
             }
 
-            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
+            if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
                 RenderModule.log("Вы поднимаетесь выше...", "info");
-                if (animationFrame) cancelAnimationFrame(animationFrame);
-                setTimeout(()=>loadLevel(globalX+1, globalY+1), 100);
+                setTimeout(() => loadLevel(globalX + 1, globalY + 1), 100);
                 return;
             }
-            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
+            if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
                 RenderModule.log("Вы спускаетесь ниже...", "info");
-                if (animationFrame) cancelAnimationFrame(animationFrame);
-                setTimeout(()=>loadLevel(globalX-1, globalY-1), 100);
+                setTimeout(() => loadLevel(globalX - 1, globalY - 1), 100);
                 return;
             }
         }
 
-        // Движение врагов
         enemies.forEach(e => {
-            if (e.hp<=0) return;
-            const dist = Math.abs(e.x-player.x) + Math.abs(e.y-player.y);
+            if (e.hp <= 0) return;
+            const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
             if (dist < 8) {
-                if (dist===1) {
-                    CombatModule.attack(e, player, (m,t)=>RenderModule.log(m,t));
+                if (dist === 1) {
+                    CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                 } else {
-                    const astar = new ROT.Path.AStar(player.x, player.y, 
-                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
+                    const astar = new ROT.Path.AStar(player.x, player.y,
+                        (x, y) => !MapModule.isWall(x, y), { topology: 8 });
                     let next = null;
-                    astar.compute(e.x, e.y, (x,y) => {
-                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
+                    astar.compute(e.x, e.y, (x, y) => {
+                        if (!next && (x !== e.x || y !== e.y)) next = { x, y };
                     });
                     if (next) {
-                        if (!enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
-                            e.x = next.x; e.y = next.y;
+                        if (!enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y)) {
+                            e.x = next.x;
+                            e.y = next.y;
                         }
                     }
                 }
@@ -337,7 +246,6 @@ const GameModule = (function() {
 
         if (player.hp <= 0) {
             RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
-            if (animationFrame) cancelAnimationFrame(animationFrame);
         }
         
         renderFrame();
@@ -355,5 +263,4 @@ const GameModule = (function() {
     };
 })();
 
-// Запуск
 window.onload = () => GameModule.init();
