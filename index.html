@@ -289,7 +289,7 @@ const MapModule = {
     generate: function(seedStr) {
         NameGenModule.setSeed(seedStr);
 
-        if (typeof ROT === 'undefined') {
+        if (typeof ROTJS === 'undefined') {
             alert("Ошибка: Библиотека ROTJS.js не загрузилась.");
             throw new Error("ROTJS.js missing");
         }
