@@ -39,10 +39,11 @@
             overflow: hidden;
         }
 
+        /* Основная сетка: 2 строки (Хедер, Контент) и 2 колонки (Сайдбар, Карта) */
         #game-layout {
             display: grid;
-            grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 60px 1fr 140px;
+            grid-template-columns: 300px 1fr; /* Сайдбар фиксирован, карта резиновая */
+            grid-template-rows: auto 1fr;     /* Хедер авто-высота, контент занимает остаток */
             height: 100%;
             gap: 4px;
             padding: 4px;
@@ -67,17 +68,20 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 4px;
             letter-spacing: 1px;
+            flex-shrink: 0;
         }
 
-        /* HEADER - УВЕЛИЧЕННАЯ ВЫСОТА */
+        /* HEADER: Занимает всю ширину в первой строке */
         header {
             grid-column: 1 / -1;
+            grid-row: 1;
+            
             display: flex;
             justify-content: space-between;
-            align-items: center; /* Центрирование по вертикали */
-            padding: 10px 20px; /* Внутренние отступы */
-            min-height: 80px; /* Минимальная высота, чтобы текст влезал */
-            height: auto; /* Высота подстраивается под контент, если нужно */
+            align-items: center;
+            padding: 10px 20px;
+            min-height: 60px; /* Минимальная высота, но может расти */
+            height: auto;
             line-height: 1.4;
         }
         
@@ -86,7 +90,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            max-width: 50%; /* Ограничиваем ширину, чтобы не наезжало на логотип */
+            max-width: 60%;
         }
         
         .loc-name { 
@@ -94,9 +98,6 @@
             font-weight: bold; 
             font-size: 1.2em; 
             margin-bottom: 2px;
-            white-space: nowrap; /* Название в одну строку, если влезает */
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         
         .loc-type { 
@@ -119,8 +120,20 @@
             font-family: monospace;
         }
 
-        /* --- КАРТА --- */
-        #map-container {
+        /* ЛЕВАЯ КОЛОНКА: Занимает вторую строку, первую колонку */
+        #left-sidebar {
+            grid-column: 1;
+            grid-row: 2;
+            display: grid;
+            /* Три панели одинаковой высоты */
+            grid-template-rows: 1fr 1fr 1fr; 
+            gap: 4px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ПРАВАЯ ЧАСТЬ (КАРТА): Занимает вторую строку, вторую колонку */
+        #map-wrapper {
             grid-column: 2;
             grid-row: 2;
             display: flex;
@@ -130,23 +143,19 @@
             border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
-            
-            /* Квадратный контейнер */
-            aspect-ratio: 1 / 1;
-            max-height: 100%;
-            max-width: 100%;
-            margin: auto;
+            height: 100%;
+            width: 100%;
         }
 
-        /* Исправление отображения Canvas */
         #map-container canvas {
             display: block;
-            width: 100% !important;  
-            height: 100% !important; 
-            object-fit: contain;     
-            image-rendering: pixelated; 
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
         }
 
+        /* Стили для контента панелей */
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
@@ -155,7 +164,22 @@
         .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
         .equip-item { color: var(--gold); }
 
-        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
+        /* Инвентарь и Лог внутри средней панели */
+        #inventory-list { 
+            overflow-y: auto; 
+            flex: 1; 
+            margin-bottom: 5px; 
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        #log-list {
+            overflow-y: auto;
+            flex: 1;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        
         .inv-item {
             padding: 3px 5px;
             background: rgba(255,255,255,0.05);
@@ -169,23 +193,16 @@
         }
         .inv-item:hover { background: rgba(255,255,255,0.1); }
 
-        #log-list {
-            overflow-y: auto;
-            flex: 1;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column-reverse;
-        }
         .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
         .log-combat { color: var(--danger); }
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
 
+        /* Миникарта */
         #minimap-panel {
-            grid-column: 1;
-            grid-row: 3;
             display: flex;
             flex-direction: column;
+            height: 100%;
         }
         #minimap { 
             width: 100%; 
@@ -194,19 +211,6 @@
             border-radius: 4px;
             image-rendering: pixelated;
         }
-
-        footer {
-            grid-column: 2 / 4;
-            grid-row: 3;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
-
     </style>
 </head>
 <body>
