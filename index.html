@@ -436,6 +436,39 @@ const RenderModule = {
             fg: "#ccc",
             bg: "#000"
         });
+        function initGame() {
+            const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                            const container = document.getElementById('map-container');
+
+                // === ДОБАВИТЬ ЭТОТ БЛОК ===
+                function resizeCanvas() {
+                    // 1. Получаем реальные размеры контейнера в пикселях
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+
+                    // 2. Применяем их к внутреннему разрешению canvas
+                    canvas.width = w;
+                    canvas.height = h;
+
+                    // 3. Отключаем сглаживание для четкости пикселей/тайлов
+                    ctx.imageSmoothingEnabled = false;
+            
+                    // 4. Перерисовываем игру, если она уже запущена
+                    if (gameState.map) {
+                        renderMap(); 
+                    }
+                }
+
+                // Вызываем один раз при старте
+                resizeCanvas();
+
+                // Следим за изменением размера окна/панели
+                window.addEventListener('resize', resizeCanvas);
+                // ==========================
+
+                // ... остальной код initGame ...
+            }
         
         const container = document.getElementById("map-container");
         container.innerHTML = ""; 
