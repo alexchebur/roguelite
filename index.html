@@ -770,7 +770,9 @@ const GameModule = {
         this.globalY = gy;
         this.enemies = [];
         this.items = [];
-        this.explored.clear();
+        // ⚠️ ВАЖНО: Не очищаем explored полностью, если хотим помнить карту мира, 
+        // но для нового уровня обычно очищают. Если хотите "туман войны" на каждый уровень - оставляйте clear().
+        this.explored.clear(); 
 
         this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
         this.currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
@@ -792,12 +794,9 @@ const GameModule = {
             const dx = gx - this.lastGlobalX;
             const dy = gy - this.lastGlobalY;
 
-            // ИСПРАВЛЕНО: Логика спавна у лестниц
             if (dx > 0 || dy > 0) {
-                // Поднялись выше -> спавн у лестницы ВНИЗ (<)
                 spawnPos = MapModule.stairsDown;
             } else if (dx < 0 || dy < 0) {
-                // Спустились ниже -> спавн у лестницы ВВЕРХ (>)
                 spawnPos = MapModule.stairsUp;
             } else {
                 spawnPos = startPos;
@@ -812,10 +811,25 @@ const GameModule = {
             this.player.y = spawnPos.y;
         }
 
-        // ✅ ИСПОЛЬЗУЕМ НОВЫЙ УМНЫЙ СПАВН
         this.spawnEntities(gx, gy);
-        this.renderFrame();
+        
+        // ✅ ФИКС: Принудительная отрисовка и обновление тумана войны сразу при загрузке
+        this.renderFrame(); 
     },
+
+    renderFrame: function() {
+        // 1. Сначала рисуем и получаем список видимых клеток
+        const vis = RenderModule.draw(this.player, this.enemies, this.items);
+        
+        // 2. Добавляем видимые клетки в память (explored)
+        vis.forEach(k => this.explored.add(k));
+        
+        // 3. Обновляем интерфейс
+        RenderModule.updateUI(this.player, this.currentLocData, this.currentWorldTrend);
+        
+        // 4. Рисуем миникарту
+        RenderModule.drawMinimap(this.player, this.explored);
+    }
 
     // ✅ ПЕРЕПИСАННАЯ ФУНКЦИЯ СПАВНА
     spawnEntities: function(gx, gy) {
@@ -950,9 +964,16 @@ const GameModule = {
 
 
     renderFrame: function() {
+        // 1. Сначала рисуем и получаем список видимых клеток
         const vis = RenderModule.draw(this.player, this.enemies, this.items);
+        
+        // 2. Добавляем видимые клетки в память (explored)
         vis.forEach(k => this.explored.add(k));
+        
+        // 3. Обновляем интерфейс
         RenderModule.updateUI(this.player, this.currentLocData, this.currentWorldTrend);
+        
+        // 4. Рисуем миникарту
         RenderModule.drawMinimap(this.player, this.explored);
     }
 };
