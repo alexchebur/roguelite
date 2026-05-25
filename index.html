@@ -39,11 +39,10 @@
             overflow: hidden;
         }
 
-        /* Новая сетка: Header сверху, затем 2 колонки (левая узкая, правая широкая) */
         #game-layout {
             display: grid;
-            grid-template-columns: 300px 1fr; /* Левая панель фиксирована, карта занимает остальное */
-            grid-template-rows: 60px 1fr;     /* Header фиксирован, остальное - высота экрана */
+            grid-template-columns: 260px 1fr 260px;
+            grid-template-rows: 60px 1fr 140px;
             height: 100%;
             gap: 4px;
             padding: 4px;
@@ -68,13 +67,10 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 4px;
             letter-spacing: 1px;
-            flex-shrink: 0; /* Заголовок не сжимается */
         }
 
-        /* HEADER */
         header {
-            grid-column: 1 / -1; /* На всю ширину */
-            grid-row: 1;
+            grid-column: 1 / -1;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -86,18 +82,8 @@
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* ЛЕВАЯ КОЛОНКА (Контейнер для 3-х панелей) */
-        #left-sidebar {
-            grid-column: 1;
-            grid-row: 2;
-            display: grid;
-            grid-template-rows: 1fr 1fr 1fr; /* Три равные по высоте секции */
-            gap: 4px;
-            height: 100%;
-        }
-
-        /* ПРАВАЯ КОЛОНКА (Карта) */
-        #map-wrapper {
+        /* --- КАРТА --- */
+        #map-container {
             grid-column: 2;
             grid-row: 2;
             display: flex;
@@ -107,20 +93,23 @@
             border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
-            height: 100%;
-            width: 100%;
+            
+            /* Квадратный контейнер */
+            aspect-ratio: 1 / 1;
+            max-height: 100%;
+            max-width: 100%;
+            margin: auto;
         }
 
-        /* Карта внутри враппера */
+        /* Исправление отображения Canvas */
         #map-container canvas {
             display: block;
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain; /* Сохраняет пропорции символов */
-            image-rendering: pixelated;
+            width: 100% !important;  
+            height: 100% !important; 
+            object-fit: contain;     
+            image-rendering: pixelated; 
         }
 
-        /* Стили для содержимого левых панелей */
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
@@ -129,22 +118,7 @@
         .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
         .equip-item { color: var(--gold); }
 
-        /* Инвентарь и Лог делят место внутри своей панели */
-        #inventory-list { 
-            overflow-y: auto; 
-            flex: 1; /* Занимает половину высоты панели */
-            margin-bottom: 5px; 
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 5px;
-        }
-        #log-list {
-            overflow-y: auto;
-            flex: 1; /* Занимает вторую половину */
-            font-size: 11px;
-            display: flex;
-            flex-direction: column-reverse;
-        }
-        
+        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
         .inv-item {
             padding: 3px 5px;
             background: rgba(255,255,255,0.05);
@@ -158,16 +132,23 @@
         }
         .inv-item:hover { background: rgba(255,255,255,0.1); }
 
+        #log-list {
+            overflow-y: auto;
+            flex: 1;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
         .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
         .log-combat { color: var(--danger); }
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
 
-        /* Миникарта */
         #minimap-panel {
+            grid-column: 1;
+            grid-row: 3;
             display: flex;
             flex-direction: column;
-            height: 100%;
         }
         #minimap { 
             width: 100%; 
@@ -176,6 +157,18 @@
             border-radius: 4px;
             image-rendering: pixelated;
         }
+
+        footer {
+            grid-column: 2 / 4;
+            grid-row: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
 
     </style>
 </head>
@@ -192,38 +185,32 @@
         </div>
     </header>
 
-    <!-- Левая колонка: 3 панели одинаковой высоты -->
-    <div id="left-sidebar">
-        
-        <!-- 1. Персонаж и Экипировка -->
-        <div class="panel">
-            <h3>Персонаж</h3>
-            <div id="ui-stats"></div>
-            <h3 style="margin-top: 10px;">Экипировка</h3>
-            <div id="ui-equip"></div>
-        </div>
-
-        <!-- 2. Инвентарь и Журнал -->
-        <div class="panel">
-            <h3>Инвентарь</h3>
-            <div id="inventory-list"></div>
-            <h3>Журнал событий</h3>
-            <div id="log-list"></div>
-        </div>
-
-        <!-- 3. Миникарта -->
-        <div id="minimap-panel" class="panel">
-            <h3>Карта мира</h3>
-            <canvas id="minimap"></canvas>
-        </div>
-
+    <div class="panel" style="grid-row: 2;">
+        <h3>Персонаж</h3>
+        <div id="ui-stats"></div>
+        <h3 style="margin-top: 15px;">Экипировка</h3>
+        <div id="ui-equip"></div>
     </div>
 
-    <!-- Правая колонка: Карта -->
-    <div id="map-wrapper">
-        <div id="map-container"></div>
+    <div id="map-container"></div>
+
+    <div class="panel" style="grid-row: 2 / 4;">
+        <h3>Инвентарь</h3>
+        <div id="inventory-list"></div>
+        <h3 style="margin-top: 10px;">Журнал событий</h3>
+        <div id="log-list"></div>
     </div>
 
+    <div id="minimap-panel" class="panel">
+        <h3>Карта мира</h3>
+        <canvas id="minimap"></canvas>
+    </div>
+
+    <footer class="panel">
+        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
+        <span><kbd>Space</kbd> Пропуск хода</span>
+        <span><kbd>Click</kbd> Использовать предмет</span>
+    </footer>
 </div>
 
 <script>
