@@ -1,776 +1,207 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Подземелье по координатам</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
-            color: #ecf0f1;
-            margin: 0;
-            padding: 12px;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: start;
-        }
-    
-        .container {
-            background: rgba(44, 62, 80, 0.9);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-        }
-    
-        h1 {
-            color: #3498db;
-            margin-bottom: 20px;
-            font-size: 22px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-    
-        .coordinates {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-    
-        .coord-input {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-    
-        .coord-input label {
-            margin-bottom: 6px;
-            color: #3498db;
-            font-weight: bold;
-            font-size: 14px;
-        }
-    
-        .coord-input input {
-            width: 70px;
-            padding: 8px;
-            border: 2px solid #3498db;
-            border-radius: 8px;
-            background: rgba(52, 73, 94, 0.8);
-            color: white;
-            font-size: 16px;
-            text-align: center;
-        }
-    
-        .coord-input input:focus {
-            outline: none;
-            border-color: #f1c40f;
-            box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
-        }
-    
-        .result {
-            background: rgba(52, 73, 94, 0.8);
-            border: 2px solid #3498db;
-            border-radius: 15px;
-            padding: 20px;
-            margin: 15px 0;
-            min-height: 100px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-    
-        .location-name {
-            font-size: 20px;
-            font-weight: bold;
-            color: #f1c40f;
-            margin-bottom: 8px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-    
-        .location-description {
-            font-size: 14px;
-            color: #bdc3c7;
-            line-height: 1.4;
-        }
-
-        .type-badge {
-            margin: 10px auto;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-            display: inline-block;
-        }
-
-        /* Цвета типов */
-        .boss { background: #ff3333; }
-        .icy { background: #7fdbff; color: #000; }
-        .cave { background: #8b4513; }
-        .dungeon { background: #555; }
-        .rogue { background: #8a2be2; color: white; }
-        .cellular { background: #32cd32; color: #000; }
-        .arena { background: #ff8c00; }
-
-        /* === КОНТЕЙНЕР КАРТЫ === */
-        .map-container {
-            width: 450px;
-            height: 450px;
-            margin: 15px auto;
-            overflow: hidden;
-            border: 2px solid #3498db;
-            border-radius: 8px;
-            background: #0f0f1a;
-        }
-
-        /* === СЕТКА ВИДИМОЙ ОБЛАСТИ (15×15) === */
-        .map {
-            display: grid;
-            grid-template-columns: repeat(15, 30px);
-            grid-template-rows: repeat(15, 30px);
-            width: 450px;
-            height: 450px;
-            gap: 0;
-            padding: 0;
-            margin: 0;
-        }
-
-        /* === ЯЧЕЙКА ТАЙЛА === */
-        .cell {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            line-height: 1;
-            padding: 0;
-            margin: 0;
-            width: 30px;
-            height: 30px;
-            box-sizing: border-box;
-            border: none;
-            outline: none;
-        }
-
-        .controls {
-            margin: 10px 0;
-        }
-        .controls button {
-            background: #34495e;
-            color: white;
-            border: 1px solid #3498db;
-            padding: 6px 12px;
-            margin: 2px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .generate-btn {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
-        }
-    
-        .generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
-            background: linear-gradient(45deg, #3ca0db, #2c8bc9);
-        }
-    
-        .info {
-            margin-top: 15px;
-            font-size: 12px;
-            color: #7f8c8d;
-        }
-    
-        .seed-info {
-            margin-top: 8px;
-            font-size: 11px;
-            color: #95a5a6;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔮 Подземелье по координатам</h1>
-        
-        <div class="coordinates">
-            <div class="coord-input">
-                <label for="coordX">Координата X</label>
-                <input type="number" id="coordX" value="1" min="-1000" max="1000">
-            </div>
-            <div class="coord-input">
-                <label for="coordY">Координата Y</label>
-                <input type="number" id="coordY" value="1" min="-1000" max="1000">
-            </div>
-        </div>
-        
-        <div class="result">
-            <div class="location-name" id="locationName">Нажмите "Сгенерировать"</div>
-            <div class="location-description" id="locationDescription"></div>
-            <div class="type-badge" id="typeBadge">—</div>
-        </div>
-
-        <div class="map-container">
-            <div class="map" id="map"></div>
-        </div>
-
-        <div class="controls">
-            <button onclick="moveCamera(0, -1)">↑</button><br>
-            <button onclick="moveCamera(-1, 0)">←</button>
-            <button onclick="moveCamera(1, 0)">→</button><br>
-            <button onclick="moveCamera(0, 1)">↓</button>
-        </div>
-        
-        <button class="generate-btn" onclick="generateLocation()">Сгенерировать</button>
-        <div class="info">Одинаковые координаты → одинаковое название и карта</div>
-        <div class="seed-info" id="seedInfo"></div>
-    </div>
-
-    <script>/**
- * ====================================================================
- * МОДУЛЬ 1: DATA MODULE
- * ====================================================================
- */
-const DataModule = {
-    ITEM_ADJECTIVES: ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"],
-    
-    ENEMY_TYPES: [
-        { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
-        { name: "Скелет", char: "s", color: "#B0BEC5", hp: [15, 25], atk: [3, 6], def: [1, 2] },
-        { name: "Орк",    char: "O", color: "#8BC34A", hp: [30, 50], atk: [6, 10], def: [2, 4] },
-        { name: "Призрак",char: "G", color: "#7C4DFF", hp: [10, 15], atk: [5, 8], def: [0, 1] },
-        { name: "Дракон", char: "D", color: "#FF5722", hp: [80, 120], atk: [15, 25], def: [5, 10] }
-    ],
-
-    ITEM_TYPES: [
-        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
-        { type: "armor",  char: "]", color: "#9E9E9E", baseName: "Броня", stat: "def", val: [1, 3] },
-        { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
-        { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
-    ],
-
-    MAP_WIDTH: 50,
-    MAP_HEIGHT: 50
-};
-
 /**
- * ====================================================================
- * МОДУЛЬ 2: MAP WRAPPER
- * ====================================================================
+ * МОДУЛЬ ГЕНЕРАЦИИ ПОДЗЕМЕЛИЙ (dungeon_generator.js)
+ * Использует SeededRandom и createSeed из name_generator.js
  */
-const MapModule = {
-    currentMapData: null,
-    currentDungeonType: null,
-    stairsUp: null,
-    stairsDown: null,
 
-    generate: function(gx, gy) {
-        const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+// Проверка зависимостей
+if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
+    console.error("Ошибка: name_generator.js должен быть загружен перед dungeon_generator.js");
+}
+
+const DUNGEON_TYPES = [
+    { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: '.', wallChar: '#', floorColor: '#333', wallColor: '#555' }, 
+    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: '.', wallChar: '#', floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
+    { name: 'icy', weight: 20, emoji: '❄️', floorChar: '.', wallChar: '#', floorColor: '#aaddff', wallColor: '#ffffff' },
+    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: '.', wallChar: '#', floorColor: '#1a1a1a', wallColor: '#2a2a2a' },
+    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: 'o', wallChar: 'O', floorColor: '#4caf50', wallColor: '#2e7d32' },
+    { name: 'arena', weight: 3, emoji: '🦴', floorChar: '.', wallChar: '#', floorColor: '#5d4037', wallColor: '#3e2723' },
+    { name: 'boss', weight: 2, emoji: '👑', floorChar: '.', wallChar: '#', floorColor: '#b71c1c', wallColor: '#880e4f' }
+];
+
+const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
+
+// Выбор типа подземелья на основе веса
+function selectDungeonType(rand) {
+    // "Прогреваем" генератор
+    rand.next(); rand.next(); rand.next();
+    
+    const r = rand.next();
+    let cumulative = 0;
+    for (const type of DUNGEON_TYPES) {
+        cumulative += type.weight / TOTAL_WEIGHT;
+        if (r < cumulative) return type;
+    }
+    return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
+}
+
+// === АЛГОРИТМЫ ГЕНЕРАЦИИ ===
+
+// 1. Комнаты и коридоры
+function generateRoomCorridorMap(rand, width, height) {
+    const grid = Array(height).fill().map(() => Array(width).fill(1)); // 1 = стена
+    const rooms = [];
+    const roomCount = rand.int(10, 20);
+    
+    for (let i = 0; i < roomCount; i++) {
+        const w = rand.int(4, 8);
+        const h = rand.int(4, 8);
+        const x = rand.int(1, width - w - 1);
+        const y = rand.int(1, height - h - 1);
         
-        this.currentMapData = result.mapData;
-        this.currentDungeonType = result.dungeonType;
+        let overlaps = false;
+        for (const r of rooms) {
+            if (x < r.x + r.w + 1 && x + w + 1 > r.x && y < r.y + r.h + 1 && y + h + 1 > r.y) {
+                overlaps = true;
+                break;
+            }
+        }
+        if (overlaps) continue;
         
-        // Лестницы
-        this.stairsDown = this._findRandomFloor(result.startPos);
-        this.stairsUp = this._findRandomFloor(result.startPos, true);
-
-        return result.startPos;
-    },
-
-    isWall: function(x, y) {
-        if (!this.currentMapData) return true;
-        if (x < 0 || x >= DataModule.MAP_WIDTH || y < 0 || y >= DataModule.MAP_HEIGHT) return true;
-        return this.currentMapData[y][x] === 1;
-    },
-
-    getRandomFloor: function(excludePos) {
-        return this._findRandomFloor(excludePos);
-    },
-
-    _findRandomFloor: function(excludePos, far=false) {
-        let attempts = 0;
-        while(attempts < 1000) {
-            const x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
-            const y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+        for (let dy = 0; dy < h; dy++) {
+            for (let dx = 0; dx < w; dx++) {
+                grid[y + dy][x + dx] = 0; // 0 = пол
+            }
+        }
+        rooms.push({x, y, w, h});
+    }
+    
+    // Соединение комнат коридорами
+    if (rooms.length > 1) {
+        for (let i = 0; i < rooms.length - 1; i++) {
+            const r1 = rooms[i];
+            const r2 = rooms[i + 1];
+            const cx1 = Math.floor(r1.x + r1.w / 2);
+            const cy1 = Math.floor(r1.y + r1.h / 2);
+            const cx2 = Math.floor(r2.x + r2.w / 2);
+            const cy2 = Math.floor(r2.y + r2.h / 2);
             
-            if (this.currentMapData[y][x] === 0) {
-                if (excludePos && x === excludePos.x && y === excludePos.y) {
-                    attempts++; continue;
+            // Горизонтальный туннель
+            const stepX = cx1 <= cx2 ? 1 : -1;
+            for (let x = cx1; stepX > 0 ? x <= cx2 : x >= cx2; x += stepX) {
+                if (cy1 >= 0 && cy1 < height && x >= 0 && x < width) grid[cy1][x] = 0;
+            }
+            // Вертикальный туннель
+            const stepY = cy1 <= cy2 ? 1 : -1;
+            for (let y = cy1; stepY > 0 ? y <= cy2 : y >= cy2; y += stepY) {
+                if (y >= 0 && y < height && cx2 >= 0 && cx2 < width) grid[y][cx2] = 0;
+            }
+        }
+    }
+    return grid;
+}
+
+// 2. Клеточный автомат (пещеры)
+function generateCellularMap(rand, width, height) {
+    let grid = Array(height).fill().map(() => Array(width).fill(1));
+    const fillChance = 0.45;
+    
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (rand.next() < fillChance) grid[y][x] = 0;
+        }
+    }
+    
+    // Сглаживание
+    for (let iter = 0; iter < 4; iter++) {
+        const newGrid = Array(height).fill().map(() => Array(width).fill(1));
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                    newGrid[y][x] = 1;
+                    continue;
                 }
-                if (far && excludePos) {
-                    const dist = Math.abs(x - excludePos.x) + Math.abs(y - excludePos.y);
-                    if (dist < 10) { attempts++; continue; }
-                }
-                return {x, y};
-            }
-            attempts++;
-        }
-        return excludePos || {x:0, y:0};
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 3: ENTITY MODULE
- * ====================================================================
- */
-const EntityModule = {
-    createPlayer: function(x, y) {
-        return {
-            x: x, y: y,
-            char: "@", color: "#FFF",
-            hp: 50, maxHp: 50,
-            atk: 5, def: 2,
-            level: 1, xp: 0,
-            inventory: [],
-            equipment: { weapon: null, armor: null }
-        };
-    },
-
-    createEnemy: function(template, x, y, difficultyMult) {
-        const hp = Math.floor(template.hp[0] * difficultyMult);
-        const atk = Math.floor(template.atk[0] * difficultyMult);
-        const def = Math.floor(template.def[0] * difficultyMult);
-
-        return {
-            x: x, y: y, name: template.name,
-            char: template.char, color: template.color,
-            hp: hp, maxHp: hp,
-            atk: atk, def: def,
-            isEnemy: true
-        };
-    },
-
-    createItem: function(template, x, y, itemPowerMult) {
-        const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-        const name = `${adj} ${template.baseName}`;
-        
-        const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
-        const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
-        
-        return {
-            x: x, y: y, name: name,
-            char: template.char, color: template.color,
-            type: template.type,
-            stat: template.stat,
-            effect: template.effect,
-            val: finalVal,
-            isItem: true
-        };
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 4: COMBAT MODULE
- * ====================================================================
- */
-const CombatModule = {
-    attack: function(attacker, defender, logFn) {
-        let dmg = Math.max(1, attacker.atk - defender.def);
-        let crit = Math.random() < 0.1;
-        if (crit) dmg = Math.floor(dmg * 1.5);
-
-        defender.hp -= dmg;
-        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit?" (КРИТ)!":"."}`, "combat");
-
-        if (defender.hp <= 0) {
-            logFn(`${defender.name || "Враг"} погибает!`, "info");
-            return true;
-        }
-        return false;
-    },
-
-    useItem: function(player, index, logFn, updateUiFn) {
-        const item = player.inventory[index];
-        if (!item) return;
-
-        let used = false;
-
-        if (item.effect === "heal") {
-            player.hp = Math.min(player.maxHp, player.hp + item.val);
-            logFn(`Вы выпили ${item.name}. HP +${item.val}.`, "loot");
-            used = true;
-        } else if (item.effect === "buff_atk") {
-            player.atk += item.val;
-            logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
-            used = true;
-        } else if (item.type === "weapon") {
-            if (player.equipment.weapon) {
-                player.atk -= player.equipment.weapon.val;
-                player.inventory.push(player.equipment.weapon);
-            }
-            player.equipment.weapon = item;
-            player.atk += item.val;
-            logFn(`Вы взяли ${item.name}. Атака +${item.val}.`, "loot");
-            used = true;
-        } else if (item.type === "armor") {
-            if (player.equipment.armor) {
-                player.def -= player.equipment.armor.val;
-                player.inventory.push(player.equipment.armor);
-            }
-            player.equipment.armor = item;
-            player.def += item.val;
-            logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
-            used = true;
-        }
-
-        if (used) {
-            player.inventory.splice(index, 1);
-            updateUiFn();
-        }
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО НА ROT)
- * ====================================================================
- */
-const RenderModule = {
-    display: null,
-    fov: null,
-    COLS: 50,
-    ROWS: 50,
-    FONT_SIZE: 16,
-
-    init: function() {
-        // Проверка на наличие библиотеки ROT (стандартное имя для rot.js)
-        if (typeof ROT === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету.");
-            throw new Error("ROT missing");
-        }
-
-        this.display = new ROT.Display({
-            width: this.COLS,
-            height: this.ROWS,
-            fontSize: this.FONT_SIZE,
-            fontFamily: "Consolas, monospace",
-            fg: "#ccc",
-            bg: "#000"
-        });
-        
-        const container = document.getElementById("map-container");
-        container.innerHTML = ""; 
-        container.appendChild(this.display.getContainer());
-        
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
-    },
-
-    draw: function(player, enemies, items) {
-        this.display.clear();
-        const visible = new Set();
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-
-        this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
-            if (vis) visible.add(`${x},${y}`);
-        });
-
-        visible.forEach(key => {
-            const [x, y] = key.split(',').map(Number);
-            let ch, fg, bg;
-
-            if (MapModule.isWall(x, y)) {
-                ch = dtype.wallChar;
-                fg = dtype.wallColor;
-                bg = "#000";
-            } else {
-                ch = dtype.floorChar;
-                fg = dtype.floorColor;
-                bg = "#000";
-            }
-            
-            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { 
-                ch = ">"; fg = "#FFF"; 
-            }
-            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { 
-                ch = "<"; fg = "#888"; 
-            }
-
-            this.display.draw(x, y, ch, fg, bg);
-        });
-
-        items.forEach(i => {
-            if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
-        });
-
-        enemies.forEach(e => {
-            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
-        });
-
-        this.display.draw(player.x, player.y, player.char, player.color);
-
-        return visible;
-    },
-
-    updateUI: function(player, locData, worldTrend) {
-        if (locData) {
-            document.getElementById("ui-loc-name").textContent = locData.fullName;
-            document.getElementById("ui-loc-desc").textContent = locData.description;
-            
-            let typeText = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
-            if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                typeText += ` | ${worldTrend.name}`;
-                document.getElementById("ui-loc-name").style.color = worldTrend.color;
-            } else {
-                document.getElementById("ui-loc-name").style.color = "var(--accent)";
-            }
-            document.getElementById("ui-loc-type").textContent = typeText;
-        }
-
-        document.getElementById("ui-stats").innerHTML = `
-            <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
-            <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
-            <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
-            <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
-        `;
-        const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
-        const a = player.equipment.armor ? player.equipment.armor.name : "—";
-        document.getElementById("ui-equip").innerHTML = `
-            <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
-            <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
-        `;
-        const invDiv = document.getElementById("inventory-list");
-        invDiv.innerHTML = "";
-        if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
-        player.inventory.forEach((item, idx) => {
-            const div = document.createElement("div");
-            div.className = "inv-item";
-            div.style.color = item.color;
-            div.textContent = `${item.char} ${item.name} (+${item.val})`;
-            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData, worldTrend));
-            invDiv.appendChild(div);
-        });
-    },
-
-    log: function(msg, type="info") {
-        const list = document.getElementById("log-list");
-        const div = document.createElement("div");
-        div.className = `log-msg log-${type}`;
-        div.textContent = `> ${msg}`;
-        list.prepend(div);
-        if (list.children.length > 50) list.lastChild.remove();
-    },
-
-    drawMinimap: function(player, explored) {
-        const cvs = document.getElementById("minimap");
-        const rect = cvs.parentElement.getBoundingClientRect();
-        cvs.width = rect.width - 20; 
-        cvs.height = rect.height - 40; 
-
-        const ctx = cvs.getContext("2d");
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
-        
-        const cw = cvs.width / DataModule.MAP_WIDTH;
-        const ch = cvs.height / DataModule.MAP_HEIGHT;
-
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-
-        explored.forEach(k => {
-            const [x,y] = k.split(',').map(Number);
-            ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5;
-            ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
-            ctx.globalAlpha = 1.0;
-        });
-        ctx.fillStyle = "#0F0";
-        ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 6: GAME MODULE
- * ====================================================================
- */
-const GameModule = {
-    player: null,
-    enemies: [],
-    items: [],
-    globalX: 0,
-    globalY: 0,
-    currentLocData: null,
-    currentWorldTrend: null,
-    explored: new Set(),
-    busy: false,
-
-    init: function() {
-        try {
-            RenderModule.init();
-        } catch (e) {
-            console.error(e);
-            return;
-        }
-        
-        this.globalX = Math.floor(Math.random() * 10);
-        this.globalY = Math.floor(Math.random() * 10);
-        
-        this.loadLevel(this.globalX, this.globalY);
-        
-        window.addEventListener("keydown", (e) => this.handleInput(e));
-        RenderModule.log("Игра загружена. Используйте стрелки.", "info");
-    },
-
-    loadLevel: function(gx, gy) {
-        this.globalX = gx;
-        this.globalY = gy;
-        this.enemies = [];
-        this.items = [];
-        this.explored.clear();
-
-        // 1. Название и тренд
-        this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
-        this.currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
-        
-        // 2. Карта
-        const startPos = MapModule.generate(gx, gy);
-        
-        document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
-        RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
-        if (this.currentWorldTrend.name !== "Обычный уровень") {
-            RenderModule.log(`Тренд мира: ${this.currentWorldTrend.name}`, "event");
-        }
-
-        // 3. Игрок
-        if (!this.player) {
-            this.player = EntityModule.createPlayer(startPos.x, startPos.y);
-        } else {
-            this.player.x = startPos.x;
-            this.player.y = startPos.y;
-        }
-
-        // 4. Сущности с учетом кривых сложности
-        this.spawnEntities(gx, gy);
-        this.renderFrame();
-    },
-
-    spawnEntities: function(gx, gy) {
-        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
-        const oldRand = Math.random;
-        Math.random = rng; 
-
-        // Получаем множители из WorldCurve
-        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
-        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
-
-        // Враги
-        for(let i=0; i<6; i++) {
-            const pos = MapModule.getRandomFloor(this.player);
-            if (pos.x === this.player.x && pos.y === this.player.y) continue;
-            const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, enemyMult));
-        }
-
-        // Предметы
-        for(let i=0; i<4; i++) {
-            const pos = MapModule.getRandomFloor(this.player);
-            const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
-            this.items.push(EntityModule.createItem(type, pos.x, pos.y, itemMult));
-        }
-
-        Math.random = oldRand;
-    },
-
-    handleInput: function(e) {
-        if (this.busy || this.player.hp <= 0) return;
-        
-        let dx=0, dy=0;
-        if (e.key==="ArrowUp") dy=-1;
-        if (e.key==="ArrowDown") dy=1;
-        if (e.key==="ArrowLeft") dx=-1;
-        if (e.key==="ArrowRight") dx=1;
-        
-        if (dx!==0 || dy!==0 || e.key===" ") {
-            e.preventDefault();
-            this.processTurn(dx, dy);
-        }
-    },
-
-    processTurn: function(dx, dy) {
-        const nx = this.player.x + dx;
-        const ny = this.player.y + dy;
-
-        if (MapModule.isWall(nx, ny)) return;
-
-        const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
-        if (enemy) {
-            CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
-        } else {
-            this.player.x = nx;
-            this.player.y = ny;
-
-            const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
-            if (idx !== -1) {
-                const item = this.items[idx];
-                this.player.inventory.push(item);
-                RenderModule.log(`Подобрано: ${item.name}`, "loot");
-                this.items.splice(idx, 1);
-            }
-
-            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
-                RenderModule.log("Вы поднимаетесь выше...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
-                return;
-            }
-            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
-                RenderModule.log("Вы спускаетесь ниже...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
-                return;
-            }
-        }
-
-        this.enemies.forEach(e => {
-            if (e.hp<=0) return;
-            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
-            if (dist < 8) {
-                if (dist===1) {
-                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
-                } else {
-                    // Используем ROT.Path.AStar
-                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
-                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
-                    let next = null;
-                    astar.compute(e.x, e.y, (x,y) => {
-                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
-                    });
-                    if (next) {
-                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
-                            e.x = next.x; e.y = next.y;
-                        }
+                let wallCount = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (grid[y + dy][x + dx] === 1) wallCount++;
                     }
                 }
+                newGrid[y][x] = (wallCount >= 5) ? 1 : 0;
             }
-        });
+        }
+        grid = newGrid;
+    }
+    return grid;
+}
 
-        if (this.player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+// 3. Арена
+function generateArenaMap(rand, width, height) {
+    const grid = Array(height).fill().map(() => Array(width).fill(1));
+    const margin = 2;
+    
+    for (let y = margin; y < height - margin; y++) {
+        for (let x = margin; x < width - margin; x++) {
+            grid[y][x] = 0;
+        }
+    }
+    
+    // Добавляем случайные колонны/препятствия
+    const colCount = rand.int(5, 15);
+    for (let i = 0; i < colCount; i++) {
+        const cx = rand.int(margin + 2, width - margin - 3);
+        const cy = rand.int(margin + 2, height - margin - 3);
+        // Не ставим в самом центре (спавн игрока)
+        if (Math.abs(cx - width/2) < 3 && Math.abs(cy - height/2) < 3) continue;
+        grid[cy][cx] = 1;
+        // Иногда делаем препятствие 2x2
+        if (rand.next() > 0.5) {
+             if(cx+1 < width-margin) grid[cy][cx+1] = 1;
+             if(cy+1 < height-margin) grid[cy+1][cx] = 1;
+             if(cx+1 < width-margin && cy+1 < height-margin) grid[cy+1][cx+1] = 1;
+        }
+    }
+    return grid;
+}
+
+// === ОСНОВНОЙ ЭКСПОРТ ===
+
+const DungeonGeneratorModule = {
+    generateLevel: function(x, y, width, height) {
+        const seedVal = createSeed(x, y);
+        const rand = new SeededRandom(seedVal);
         
-        this.renderFrame();
-    },
+        // 1. Выбираем тип
+        const dungeonType = selectDungeonType(rand);
+        
+        // 2. Генерируем геометрию
+        let mapGrid;
+        if (dungeonType.name === 'cellular') {
+            mapGrid = generateCellularMap(rand, width, height);
+        } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
+            mapGrid = generateArenaMap(rand, width, height);
+        } else {
+            mapGrid = generateRoomCorridorMap(rand, width, height);
+        }
+        
+        // 3. Находим точку старта
+        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+        
+        // Если центр стена, ищем ближайший пол
+        if (mapGrid[startPos.y][startPos.x] === 1) {
+            let found = false;
+            for(let r=1; r<Math.max(width,height); r++) {
+                for(let dy=-r; dy<=r; dy++) {
+                    for(let dx=-r; dx<=r; dx++) {
+                        const ny = startPos.y + dy;
+                        const nx = startPos.x + dx;
+                        if(ny>=0 && ny<height && nx>=0 && nx<width && mapGrid[ny][nx]===0) {
+                            startPos = {x: nx, y: ny};
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(found) break;
+                }
+                if(found) break;
+            }
+        }
 
-    renderFrame: function() {
-        const vis = RenderModule.draw(this.player, this.enemies, this.items);
-        vis.forEach(k => this.explored.add(k));
-        RenderModule.updateUI(this.player, this.currentLocData, this.currentWorldTrend);
-        RenderModule.drawMinimap(this.player, this.explored);
+        return {
+            mapData: mapGrid,
+            dungeonType: dungeonType,
+            startPos: startPos,
+            seed: seedVal
+        };
     }
 };
-
-// Запуск
-window.onload = () => GameModule.init();
-
-</script>
-</body>
-</html>
