@@ -15,203 +15,225 @@
     <script src="dungeon_generator.js"></script>
     <script src="worldCurve.js"></script>
 
-    <style>
-        :root {
-            --bg-color: #0d1117;
-            --panel-bg: #161b22;
-            --border-color: #30363d;
-            --text-main: #c9d1d9;
-            --text-dim: #8b949e;
-            --accent: #58a6ff;
-            --danger: #f85149;
-            --gold: #d29922;
-            --font-stack: 'Consolas', 'Monaco', monospace;
-        }
+<style>
+    :root {
+        --bg-color: #0d1117;
+        --panel-bg: #161b22;
+        --border-color: #30363d;
+        --text-main: #c9d1d9;
+        --text-dim: #8b949e;
+        --accent: #58a6ff;
+        --danger: #f85149;
+        --gold: #d29922;
+        --font-stack: 'Consolas', 'Monaco', monospace;
+    }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-stack);
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: var(--font-stack);
+        margin: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
 
-        /* Основная сетка: 2 строки (Хедер, Контент) и 2 колонки (Сайдбар, Карта) */
-        #game-layout {
-            display: grid;
-            grid-template-columns: 300px 1fr; /* Сайдбар фиксирован, карта резиновая */
-            grid-template-rows: auto 1fr;     /* Хедер авто-высота, контент занимает остаток */
-            height: 100%;
-            gap: 4px;
-            padding: 4px;
-            box-sizing: border-box;
-        }
+    /* Сетка 3x3, каждая ячейка ровно 1/3 ширины и 1/3 высоты */
+    #game-layout {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        height: 100vh;
+        width: 100vw;
+        gap: 4px;
+        padding: 4px;
+        box-sizing: border-box;
+    }
 
-        .panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+    /* Базовый стиль панели */
+    .panel {
+        background: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 10px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 0; /* Критично для корректного сжатия в grid/flex */
+        min-width: 0;
+    }
 
-        h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 4px;
-            letter-spacing: 1px;
-            flex-shrink: 0;
-        }
+    h3 {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 4px;
+        letter-spacing: 1px;
+        flex-shrink: 0;
+    }
 
-        /* HEADER: Занимает всю ширину в первой строке */
-        header {
-            grid-column: 1 / -1;
-            grid-row: 1;
-            
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            min-height: 60px; /* Минимальная высота, но может расти */
-            height: auto;
-            line-height: 1.4;
-        }
-        
-        .loc-info { 
-            text-align: right; 
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            max-width: 60%;
-        }
-        
-        .loc-name { 
-            color: var(--accent); 
-            font-weight: bold; 
-            font-size: 1.2em; 
-            margin-bottom: 2px;
-        }
-        
-        .loc-type { 
-            color: var(--gold); 
-            font-size: 0.9em; 
-            margin-bottom: 2px;
-        }
+    /* ПАНЕЛЬ 1: Название игры */
+    #panel-1 {
+        grid-row: 1;
+        grid-column: 1;
+        justify-content: center;
+        align-items: center;
+        font-size: 18px;
+        font-weight: bold;
+        color: var(--accent);
+        text-align: center;
+    }
 
-        .loc-desc { 
-            color: var(--text-dim); 
-            font-size: 0.85em; 
-            font-style: italic; 
-            line-height: 1.2;
-        }
-        
-        .loc-coords { 
-            color: var(--text-dim); 
-            font-size: 0.85em; 
-            margin-top: 4px;
-            font-family: monospace;
-        }
+    /* ПАНЕЛЬ 2: Название подземелья */
+    #panel-2 {
+        grid-row: 1;
+        grid-column: 2;
+        justify-content: center;
+        align-items: center;
+        font-size: 14px;
+        color: var(--text-main);
+        text-align: center;
+        word-break: break-word;
+        overflow-y: auto;
+    }
 
-        /* ЛЕВАЯ КОЛОНКА: Занимает вторую строку, первую колонку */
-        #left-sidebar {
-            grid-column: 1;
-            grid-row: 2;
-            display: grid;
-            /* Три панели одинаковой высоты */
-            grid-template-rows: 1fr 1fr 1fr; 
-            gap: 4px;
-            height: 100%;
-            overflow: hidden;
-        }
+    /* ПАНЕЛЬ 3: Тип подземелья */
+    #panel-3 {
+        grid-row: 1;
+        grid-column: 3;
+        justify-content: center;
+        align-items: center;
+        font-size: 14px;
+        color: var(--gold);
+        text-align: center;
+        overflow-y: auto;
+    }
 
-        /* ПРАВАЯ ЧАСТЬ (КАРТА): Занимает вторую строку, вторую колонку */
-        #map-wrapper {
-            grid-column: 2;
-            grid-row: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-            border: 1px solid var(--border-color);
-            position: relative;
-            overflow: hidden;
-            height: 100%;
-            width: 100%;
-        }
+    /* ПАНЕЛЬ 4: Статы и экипировка */
+    #panel-4 {
+        grid-row: 2;
+        grid-column: 1;
+    }
+    #ui-stats, #ui-equip {
+        flex: 1;
+        overflow-y: auto;
+        font-size: 12px;
+        padding: 2px 0;
+    }
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .val-hp { color: var(--danger); }
+    .val-atk { color: var(--gold); }
+    .val-def { color: var(--accent); }
+    .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
+    .equip-item { color: var(--gold); }
 
-        #map-container canvas {
-            display: block;
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            image-rendering: pixelated;
-        }
+    /* ПАНЕЛЬ 5: Карта (ROT.js Canvas) */
+    #panel-5 {
+        grid-row: 2;
+        grid-column: 2;
+        padding: 0;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #map-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #map-container canvas {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain; /* Сохраняет пропорции символов */
+        image-rendering: pixelated;
+    }
 
-        /* Стили для контента панелей */
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
-        .val-hp { color: var(--danger); }
-        .val-atk { color: var(--gold); }
-        .val-def { color: var(--accent); }
-        
-        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
-        .equip-item { color: var(--gold); }
+    /* ПАНЕЛЬ 6: Инвентарь */
+    #panel-6 {
+        grid-row: 2;
+        grid-column: 3;
+    }
+    #inventory-list {
+        flex: 1;
+        overflow-y: auto;
+        font-size: 11px;
+        padding: 2px 0;
+    }
+    .inv-item {
+        padding: 4px;
+        background: rgba(255,255,255,0.05);
+        margin-bottom: 3px;
+        cursor: pointer;
+        border-radius: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .inv-item:hover { background: rgba(255,255,255,0.1); }
 
-        /* Инвентарь и Лог внутри средней панели */
-        #inventory-list { 
-            overflow-y: auto; 
-            flex: 1; 
-            margin-bottom: 5px; 
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 5px;
-        }
-        #log-list {
-            overflow-y: auto;
-            flex: 1;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column-reverse;
-        }
-        
-        .inv-item {
-            padding: 3px 5px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 3px;
-            cursor: pointer;
-            font-size: 11px;
-            border-radius: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .inv-item:hover { background: rgba(255,255,255,0.1); }
+    /* ПАНЕЛЬ 7: Мини-карта */
+    #panel-7 {
+        grid-row: 3;
+        grid-column: 1;
+        padding: 5px;
+    }
+    #minimap {
+        width: 100%;
+        height: 100%;
+        background: #000;
+        border-radius: 4px;
+        image-rendering: pixelated;
+        display: block;
+    }
 
-        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
-        .log-combat { color: var(--danger); }
-        .log-loot { color: var(--gold); }
-        .log-info { color: var(--accent); }
+    /* ПАНЕЛЬ 8: Управление */
+    #panel-8 {
+        grid-row: 3;
+        grid-column: 2;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-dim);
+        line-height: 1.6;
+    }
+    kbd {
+        background: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #fff;
+        border: 1px solid #444;
+        font-family: var(--font-stack);
+        font-size: 11px;
+    }
+    .control-row { margin-bottom: 4px; }
 
-        /* Миникарта */
-        #minimap-panel {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        #minimap { 
-            width: 100%; 
-            height: 100%; 
-            background: #000; 
-            border-radius: 4px;
-            image-rendering: pixelated;
-        }
-    </style>
+    /* ПАНЕЛЬ 9: Журнал событий */
+    #panel-9 {
+        grid-row: 3;
+        grid-column: 3;
+    }
+    #log-list {
+        flex: 1;
+        overflow-y: auto;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column-reverse;
+        padding: 2px 0;
+    }
+    .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
+    .log-combat { color: var(--danger); }
+    .log-loot { color: var(--gold); }
+    .log-info { color: var(--accent); }
+    .log-system { color: var(--text-dim); }
+</style>
 </head>
 <body>
 
