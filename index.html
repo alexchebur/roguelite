@@ -472,7 +472,7 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE
+ * МОДУЛЬ 5: RENDER MODULE (С ЭМОДЗИ-МАППИНГОМ)
  * ====================================================================
  */
 const RenderModule = {
@@ -480,7 +480,31 @@ const RenderModule = {
     fov: null,
     COLS: 60,
     ROWS: 40,
-    FONT_SIZE: 14,
+    FONT_SIZE: 14, // Увеличим шрифт, так как эмодзи могут быть мелкими в некоторых браузерах
+
+    // 🗺️ МАППИНГ СИМВОЛОВ
+    EMOJI_MAP: {
+        // Окружение
+        '.': '⬛',   // Пол (темный квадрат для контраста)
+        '#': '🧱',   // Стена
+        '>': '🔼',   // Лестница вверх
+        '<': '🔽',   // Лестница вниз
+        
+        // Игрок
+        '@': '🧙‍♂️', // Маг/Герой
+
+        // Враги
+        'g': '👺',   // Гоблин
+        's': '💀',   // Скелет
+        'O': '👹',   // Орк
+        'G': '👻',   // Призрак
+        'D': '🐉',   // Дракон
+
+        // Предметы
+        '/': '⚔️',   // Оружие
+        ']': '🛡️',   // Броня
+        '!': '🧪'    // Зелье
+    },
 
     init: function() {
         if (typeof ROT === 'undefined') {
@@ -492,7 +516,7 @@ const RenderModule = {
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
-            fontFamily: "Consolas, monospace",
+            fontFamily: "Segoe UI Emoji, Apple Color Emoji, sans-serif", // Шрифты для поддержки эмодзи
             fg: "#ccc",
             bg: "#000"
         });
@@ -509,7 +533,6 @@ const RenderModule = {
             const fh = container.clientHeight;
             const cw = canvas.width;
             const ch = canvas.height;
-            
             const scale = Math.min(fw / cw, fh / ch);
             canvas.style.transform = `scale(${scale})`;
         };
@@ -530,11 +553,16 @@ const RenderModule = {
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = this.getCameraOffset(player);
 
+        // 1. Вычисляем видимость
         const visible = new Set();
         this.fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
+        // Вспомогательная функция для получения эмодзи
+        const getEmoji = (char) => this.EMOJI_MAP[char] || char;
+
+        // 2. Рисуем карту
         for (let sy = 0; sy < this.ROWS; sy++) {
             for (let sx = 0; sx < this.COLS; sx++) {
                 const wx = sx + cam.x;
@@ -545,50 +573,61 @@ const RenderModule = {
                 const isVisible = visible.has(`${wx},${wy}`);
                 let ch, fg, bg;
 
+                // Определяем базовый символ
                 if (MapModule.isWall(wx, wy)) {
-                    ch = dtype.wallChar;
-                    fg = isVisible ? dtype.wallColor : '#222'; 
-                    bg = "#000";
+                    ch = '#';
+                    fg = isVisible ? '#888' : '#222'; 
                 } else {
-                    ch = dtype.floorChar;
-                    fg = isVisible ? dtype.floorColor : '#111';
-                    bg = "#000";
+                    // Проверка на лестницы приоритетнее пола
+                    if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
+                        ch = '>';
+                        fg = isVisible ? "#FFF" : "#333";
+                    } else if (MapModule.stairsDown && wx === MapModule.stairsDown.x && wy === MapModule.stairsDown.y) {
+                        ch = '<';
+                        fg = isVisible ? "#888" : "#222";
+                    } else {
+                        ch = '.';
+                        fg = isVisible ? '#444' : '#111'; // Цвет пола чуть светлее для видимости
+                    }
                 }
                 
-                if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) { 
-                    ch = ">"; fg = isVisible ? "#FFF" : "#333"; 
-                }
-                if (MapModule.stairsDown && wx === MapModule.stairsDown.x && wy === MapModule.stairsDown.y) { 
-                    ch = "<"; fg = isVisible ? "#888" : "#222"; 
+                // Если клетка не видна, делаем её темной, но рисуем эмодзи стены/пола
+                if (!isVisible && ch !== '#' && ch !== '.') {
+                     // Лестницы в тумане войны можно скрыть или оставить тусклыми
+                     fg = '#222'; 
                 }
 
-                this.display.draw(sx, sy, ch, fg, bg);
+                this.display.draw(sx, sy, getEmoji(ch), fg, bg);
             }
         }
 
+        // 3. Рисуем предметы
         items.forEach(i => {
             const sx = i.x - cam.x;
             const sy = i.y - cam.y;
             if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS && visible.has(`${i.x},${i.y}`)) {
-                this.display.draw(sx, sy, i.char, i.color);
+                this.display.draw(sx, sy, getEmoji(i.char), i.color);
             }
         });
 
+        // 4. Рисуем врагов
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
                 const sy = e.y - cam.y;
                 if (sx >= 0 && sx < this.COLS && sy >= 0 && sy < this.ROWS && visible.has(`${e.x},${e.y}`)) {
-                    this.display.draw(sx, sy, e.char, e.color);
+                    this.display.draw(sx, sy, getEmoji(e.char), e.color);
                 }
             }
         });
 
-        this.display.draw(Math.floor(this.COLS / 2), Math.floor(this.ROWS / 2), player.char, player.color);
+        // 5. Игрок
+        this.display.draw(Math.floor(this.COLS / 2), Math.floor(this.ROWS / 2), getEmoji(player.char), player.color);
 
         return visible;
     },
 
+    // ... (остальные методы updateUI, log, drawMinimap остаются без изменений) ...
     updateUI: function(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
@@ -621,7 +660,7 @@ const RenderModule = {
             const div = document.createElement("div");
             div.className = "inv-item";
             div.style.color = item.color;
-            div.textContent = `${item.char} ${item.name} (+${item.val})`;
+            div.textContent = `${this.EMOJI_MAP[item.char] || item.char} ${item.name} (+${item.val})`;
             div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData, worldTrend));
             invDiv.appendChild(div);
         });
