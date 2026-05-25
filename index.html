@@ -2,275 +2,244 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Roguelike: Подземелье Координат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Подземелье по координатам</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+            color: #ecf0f1;
+            margin: 0;
+            padding: 12px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: start;
+        }
     
-    <!-- ROT.js v2.2.1 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
-    <!-- Seedrandom -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
+        .container {
+            background: rgba(44, 62, 80, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
     
-    <!-- ВАШИ МОДУЛИ -->
-    <script src="name_generator.js"></script>
-    <script src="dungeon_generator.js"></script>
-    <script src="worldCurve.js"></script>
+        h1 {
+            color: #3498db;
+            margin-bottom: 20px;
+            font-size: 22px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+    
+        .coordinates {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+    
+        .coord-input {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    
+        .coord-input label {
+            margin-bottom: 6px;
+            color: #3498db;
+            font-weight: bold;
+            font-size: 14px;
+        }
+    
+        .coord-input input {
+            width: 70px;
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: rgba(52, 73, 94, 0.8);
+            color: white;
+            font-size: 16px;
+            text-align: center;
+        }
+    
+        .coord-input input:focus {
+            outline: none;
+            border-color: #f1c40f;
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
+        }
+    
+        .result {
+            background: rgba(52, 73, 94, 0.8);
+            border: 2px solid #3498db;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+    
+        .location-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #f1c40f;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+    
+        .location-description {
+            font-size: 14px;
+            color: #bdc3c7;
+            line-height: 1.4;
+        }
 
-<style>
-    :root {
-        --bg-color: #0d1117;
-        --panel-bg: #161b22;
-        --border-color: #30363d;
-        --text-main: #c9d1d9;
-        --text-dim: #8b949e;
-        --accent: #58a6ff;
-        --danger: #f85149;
-        --gold: #d29922;
-        --font-stack: 'Consolas', 'Monaco', monospace;
-    }
+        .type-badge {
+            margin: 10px auto;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+        }
 
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-    }
+        /* Цвета типов */
+        .boss { background: #ff3333; }
+        .icy { background: #7fdbff; color: #000; }
+        .cave { background: #8b4513; }
+        .dungeon { background: #555; }
+        .rogue { background: #8a2be2; color: white; }
+        .cellular { background: #32cd32; color: #000; }
+        .arena { background: #ff8c00; }
 
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-main);
-        font-family: var(--font-stack);
-        height: 100vh;
-        width: 100vw;
-        overflow: hidden;
-    }
+        /* === КОНТЕЙНЕР КАРТЫ === */
+        .map-container {
+            width: 450px;
+            height: 450px;
+            margin: 15px auto;
+            overflow: hidden;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: #0f0f1a;
+        }
 
-    /* СЕТКА 3×3: ВЕРХНИЙ РЯД = 1/2 ВЫСОТЫ СРЕДНЕГО/НИЖНЕГО */
-    #game-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        /* 1fr : 2fr : 2fr = верхний ряд в 2 раза меньше остальных */
-        grid-template-rows: 1fr 2fr 2fr;
-        width: 100vw;
-        height: 100vh;
-        gap: 4px;
-        padding: 4px;
-    }
+        /* === СЕТКА ВИДИМОЙ ОБЛАСТИ (15×15) === */
+        .map {
+            display: grid;
+            grid-template-columns: repeat(15, 30px);
+            grid-template-rows: repeat(15, 30px);
+            width: 450px;
+            height: 450px;
+            gap: 0;
+            padding: 0;
+            margin: 0;
+        }
 
-    /* БАЗОВЫЙ СТИЛЬ ПАНЕЛИ */
-    .panel {
-        background: var(--panel-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        min-width: 0;
-        min-height: 0;
-    }
+        /* === ЯЧЕЙКА ТАЙЛА === */
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+            width: 30px;
+            height: 30px;
+            box-sizing: border-box;
+            border: none;
+            outline: none;
+        }
 
-    h3 {
-        margin: 0 0 6px 0;
-        font-size: 11px;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 4px;
-        letter-spacing: 1px;
-        flex-shrink: 0;
-    }
+        .controls {
+            margin: 10px 0;
+        }
+        .controls button {
+            background: #34495e;
+            color: white;
+            border: 1px solid #3498db;
+            padding: 6px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
 
-    /* === ПАНЕЛЬ 1: Название игры (ряд 1, колонка 1) === */
-    #panel-1 {
-        grid-row: 1;
-        grid-column: 1;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-    #panel-1 .game-title {
-        font-size: 16px;
-        font-weight: bold;
-        color: var(--accent);
-    }
-
-    /* === ПАНЕЛЬ 2: Название подземелья (ряд 1, колонка 2) === */
-    #panel-2 {
-        grid-row: 1;
-        grid-column: 2;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-    #ui-loc-name {
-        font-size: 13px;
-        font-weight: bold;
-        color: var(--text-main);
-        word-break: break-word;
-        line-height: 1.3;
-    }
-
-    /* === ПАНЕЛЬ 3: Тип подземелья (ряд 1, колонка 3) === */
-    #panel-3 {
-        grid-row: 1;
-        grid-column: 3;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-    #ui-loc-type {
-        font-size: 12px;
-        color: var(--gold);
-        word-break: break-word;
-    }
-    #ui-loc-coords {
-        font-size: 10px;
-        color: var(--text-dim);
-        margin-top: 4px;
-        font-family: monospace;
-    }
-
-    /* === ПАНЕЛЬ 4: Статы и экипировка (ряд 2, колонка 1) === */
-    #panel-4 {
-        grid-row: 2;
-        grid-column: 1;
-    }
-    #ui-stats, #ui-equip {
-        flex: 1;
-        overflow-y: auto;
-        font-size: 11px;
-        padding: 2px 0;
-    }
-    .stat-row { 
-        display: flex; 
-        justify-content: space-between; 
-        margin-bottom: 4px; 
-        font-size: 11px;
-    }
-    .val-hp { color: var(--danger); }
-    .val-atk { color: var(--gold); }
-    .val-def { color: var(--accent); }
-    .equip-slot { 
-        font-size: 11px; 
-        margin-bottom: 3px; 
-        color: #aaa; 
-    }
-    .equip-item { color: var(--gold); }
-
-    /* === ПАНЕЛЬ 5: Карта ROT.js (ряд 2, колонка 2) === */
-    #panel-5 {
-        grid-row: 2;
-        grid-column: 2;
-        padding: 0;
-        background: #000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    #map-container {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    #map-container canvas {
-        display: block;
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-        image-rendering: pixelated;
-    }
-
-    /* === ПАНЕЛЬ 6: Инвентарь (ряд 2, колонка 3) === */
-    #panel-6 {
-        grid-row: 2;
-        grid-column: 3;
-    }
-    #inventory-list {
-        flex: 1;
-        overflow-y: auto;
-        font-size: 10px;
-        padding: 2px 0;
-    }
-    .inv-item {
-        padding: 3px 4px;
-        background: rgba(255,255,255,0.05);
-        margin-bottom: 2px;
-        cursor: pointer;
-        border-radius: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 10px;
-    }
-    .inv-item:hover { background: rgba(255,255,255,0.1); }
-
-    /* === ПАНЕЛЬ 7: Мини-карта (ряд 3, колонка 1) === */
-    #panel-7 {
-        grid-row: 3;
-        grid-column: 1;
-        padding: 4px;
-    }
-    #minimap {
-        width: 100%;
-        height: 100%;
-        background: #000;
-        border-radius: 4px;
-        image-rendering: pixelated;
-        display: block;
-    }
-
-    /* === ПАНЕЛЬ 8: Управление (ряд 3, колонка 2) === */
-    #panel-8 {
-        grid-row: 3;
-        grid-column: 2;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        font-size: 11px;
-        color: var(--text-dim);
-        line-height: 1.8;
-        padding: 4px;
-    }
-    kbd {
-        background: #333;
-        padding: 2px 5px;
-        border-radius: 3px;
-        color: #fff;
-        border: 1px solid #444;
-        font-family: var(--font-stack);
-        font-size: 10px;
-        margin: 0 2px;
-    }
-    .control-row { margin: 2px 0; }
-
-    /* === ПАНЕЛЬ 9: Журнал событий (ряд 3, колонка 3) === */
-    #panel-9 {
-        grid-row: 3;
-        grid-column: 3;
-    }
-    #log-list {
-        flex: 1;
-        overflow-y: auto;
-        font-size: 10px;
-        display: flex;
-        flex-direction: column-reverse;
-        padding: 2px 0;
-        line-height: 1.3;
-    }
-    .log-msg { margin-bottom: 2px; word-wrap: break-word; }
-    .log-combat { color: var(--danger); }
-    .log-loot { color: var(--gold); }
-    .log-info { color: var(--accent); }
-    .log-system { color: var(--text-dim); }
-
-    /* Скроллбары */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: var(--bg-color); }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-</style>
+        .generate-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+    
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+            background: linear-gradient(45deg, #3ca0db, #2c8bc9);
+        }
+    
+        .info {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+    
+        .seed-info {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #95a5a6;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>🔮 Подземелье по координатам</h1>
+        
+        <div class="coordinates">
+            <div class="coord-input">
+                <label for="coordX">Координата X</label>
+                <input type="number" id="coordX" value="1" min="-1000" max="1000">
+            </div>
+            <div class="coord-input">
+                <label for="coordY">Координата Y</label>
+                <input type="number" id="coordY" value="1" min="-1000" max="1000">
+            </div>
+        </div>
+        
+        <div class="result">
+            <div class="location-name" id="locationName">Нажмите "Сгенерировать"</div>
+            <div class="location-description" id="locationDescription"></div>
+            <div class="type-badge" id="typeBadge">—</div>
+        </div>
+
+        <div class="map-container">
+            <div class="map" id="map"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="moveCamera(0, -1)">↑</button><br>
+            <button onclick="moveCamera(-1, 0)">←</button>
+            <button onclick="moveCamera(1, 0)">→</button><br>
+            <button onclick="moveCamera(0, 1)">↓</button>
+        </div>
+        
+        <button class="generate-btn" onclick="generateLocation()">Сгенерировать</button>
+        <div class="info">Одинаковые координаты → одинаковое название и карта</div>
+        <div class="seed-info" id="seedInfo"></div>
+    </div>
+
+    <script>
 
 <div id="game-layout">
     <!-- РЯД 1 (высота = 1fr) -->
