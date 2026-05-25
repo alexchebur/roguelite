@@ -4,13 +4,17 @@
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ROTJS.js v0.7.3 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/ROTJS.min.js"></script>
+    <!-- ROT.js v2.2.1 -->
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
+    
+    <!-- ВАШИ МОДУЛИ -->
+    <script src="name_generator.js"></script>
+    <script src="dungeon_generator.js"></script>
+    <script src="worldCurve.js"></script>
 
     <style>
-        /* --- CSS: ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС --- */
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -31,14 +35,13 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Важно: убираем скролл страницы */
+            overflow: hidden;
         }
 
-        /* Сетка layout: фиксированные пропорции */
         #game-layout {
             display: grid;
-            grid-template-columns: 280px 1fr 280px;
-            grid-template-rows: 50px 1fr 140px; /* Header, Main, Footer/MiniMap */
+            grid-template-columns: 260px 1fr 260px;
+            grid-template-rows: 60px 1fr 140px;
             height: 100%;
             gap: 4px;
             padding: 4px;
@@ -65,7 +68,6 @@
             letter-spacing: 1px;
         }
 
-        /* Header */
         header {
             grid-column: 1 / -1;
             display: flex;
@@ -76,8 +78,10 @@
         .loc-info { text-align: right; }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
         .loc-coords { color: var(--text-dim); font-size: 0.85em; }
+        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
+        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* Map Container - занимает все доступное место по центру */
+        /* --- КАРТА --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
@@ -88,9 +92,23 @@
             border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
+            
+            /* Квадратный контейнер */
+            aspect-ratio: 1 / 1;
+            max-height: 100%;
+            max-width: 100%;
+            margin: auto;
         }
 
-        /* Stats & Equip */
+        /* Исправление отображения Canvas */
+        #map-container canvas {
+            display: block;
+            width: 100% !important;  
+            height: 100% !important; 
+            object-fit: contain;     
+            image-rendering: pixelated; 
+        }
+
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
@@ -99,7 +117,6 @@
         .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
         .equip-item { color: var(--gold); }
 
-        /* Inventory & Log */
         #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
         .inv-item {
             padding: 3px 5px;
@@ -126,7 +143,6 @@
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
 
-        /* Minimap Panel */
         #minimap-panel {
             grid-column: 1;
             grid-row: 3;
@@ -138,10 +154,9 @@
             height: 100%; 
             background: #000; 
             border-radius: 4px;
-            image-rendering: pixelated; /* Чтобы пиксели были четкими */
+            image-rendering: pixelated;
         }
 
-        /* Footer Controls */
         footer {
             grid-column: 2 / 4;
             grid-row: 3;
@@ -163,11 +178,12 @@
         <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
         <div class="loc-info">
             <div id="ui-loc-name" class="loc-name">Инициализация...</div>
+            <div id="ui-loc-type" class="loc-type"></div>
+            <div id="ui-loc-desc" class="loc-desc"></div>
             <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
         </div>
     </header>
 
-    <!-- Левая панель: Статы и Экипировка -->
     <div class="panel" style="grid-row: 2;">
         <h3>Персонаж</h3>
         <div id="ui-stats"></div>
@@ -175,10 +191,8 @@
         <div id="ui-equip"></div>
     </div>
 
-    <!-- Центр: Карта -->
     <div id="map-container"></div>
 
-    <!-- Правая панель: Инвентарь и Лог -->
     <div class="panel" style="grid-row: 2 / 4;">
         <h3>Инвентарь</h3>
         <div id="inventory-list"></div>
@@ -186,7 +200,6 @@
         <div id="log-list"></div>
     </div>
 
-    <!-- Низ слева: Миникарта -->
     <div id="minimap-panel" class="panel">
         <h3>Карта мира</h3>
         <canvas id="minimap"></canvas>
@@ -206,8 +219,7 @@
  * ====================================================================
  */
 const DataModule = {
-    ADJECTIVES: ["Мрачный", "Древний", "Забытый", "Проклятый", "Святой", "Ядовитый", "Огненный", "Ледяной", "Темный", "Дикий", "Безмолвный", "Кровавый"],
-    PLACES: ["Склеп", "Чертог", "Лаборатория", "Улей", "Курган", "Бастион", "Храм", "Лабиринт", "Грот", "Цитадель", "Арсенал"],
+    ITEM_ADJECTIVES: ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"],
     
     ENEMY_TYPES: [
         { name: "Гоблин", char: "g", color: "#4CAF50", hp: [10, 20], atk: [2, 4], def: [0, 1] },
@@ -224,127 +236,69 @@ const DataModule = {
         { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
     ],
 
-    // Настройки карты (размер в клетках)
-    MAP_WIDTH: 60,
-    MAP_HEIGHT: 40,
-    ROOM_COUNT: 15
+    MAP_WIDTH: 50,
+    MAP_HEIGHT: 50
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 2: NAME GENERATOR
- * ====================================================================
- */
-const NameGenModule = {
-    rng: null,
-
-    setSeed: function(seedString) {
-        if (typeof Math.seedrandom !== 'undefined') {
-            this.rng = new Math.seedrandom(seedString);
-        } else {
-            this.rng = Math.random;
-        }
-    },
-
-    random: function() {
-        return this.rng();
-    },
-
-    pick: function(array) {
-        return array[Math.floor(this.random() * array.length)];
-    },
-
-    getLocationName: function(x, y) {
-        this.setSeed(`loc_${x}_${y}`);
-        const adj = this.pick(DataModule.ADJECTIVES);
-        const noun = this.pick(DataModule.PLACES);
-        return `${adj} ${noun}`;
-    },
-
-    getItemName: function(baseName) {
-        const adj = this.pick(DataModule.ADJECTIVES);
-        return `${adj} ${baseName}`;
-    },
-
-    getEnemyName: function(baseName) {
-        if (this.random() > 0.7) {
-            const adj = this.pick(DataModule.ADJECTIVES);
-            return `${adj} ${baseName}`;
-        }
-        return baseName;
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 3: MAP MODULE
+ * МОДУЛЬ 2: MAP WRAPPER
  * ====================================================================
  */
 const MapModule = {
-    map: [],
-    rooms: [],
+    currentMapData: null,
+    currentDungeonType: null,
     stairsUp: null,
     stairsDown: null,
 
-    generate: function(seedStr) {
-        NameGenModule.setSeed(seedStr);
+    generate: function(gx, gy) {
+        const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+        
+        this.currentMapData = result.mapData;
+        this.currentDungeonType = result.dungeonType;
+        
+        // Лестницы
+        this.stairsDown = this._findRandomFloor(result.startPos);
+        this.stairsUp = this._findRandomFloor(result.startPos, true);
 
-        if (typeof ROTJS === 'undefined') {
-            alert("Ошибка: Библиотека ROTJS.js не загрузилась.");
-            throw new Error("ROTJS.js missing");
-        }
-
-        const digger = new ROTJS.Map.Digger(DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, {
-            roomWidth: [4, 8],
-            roomHeight: [4, 8],
-            roomCount: DataModule.ROOM_COUNT
-        });
-
-        this.map = [];
-        for(let y=0; y<DataModule.MAP_HEIGHT; y++) {
-            this.map[y] = new Array(DataModule.MAP_WIDTH).fill(1);
-        }
-
-        digger.create((x, y, value) => {
-            this.map[y][x] = value;
-        });
-
-        this.rooms = digger.getRooms();
-
-        if (this.rooms.length > 0) {
-            const r = this.rooms[0];
-            this.stairsDown = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
-        }
-        if (this.rooms.length > 1) {
-            const r = this.rooms[this.rooms.length-1];
-            this.stairsUp = { x: Math.floor((r._x1+r._x2)/2), y: Math.floor((r._y1+r._y2)/2) };
-        }
-
-        const startRoom = this.rooms[1] || this.rooms[0];
-        return {
-            x: Math.floor((startRoom._x1 + startRoom._x2)/2),
-            y: Math.floor((startRoom._y1 + startRoom._y2)/2)
-        };
+        return result.startPos;
     },
 
     isWall: function(x, y) {
+        if (!this.currentMapData) return true;
         if (x < 0 || x >= DataModule.MAP_WIDTH || y < 0 || y >= DataModule.MAP_HEIGHT) return true;
-        return this.map[y][x] === 1;
+        return this.currentMapData[y][x] === 1;
     },
 
-    getRandomFloor: function() {
-        let x, y;
-        do {
-            x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
-            y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
-        } while (this.isWall(x, y));
-        return {x, y};
+    getRandomFloor: function(excludePos) {
+        return this._findRandomFloor(excludePos);
+    },
+
+    _findRandomFloor: function(excludePos, far=false) {
+        let attempts = 0;
+        while(attempts < 1000) {
+            const x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+            const y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+            
+            if (this.currentMapData[y][x] === 0) {
+                if (excludePos && x === excludePos.x && y === excludePos.y) {
+                    attempts++; continue;
+                }
+                if (far && excludePos) {
+                    const dist = Math.abs(x - excludePos.x) + Math.abs(y - excludePos.y);
+                    if (dist < 10) { attempts++; continue; }
+                }
+                return {x, y};
+            }
+            attempts++;
+        }
+        return excludePos || {x:0, y:0};
     }
 };
 
 /**
  * ====================================================================
- * МОДУЛЬ 4: ENTITY MODULE
+ * МОДУЛЬ 3: ENTITY MODULE
  * ====================================================================
  */
 const EntityModule = {
@@ -360,23 +314,26 @@ const EntityModule = {
         };
     },
 
-    createEnemy: function(template, x, y, difficulty) {
-        const name = NameGenModule.getEnemyName(template.name);
-        const hp = Math.floor((template.hp[0] + Math.random()*(template.hp[1]-template.hp[0])) * difficulty);
-        const atk = Math.floor((template.atk[0] + Math.random()*(template.atk[1]-template.atk[0])) * difficulty);
-        const def = Math.floor((template.def[0] + Math.random()*(template.def[1]-template.def[0])) * difficulty);
+    createEnemy: function(template, x, y, difficultyMult) {
+        const hp = Math.floor(template.hp[0] * difficultyMult);
+        const atk = Math.floor(template.atk[0] * difficultyMult);
+        const def = Math.floor(template.def[0] * difficultyMult);
 
         return {
-            x: x, y: y, name: name,
+            x: x, y: y, name: template.name,
             char: template.char, color: template.color,
-            hp: hp, maxHp: hp, atk: atk, def: def,
+            hp: hp, maxHp: hp,
+            atk: atk, def: def,
             isEnemy: true
         };
     },
 
-    createItem: function(template, x, y) {
-        const name = NameGenModule.getItemName(template.baseName);
-        const val = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
+    createItem: function(template, x, y, itemPowerMult) {
+        const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
+        const name = `${adj} ${template.baseName}`;
+        
+        const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
+        const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
         
         return {
             x: x, y: y, name: name,
@@ -384,7 +341,7 @@ const EntityModule = {
             type: template.type,
             stat: template.stat,
             effect: template.effect,
-            val: val,
+            val: finalVal,
             isItem: true
         };
     }
@@ -392,7 +349,7 @@ const EntityModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: COMBAT MODULE
+ * МОДУЛЬ 4: COMBAT MODULE
  * ====================================================================
  */
 const CombatModule = {
@@ -454,21 +411,24 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 6: RENDER MODULE (ИСПРАВЛЕННЫЙ РАЗМЕР)
+ * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО НА ROT)
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    // Настройки отображения: подбираем под размер экрана
-    // При шрифте 14px и карте 60x40 клеток, нам нужно около 840x560 пикселей.
-    // Центральная панель достаточно большая для этого.
-    COLS: 60,
-    ROWS: 40,
-    FONT_SIZE: 14,
+    COLS: 50,
+    ROWS: 50,
+    FONT_SIZE: 16,
 
     init: function() {
-        this.display = new ROTJS.Display({
+        // Проверка на наличие библиотеки ROT (стандартное имя для rot.js)
+        if (typeof ROT === 'undefined') {
+            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету.");
+            throw new Error("ROT missing");
+        }
+
+        this.display = new ROT.Display({
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
@@ -478,50 +438,73 @@ const RenderModule = {
         });
         
         const container = document.getElementById("map-container");
-        container.innerHTML = ""; // Очистка перед добавлением
+        container.innerHTML = ""; 
         container.appendChild(this.display.getContainer());
         
-        this.fov = new ROTJS.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
     draw: function(player, enemies, items) {
         this.display.clear();
         const visible = new Set();
+        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
 
-        // Радиус обзора
         this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // Отрисовка тайлов
         visible.forEach(key => {
             const [x, y] = key.split(',').map(Number);
-            let ch = ".", fg = "#333";
-            if (MapModule.isWall(x, y)) { ch = "#"; fg = "#555"; }
-            
-            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { ch = ">"; fg = "#FFF"; }
-            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { ch = "<"; fg = "#888"; }
+            let ch, fg, bg;
 
-            this.display.draw(x, y, ch, fg);
+            if (MapModule.isWall(x, y)) {
+                ch = dtype.wallChar;
+                fg = dtype.wallColor;
+                bg = "#000";
+            } else {
+                ch = dtype.floorChar;
+                fg = dtype.floorColor;
+                bg = "#000";
+            }
+            
+            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { 
+                ch = ">"; fg = "#FFF"; 
+            }
+            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { 
+                ch = "<"; fg = "#888"; 
+            }
+
+            this.display.draw(x, y, ch, fg, bg);
         });
 
-        // Предметы
         items.forEach(i => {
             if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
         });
 
-        // Враги
         enemies.forEach(e => {
             if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
         });
 
-        // Игрок
         this.display.draw(player.x, player.y, player.char, player.color);
 
         return visible;
     },
 
-    updateUI: function(player) {
+    updateUI: function(player, locData, worldTrend) {
+        if (locData) {
+            document.getElementById("ui-loc-name").textContent = locData.fullName;
+            document.getElementById("ui-loc-desc").textContent = locData.description;
+            
+            let typeText = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
+            if (worldTrend && worldTrend.name !== "Обычный уровень") {
+                typeText += ` | ${worldTrend.name}`;
+                document.getElementById("ui-loc-name").style.color = worldTrend.color;
+            } else {
+                document.getElementById("ui-loc-name").style.color = "var(--accent)";
+            }
+            document.getElementById("ui-loc-type").textContent = typeText;
+        }
+
         document.getElementById("ui-stats").innerHTML = `
             <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
             <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
@@ -542,7 +525,7 @@ const RenderModule = {
             div.className = "inv-item";
             div.style.color = item.color;
             div.textContent = `${item.char} ${item.name} (+${item.val})`;
-            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player));
+            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData, worldTrend));
             invDiv.appendChild(div);
         });
     },
@@ -558,10 +541,9 @@ const RenderModule = {
 
     drawMinimap: function(player, explored) {
         const cvs = document.getElementById("minimap");
-        // Масштабируем canvas под размер родителя
         const rect = cvs.parentElement.getBoundingClientRect();
-        cvs.width = rect.width - 20; // минус padding
-        cvs.height = rect.height - 40; // минус заголовок и padding
+        cvs.width = rect.width - 20; 
+        cvs.height = rect.height - 40; 
 
         const ctx = cvs.getContext("2d");
         ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
@@ -569,12 +551,15 @@ const RenderModule = {
         const cw = cvs.width / DataModule.MAP_WIDTH;
         const ch = cvs.height / DataModule.MAP_HEIGHT;
 
+        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
+
         explored.forEach(k => {
             const [x,y] = k.split(',').map(Number);
-            ctx.fillStyle = MapModule.isWall(x,y) ? "#333" : "#111";
+            ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
+            ctx.globalAlpha = 0.5;
             ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
+            ctx.globalAlpha = 1.0;
         });
-        // Игрок
         ctx.fillStyle = "#0F0";
         ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
     }
@@ -582,7 +567,7 @@ const RenderModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 7: GAME MODULE
+ * МОДУЛЬ 6: GAME MODULE
  * ====================================================================
  */
 const GameModule = {
@@ -591,6 +576,8 @@ const GameModule = {
     items: [],
     globalX: 0,
     globalY: 0,
+    currentLocData: null,
+    currentWorldTrend: null,
     explored: new Set(),
     busy: false,
 
@@ -618,13 +605,20 @@ const GameModule = {
         this.items = [];
         this.explored.clear();
 
-        const locName = NameGenModule.getLocationName(gx, gy);
-        document.getElementById("ui-loc-name").textContent = locName;
+        // 1. Название и тренд
+        this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
+        this.currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
+        
+        // 2. Карта
+        const startPos = MapModule.generate(gx, gy);
+        
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
-        RenderModule.log(`Локация: ${locName}`, "info");
+        RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
+        if (this.currentWorldTrend.name !== "Обычный уровень") {
+            RenderModule.log(`Тренд мира: ${this.currentWorldTrend.name}`, "event");
+        }
 
-        const startPos = MapModule.generate(`map_${gx}_${gy}`);
-
+        // 3. Игрок
         if (!this.player) {
             this.player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -632,6 +626,7 @@ const GameModule = {
             this.player.y = startPos.y;
         }
 
+        // 4. Сущности с учетом кривых сложности
         this.spawnEntities(gx, gy);
         this.renderFrame();
     },
@@ -641,19 +636,23 @@ const GameModule = {
         const oldRand = Math.random;
         Math.random = rng; 
 
-        const diff = 1 + (Math.abs(gx) + Math.abs(gy)) * 0.1;
+        // Получаем множители из WorldCurve
+        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
+        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
 
+        // Враги
         for(let i=0; i<6; i++) {
-            const pos = MapModule.getRandomFloor();
+            const pos = MapModule.getRandomFloor(this.player);
             if (pos.x === this.player.x && pos.y === this.player.y) continue;
             const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, diff));
+            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, enemyMult));
         }
 
+        // Предметы
         for(let i=0; i<4; i++) {
-            const pos = MapModule.getRandomFloor();
+            const pos = MapModule.getRandomFloor(this.player);
             const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
-            this.items.push(EntityModule.createItem(type, pos.x, pos.y));
+            this.items.push(EntityModule.createItem(type, pos.x, pos.y, itemMult));
         }
 
         Math.random = oldRand;
@@ -714,7 +713,8 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    const astar = new ROTJS.Path.AStar(this.player.x, this.player.y, 
+                    // Используем ROT.Path.AStar
+                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
                     astar.compute(e.x, e.y, (x,y) => {
@@ -737,7 +737,7 @@ const GameModule = {
     renderFrame: function() {
         const vis = RenderModule.draw(this.player, this.enemies, this.items);
         vis.forEach(k => this.explored.add(k));
-        RenderModule.updateUI(this.player);
+        RenderModule.updateUI(this.player, this.currentLocData, this.currentWorldTrend);
         RenderModule.drawMinimap(this.player, this.explored);
     }
 };
