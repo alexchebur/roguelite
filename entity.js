@@ -91,10 +91,46 @@ const EntityModule = (function() {
         return placedEnemies;
     }
 
+    // Размещение предметов на разных клетках
+    function spawnItems(mapGrid, startPos, itemTemplates, count, itemPowerMult, minDistFromPlayer = 3) {
+        const height = mapGrid.length;
+        const width = mapGrid[0].length;
+        const validTiles = [];
+
+        // Собираем все клетки пола, исключая близкие к игроку
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (mapGrid[y][x] === 0) {
+                    const distToStart = Math.abs(x - startPos.x) + Math.abs(y - startPos.y);
+                    if (distToStart >= minDistFromPlayer) {
+                        validTiles.push({ x, y });
+                    }
+                }
+            }
+        }
+
+        // Перемешиваем массив
+        for (let i = validTiles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
+        }
+
+        // Размещаем предметы на первых count уникальных клетках
+        const placedItems = [];
+        for (let i = 0; i < Math.min(count, validTiles.length); i++) {
+            const tile = validTiles[i];
+            const template = itemTemplates[Math.floor(Math.random() * itemTemplates.length)];
+            placedItems.push(createItem(template, tile.x, tile.y, itemPowerMult));
+        }
+
+        return placedItems;
+    }
+
     return {
         createPlayer,
         createEnemy,
         createItem,
-        spawnEnemies
+        spawnEnemies,
+        spawnItems
     };
 })();
