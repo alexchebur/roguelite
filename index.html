@@ -581,10 +581,14 @@ const RenderModule = {
         };
 
         // 🎨 Функция получения цвета с учётом видимости
-        const getDisplayColor = (color, isVisible, isExplored) => {
-            if (!isExplored) return '#111'; // Тёмный фон для неизвестного
-            if (isVisible) return color;     // Яркий цвет для видимого
-            return dimColor(color, 0.25);    // Тусклый для исследованного, но невидимого
+        const getDisplayColor = (color, isVisible, isExplored, distance = 0) => {
+            if (!isExplored) return '#111';
+            if (!isVisible) return dimColor(color, 0.25);
+    
+            // Плавное затемнение по дистанции (опционально)
+            const maxView = 25;
+            const distFactor = 1 - (distance / maxView) * 0.4; // До 40% затемнения на краю обзора
+            return dimColor(color, distFactor);
         };
 
         // 2. Рисуем карту (пол/стены)
