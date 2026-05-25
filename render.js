@@ -186,6 +186,7 @@ const RenderModule = (function() {
         updateUI,
         log,
         drawMinimap,
+        getCameraOffset,  // <-- ЭТО БЫЛО ОТСУТСТВУЮЩЕЕ ЗВЕНО!
         COLS,
         ROWS
     };
