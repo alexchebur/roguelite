@@ -2,215 +2,169 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roguelike: Подземелье Координат</title>
-    
-    <!-- ROT.js v2.2.1 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
-    <!-- Seedrandom -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
-    
-    <!-- ВАШИ МОДУЛИ -->
-    <script src="name_generator.js"></script>
-    <script src="dungeon_generator.js"></script>
-    <script src="worldCurve.js"></script>
-
     <style>
         :root {
-            --bg-color: #0d1117;
-            --panel-bg: #161b22;
-            --border-color: #30363d;
-            --text-main: #c9d1d9;
-            --text-dim: #8b949e;
-            --accent: #58a6ff;
-            --danger: #f85149;
-            --gold: #d29922;
-            --font-stack: 'Consolas', 'Monaco', monospace;
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent: #4caf50;
+            --border: #333;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-stack);
             margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: hidden; /* Убираем скролл страницы */
         }
 
-        #game-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 60px 1fr 140px;
-            height: 100%;
-            gap: 4px;
-            padding: 4px;
-            box-sizing: border-box;
-        }
-
-        .panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 4px;
-            letter-spacing: 1px;
-        }
-
+        /* Верхняя панель управления */
         header {
-            grid-column: 1 / -1;
+            padding: 10px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 15px;
+            flex-shrink: 0;
         }
-        .loc-info { text-align: right; }
-        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
-        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
-        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* --- КАРТА --- */
-        #map-container {
-            grid-column: 2;
-            grid-row: 2;
+        .coords-display {
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Основной контейнер игры */
+        #game-layout {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-            border: 1px solid var(--border-color);
+            flex: 1; /* Занимает всё оставшееся место */
+            height: calc(100vh - 50px); /* Вычитаем высоту хедера */
+        }
+
+        /* Левая панель: Карта */
+        #map-wrapper {
+            flex: 2; /* Карта занимает 2/3 ширины */
             position: relative;
+            background: #000;
             overflow: hidden;
-            
-            /* Квадратный контейнер */
-            aspect-ratio: 1 / 1;
-            max-height: 100%;
-            max-width: 100%;
-            margin: auto;
+            border-right: 1px solid var(--border);
         }
 
-        /* Исправление отображения Canvas */
-        #map-container canvas {
+        /* Контейнер для Canvas, чтобы позиционировать UI поверх */
+        #map-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        canvas {
             display: block;
-            width: 100% !important;  
-            height: 100% !important; 
-            object-fit: contain;     
+            width: 100%;
+            height: 100%;
+            /* Важно для пиксель-арта: отключаем сглаживание браузера */
             image-rendering: pixelated; 
+            image-rendering: crisp-edges;
         }
 
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
-        .val-hp { color: var(--danger); }
-        .val-atk { color: var(--gold); }
-        .val-def { color: var(--accent); }
-        
-        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
-        .equip-item { color: var(--gold); }
-
-        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
-        .inv-item {
-            padding: 3px 5px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 3px;
-            cursor: pointer;
-            font-size: 11px;
-            border-radius: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .inv-item:hover { background: rgba(255,255,255,0.1); }
-
-        #log-list {
-            overflow-y: auto;
-            flex: 1;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column-reverse;
-        }
-        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
-        .log-combat { color: var(--danger); }
-        .log-loot { color: var(--gold); }
-        .log-info { color: var(--accent); }
-
-        #minimap-panel {
-            grid-column: 1;
-            grid-row: 3;
+        /* Правая панель: Инфо */
+        #info-panel {
+            flex: 1; /* Инфо занимает 1/3 ширины */
+            background: var(--panel-bg);
+            padding: 10px;
             display: flex;
             flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            min-width: 250px;
         }
-        #minimap { 
-            width: 100%; 
-            height: 100%; 
-            background: #000; 
+
+        .stat-box {
+            border: 1px solid var(--border);
+            padding: 10px;
             border-radius: 4px;
-            image-rendering: pixelated;
         }
 
-        footer {
-            grid-column: 2 / 4;
-            grid-row: 3;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
+        h3 { margin-top: 0; color: var(--accent); font-size: 16px; }
+        
+        #log {
+            flex-grow: 1;
             font-size: 12px;
-            color: var(--text-dim);
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+            padding-top: 5px;
+            color: #aaa;
         }
-        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
 
+        .controls-hint {
+            font-size: 11px;
+            color: #666;
+            margin-top: auto;
+        }
+
+        /* Оверлей загрузки */
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 8px;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 <body>
 
+<header>
+    <div>👾 Roguelike JS</div>
+    <div class="coords-display">X: <span id="pos-x">0</span>, Y: <span id="pos-y">0</span></div>
+</header>
+
 <div id="game-layout">
-    <header class="panel">
-        <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
-        <div class="loc-info">
-            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <div id="ui-loc-type" class="loc-type"></div>
-            <div id="ui-loc-desc" class="loc-desc"></div>
-            <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
+    <!-- СЕКЦИЯ КАРТЫ -->
+    <div id="map-wrapper">
+        <div id="map-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="loading">Генерация мира...</div>
         </div>
-    </header>
-
-    <div class="panel" style="grid-row: 2;">
-        <h3>Персонаж</h3>
-        <div id="ui-stats"></div>
-        <h3 style="margin-top: 15px;">Экипировка</h3>
-        <div id="ui-equip"></div>
     </div>
 
-    <div id="map-container"></div>
+    <!-- СЕКЦИЯ ИНФО -->
+    <div id="info-panel">
+        <div class="stat-box">
+            <h3>Персонаж</h3>
+            <div>HP: <span id="hp-val">20</span>/<span id="hp-max">20</span></div>
+            <div>ATK: <span id="atk-val">2</span></div>
+            <div>DEF: <span id="def-val">0</span></div>
+            <div>LVL: <span id="lvl-val">1</span></div>
+        </div>
 
-    <div class="panel" style="grid-row: 2 / 4;">
-        <h3>Инвентарь</h3>
-        <div id="inventory-list"></div>
-        <h3 style="margin-top: 10px;">Журнал событий</h3>
-        <div id="log-list"></div>
+        <div class="stat-box">
+            <h3>Локация</h3>
+            <div id="loc-name" style="font-weight:bold; margin-bottom:5px;">Неизвестно</div>
+            <div id="loc-desc" style="font-size:12px; color:#888;">...</div>
+            <div id="loc-trend" style="font-size:12px; margin-top:5px; color:#fd0;"></div>
+        </div>
+
+        <div id="log">
+            <div>> Добро пожаловать в подземелье.</div>
+        </div>
+
+        <div class="controls-hint">
+            ←↑↓→ Движение / Атака<br>
+            Space Пропуск хода
+        </div>
     </div>
-
-    <div id="minimap-panel" class="panel">
-        <h3>Карта мира</h3>
-        <canvas id="minimap"></canvas>
-    </div>
-
-    <footer class="panel">
-        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
-        <span><kbd>Space</kbd> Пропуск хода</span>
-        <span><kbd>Click</kbd> Использовать предмет</span>
-    </footer>
 </div>
+
 
 <script>
 /**
