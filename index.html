@@ -2,299 +2,558 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roguelike: Подземелье Координат</title>
-    <!-- Подключение библиотеки rot.js -->
+    <!-- Подключаем rot.js -->
     <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.0/dist/rot.min.js"></script>
-    
-    <!-- Подключение наших модулей (порядок важен) -->
-    <script src="name_generator.js"></script>
-    <script src="worldCurve.js"></script>
-    <script src="dungeon_generator.js"></script>
-
     <style>
         body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
             margin: 0;
             padding: 0;
-            background-color: #111;
-            color: #eee;
-            font-family: 'Courier New', Courier, monospace;
-            overflow: hidden; /* Скрываем скроллбары */
-            width: 100vw;
             height: 100vh;
-        }
-
-        /* Контейнер для игры, занимающий весь экран */
-        #game-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+            width: 100vw;
+            overflow: hidden; /* Скрываем скроллбары браузера */
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* Канвас rot.js будет масштабироваться внутри контейнера */
-        canvas {
-            position: absolute;
-            transform-origin: top left; /* Масштабирование от левого верхнего угла */
-            image-rendering: pixelated; /* Для четкости пикселей при увеличении */
+        /* Контейнер для игры, который будет масштабироваться */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Интерфейс поверх канваса (если понадобится позже) */
+        /* Canvas должен быть абсолютным для корректного transform: scale */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: top left; /* Масштабирование от левого верхнего угла */
+            image-rendering: pixelated; /* Четкие пиксели при увеличении */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Интерфейс поверх игры */
         #ui-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Чтобы клики проходили сквозь UI к игре, если нужно */
+            pointer-events: none; /* Пропускаем клики сквозь пустые места */
             z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px;
+            box-sizing: border-box;
         }
-        
+
         .panel {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             border: 1px solid #444;
             padding: 10px;
-            pointer-events: auto;
-        }
-
-        /* Пример расположения панелей (можно доработать под ваш дизайн) */
-        #stats-panel {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-        }
-        
-        #log-panel {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            max-height: 150px;
+            pointer-events: auto; /* Включаем взаимодействие с панелями */
+            border-radius: 4px;
+            max-height: 30vh;
             overflow-y: auto;
-            font-size: 14px;
+            backdrop-filter: blur(2px);
         }
 
-        #controls-hint {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            text-align: right;
+        .top-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .stats-block, .inv-block {
+            flex: 1;
+        }
+
+        h2, h3 {
+            margin: 0 0 8px 0;
+            color: #ffcc00;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 4px;
+        }
+
+        p {
+            margin: 4px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #log {
+            font-size: 13px;
+            color: #ccc;
+            height: 120px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+
+        #log-content div {
+            margin-bottom: 4px;
+        }
+
+        .controls-hint {
             font-size: 12px;
-            color: #aaa;
+            color: #888;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        /* Стили для сообщений о бое */
+        .combat-text {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-30px); opacity: 0; }
         }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- ROT.JS Canvas будет добавлен сюда скриптом -->
-        
-        <div id="ui-layer">
-            <div id="stats-panel" class="panel">
-                <div>❤️ HP: <span id="hp-val">100</span>/<span id="max-hp-val">100</span></div>
-                <div>⚔️ ATK: <span id="atk-val">10</span></div>
-                <div>🛡️ DEF: <span id="def-val">5</span></div>
-                <div>📍 X: <span id="pos-x">0</span>, Y: <span id="pos-y">0</span></div>
-                <div>🏰 Локация: <span id="loc-name">Загрузка...</span></div>
-            </div>
+    <!-- Контейнер для ротации и масштабирования -->
+    <div id="game-container"></div>
 
-            <div id="controls-hint" class="panel">
-                ←↑↓→ Движение / Атака<br>
-                Space Пропуск хода<br>
-                Click Использовать предмет
+    <!-- Слой интерфейса -->
+    <div id="ui-layer">
+        <div class="top-panel">
+            <div class="panel stats-block">
+                <h2>👾 Персонаж</h2>
+                <p id="hp-display">HP: 100/100</p>
+                <p id="level-display">Уровень: 1</p>
+                <p id="xp-display">Опыт: 0/100</p>
+                <p id="coords-display">X: 0, Y: 0</p>
             </div>
+            <div class="panel inv-block">
+                <h2>🎒 Инвентарь</h2>
+                <p id="equip-display">Экипировка: Нет</p>
+                <p id="inv-list">Пусто</p>
+            </div>
+        </div>
 
-            <div id="log-panel" class="panel">
-                <div id="game-log">Добро пожаловать в Подземелье Координат...</div>
-            </div>
+        <div class="panel" id="log-panel" style="flex-grow: 1; margin: 10px 0;">
+            <h3>📜 Журнал событий</h3>
+            <div id="log-content">Добро пожаловать в Подземелье Координат...</div>
+        </div>
+
+        <div class="panel bottom-panel">
+            <p class="controls-hint">←↑↓→ Движение / Атака | Space Пропуск хода | Click Использовать предмет</p>
         </div>
     </div>
 
 <script>
-    // === КОНФИГУРАЦИЯ ROT.JS ===
-    // Внутреннее разрешение игры (в клетках). 
-    // Не меняйте это слишком сильно, если не хотите менять логику генерации карты.
-    const GAME_WIDTH = 80;
-    const GAME_HEIGHT = 25;
-    const FONT_SIZE = 16; // Базовый размер шрифта для расчета
+    // --- КОНФИГУРАЦИЯ ---
+    const GAME_WIDTH = 80;  // Ширина сетки rot.js
+    const GAME_HEIGHT = 25; // Высота сетки rot.js
+    const FONT_SIZE = 16;   // Размер шрифта
 
     // Инициализация дисплея
     const displayOptions = {
         width: GAME_WIDTH,
         height: GAME_HEIGHT,
         fontSize: FONT_SIZE,
-        fontFamily: 'monospace',
-        fg: '#ccc',
-        bg: '#000'
+        fontFamily: "monospace",
+        fg: "#ccc",
+        bg: "#000"
     };
 
     const display = new ROT.Display(displayOptions);
     const container = document.getElementById("game-container");
     const canvas = display.getContainer();
     
-    // Важно: добавляем канвас в наш контейнер
+    // Добавляем canvas в контейнер
     container.appendChild(canvas);
 
-    // === ЛОГИКА МАСШТАБИРОВАНИЯ (RESIZE) ===
+    // --- МАСШТАБИРОВАНИЕ (РЕКОМЕНДАЦИЯ) ---
     function resizeGame() {
         const frameWidth = container.clientWidth;
         const frameHeight = container.clientHeight;
         
-        // Реальные размеры канваса в пикселях (ROT вычисляет их на основе fontSize и количества клеток)
-        // ROT.Display автоматически устанавливает width/height атрибуты canvas
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-
-        // Вычисляем масштаб, чтобы вписать игру в экран (contain)
-        const scaleX = frameWidth / canvasWidth;
-        const scaleY = frameHeight / canvasHeight;
-        
-        // Выбираем меньший масштаб, чтобы игра поместилась целиком
+        // Вычисляем масштаб, чтобы вписать игру в экран
+        const scaleX = frameWidth / canvas.width;
+        const scaleY = frameHeight / canvas.height;
         const scale = Math.min(scaleX, scaleY);
 
         // Применяем трансформацию
         canvas.style.transform = `scale(${scale})`;
         
-        // Центрирование (опционально, так как flexbox в #game-container уже центрирует)
-        // Но если transform-origin top left, то может потребоваться корректировка margin
-        // При использовании flexbox и absolute positioning внутри relative контейнера, 
-        // transform-origin: top left может сместить визуальный центр.
-        // Лучший способ для "top left" scaling в центре экрана:
-        
-        // Вариант с центрированием через margin:
-        const scaledWidth = canvasWidth * scale;
-        const scaledHeight = canvasHeight * scale;
-        
-        // Если нужно строго по центру:
-        canvas.style.left = (frameWidth - scaledWidth) / 2 + 'px';
-        canvas.style.top = (frameHeight - scaledHeight) / 2 + 'px';
+        // Центрирование происходит автоматически благодаря flexbox в #game-container
     }
 
-    // Слушаем изменение размера окна
     window.addEventListener("resize", resizeGame);
-    
-    // Вызываем один раз при старте
-    // Небольшая задержка, чтобы DOM успел отрисоваться
-    setTimeout(resizeGame, 0);
+    // Вызываем сразу
+    resizeGame();
 
-
-    // === ИГРОВАЯ ЛОГИКА (ЗАГОТОВКА) ===
-    
-    // Состояние игрока
+    // --- ИГРОВОЙ МИР И СОСТОЯНИЕ ---
+    let map = {};
+    let entities = [];
+    let items = [];
     let player = {
         x: 40,
         y: 12,
         hp: 100,
         maxHp: 100,
-        atk: 10,
-        def: 5,
-        level: 1
+        level: 1,
+        xp: 0,
+        nextLevelXp: 100,
+        inventory: [],
+        equipped: null,
+        baseAttack: 10,
+        baseDefense: 5
     };
 
-    let currentCoords = { x: 0, y: 0 };
-    let mapData = []; // Здесь будет храниться карта
-    
-    // Функция обновления UI
-    function updateUI() {
-        document.getElementById('hp-val').innerText = player.hp;
-        document.getElementById('max-hp-val').innerText = player.maxHp;
-        document.getElementById('atk-val').innerText = player.atk;
-        document.getElementById('def-val').innerText = player.def;
-        document.getElementById('pos-x').innerText = currentCoords.x;
-        document.getElementById('pos-y').innerText = currentCoords.y;
-        
-        // Генерация названия локации через NameGeneratorModule
-        const locData = NameGeneratorModule.generateLocationData(currentCoords.x, currentCoords.y);
-        document.getElementById('loc-name').innerText = locData.fullName;
+    // Генератор семян на основе координат (детерминированный)
+    function getSeed(x, y) {
+        return x * 374761393 + y * 668265263; // Простой хеш
     }
 
-    // Функция логирования
-    function log(message, color = "#fff") {
-        const logEl = document.getElementById('game-log');
-        const entry = document.createElement('div');
-        entry.style.color = color;
-        entry.innerText = "> " + message;
-        logEl.prepend(entry);
-        
-        // Ограничение истории логов
-        if (logEl.children.length > 10) {
-            logEl.removeChild(logEl.lastChild);
-        }
+    function getRandomFromSeed(seed) {
+        var x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
     }
 
-    // Отрисовка карты (пример)
+    // Типы местности
+    const TERRAIN = {
+        FLOOR: '.',
+        WALL: '#',
+        WATER: '~',
+        FOREST: '&',
+        MOUNTAIN: '^'
+    };
+
+    // Генерация карты (процедурная)
+    function getTerrainAt(x, y) {
+        const seed = getSeed(x, y);
+        const rand = getRandomFromSeed(seed);
+        
+        if (rand < 0.1) return TERRAIN.WALL;
+        if (rand < 0.15) return TERRAIN.WATER;
+        if (rand < 0.25) return TERRAIN.FOREST;
+        if (rand < 0.30) return TERRAIN.MOUNTAIN;
+        return TERRAIN.FLOOR;
+    }
+
+    // Отрисовка карты
     function drawMap() {
         display.clear();
         
-        // Получаем данные подземелья из DungeonGeneratorModule
-        // Для примера берем размер, соответствующий GAME_WIDTH/GAME_HEIGHT
-        // Внимание: dungeon_generator возвращает grid [y][x]
-        const levelData = DungeonGeneratorModule.generateLevel(currentCoords.x, currentCoords.y, GAME_WIDTH, GAME_HEIGHT);
-        mapData = levelData.mapData;
+        // Видимая область вокруг игрока (FOV можно добавить позже, пока просто рендерим окрестности)
+        // Для оптимизации рендерим только видимую часть, но rot.js быстр, так что можно и всю логику хранить в памяти
         
-        // Установка цветов фона и стен на основе типа подземелья
-        // (В реальной игре нужно применять цвета к каждой клетке)
-        
+        // Рендерим тайлы
         for (let y = 0; y < GAME_HEIGHT; y++) {
             for (let x = 0; x < GAME_WIDTH; x++) {
-                const tile = mapData[y][x];
-                // 1 - стена, 0 - пол
-                if (tile === 1) {
-                    display.draw(x, y, levelData.dungeonType.wallChar, levelData.dungeonType.wallColor, "#000");
-                } else {
-                    display.draw(x, y, levelData.dungeonType.floorChar, levelData.dungeonType.floorColor, "#000");
-                }
+                // Глобальные координаты (смещаем относительно игрока или используем абсолютные для мира)
+                // В этой версии используем "бесконечный мир", где игрок всегда в центре? 
+                // Или фиксированную карту? 
+                // По запросу "координаты X Y от 0 до 256" -> значит карта фиксирована или ограничена.
+                // Сделаем камеру, следящую за игроком.
+                
+                const worldX = player.x - Math.floor(GAME_WIDTH / 2) + x;
+                const worldY = player.y - Math.floor(GAME_HEIGHT / 2) + y;
+
+                const terrain = getTerrainAt(worldX, worldY);
+                let char = terrain;
+                let fg = "#ccc";
+                let bg = "#000";
+
+                if (terrain === TERRAIN.WALL) { fg = "#555"; bg = "#111"; }
+                if (terrain === TERRAIN.WATER) { fg = "#44f"; bg = "#001"; }
+                if (terrain === TERRAIN.FOREST) { fg = "#2a2"; bg = "#010"; }
+                if (terrain === TERRAIN.MOUNTAIN) { fg = "#888"; bg = "#222"; }
+
+                display.draw(x, y, char, fg, bg);
             }
         }
+
+        // Рендерим предметы
+        items.forEach(item => {
+            const dx = item.x - (player.x - Math.floor(GAME_WIDTH / 2));
+            const dy = item.y - (player.y - Math.floor(GAME_HEIGHT / 2));
+            if (dx >= 0 && dx < GAME_WIDTH && dy >= 0 && dy < GAME_HEIGHT) {
+                display.draw(dx, dy, item.char, item.fg, "#000");
+            }
+        });
+
+        // Рендерим врагов
+        entities.forEach(entity => {
+            if (entity.hp > 0) {
+                const dx = entity.x - (player.x - Math.floor(GAME_WIDTH / 2));
+                const dy = entity.y - (player.y - Math.floor(GAME_HEIGHT / 2));
+                if (dx >= 0 && dx < GAME_WIDTH && dy >= 0 && dy < GAME_HEIGHT) {
+                    display.draw(dx, dy, entity.char, entity.fg, "#000");
+                }
+            }
+        });
+
+        // Рендерим игрока (всегда в центре экрана)
+        const centerX = Math.floor(GAME_WIDTH / 2);
+        const centerY = Math.floor(GAME_HEIGHT / 2);
+        display.draw(centerX, centerY, "@", "#ff0", "#000");
+    }
+
+    // Логика обновления UI
+    function updateUI() {
+        document.getElementById("hp-display").innerText = `HP: ${player.hp}/${player.maxHp}`;
+        document.getElementById("level-display").innerText = `Уровень: ${player.level}`;
+        document.getElementById("xp-display").innerText = `Опыт: ${player.xp}/${player.nextLevelXp}`;
+        document.getElementById("coords-display").innerText = `X: ${player.x}, Y: ${player.y}`;
         
-        // Рисуем игрока
-        display.draw(player.x, player.y, "@", "#ff0", "#000");
+        if (player.equipped) {
+            document.getElementById("equip-display").innerText = `Экипировка: ${player.equipped.name} (+${player.equipped.attack} атк)`;
+        } else {
+            document.getElementById("equip-display").innerText = `Экипировка: Нет`;
+        }
+
+        const invList = document.getElementById("inv-list");
+        if (player.inventory.length === 0) {
+            invList.innerText = "Пусто";
+        } else {
+            invList.innerHTML = "";
+            player.inventory.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.innerText = `${index + 1}. ${item.name}`;
+                div.style.cursor = "pointer";
+                div.onclick = () => useItem(index);
+                invList.appendChild(div);
+            });
+        }
+    }
+
+    function logMessage(msg, type="info") {
+        const logContent = document.getElementById("log-content");
+        const newEntry = document.createElement("div");
+        newEntry.innerText = `> ${msg}`;
+        if (type === "combat") newEntry.style.color = "#ff5555";
+        if (type === "loot") newEntry.style.color = "#55ff55";
+        logContent.prepend(newEntry);
         
+        // Очистка старого лога во избежание утечек памяти
+        if (logContent.children.length > 50) {
+            logContent.removeChild(logContent.lastChild);
+        }
+    }
+
+    // Боевая система и эффекты
+    function showFloatingText(text, x, y, color) {
+        // Преобразуем координаты игры в экранные для HTML overlay
+        // Это упрощенная версия, так как canvas масштабируется
+        // Для точного позиционирования нужно учитывать scale
+        // Но так как у нас UI слой поверх, можно использовать относительные координаты центра
+        
+        // В данной реализации просто выводим в лог для надежности, 
+        // либо добавляем элемент в #game-container с абсолютным позиционированием относительно центра
+        
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        // Смещение относительно центра экрана в пикселях (примерно)
+        const offsetX = (x - Math.floor(GAME_WIDTH/2)) * (FONT_SIZE * 0.6) * parseFloat(canvas.style.transform.replace('scale(', ''));
+        const offsetY = (y - Math.floor(GAME_HEIGHT/2)) * FONT_SIZE * parseFloat(canvas.style.transform.replace('scale(', ''));
+
+        const el = document.createElement("div");
+        el.className = "combat-text";
+        el.innerText = text;
+        el.style.color = color;
+        el.style.left = (centerX + offsetX) + "px";
+        el.style.top = (centerY + offsetY) + "px";
+        
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    function movePlayer(dx, dy) {
+        const newX = player.x + dx;
+        const newY = player.y + dy;
+
+        // Проверка на врагов
+        const enemy = entities.find(e => e.x === newX && e.y === newY && e.hp > 0);
+        if (enemy) {
+            attackEnemy(enemy);
+            drawMap();
+            return;
+        }
+
+        // Проверка местности
+        const terrain = getTerrainAt(newX, newY);
+        if (terrain === TERRAIN.WALL || terrain === TERRAIN.MOUNTAIN || terrain === TERRAIN.WATER) {
+            logMessage("Путь заблокирован.");
+            return;
+        }
+
+        player.x = newX;
+        player.y = newY;
+        
+        // Шанс встретить врага или найти предмет
+        checkRandomEvent();
+        
+        drawMap();
         updateUI();
     }
 
-    // Обработка ввода
-    document.addEventListener("keydown", function(e) {
+    function checkRandomEvent() {
+        const seed = getSeed(player.x, player.y);
+        const rand = getRandomFromSeed(seed + 12345); // другой оффсет для событий
+        
+        if (rand < 0.05) {
+            // Нашел предмет
+            const item = generateItem();
+            items.push({x: player.x, y: player.y, ...item});
+            logMessage(`Вы нашли: ${item.name}!`, "loot");
+            // Автоматически подбираем
+            player.inventory.push(item);
+            items = items.filter(i => i.x !== player.x || i.y !== player.y);
+            updateUI();
+        } else if (rand < 0.1) {
+            // Враг
+            spawnEnemy(player.x, player.y);
+        }
+    }
+
+    function generateItem() {
+        const types = [
+            {name: "Зелье лечения", type: "consumable", effect: "heal", value: 20, char: "!", fg: "#f0f"},
+            {name: "Ржавый меч", type: "weapon", attack: 5, char: "/", fg: "#aaa"},
+            {name: "Стальной меч", type: "weapon", attack: 10, char: "/", fg: "#fff"}
+        ];
+        const rand = Math.random();
+        if (rand < 0.6) return types[0];
+        if (rand < 0.9) return types[1];
+        return types[2];
+    }
+
+    function useItem(index) {
+        const item = player.inventory[index];
+        if (!item) return;
+
+        if (item.type === "consumable") {
+            if (item.effect === "heal") {
+                player.hp = Math.min(player.hp + item.value, player.maxHp);
+                logMessage(`Вы использовали ${item.name}. HP восстановлено.`);
+            }
+            player.inventory.splice(index, 1);
+        } else if (item.type === "weapon") {
+            player.equipped = item;
+            logMessage(`Вы экипировали ${item.name}.`);
+        }
+        updateUI();
+    }
+
+    function spawnEnemy(x, y) {
+        // Ищем свободное место рядом
+        const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+        for (let d of dirs) {
+            const ex = x + d[0];
+            const ey = y + d[1];
+            if (getTerrainAt(ex, ey) === TERRAIN.FLOOR || getTerrainAt(ex, ey) === TERRAIN.FOREST) {
+                entities.push({
+                    x: ex, y: ey,
+                    hp: 30, maxHp: 30,
+                    attack: 5,
+                    name: "Гоблин",
+                    char: "g",
+                    fg: "#f00"
+                });
+                logMessage("Появился Гоблин!", "combat");
+                drawMap();
+                return;
+            }
+        }
+    }
+
+    function attackEnemy(enemy) {
+        const weaponDmg = player.equipped ? player.equipped.attack : 0;
+        const totalAttack = player.baseAttack + weaponDmg;
+        
+        // Разброс урона
+        const dmg = Math.floor(totalAttack * (0.8 + Math.random() * 0.4));
+        
+        enemy.hp -= dmg;
+        showFloatingText(`-${dmg}`, enemy.x, enemy.y, "#ff0000");
+        logMessage(`Вы нанесли ${dmg} урона ${enemy.name}.`, "combat");
+
+        if (enemy.hp <= 0) {
+            logMessage(`${enemy.name} повержен! +20 XP`, "loot");
+            player.xp += 20;
+            if (player.xp >= player.nextLevelXp) {
+                player.level++;
+                player.xp -= player.nextLevelXp;
+                player.nextLevelXp = Math.floor(player.nextLevelXp * 1.5);
+                player.maxHp += 10;
+                player.hp = player.maxHp;
+                logMessage("НОВЫЙ УРОВЕНЬ! Здоровье восстановлено.", "loot");
+            }
+            // Удаляем врага
+            entities = entities.filter(e => e !== enemy);
+        } else {
+            // Ответный удар
+            setTimeout(() => {
+                if (enemy.hp > 0) {
+                    const enemyDmg = Math.max(0, Math.floor(enemy.attack - player.baseDefense));
+                    player.hp -= enemyDmg;
+                    showFloatingText(`-${enemyDmg}`, player.x, player.y, "#ff0000");
+                    logMessage(`${enemy.name} атакует вас на ${enemyDmg} урона.`, "combat");
+                    if (player.hp <= 0) {
+                        logMessage("ВЫ ПОГИБЛИ. Обновите страницу.", "combat");
+                        window.removeEventListener("keydown", handleInput);
+                    }
+                    updateUI();
+                }
+            }, 200);
+        }
+        updateUI();
+    }
+
+    function handleInput(event) {
         let dx = 0;
         let dy = 0;
-        let acted = false;
 
-        switch(e.key) {
-            case "ArrowUp": dy = -1; acted = true; break;
-            case "ArrowDown": dy = 1; acted = true; break;
-            case "ArrowLeft": dx = -1; acted = true; break;
-            case "ArrowRight": dx = 1; acted = true; break;
-            case " ": acted = true; log("Вы ожидаете...", "#aaa"); break;
+        switch(event.key) {
+            case "ArrowUp": dy = -1; break;
+            case "ArrowDown": dy = 1; break;
+            case "ArrowLeft": dx = -1; break;
+            case "ArrowRight": dx = 1; break;
+            case " ": 
+                logMessage("Вы ждете...");
+                drawMap();
+                return;
+            default: return;
         }
 
-        if (acted) {
-            e.preventDefault(); // Предотвращаем скролл страницы
-            
-            // Простая проверка коллизий
-            const newX = player.x + dx;
-            const newY = player.y + dy;
-            
-            // Проверка границ массива
-            if (newY >= 0 && newY < GAME_HEIGHT && newX >= 0 && newX < GAME_WIDTH) {
-                if (mapData[newY][newX] === 0) { // 0 - пол
-                    player.x = newX;
-                    player.y = newY;
-                    // log("Шаг...", "#888");
-                } else {
-                    // log("Стена!", "#555");
-                }
-            }
-            
-            drawMap();
-        }
-    });
+        event.preventDefault(); // Блокируем скролл страницы стрелками
+        movePlayer(dx, dy);
+    }
 
     // Запуск
-    log("Инициализация системы...", "#0f0");
+    window.addEventListener("keydown", handleInput);
+    
+    // Начальная генерация нескольких врагов для теста
+    for(let i=0; i<5; i++) {
+        spawnEnemy(player.x + (Math.random()*10-5), player.y + (Math.random()*10-5));
+    }
+
     drawMap();
+    updateUI();
 
 </script>
 </body>
