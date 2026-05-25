@@ -231,7 +231,11 @@ const DataModule = {
     ],
 
     MAP_WIDTH: 100,
-    MAP_HEIGHT: 100
+    MAP_HEIGHT: 100,
+    
+    // Настройки генерации
+    ITEM_DENSITY: 0.005,   // Шанс появления предмета на клетку (0.5%)
+    ENEMY_DENSITY: 0.008   // Шанс появления врага на клетку (0.8%)
 };
 
 /**
@@ -244,6 +248,7 @@ const MapModule = {
     currentDungeonType: null,
     stairsUp: null,
     stairsDown: null,
+    entities: [], // Здесь будут храниться сгенерированные предметы и враги
 
     generate: function(gx, gy) {
         const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
@@ -252,10 +257,68 @@ const MapModule = {
         this.currentDungeonType = result.dungeonType;
         
         const levelSeed = `lvl_${gx}_${gy}`;
+        
+        // Генерируем лестницы
         this.stairsDown = this._findRandomFloor(result.startPos, false, levelSeed + '_down');
         this.stairsUp = this._findRandomFloor(result.startPos, true, levelSeed + '_up');
 
+        // Генерируем сущности (враги и предметы) случайным образом, но детерминировано
+        this.entities = this.generateEntities(gx, gy, result.startPos);
+
         return result.startPos;
+    },
+
+    /**
+     * Генерирует список сущностей для текущего уровня.
+     * Использует seed на основе координат уровня для предсказуемости.
+     */
+    generateEntities: function(gx, gy, startPos) {
+        const entities = [];
+        // Seed зависит от координат уровня, чтобы распределение было постоянным для конкретного места
+        const rng = new Math.seedrandom(`entities_${gx}_${gy}`);
+        
+        for (let y = 0; y < DataModule.MAP_HEIGHT; y++) {
+            for (let x = 0; x < DataModule.MAP_WIDTH; x++) {
+                // Пропускаем стены и стартовую позицию игрока
+                if (this.currentMapData[y][x] === 1) continue;
+                if (startPos && x === startPos.x && y === startPos.y) continue;
+                
+                // Проверка на лестницы, чтобы не спавнить предметы прямо на них (опционально)
+                if (this.stairsDown && x === this.stairsDown.x && y === this.stairsDown.y) continue;
+                if (this.stairsUp && x === this.stairsUp.x && y === this.stairsUp.y) continue;
+
+                const roll = rng();
+
+                // Спавн врагов
+                if (roll < DataModule.ENEMY_DENSITY) {
+                    const enemyTemplate = this.getRandomEnemyTemplate(rng);
+                    // Сложность может зависеть от глубины или быть фиксированной
+                    const difficulty = 1.0 + (gy * 0.1); 
+                    const enemy = EntityModule.createEnemy(enemyTemplate, x, y, difficulty);
+                    entities.push(enemy);
+                } 
+                // Спавн предметов (используем else if, чтобы не спавнить два объекта в одной клетке)
+                else if (roll < DataModule.ENEMY_DENSITY + DataModule.ITEM_DENSITY) {
+                    const itemTemplate = this.getRandomItemTemplate(rng);
+                    const itemPower = 1.0 + (gy * 0.05);
+                    const item = EntityModule.createItem(itemTemplate, x, y, itemPower);
+                    entities.push(item);
+                }
+            }
+        }
+        return entities;
+    },
+
+    getRandomEnemyTemplate: function(rng) {
+        // Простая логика выбора: чем выше gy (глубже), тем сильнее враги
+        // Для простоты берем случайный из доступных
+        const idx = Math.floor(rng() * DataModule.ENEMY_TYPES.length);
+        return DataModule.ENEMY_TYPES[idx];
+    },
+
+    getRandomItemTemplate: function(rng) {
+        const idx = Math.floor(rng() * DataModule.ITEM_TYPES.length);
+        return DataModule.ITEM_TYPES[idx];
     },
 
     isWall: function(x, y) {
@@ -313,9 +376,14 @@ const EntityModule = {
     },
 
     createEnemy: function(template, x, y, difficultyMult) {
-        const hp = Math.floor(template.hp[0] * difficultyMult);
-        const atk = Math.floor(template.atk[0] * difficultyMult);
-        const def = Math.floor(template.def[0] * difficultyMult);
+        // Используем random внутри диапазона для вариативности даже внутри одного типа
+        // Но так как мы передаем rng из MapModule, здесь можно использовать Math.random() 
+        // если нам не нужна строгая детерминированность характеристик, 
+        // либо передать rng дальше. Для простоты оставим Math.random(), 
+        // так как позиция уже детерминирована.
+        const hp = Math.floor(this._randRange(template.hp[0], template.hp[1]) * difficultyMult);
+        const atk = Math.floor(this._randRange(template.atk[0], template.atk[1]) * difficultyMult);
+        const def = Math.floor(this._randRange(template.def[0], template.def[1]) * difficultyMult);
 
         return {
             x: x, y: y, name: template.name,
@@ -330,7 +398,7 @@ const EntityModule = {
         const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
         const name = `${adj} ${template.baseName}`;
         
-        const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
+        const baseVal = Math.floor(this._randRange(template.val[0], template.val[1]));
         const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
         
         return {
@@ -344,58 +412,11 @@ const EntityModule = {
         };
     },
 
-    // ✅ НОВЫЙ МЕТОД: Безопасное размещение врагов с проверкой дистанции
-    spawnEnemies: function(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3) {
-        const height = mapGrid.length;
-        const width = mapGrid[0].length;
-        const validTiles = [];
-
-        // 1. Собираем все клетки пола, отступая от игрока
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (mapGrid[y][x] === 0) {
-                    const distToStart = Math.abs(x - startPos.x) + Math.abs(y - startPos.y);
-                    if (distToStart >= 4) { // Зона безопасности 4 клетки вокруг игрока
-                        validTiles.push({x, y});
-                    }
-                }
-            }
-        }
-
-        // 2. Перемешиваем массив клеток (Fisher-Yates), чтобы убрать предсказуемость
-        for (let i = validTiles.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
-        }
-
-        // 3. Размещаем врагов с строгой проверкой дистанции
-        const placedEnemies = [];
-        const occupiedCoords = [];
-
-        for (const tile of validTiles) {
-            if (placedEnemies.length >= count) break;
-
-            let tooClose = false;
-            for (const occ of occupiedCoords) {
-                // Манхэттенское расстояние: |x1-x2| + |y1-y2|
-                if (Math.abs(tile.x - occ.x) + Math.abs(tile.y - occ.y) < minDist) {
-                    tooClose = true;
-                    break;
-                }
-            }
-
-            if (!tooClose) {
-                occupiedCoords.push({x: tile.x, y: tile.y});
-                // Выбираем случайный шаблон врага
-                const template = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)];
-                placedEnemies.push(this.createEnemy(template, tile.x, tile.y, difficultyMult));
-            }
-        }
-
-        return placedEnemies;
+    // Вспомогательная функция для случайного числа в диапазоне [min, max]
+    _randRange: function(min, max) {
+        return min + Math.random() * (max - min);
     }
 };
-
 /**
  * ====================================================================
  * МОДУЛЬ 4: COMBAT MODULE
