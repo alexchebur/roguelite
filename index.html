@@ -73,15 +73,9 @@
             display: flex;
             flex-direction: column; 
             justify-content: space-between;
-            /* БЫЛО: align-items: center; — это центрировало заголовок по вертикали */
-            /* СТАЛО: flex-start — прижимает всё к верхнему краю */
             align-items: center;
-            text-align: center; /* Центрируем текст внутри блоков */
-    
-            /* Добавляем отступы, чтобы текст не касался рамок */
+            text-align: center;
             padding: 10px 15px; 
-    
-            /* Остальные стили оставляем без изменений */
         }
         .loc-info { text-align: center; width: 100% }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
@@ -89,8 +83,6 @@
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
         
-        /* --- КАРТА (ОБНОВЛЕНО ДЛЯ МАСШТАБИРОВАНИЯ) --- */
-        /* --- КАРТА --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
@@ -103,15 +95,12 @@
             overflow: hidden;
             width: 100%;
             height: 100%;
-            /* Убран aspect-ratio: 1/1, чтобы использовать всё доступное пространство грида */
         }
 
         #map-container canvas {
             display: block;
-            transform-origin: center center; /* Масштабирование от центра */
+            transform-origin: center center;
             image-rendering: pixelated;
-            /* Убраны position: absolute и width/height 100% !important, 
-               чтобы flexbox и transform работали корректно */
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
@@ -262,14 +251,8 @@ const MapModule = {
         this.currentMapData = result.mapData;
         this.currentDungeonType = result.dungeonType;
         
-        // Создаем уникальный сид для этого уровня на основе его координат
         const levelSeed = `lvl_${gx}_${gy}`;
-        
-        // Лестницы теперь генерируются детерминировано (всегда в одном месте для этих координат)
-        // stairsDown: обычная случайная позиция, но фиксированная для этого сида
         this.stairsDown = this._findRandomFloor(result.startPos, false, levelSeed + '_down');
-        
-        // stairsUp: позиция далеко от старта (far=true), тоже фиксированная
         this.stairsUp = this._findRandomFloor(result.startPos, true, levelSeed + '_up');
 
         return result.startPos;
@@ -286,14 +269,12 @@ const MapModule = {
     },
 
     _findRandomFloor: function(excludePos, far=false, seed=null) {
-        // Если сид не передан, создаём его на основе координат уровня
         if (!seed) seed = `stairs_${this.currentDungeonType?.name || 'default'}`;
     
         const rng = new Math.seedrandom(seed);
         let attempts = 0;
     
         while(attempts < 1000) {
-            // Используем rng() вместо Math.random()
             const x = Math.floor(rng() * DataModule.MAP_WIDTH);
             const y = Math.floor(rng() * DataModule.MAP_HEIGHT);
         
@@ -479,15 +460,15 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО: ПОЛНАЯ ОТРИСОВКА ОКНА + КАМЕРА)
+ * МОДУЛЬ 5: RENDER MODULE
  * ====================================================================
  */
 const RenderModule = {
     display: null,
     fov: null,
-    COLS: 60,   // Увеличили ширину видимого окна
-    ROWS: 40,   // Увеличили высоту видимого окна
-    FONT_SIZE: 14, // Чуть уменьшили шрифт для лучшей вместимости
+    COLS: 60,
+    ROWS: 40,
+    FONT_SIZE: 14,
 
     init: function() {
         if (typeof ROT === 'undefined') {
@@ -511,7 +492,6 @@ const RenderModule = {
         
         this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
         
-        // --- МАСШТАБИРОВАНИЕ ---
         const resizeGame = () => {
             const fw = container.clientWidth;
             const fh = container.clientHeight;
@@ -523,7 +503,7 @@ const RenderModule = {
         };
 
         window.addEventListener("resize", resizeGame);
-        setTimeout(resizeGame, 50); // Небольшая задержка для гарантии расчёта layout
+        setTimeout(resizeGame, 50);
     },
 
     getCameraOffset: function(player) {
@@ -538,19 +518,16 @@ const RenderModule = {
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = this.getCameraOffset(player);
 
-        // 1. Вычисляем видимость (увеличили радиус до 15)
         const visible = new Set();
         this.fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 2. Рисуем ВЕСЬ экран (COLS x ROWS), а не только видимые клетки
         for (let sy = 0; sy < this.ROWS; sy++) {
             for (let sx = 0; sx < this.COLS; sx++) {
-                const wx = sx + cam.x; // Мировая X
-                const wy = sy + cam.y; // Мировая Y
+                const wx = sx + cam.x;
+                const wy = sy + cam.y;
                 
-                // Пропускаем, если вышли за границы мира
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
                 const isVisible = visible.has(`${wx},${wy}`);
@@ -558,7 +535,6 @@ const RenderModule = {
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
-                    // Если клетка не видна, делаем её тёмной, но НЕ скрываем
                     fg = isVisible ? dtype.wallColor : '#222'; 
                     bg = "#000";
                 } else {
@@ -567,7 +543,6 @@ const RenderModule = {
                     bg = "#000";
                 }
                 
-                // Лестницы
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) { 
                     ch = ">"; fg = isVisible ? "#FFF" : "#333"; 
                 }
@@ -579,7 +554,6 @@ const RenderModule = {
             }
         }
 
-        // 3. Рисуем предметы (поверх карты)
         items.forEach(i => {
             const sx = i.x - cam.x;
             const sy = i.y - cam.y;
@@ -588,7 +562,6 @@ const RenderModule = {
             }
         });
 
-        // 4. Рисуем врагов
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
@@ -599,13 +572,11 @@ const RenderModule = {
             }
         });
 
-        // 5. Игрок всегда в центре экрана
         this.display.draw(Math.floor(this.COLS / 2), Math.floor(this.ROWS / 2), player.char, player.color);
 
         return visible;
     },
 
-    // ... (остальные методы updateUI, log, drawMinimap оставляем без изменений) ...
     updateUI: function(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
@@ -677,7 +648,7 @@ const RenderModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 6: GAME MODULE
+ * МОДУЛЬ 6: GAME MODULE (ИСПРАВЛЕННЫЙ СПАВН)
  * ====================================================================
  */
 const GameModule = {
@@ -690,7 +661,7 @@ const GameModule = {
     currentWorldTrend: null,
     explored: new Set(),
     busy: false,
-    lastGlobalX: null, // Для отслеживания направления перехода
+    lastGlobalX: null,
     lastGlobalY: null,
 
     init: function() {
@@ -719,11 +690,9 @@ const GameModule = {
         this.items = [];
         this.explored.clear();
 
-        // 1. Название и тренд
         this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
         this.currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
         
-        // 2. Карта
         const startPos = MapModule.generate(gx, gy);
         
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
@@ -732,40 +701,26 @@ const GameModule = {
             RenderModule.log(`Тренд мира: ${this.currentWorldTrend.name}`, "event");
         }
 
-        // 3. Игрок (Логика спавна у лестниц)
         let spawnPos;
 
         if (!this.player) {
-            // Первый запуск игры: случайная позиция или startPos
             spawnPos = startPos;
             this.player = EntityModule.createPlayer(spawnPos.x, spawnPos.y);
         } else {
-            // Переход между уровнями
-            // Определяем направление перехода
             const dx = gx - this.lastGlobalX;
             const dy = gy - this.lastGlobalY;
 
-            // ЛОГИКА СПАВНА:
-            // 1. Если мы перешли на уровень ВЫШЕ (координаты увеличились, gx > lastGx),
-            //    значит мы поднялись по лестнице UP (>).
-            //    На новом уровне мы должны появиться у лестницы DOWN (<), которая ведет обратно вниз.
-            
-            // 2. Если мы перешли на уровень НИЖЕ (координаты уменьшились, gx < lastGx),
-            //    значит мы спустились по лестнице DOWN (<).
-            //    На новом уровне мы должны появиться у лестницы UP (>), которая ведет обратно вверх.
-
+            // ИСПРАВЛЕНО: Логика спавна у лестниц
             if (dx > 0 || dy > 0) {
-                // Поднялись на уровень выше -> спавнимся у лестницы ВНИЗ (<)
+                // Поднялись выше -> спавн у лестницы ВНИЗ (<)
                 spawnPos = MapModule.stairsDown;
             } else if (dx < 0 || dy < 0) {
-                // Спустились на уровень ниже -> спавнимся у лестницы ВВЕРХ (>)
+                // Спустились ниже -> спавн у лестницы ВВЕРХ (>)
                 spawnPos = MapModule.stairsUp;
             } else {
-                // Телепортация или ошибка, используем дефолт
                 spawnPos = startPos;
             }
 
-            // Защита: если лестница не найдена (редкий случай багенерации), используем startPos
             if (!spawnPos) {
                 spawnPos = startPos;
                 RenderModule.log("Ошибка навигации: лестница не найдена, спавн в центре.", "combat");
@@ -775,29 +730,33 @@ const GameModule = {
             this.player.y = spawnPos.y;
         }
 
-        // 4. Сущности с учетом кривых сложности
+        // ✅ ИСПОЛЬЗУЕМ НОВЫЙ УМНЫЙ СПАВН
         this.spawnEntities(gx, gy);
         this.renderFrame();
     },
 
+    // ✅ ПЕРЕПИСАННАЯ ФУНКЦИЯ СПАВНА
     spawnEntities: function(gx, gy) {
+        // Враги: используем новый метод с проверкой дистанции
+        const enemyCount = 8; // Можно менять количество
+        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
+        
+        // Вызываем умный спавнер из EntityModule
+        this.enemies = EntityModule.spawnEnemies(
+            MapModule.currentMapData, 
+            this.player, 
+            DataModule.ENEMY_TYPES, 
+            enemyCount, 
+            enemyMult,
+            3 // Минимальная дистанция между врагами
+        );
+
+        // Предметы: оставляем простой рандом, так как они не двигаются и не мешают друг другу
         const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
         const oldRand = Math.random;
         Math.random = rng; 
 
-        // Получаем множители из WorldCurve
-        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
-
-        // Враги
-        for(let i=0; i<6; i++) {
-            const pos = MapModule.getRandomFloor(this.player);
-            if (pos.x === this.player.x && pos.y === this.player.y) continue;
-            const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, enemyMult));
-        }
-
-        // Предметы
         for(let i=0; i<4; i++) {
             const pos = MapModule.getRandomFloor(this.player);
             const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
@@ -862,7 +821,6 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    // Используем ROT.Path.AStar
                     const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
