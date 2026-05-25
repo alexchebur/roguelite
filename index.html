@@ -6,7 +6,7 @@
     <title>Roguelike: Подземелье Координат</title>
     
     <!-- ROT.js v2.2.1 -->
-    <script src="rot.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
@@ -82,7 +82,7 @@
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
         .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
 
-        /* --- ИСПРАВЛЕННАЯ КАРТА --- */
+        /* --- КАРТА --- */
         #map-container {
             grid-column: 2;
             grid-row: 2;
@@ -104,10 +104,10 @@
         /* Исправление отображения Canvas */
         #map-container canvas {
             display: block;
-            width: 100% !important;  /* Принудительно растягиваем на контейнер */
-            height: 100% !important; /* Принудительно растягиваем на контейнер */
-            object-fit: contain;     /* Сохраняем пропорции символов */
-            image-rendering: pixelated; /* Четкие пиксели при масштабировании */
+            width: 100% !important;  
+            height: 100% !important; 
+            object-fit: contain;     
+            image-rendering: pixelated; 
         }
 
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
@@ -299,13 +299,11 @@ const MapModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 3: ENTITY MODULE (С использованием WorldCurve)
+ * МОДУЛЬ 3: ENTITY MODULE
  * ====================================================================
  */
 const EntityModule = {
     createPlayer: function(x, y) {
-        // Используем WorldCurve для стартовых статов (если уровень 1)
-        // Для простоты старта даем базовые значения, а пересчет делаем при level up
         return {
             x: x, y: y,
             char: "@", color: "#FFF",
@@ -318,7 +316,6 @@ const EntityModule = {
     },
 
     createEnemy: function(template, x, y, difficultyMult) {
-        // Применяем множитель сложности из WorldCurve
         const hp = Math.floor(template.hp[0] * difficultyMult);
         const atk = Math.floor(template.atk[0] * difficultyMult);
         const def = Math.floor(template.def[0] * difficultyMult);
@@ -336,7 +333,6 @@ const EntityModule = {
         const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
         const name = `${adj} ${template.baseName}`;
         
-        // Сила предмета зависит от глубины (WorldCurve)
         const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
         const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
         
@@ -416,7 +412,7 @@ const CombatModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE
+ * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО НА ROT)
  * ====================================================================
  */
 const RenderModule = {
@@ -427,12 +423,13 @@ const RenderModule = {
     FONT_SIZE: 16,
 
     init: function() {
-        if (typeof ROTJS === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js (v2) не загрузилась.");
-            throw new Error("ROTJS missing");
+        // Проверка на наличие библиотеки ROT (стандартное имя для rot.js)
+        if (typeof ROT === 'undefined') {
+            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету.");
+            throw new Error("ROT missing");
         }
 
-        this.display = new ROTJS.Display({
+        this.display = new ROT.Display({
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
@@ -445,7 +442,7 @@ const RenderModule = {
         container.innerHTML = ""; 
         container.appendChild(this.display.getContainer());
         
-        this.fov = new ROTJS.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
     draw: function(player, enemies, items) {
@@ -717,7 +714,8 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    const astar = new ROTJS.Path.AStar(this.player.x, this.player.y, 
+                    // Используем ROT.Path.AStar
+                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
                     astar.compute(e.x, e.y, (x,y) => {
