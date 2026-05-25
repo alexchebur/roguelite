@@ -477,7 +477,7 @@ const RenderModule = {
 
         // 1. Вычисляем видимость (увеличили радиус до 15)
         const visible = new Set();
-        this.fov.compute(player.x, player.y, 15, (x, y, r, vis) => {
+        this.fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
