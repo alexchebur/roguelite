@@ -314,19 +314,29 @@ const EntityModule = {
         };
     },
 
+
+
     createEnemy: function(template, x, y, difficultyMult) {
         const hp = Math.floor(template.hp[0] * difficultyMult);
         const atk = Math.floor(template.atk[0] * difficultyMult);
         const def = Math.floor(template.def[0] * difficultyMult);
+        
+        // Генерируем скорость с небольшим разбросом
+        const baseSpd = template.spd[0] + Math.random() * (template.spd[1] - template.spd[0]);
+        const speed = Math.floor(baseSpd * difficultyMult); // Сложность может чуть влиять на скорость
 
         return {
             x: x, y: y, name: template.name,
             char: template.char, color: template.color,
             hp: hp, maxHp: hp,
             atk: atk, def: def,
+            speed: speed,          // Базовая скорость
+            actionPoints: 0,       // Текущие накопленные очки
+            maxActionPoints: 100,  // Порог для хода
             isEnemy: true
         };
     },
+    
 
     createItem: function(template, x, y, itemPowerMult) {
         const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
