@@ -41,7 +41,7 @@
         #game-layout {
             display: grid;
             grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 60px 1fr 140px;
+            grid-template-rows: 100px 1fr 140px;
             height: 100%;
             gap: 4px;
             padding: 4px;
@@ -72,8 +72,14 @@
             grid-column: 1 / -1;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 0 15px;
+            /* БЫЛО: align-items: center; — это центрировало заголовок по вертикали */
+            /* СТАЛО: flex-start — прижимает всё к верхнему краю */
+            align-items: flex-start; 
+    
+            /* Добавляем отступы, чтобы текст не касался рамок */
+            padding: 10px 15px; 
+    
+            /* Остальные стили оставляем без изменений */
         }
         .loc-info { text-align: right; }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
