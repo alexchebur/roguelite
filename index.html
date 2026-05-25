@@ -262,9 +262,15 @@ const MapModule = {
         this.currentMapData = result.mapData;
         this.currentDungeonType = result.dungeonType;
         
-        // Лестницы
-        this.stairsDown = this._findRandomFloor(result.startPos);
-        this.stairsUp = this._findRandomFloor(result.startPos, true);
+        // Создаем уникальный сид для этого уровня на основе его координат
+        const levelSeed = `lvl_${gx}_${gy}`;
+        
+        // Лестницы теперь генерируются детерминировано (всегда в одном месте для этих координат)
+        // stairsDown: обычная случайная позиция, но фиксированная для этого сида
+        this.stairsDown = this._findRandomFloor(result.startPos, false, levelSeed + '_down');
+        
+        // stairsUp: позиция далеко от старта (far=true), тоже фиксированная
+        this.stairsUp = this._findRandomFloor(result.startPos, true, levelSeed + '_up');
 
         return result.startPos;
     },
@@ -279,12 +285,18 @@ const MapModule = {
         return this._findRandomFloor(excludePos);
     },
 
-    _findRandomFloor: function(excludePos, far=false) {
+    _findRandomFloor: function(excludePos, far=false, seed=null) {
+        // Если сид не передан, создаём его на основе координат уровня
+        if (!seed) seed = `stairs_${this.currentDungeonType?.name || 'default'}`;
+    
+        const rng = new Math.seedrandom(seed);
         let attempts = 0;
+    
         while(attempts < 1000) {
-            const x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
-            const y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
-            
+            // Используем rng() вместо Math.random()
+            const x = Math.floor(rng() * DataModule.MAP_WIDTH);
+            const y = Math.floor(rng() * DataModule.MAP_HEIGHT);
+        
             if (this.currentMapData[y][x] === 0) {
                 if (excludePos && x === excludePos.x && y === excludePos.y) {
                     attempts++; continue;
