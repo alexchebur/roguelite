@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ROT.js v0.7.3 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
+    <!-- ROTJS.js v0.7.3 -->
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/ROTJS.min.js"></script>
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
 
@@ -289,12 +289,12 @@ const MapModule = {
     generate: function(seedStr) {
         NameGenModule.setSeed(seedStr);
 
-        if (typeof ROT === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js не загрузилась.");
-            throw new Error("ROT.js missing");
+        if (typeof ROTJS === 'undefined') {
+            alert("Ошибка: Библиотека ROTJS.js не загрузилась.");
+            throw new Error("ROTJS.js missing");
         }
 
-        const digger = new ROT.Map.Digger(DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, {
+        const digger = new ROTJS.Map.Digger(DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, {
             roomWidth: [4, 8],
             roomHeight: [4, 8],
             roomCount: DataModule.ROOM_COUNT
@@ -468,7 +468,7 @@ const RenderModule = {
     FONT_SIZE: 14,
 
     init: function() {
-        this.display = new ROT.Display({
+        this.display = new ROTJS.Display({
             width: this.COLS,
             height: this.ROWS,
             fontSize: this.FONT_SIZE,
@@ -481,7 +481,7 @@ const RenderModule = {
         container.innerHTML = ""; // Очистка перед добавлением
         container.appendChild(this.display.getContainer());
         
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
+        this.fov = new ROTJS.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
     },
 
     draw: function(player, enemies, items) {
@@ -714,7 +714,7 @@ const GameModule = {
                 if (dist===1) {
                     CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
                 } else {
-                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
+                    const astar = new ROTJS.Path.AStar(this.player.x, this.player.y, 
                         (x,y)=>!MapModule.isWall(x,y), {topology:8});
                     let next = null;
                     astar.compute(e.x, e.y, (x,y) => {
