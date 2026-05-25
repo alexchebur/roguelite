@@ -2,781 +2,299 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Roguelike: Подземелье Координат</title>
+    <!-- Подключение библиотеки rot.js -->
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.0/dist/rot.min.js"></script>
     
-    <!-- ROT.js v2.2.1 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
-    <!-- Seedrandom -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
-    
-    <!-- ВАШИ МОДУЛИ -->
+    <!-- Подключение наших модулей (порядок важен) -->
     <script src="name_generator.js"></script>
-    <script src="dungeon_generator.js"></script>
     <script src="worldCurve.js"></script>
+    <script src="dungeon_generator.js"></script>
 
     <style>
-        :root {
-            --bg-color: #0d1117;
-            --panel-bg: #161b22;
-            --border-color: #30363d;
-            --text-main: #c9d1d9;
-            --text-dim: #8b949e;
-            --accent: #58a6ff;
-            --danger: #f85149;
-            --gold: #d29922;
-            --font-stack: 'Consolas', 'Monaco', monospace;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-stack);
             margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: #eee;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; /* Скрываем скроллбары */
+            width: 100vw;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
         }
 
-        #game-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 60px 1fr 140px;
-            height: 100%;
-            gap: 4px;
-            padding: 4px;
-            box-sizing: border-box;
-        }
-
-        .panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 4px;
-            letter-spacing: 1px;
-        }
-
-        header {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }
-        .loc-info { text-align: right; }
-        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
-        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
-        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
-
-        /* --- КАРТА --- */
-        #map-container {
-            grid-column: 2;
-            grid-row: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-            border: 1px solid var(--border-color);
+        /* Контейнер для игры, занимающий весь экран */
+        #game-container {
             position: relative;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            
-            /* Квадратный контейнер */
-            aspect-ratio: 1 / 1;
-            max-height: 100%;
-            max-width: 100%;
-            margin: auto;
-        }
-
-        /* Исправление отображения Canvas */
-        #map-container canvas {
-            display: block;
-            width: 100% !important;  
-            height: 100% !important; 
-            object-fit: contain;     
-            image-rendering: pixelated; 
-        }
-
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
-        .val-hp { color: var(--danger); }
-        .val-atk { color: var(--gold); }
-        .val-def { color: var(--accent); }
-        
-        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
-        .equip-item { color: var(--gold); }
-
-        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
-        .inv-item {
-            padding: 3px 5px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 3px;
-            cursor: pointer;
-            font-size: 11px;
-            border-radius: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .inv-item:hover { background: rgba(255,255,255,0.1); }
-
-        #log-list {
-            overflow-y: auto;
-            flex: 1;
-            font-size: 11px;
             display: flex;
-            flex-direction: column-reverse;
-        }
-        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
-        .log-combat { color: var(--danger); }
-        .log-loot { color: var(--gold); }
-        .log-info { color: var(--accent); }
-
-        #minimap-panel {
-            grid-column: 1;
-            grid-row: 3;
-            display: flex;
-            flex-direction: column;
-        }
-        #minimap { 
-            width: 100%; 
-            height: 100%; 
-            background: #000; 
-            border-radius: 4px;
-            image-rendering: pixelated;
-        }
-
-        footer {
-            grid-column: 2 / 4;
-            grid-row: 3;
-            display: flex;
-            align-items: center;
             justify-content: center;
-            gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
+            align-items: center;
         }
-        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
 
+        /* Канвас rot.js будет масштабироваться внутри контейнера */
+        canvas {
+            position: absolute;
+            transform-origin: top left; /* Масштабирование от левого верхнего угла */
+            image-rendering: pixelated; /* Для четкости пикселей при увеличении */
+        }
+
+        /* Интерфейс поверх канваса (если понадобится позже) */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Чтобы клики проходили сквозь UI к игре, если нужно */
+            z-index: 10;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #444;
+            padding: 10px;
+            pointer-events: auto;
+        }
+
+        /* Пример расположения панелей (можно доработать под ваш дизайн) */
+        #stats-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+        
+        #log-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        #controls-hint {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            text-align: right;
+            font-size: 12px;
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
 
-<div id="game-layout">
-    <header class="panel">
-        <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
-        <div class="loc-info">
-            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <div id="ui-loc-desc" class="loc-desc"></div>
-            <div id="ui-loc-type" class="loc-type"></div>
-            <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
+    <div id="game-container">
+        <!-- ROT.JS Canvas будет добавлен сюда скриптом -->
+        
+        <div id="ui-layer">
+            <div id="stats-panel" class="panel">
+                <div>❤️ HP: <span id="hp-val">100</span>/<span id="max-hp-val">100</span></div>
+                <div>⚔️ ATK: <span id="atk-val">10</span></div>
+                <div>🛡️ DEF: <span id="def-val">5</span></div>
+                <div>📍 X: <span id="pos-x">0</span>, Y: <span id="pos-y">0</span></div>
+                <div>🏰 Локация: <span id="loc-name">Загрузка...</span></div>
+            </div>
+
+            <div id="controls-hint" class="panel">
+                ←↑↓→ Движение / Атака<br>
+                Space Пропуск хода<br>
+                Click Использовать предмет
+            </div>
+
+            <div id="log-panel" class="panel">
+                <div id="game-log">Добро пожаловать в Подземелье Координат...</div>
+            </div>
         </div>
-    </header>
-
-    <div class="panel" style="grid-row: 2;">
-        <h3>Персонаж</h3>
-        <div id="ui-stats"></div>
-        <h3 style="margin-top: 15px;">Экипировка</h3>
-        <div id="ui-equip"></div>
     </div>
-
-    <div id="map-container"></div>
-
-    <div class="panel" style="grid-row: 2 / 4;">
-        <h3>Инвентарь</h3>
-        <div id="inventory-list"></div>
-        <h3 style="margin-top: 10px;">Журнал событий</h3>
-        <div id="log-list"></div>
-    </div>
-
-    <div id="minimap-panel" class="panel">
-        <h3>Карта мира</h3>
-        <canvas id="minimap"></canvas>
-    </div>
-
-    <footer class="panel">
-        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
-        <span><kbd>Space</kbd> Пропуск хода</span>
-        <span><kbd>Click</kbd> Использовать предмет</span>
-    </footer>
-</div>
 
 <script>
-/**
- * ====================================================================
- * МОДУЛЬ 1: DATA MODULE
- * ====================================================================
- */
-const DataModule = {
-    ITEM_ADJECTIVES: ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"],
+    // === КОНФИГУРАЦИЯ ROT.JS ===
+    // Внутреннее разрешение игры (в клетках). 
+    // Не меняйте это слишком сильно, если не хотите менять логику генерации карты.
+    const GAME_WIDTH = 80;
+    const GAME_HEIGHT = 25;
+    const FONT_SIZE = 16; // Базовый размер шрифта для расчета
+
+    // Инициализация дисплея
+    const displayOptions = {
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        fontSize: FONT_SIZE,
+        fontFamily: 'monospace',
+        fg: '#ccc',
+        bg: '#000'
+    };
+
+    const display = new ROT.Display(displayOptions);
+    const container = document.getElementById("game-container");
+    const canvas = display.getContainer();
     
-    ENEMY_TYPES: [
-        { name: "Гоблин", char: "g", color: "#4CAF50", hp: [3, 20], atk: [1, 2], def: [0, 1] },
-        { name: "Скелет", char: "s", color: "#B0BEC5", hp: [5, 25], atk: [2, 3], def: [1, 2] },
-        { name: "Орк",    char: "O", color: "#8BC34A", hp: [10, 50], atk: [4, 5], def: [2, 4] },
-        { name: "Призрак",char: "G", color: "#7C4DFF", hp: [20, 15], atk: [5, 6], def: [0, 1] },
-        { name: "Дракон", char: "D", color: "#FF5722", hp: [40, 120], atk: [10, 20], def: [5, 10] }
-    ],
+    // Важно: добавляем канвас в наш контейнер
+    container.appendChild(canvas);
 
-    ITEM_TYPES: [
-        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
-        { type: "armor",  char: "]", color: "#9E9E9E", baseName: "Броня", stat: "def", val: [1, 3] },
-        { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
-        { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] }
-    ],
-
-    MAP_WIDTH: 50,
-    MAP_HEIGHT: 50
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 2: MAP WRAPPER
- * ====================================================================
- */
-const MapModule = {
-    currentMapData: null,
-    currentDungeonType: null,
-    stairsUp: null,
-    stairsDown: null,
-
-    generate: function(gx, gy) {
-        const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+    // === ЛОГИКА МАСШТАБИРОВАНИЯ (RESIZE) ===
+    function resizeGame() {
+        const frameWidth = container.clientWidth;
+        const frameHeight = container.clientHeight;
         
-        this.currentMapData = result.mapData;
-        this.currentDungeonType = result.dungeonType;
+        // Реальные размеры канваса в пикселях (ROT вычисляет их на основе fontSize и количества клеток)
+        // ROT.Display автоматически устанавливает width/height атрибуты canvas
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        // Вычисляем масштаб, чтобы вписать игру в экран (contain)
+        const scaleX = frameWidth / canvasWidth;
+        const scaleY = frameHeight / canvasHeight;
         
-        // Лестницы
-        this.stairsDown = this._findRandomFloor(result.startPos);
-        this.stairsUp = this._findRandomFloor(result.startPos, true);
+        // Выбираем меньший масштаб, чтобы игра поместилась целиком
+        const scale = Math.min(scaleX, scaleY);
 
-        return result.startPos;
-    },
-
-    isWall: function(x, y) {
-        if (!this.currentMapData) return true;
-        if (x < 0 || x >= DataModule.MAP_WIDTH || y < 0 || y >= DataModule.MAP_HEIGHT) return true;
-        return this.currentMapData[y][x] === 1;
-    },
-
-    getRandomFloor: function(excludePos) {
-        return this._findRandomFloor(excludePos);
-    },
-
-    _findRandomFloor: function(excludePos, far=false) {
-        let attempts = 0;
-        while(attempts < 1000) {
-            const x = Math.floor(Math.random() * DataModule.MAP_WIDTH);
-            const y = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
-            
-            if (this.currentMapData[y][x] === 0) {
-                if (excludePos && x === excludePos.x && y === excludePos.y) {
-                    attempts++; continue;
-                }
-                if (far && excludePos) {
-                    const dist = Math.abs(x - excludePos.x) + Math.abs(y - excludePos.y);
-                    if (dist < 10) { attempts++; continue; }
-                }
-                return {x, y};
-            }
-            attempts++;
-        }
-        return excludePos || {x:0, y:0};
+        // Применяем трансформацию
+        canvas.style.transform = `scale(${scale})`;
+        
+        // Центрирование (опционально, так как flexbox в #game-container уже центрирует)
+        // Но если transform-origin top left, то может потребоваться корректировка margin
+        // При использовании flexbox и absolute positioning внутри relative контейнера, 
+        // transform-origin: top left может сместить визуальный центр.
+        // Лучший способ для "top left" scaling в центре экрана:
+        
+        // Вариант с центрированием через margin:
+        const scaledWidth = canvasWidth * scale;
+        const scaledHeight = canvasHeight * scale;
+        
+        // Если нужно строго по центру:
+        canvas.style.left = (frameWidth - scaledWidth) / 2 + 'px';
+        canvas.style.top = (frameHeight - scaledHeight) / 2 + 'px';
     }
-};
 
-/**
- * ====================================================================
- * МОДУЛЬ 3: ENTITY MODULE
- * ====================================================================
- */
-const EntityModule = {
-    createPlayer: function(x, y) {
-        return {
-            x: x, y: y,
-            char: "@", color: "#FFF",
-            hp: 100, maxHp: 100,
-            atk: 10, def: 5,
-            level: 1, xp: 0,
-            inventory: [],
-            equipment: { weapon: null, armor: null }
-        };
-    },
+    // Слушаем изменение размера окна
+    window.addEventListener("resize", resizeGame);
+    
+    // Вызываем один раз при старте
+    // Небольшая задержка, чтобы DOM успел отрисоваться
+    setTimeout(resizeGame, 0);
 
-    createEnemy: function(template, x, y, difficultyMult) {
-        const hp = Math.floor(template.hp[0] * difficultyMult);
-        const atk = Math.floor(template.atk[0] * difficultyMult);
-        const def = Math.floor(template.def[0] * difficultyMult);
 
-        return {
-            x: x, y: y, name: template.name,
-            char: template.char, color: template.color,
-            hp: hp, maxHp: hp,
-            atk: atk, def: def,
-            isEnemy: true
-        };
-    },
+    // === ИГРОВАЯ ЛОГИКА (ЗАГОТОВКА) ===
+    
+    // Состояние игрока
+    let player = {
+        x: 40,
+        y: 12,
+        hp: 100,
+        maxHp: 100,
+        atk: 10,
+        def: 5,
+        level: 1
+    };
 
-    createItem: function(template, x, y, itemPowerMult) {
-        const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-        const name = `${adj} ${template.baseName}`;
+    let currentCoords = { x: 0, y: 0 };
+    let mapData = []; // Здесь будет храниться карта
+    
+    // Функция обновления UI
+    function updateUI() {
+        document.getElementById('hp-val').innerText = player.hp;
+        document.getElementById('max-hp-val').innerText = player.maxHp;
+        document.getElementById('atk-val').innerText = player.atk;
+        document.getElementById('def-val').innerText = player.def;
+        document.getElementById('pos-x').innerText = currentCoords.x;
+        document.getElementById('pos-y').innerText = currentCoords.y;
         
-        const baseVal = Math.floor(template.val[0] + Math.random()*(template.val[1]-template.val[0]));
-        const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
-        
-        return {
-            x: x, y: y, name: name,
-            char: template.char, color: template.color,
-            type: template.type,
-            stat: template.stat,
-            effect: template.effect,
-            val: finalVal,
-            isItem: true
-        };
+        // Генерация названия локации через NameGeneratorModule
+        const locData = NameGeneratorModule.generateLocationData(currentCoords.x, currentCoords.y);
+        document.getElementById('loc-name').innerText = locData.fullName;
     }
-};
 
-/**
- * ====================================================================
- * МОДУЛЬ 4: COMBAT MODULE
- * ====================================================================
- */
-const CombatModule = {
-    attack: function(attacker, defender, logFn) {
-        let dmg = Math.max(1, attacker.atk - defender.def);
-        let crit = Math.random() < 0.1;
-        if (crit) dmg = Math.floor(dmg * 1.5);
-
-        defender.hp -= dmg;
-        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit?" (КРИТ)!":"."}`, "combat");
-
-        if (defender.hp <= 0) {
-            logFn(`${defender.name || "Враг"} погибает!`, "info");
-            return true;
-        }
-        return false;
-    },
-
-    useItem: function(player, index, logFn, updateUiFn) {
-        const item = player.inventory[index];
-        if (!item) return;
-
-        let used = false;
-
-        if (item.effect === "heal") {
-            player.hp = Math.min(player.maxHp, player.hp + item.val);
-            logFn(`Вы выпили ${item.name}. HP +${item.val}.`, "loot");
-            used = true;
-        } else if (item.effect === "buff_atk") {
-            player.atk += item.val;
-            logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
-            used = true;
-        } else if (item.type === "weapon") {
-            if (player.equipment.weapon) {
-                player.atk -= player.equipment.weapon.val;
-                player.inventory.push(player.equipment.weapon);
-            }
-            player.equipment.weapon = item;
-            player.atk += item.val;
-            logFn(`Вы взяли ${item.name}. Атака +${item.val}.`, "loot");
-            used = true;
-        } else if (item.type === "armor") {
-            if (player.equipment.armor) {
-                player.def -= player.equipment.armor.val;
-                player.inventory.push(player.equipment.armor);
-            }
-            player.equipment.armor = item;
-            player.def += item.val;
-            logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
-            used = true;
-        }
-
-        if (used) {
-            player.inventory.splice(index, 1);
-            updateUiFn();
+    // Функция логирования
+    function log(message, color = "#fff") {
+        const logEl = document.getElementById('game-log');
+        const entry = document.createElement('div');
+        entry.style.color = color;
+        entry.innerText = "> " + message;
+        logEl.prepend(entry);
+        
+        // Ограничение истории логов
+        if (logEl.children.length > 10) {
+            logEl.removeChild(logEl.lastChild);
         }
     }
-};
 
-/**
- * ====================================================================
- * МОДУЛЬ 5: RENDER MODULE (ИСПРАВЛЕНО НА ROT)
- * ====================================================================
- */
-const RenderModule = {
-    display: null,
-    fov: null,
-    COLS: 50,
-    ROWS: 50,
-    FONT_SIZE: 16,
-
-    init: function() {
-        // Проверка на наличие библиотеки ROT (стандартное имя для rot.js)
-        if (typeof ROT === 'undefined') {
-            alert("Ошибка: Библиотека ROT.js не загрузилась. Проверьте подключение к интернету.");
-            throw new Error("ROT missing");
-        }
-
-        this.display = new ROT.Display({
-            width: this.COLS,
-            height: this.ROWS,
-            fontSize: this.FONT_SIZE,
-            fontFamily: "Consolas, monospace",
-            fg: "#ccc",
-            bg: "#000"
-        });
-        function initGame() {
-            const canvas = document.getElementById('canvas');
-                const ctx = canvas.getContext('2d');
-                            const container = document.getElementById('map-container');
-
-                // === ДОБАВИТЬ ЭТОТ БЛОК ===
-                function resizeCanvas() {
-                    // 1. Получаем реальные размеры контейнера в пикселях
-                    const w = container.clientWidth;
-                    const h = container.clientHeight;
-
-                    // 2. Применяем их к внутреннему разрешению canvas
-                    canvas.width = w;
-                    canvas.height = h;
-
-                    // 3. Отключаем сглаживание для четкости пикселей/тайлов
-                    ctx.imageSmoothingEnabled = false;
-            
-                    // 4. Перерисовываем игру, если она уже запущена
-                    if (gameState.map) {
-                        renderMap(); 
-                    }
-                }
-
-                // Вызываем один раз при старте
-                resizeCanvas();
-
-                // Следим за изменением размера окна/панели
-                window.addEventListener('resize', resizeCanvas);
-                // ==========================
-
-                // ... остальной код initGame ...
-            }
+    // Отрисовка карты (пример)
+    function drawMap() {
+        display.clear();
         
-        const container = document.getElementById("map-container");
-        container.innerHTML = ""; 
-        container.appendChild(this.display.getContainer());
+        // Получаем данные подземелья из DungeonGeneratorModule
+        // Для примера берем размер, соответствующий GAME_WIDTH/GAME_HEIGHT
+        // Внимание: dungeon_generator возвращает grid [y][x]
+        const levelData = DungeonGeneratorModule.generateLevel(currentCoords.x, currentCoords.y, GAME_WIDTH, GAME_HEIGHT);
+        mapData = levelData.mapData;
         
-        this.fov = new ROT.FOV.PreciseShadowcasting((x,y) => !MapModule.isWall(x,y));
-    },
-
-    draw: function(player, enemies, items) {
-        this.display.clear();
-        const visible = new Set();
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-
-        this.fov.compute(player.x, player.y, 10, (x, y, r, vis) => {
-            if (vis) visible.add(`${x},${y}`);
-        });
-
-        visible.forEach(key => {
-            const [x, y] = key.split(',').map(Number);
-            let ch, fg, bg;
-
-            if (MapModule.isWall(x, y)) {
-                ch = dtype.wallChar;
-                fg = dtype.wallColor;
-                bg = "#000";
-            } else {
-                ch = dtype.floorChar;
-                fg = dtype.floorColor;
-                bg = "#000";
-            }
-            
-            if (MapModule.stairsUp && x === MapModule.stairsUp.x && y === MapModule.stairsUp.y) { 
-                ch = ">"; fg = "#FFF"; 
-            }
-            if (MapModule.stairsDown && x === MapModule.stairsDown.x && y === MapModule.stairsDown.y) { 
-                ch = "<"; fg = "#888"; 
-            }
-
-            this.display.draw(x, y, ch, fg, bg);
-        });
-
-        items.forEach(i => {
-            if (visible.has(`${i.x},${i.y}`)) this.display.draw(i.x, i.y, i.char, i.color);
-        });
-
-        enemies.forEach(e => {
-            if (e.hp > 0 && visible.has(`${e.x},${e.y}`)) this.display.draw(e.x, e.y, e.char, e.color);
-        });
-
-        this.display.draw(player.x, player.y, player.char, player.color);
-
-        return visible;
-    },
-
-    updateUI: function(player, locData, worldTrend) {
-        if (locData) {
-            document.getElementById("ui-loc-name").textContent = locData.fullName;
-            document.getElementById("ui-loc-desc").textContent = locData.description;
-            
-            let typeText = `Тип: ${locData.themeName} (${MapModule.currentDungeonType ? MapModule.currentDungeonType.name : '?'})`;
-            if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                typeText += ` | ${worldTrend.name}`;
-                document.getElementById("ui-loc-name").style.color = worldTrend.color;
-            } else {
-                document.getElementById("ui-loc-name").style.color = "var(--accent)";
-            }
-            document.getElementById("ui-loc-type").textContent = typeText;
-        }
-
-        document.getElementById("ui-stats").innerHTML = `
-            <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
-            <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
-            <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
-            <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
-        `;
-        const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
-        const a = player.equipment.armor ? player.equipment.armor.name : "—";
-        document.getElementById("ui-equip").innerHTML = `
-            <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
-            <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
-        `;
-        const invDiv = document.getElementById("inventory-list");
-        invDiv.innerHTML = "";
-        if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
-        player.inventory.forEach((item, idx) => {
-            const div = document.createElement("div");
-            div.className = "inv-item";
-            div.style.color = item.color;
-            div.textContent = `${item.char} ${item.name} (+${item.val})`;
-            div.onclick = () => CombatModule.useItem(player, idx, this.log, () => this.updateUI(player, locData, worldTrend));
-            invDiv.appendChild(div);
-        });
-    },
-
-    log: function(msg, type="info") {
-        const list = document.getElementById("log-list");
-        const div = document.createElement("div");
-        div.className = `log-msg log-${type}`;
-        div.textContent = `> ${msg}`;
-        list.prepend(div);
-        if (list.children.length > 50) list.lastChild.remove();
-    },
-
-    drawMinimap: function(player, explored) {
-        const cvs = document.getElementById("minimap");
-        const rect = cvs.parentElement.getBoundingClientRect();
-        cvs.width = rect.width - 20; 
-        cvs.height = rect.height - 40; 
-
-        const ctx = cvs.getContext("2d");
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,cvs.width,cvs.height);
+        // Установка цветов фона и стен на основе типа подземелья
+        // (В реальной игре нужно применять цвета к каждой клетке)
         
-        const cw = cvs.width / DataModule.MAP_WIDTH;
-        const ch = cvs.height / DataModule.MAP_HEIGHT;
-
-        const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-
-        explored.forEach(k => {
-            const [x,y] = k.split(',').map(Number);
-            ctx.fillStyle = MapModule.isWall(x,y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5;
-            ctx.fillRect(x*cw, y*ch, cw+0.5, ch+0.5);
-            ctx.globalAlpha = 1.0;
-        });
-        ctx.fillStyle = "#0F0";
-        ctx.fillRect(player.x*cw, player.y*ch, cw+1, ch+1);
-    }
-};
-
-/**
- * ====================================================================
- * МОДУЛЬ 6: GAME MODULE
- * ====================================================================
- */
-const GameModule = {
-    player: null,
-    enemies: [],
-    items: [],
-    globalX: 0,
-    globalY: 0,
-    currentLocData: null,
-    currentWorldTrend: null,
-    explored: new Set(),
-    busy: false,
-
-    init: function() {
-        try {
-            RenderModule.init();
-        } catch (e) {
-            console.error(e);
-            return;
-        }
-        
-        this.globalX = Math.floor(Math.random() * 10);
-        this.globalY = Math.floor(Math.random() * 10);
-        
-        this.loadLevel(this.globalX, this.globalY);
-        
-        window.addEventListener("keydown", (e) => this.handleInput(e));
-        RenderModule.log("Игра загружена. Используйте стрелки.", "info");
-    },
-
-    loadLevel: function(gx, gy) {
-        this.globalX = gx;
-        this.globalY = gy;
-        this.enemies = [];
-        this.items = [];
-        this.explored.clear();
-
-        // 1. Название и тренд
-        this.currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
-        this.currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
-        
-        // 2. Карта
-        const startPos = MapModule.generate(gx, gy);
-        
-        document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
-        RenderModule.log(`Локация: ${this.currentLocData.fullName}`, "info");
-        if (this.currentWorldTrend.name !== "Обычный уровень") {
-            RenderModule.log(`Тренд мира: ${this.currentWorldTrend.name}`, "event");
-        }
-
-        // 3. Игрок
-        if (!this.player) {
-            this.player = EntityModule.createPlayer(startPos.x, startPos.y);
-        } else {
-            this.player.x = startPos.x;
-            this.player.y = startPos.y;
-        }
-
-        // 4. Сущности с учетом кривых сложности
-        this.spawnEntities(gx, gy);
-        this.renderFrame();
-    },
-
-    spawnEntities: function(gx, gy) {
-        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
-        const oldRand = Math.random;
-        Math.random = rng; 
-
-        // Получаем множители из WorldCurve
-        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
-        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
-
-        // Враги
-        for(let i=0; i<6; i++) {
-            const pos = MapModule.getRandomFloor(this.player);
-            if (pos.x === this.player.x && pos.y === this.player.y) continue;
-            const type = DataModule.ENEMY_TYPES[Math.floor(Math.random() * DataModule.ENEMY_TYPES.length)];
-            this.enemies.push(EntityModule.createEnemy(type, pos.x, pos.y, enemyMult));
-        }
-
-        // Предметы
-        for(let i=0; i<4; i++) {
-            const pos = MapModule.getRandomFloor(this.player);
-            const type = DataModule.ITEM_TYPES[Math.floor(Math.random() * DataModule.ITEM_TYPES.length)];
-            this.items.push(EntityModule.createItem(type, pos.x, pos.y, itemMult));
-        }
-
-        Math.random = oldRand;
-    },
-
-    handleInput: function(e) {
-        if (this.busy || this.player.hp <= 0) return;
-        
-        let dx=0, dy=0;
-        if (e.key==="ArrowUp") dy=-1;
-        if (e.key==="ArrowDown") dy=1;
-        if (e.key==="ArrowLeft") dx=-1;
-        if (e.key==="ArrowRight") dx=1;
-        
-        if (dx!==0 || dy!==0 || e.key===" ") {
-            e.preventDefault();
-            this.processTurn(dx, dy);
-        }
-    },
-
-    processTurn: function(dx, dy) {
-        const nx = this.player.x + dx;
-        const ny = this.player.y + dy;
-
-        if (MapModule.isWall(nx, ny)) return;
-
-        const enemy = this.enemies.find(e => e.hp>0 && e.x===nx && e.y===ny);
-        if (enemy) {
-            CombatModule.attack(this.player, enemy, (m,t)=>RenderModule.log(m,t));
-        } else {
-            this.player.x = nx;
-            this.player.y = ny;
-
-            const idx = this.items.findIndex(i => i.x===nx && i.y===ny);
-            if (idx !== -1) {
-                const item = this.items[idx];
-                this.player.inventory.push(item);
-                RenderModule.log(`Подобрано: ${item.name}`, "loot");
-                this.items.splice(idx, 1);
-            }
-
-            if (MapModule.stairsUp && nx===MapModule.stairsUp.x && ny===MapModule.stairsUp.y) {
-                RenderModule.log("Вы поднимаетесь выше...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX+1, this.globalY+1), 100);
-                return;
-            }
-            if (MapModule.stairsDown && nx===MapModule.stairsDown.x && ny===MapModule.stairsDown.y) {
-                RenderModule.log("Вы спускаетесь ниже...", "info");
-                setTimeout(()=>this.loadLevel(this.globalX-1, this.globalY-1), 100);
-                return;
-            }
-        }
-
-        this.enemies.forEach(e => {
-            if (e.hp<=0) return;
-            const dist = Math.abs(e.x-this.player.x) + Math.abs(e.y-this.player.y);
-            if (dist < 8) {
-                if (dist===1) {
-                    CombatModule.attack(e, this.player, (m,t)=>RenderModule.log(m,t));
+        for (let y = 0; y < GAME_HEIGHT; y++) {
+            for (let x = 0; x < GAME_WIDTH; x++) {
+                const tile = mapData[y][x];
+                // 1 - стена, 0 - пол
+                if (tile === 1) {
+                    display.draw(x, y, levelData.dungeonType.wallChar, levelData.dungeonType.wallColor, "#000");
                 } else {
-                    // Используем ROT.Path.AStar
-                    const astar = new ROT.Path.AStar(this.player.x, this.player.y, 
-                        (x,y)=>!MapModule.isWall(x,y), {topology:8});
-                    let next = null;
-                    astar.compute(e.x, e.y, (x,y) => {
-                        if (!next && (x!==e.x||y!==e.y)) next={x,y};
-                    });
-                    if (next) {
-                        if (!this.enemies.some(other => other!==e && other.hp>0 && other.x===next.x && other.y===next.y)) {
-                            e.x = next.x; e.y = next.y;
-                        }
-                    }
+                    display.draw(x, y, levelData.dungeonType.floorChar, levelData.dungeonType.floorColor, "#000");
                 }
             }
-        });
-
-        if (this.player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+        }
         
-        this.renderFrame();
-    },
-
-    renderFrame: function() {
-        const vis = RenderModule.draw(this.player, this.enemies, this.items);
-        vis.forEach(k => this.explored.add(k));
-        RenderModule.updateUI(this.player, this.currentLocData, this.currentWorldTrend);
-        RenderModule.drawMinimap(this.player, this.explored);
+        // Рисуем игрока
+        display.draw(player.x, player.y, "@", "#ff0", "#000");
+        
+        updateUI();
     }
-};
 
-// Запуск
-window.onload = () => GameModule.init();
+    // Обработка ввода
+    document.addEventListener("keydown", function(e) {
+        let dx = 0;
+        let dy = 0;
+        let acted = false;
+
+        switch(e.key) {
+            case "ArrowUp": dy = -1; acted = true; break;
+            case "ArrowDown": dy = 1; acted = true; break;
+            case "ArrowLeft": dx = -1; acted = true; break;
+            case "ArrowRight": dx = 1; acted = true; break;
+            case " ": acted = true; log("Вы ожидаете...", "#aaa"); break;
+        }
+
+        if (acted) {
+            e.preventDefault(); // Предотвращаем скролл страницы
+            
+            // Простая проверка коллизий
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+            
+            // Проверка границ массива
+            if (newY >= 0 && newY < GAME_HEIGHT && newX >= 0 && newX < GAME_WIDTH) {
+                if (mapData[newY][newX] === 0) { // 0 - пол
+                    player.x = newX;
+                    player.y = newY;
+                    // log("Шаг...", "#888");
+                } else {
+                    // log("Стена!", "#555");
+                }
+            }
+            
+            drawMap();
+        }
+    });
+
+    // Запуск
+    log("Инициализация системы...", "#0f0");
+    drawMap();
 
 </script>
 </body>
