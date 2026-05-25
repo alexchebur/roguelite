@@ -315,7 +315,7 @@ const MapModule = {
 
 /**
  * ====================================================================
- * МОДУЛЬ 3: ENTITY MODULE
+ * МОДУЛЬ 3: ENTITY MODULE (ИСПРАВЛЕННЫЙ)
  * ====================================================================
  */
 const EntityModule = {
@@ -361,6 +361,57 @@ const EntityModule = {
             val: finalVal,
             isItem: true
         };
+    },
+
+    // ✅ НОВЫЙ МЕТОД: Безопасное размещение врагов с проверкой дистанции
+    spawnEnemies: function(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3) {
+        const height = mapGrid.length;
+        const width = mapGrid[0].length;
+        const validTiles = [];
+
+        // 1. Собираем все клетки пола, отступая от игрока
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (mapGrid[y][x] === 0) {
+                    const distToStart = Math.abs(x - startPos.x) + Math.abs(y - startPos.y);
+                    if (distToStart >= 4) { // Зона безопасности 4 клетки вокруг игрока
+                        validTiles.push({x, y});
+                    }
+                }
+            }
+        }
+
+        // 2. Перемешиваем массив клеток (Fisher-Yates), чтобы убрать предсказуемость
+        for (let i = validTiles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
+        }
+
+        // 3. Размещаем врагов с строгой проверкой дистанции
+        const placedEnemies = [];
+        const occupiedCoords = [];
+
+        for (const tile of validTiles) {
+            if (placedEnemies.length >= count) break;
+
+            let tooClose = false;
+            for (const occ of occupiedCoords) {
+                // Манхэттенское расстояние: |x1-x2| + |y1-y2|
+                if (Math.abs(tile.x - occ.x) + Math.abs(tile.y - occ.y) < minDist) {
+                    tooClose = true;
+                    break;
+                }
+            }
+
+            if (!tooClose) {
+                occupiedCoords.push({x: tile.x, y: tile.y});
+                // Выбираем случайный шаблон врага
+                const template = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)];
+                placedEnemies.push(this.createEnemy(template, tile.x, tile.y, difficultyMult));
+            }
+        }
+
+        return placedEnemies;
     }
 };
 
