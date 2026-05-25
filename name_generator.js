@@ -95,7 +95,13 @@ const NameGeneratorModule = {
         return name.charAt(0).toUpperCase() + name.slice(1);
     },
     
-    getLocationType(random) {
+    getLocationType(random, dungeonType) {
+        // Если передан конкретный тип подземелья и он существует в locationTypes
+        if (dungeonType && NAME_COMPONENTS.locationTypes[dungeonType]) {
+            const typeVariants = NAME_COMPONENTS.locationTypes[dungeonType];
+            return random.choice(typeVariants);
+        }
+        // Fallback: случайный тип (на случай ошибки)
         const typeKeys = Object.keys(NAME_COMPONENTS.locationTypes);
         const randomType = random.choice(typeKeys);
         const typeVariants = NAME_COMPONENTS.locationTypes[randomType];
@@ -140,13 +146,15 @@ const NameGeneratorModule = {
         return NAME_COMPONENTS.themes[themeKey];
     },
 
-    generateLocationData(x, y) {
+    // ИСПРАВЛЕНА: теперь принимает dungeonType
+    generateLocationData(x, y, dungeonType) {
         const seed = createSeed(x, y);
         const rng = new SeededRandom(seed);
         
         const theme = this.getRandomTheme(rng);
         const namePart = this.generateName(rng, theme);
-        const typePart = this.getLocationType(rng);
+        // Передаём dungeonType в getLocationType
+        const typePart = this.getLocationType(rng, dungeonType);
         const description = this.generateDescription(rng);
         
         return {
