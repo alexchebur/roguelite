@@ -1,207 +1,558 @@
-/**
- * МОДУЛЬ ГЕНЕРАЦИИ ПОДЗЕМЕЛИЙ (dungeon_generator.js)
- * Использует SeededRandom и createSeed из name_generator.js
- */
-
-// Проверка зависимостей
-if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
-    console.error("Ошибка: name_generator.js должен быть загружен перед dungeon_generator.js");
-}
-
-const DUNGEON_TYPES = [
-    { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: '.', wallChar: '#', floorColor: '#333', wallColor: '#555' }, 
-    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: '.', wallChar: '#', floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
-    { name: 'icy', weight: 20, emoji: '❄️', floorChar: '.', wallChar: '#', floorColor: '#aaddff', wallColor: '#ffffff' },
-    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: '.', wallChar: '#', floorColor: '#1a1a1a', wallColor: '#2a2a2a' },
-    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: 'o', wallChar: 'O', floorColor: '#4caf50', wallColor: '#2e7d32' },
-    { name: 'arena', weight: 3, emoji: '🦴', floorChar: '.', wallChar: '#', floorColor: '#5d4037', wallColor: '#3e2723' },
-    { name: 'boss', weight: 2, emoji: '👑', floorChar: '.', wallChar: '#', floorColor: '#b71c1c', wallColor: '#880e4f' }
-];
-
-const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
-
-// Выбор типа подземелья на основе веса
-function selectDungeonType(rand) {
-    // "Прогреваем" генератор
-    rand.next(); rand.next(); rand.next();
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Подземелье по координатам</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+            color: #ecf0f1;
+            margin: 0;
+            padding: 12px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: start;
+        }
     
-    const r = rand.next();
-    let cumulative = 0;
-    for (const type of DUNGEON_TYPES) {
-        cumulative += type.weight / TOTAL_WEIGHT;
-        if (r < cumulative) return type;
-    }
-    return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
-}
-
-// === АЛГОРИТМЫ ГЕНЕРАЦИИ ===
-
-// 1. Комнаты и коридоры
-function generateRoomCorridorMap(rand, width, height) {
-    const grid = Array(height).fill().map(() => Array(width).fill(1)); // 1 = стена
-    const rooms = [];
-    const roomCount = rand.int(10, 20);
+        .container {
+            background: rgba(44, 62, 80, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
     
-    for (let i = 0; i < roomCount; i++) {
-        const w = rand.int(4, 8);
-        const h = rand.int(4, 8);
-        const x = rand.int(1, width - w - 1);
-        const y = rand.int(1, height - h - 1);
+        h1 {
+            color: #3498db;
+            margin-bottom: 20px;
+            font-size: 22px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+    
+        .coordinates {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+    
+        .coord-input {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    
+        .coord-input label {
+            margin-bottom: 6px;
+            color: #3498db;
+            font-weight: bold;
+            font-size: 14px;
+        }
+    
+        .coord-input input {
+            width: 70px;
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: rgba(52, 73, 94, 0.8);
+            color: white;
+            font-size: 16px;
+            text-align: center;
+        }
+    
+        .coord-input input:focus {
+            outline: none;
+            border-color: #f1c40f;
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
+        }
+    
+        .result {
+            background: rgba(52, 73, 94, 0.8);
+            border: 2px solid #3498db;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+    
+        .location-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #f1c40f;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+    
+        .location-description {
+            font-size: 14px;
+            color: #bdc3c7;
+            line-height: 1.4;
+        }
+
+        .type-badge {
+            margin: 10px auto;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        /* Цвета типов */
+        .boss { background: #ff3333; }
+        .icy { background: #7fdbff; color: #000; }
+        .cave { background: #8b4513; }
+        .dungeon { background: #555; }
+        .rogue { background: #8a2be2; color: white; }
+        .cellular { background: #32cd32; color: #000; }
+        .arena { background: #ff8c00; }
+
+        /* === КОНТЕЙНЕР КАРТЫ === */
+        .map-container {
+            width: 450px;
+            height: 450px;
+            margin: 15px auto;
+            overflow: hidden;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: #0f0f1a;
+        }
+
+        /* === СЕТКА ВИДИМОЙ ОБЛАСТИ (15×15) === */
+        .map {
+            display: grid;
+            grid-template-columns: repeat(15, 30px);
+            grid-template-rows: repeat(15, 30px);
+            width: 450px;
+            height: 450px;
+            gap: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* === ЯЧЕЙКА ТАЙЛА === */
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+            width: 30px;
+            height: 30px;
+            box-sizing: border-box;
+            border: none;
+            outline: none;
+        }
+
+        .controls {
+            margin: 10px 0;
+        }
+        .controls button {
+            background: #34495e;
+            color: white;
+            border: 1px solid #3498db;
+            padding: 6px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .generate-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+    
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+            background: linear-gradient(45deg, #3ca0db, #2c8bc9);
+        }
+    
+        .info {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+    
+        .seed-info {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 Подземелье по координатам</h1>
         
-        let overlaps = false;
-        for (const r of rooms) {
-            if (x < r.x + r.w + 1 && x + w + 1 > r.x && y < r.y + r.h + 1 && y + h + 1 > r.y) {
-                overlaps = true;
-                break;
-            }
-        }
-        if (overlaps) continue;
+        <div class="coordinates">
+            <div class="coord-input">
+                <label for="coordX">Координата X</label>
+                <input type="number" id="coordX" value="1" min="-1000" max="1000">
+            </div>
+            <div class="coord-input">
+                <label for="coordY">Координата Y</label>
+                <input type="number" id="coordY" value="1" min="-1000" max="1000">
+            </div>
+        </div>
         
-        for (let dy = 0; dy < h; dy++) {
-            for (let dx = 0; dx < w; dx++) {
-                grid[y + dy][x + dx] = 0; // 0 = пол
-            }
-        }
-        rooms.push({x, y, w, h});
-    }
-    
-    // Соединение комнат коридорами
-    if (rooms.length > 1) {
-        for (let i = 0; i < rooms.length - 1; i++) {
-            const r1 = rooms[i];
-            const r2 = rooms[i + 1];
-            const cx1 = Math.floor(r1.x + r1.w / 2);
-            const cy1 = Math.floor(r1.y + r1.h / 2);
-            const cx2 = Math.floor(r2.x + r2.w / 2);
-            const cy2 = Math.floor(r2.y + r2.h / 2);
-            
-            // Горизонтальный туннель
-            const stepX = cx1 <= cx2 ? 1 : -1;
-            for (let x = cx1; stepX > 0 ? x <= cx2 : x >= cx2; x += stepX) {
-                if (cy1 >= 0 && cy1 < height && x >= 0 && x < width) grid[cy1][x] = 0;
-            }
-            // Вертикальный туннель
-            const stepY = cy1 <= cy2 ? 1 : -1;
-            for (let y = cy1; stepY > 0 ? y <= cy2 : y >= cy2; y += stepY) {
-                if (y >= 0 && y < height && cx2 >= 0 && cx2 < width) grid[y][cx2] = 0;
-            }
-        }
-    }
-    return grid;
-}
+        <div class="result">
+            <div class="location-name" id="locationName">Нажмите "Сгенерировать"</div>
+            <div class="location-description" id="locationDescription"></div>
+            <div class="type-badge" id="typeBadge">—</div>
+        </div>
 
-// 2. Клеточный автомат (пещеры)
-function generateCellularMap(rand, width, height) {
-    let grid = Array(height).fill().map(() => Array(width).fill(1));
-    const fillChance = 0.45;
-    
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (rand.next() < fillChance) grid[y][x] = 0;
+        <div class="map-container">
+            <div class="map" id="map"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="moveCamera(0, -1)">↑</button><br>
+            <button onclick="moveCamera(-1, 0)">←</button>
+            <button onclick="moveCamera(1, 0)">→</button><br>
+            <button onclick="moveCamera(0, 1)">↓</button>
+        </div>
+        
+        <button class="generate-btn" onclick="generateLocation()">Сгенерировать</button>
+        <div class="info">Одинаковые координаты → одинаковое название и карта</div>
+        <div class="seed-info" id="seedInfo"></div>
+    </div>
+
+    <script>
+        // === Константы ===
+        const MAP_SIZE = 50;
+        const VIEW_WIDTH = 15;
+        const VIEW_HEIGHT = 15;
+        let fullMap = [];
+        let cameraX = 0;
+        let cameraY = 0;
+
+        // === База данных для названий ===
+        const NAME_COMPONENTS = {
+            themes: {
+                dark: { prefixes: ['Нек','Мор','Тар'], roots: ['али','ус'], suffixes: ['тус','ган'] },
+                light: { prefixes: ['Лум','Сил'], roots: ['има','ан'], suffixes: ['тал','мир'] },
+                underground: { prefixes: ['Ган','Гро'], roots: ['ог','ар'], suffixes: ['зар','рон'] },
+                ancient: { prefixes: ['Ака','Эло'], roots: ['тун','мар'], suffixes: ['дор','мир'] }
+            },
+            locationTypes: {
+                dungeon: ['Подземелья', 'Темные катакомбы'],
+                cave: ['Пещеры', 'Глубинные пещеры'],
+                icy: ['Ледяные лабиринты', 'Хрустальные коридоры'],
+                rogue: ['Заброшенные руины', 'Древние руины'],
+                cellular: ['Органические пещеры', 'Живые полости'],
+                arena: ['Арены', 'Поля битвы'],
+                boss: ['Логова', 'Тронные залы']
+            },
+            extras: ['ма','ли','та','су']
+        };
+
+        const DUNGEON_TYPES = [
+            { name: 'dungeon', weight: 30, emoji: '🟫', floor: '⬛' }, 
+            { name: 'cave', weight: 25, emoji: '🟫', floor: '🟪' },
+            { name: 'icy', weight: 20, emoji: '❄️', floor: '🟪' },
+            { name: 'rogue', weight: 10, emoji: '🌫️', floor: '⏹️' },
+            { name: 'cellular', weight: 10, emoji: '🧿', floor: '🟪' },
+            { name: 'arena', weight: 3, emoji: '🦴', floor: '🟥' },
+            { name: 'boss', weight: 2, emoji: '👑', floor: '🔥' }
+        ];
+        const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
+
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = Math.abs(seed) || 1;
+            }
+            next() {
+                this.seed = (this.seed * 16807) % 2147483647;
+                return (this.seed - 1) / 2147483646;
+            }
+            choice(array) {
+                return array[Math.floor(this.next() * array.length)];
+            }
+            int(min, max) {
+                return Math.floor(this.next() * (max - min + 1)) + min;
+            }
         }
-    }
-    
-    // Сглаживание
-    for (let iter = 0; iter < 4; iter++) {
-        const newGrid = Array(height).fill().map(() => Array(width).fill(1));
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                    newGrid[y][x] = 1;
-                    continue;
-                }
-                let wallCount = 0;
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        if (grid[y + dy][x + dx] === 1) wallCount++;
+
+        function createSeed(x, y) {
+            const seed = (x * 73856093) ^ (y * 19349663);
+            return (Math.abs(seed) % 2147483647) || 1;
+        }
+
+        function selectDungeonType(rand) {
+            rand.next(); rand.next(); rand.next();
+            const r = rand.next();
+            let cumulative = 0;
+            for (const type of DUNGEON_TYPES) {
+                cumulative += type.weight / TOTAL_WEIGHT;
+                if (r < cumulative) return type;
+            }
+            return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
+        }
+
+        // === ГЕНЕРАТОРЫ КАРТ (без центральной ячейки) ===
+        function generateRoomCorridorMap(rand, size = 50) {
+            const grid = Array(size).fill().map(() => Array(size).fill('wall'));
+            const rooms = [];
+            const roomCount = rand.int(12, 20);
+            for (let i = 0; i < roomCount; i++) {
+                const w = rand.int(2, 5);
+                const h = rand.int(2, 5);
+                const x = rand.int(1, size - w - 1);
+                const y = rand.int(1, size - h - 1);
+                let overlaps = false;
+                for (const r of rooms) {
+                    if (x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y) {
+                        overlaps = true;
+                        break;
                     }
                 }
-                newGrid[y][x] = (wallCount >= 5) ? 1 : 0;
+                if (overlaps) continue;
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        grid[y + dy][x + dx] = 'floor';
+                    }
+                }
+                rooms.push({x, y, w, h});
             }
+            if (rooms.length > 1) {
+                for (let i = 0; i < rooms.length; i++) {
+                    const r1 = rooms[i];
+                    const otherIndex = (i + 1 + rand.int(1, rooms.length - 1)) % rooms.length;
+                    const r2 = rooms[otherIndex];
+                    const cx1 = r1.x + Math.floor(r1.w / 2);
+                    const cy1 = r1.y + Math.floor(r1.h / 2);
+                    const cx2 = r2.x + Math.floor(r2.w / 2);
+                    const cy2 = r2.y + Math.floor(r2.h / 2);
+                    const stepX = cx1 <= cx2 ? 1 : -1;
+                    for (let x = cx1; stepX > 0 ? x <= cx2 : x >= cx2; x += stepX) {
+                        if (x >= 0 && x < size) grid[cy1][x] = 'floor';
+                    }
+                    const stepY = cy1 <= cy2 ? 1 : -1;
+                    for (let y = cy1; stepY > 0 ? y <= cy2 : y >= cy2; y += stepY) {
+                        if (y >= 0 && y < size) grid[y][cx2] = 'floor';
+                    }
+                }
+            }
+            return grid.flat();
         }
-        grid = newGrid;
-    }
-    return grid;
-}
 
-// 3. Арена
-function generateArenaMap(rand, width, height) {
-    const grid = Array(height).fill().map(() => Array(width).fill(1));
-    const margin = 2;
-    
-    for (let y = margin; y < height - margin; y++) {
-        for (let x = margin; x < width - margin; x++) {
-            grid[y][x] = 0;
-        }
-    }
-    
-    // Добавляем случайные колонны/препятствия
-    const colCount = rand.int(5, 15);
-    for (let i = 0; i < colCount; i++) {
-        const cx = rand.int(margin + 2, width - margin - 3);
-        const cy = rand.int(margin + 2, height - margin - 3);
-        // Не ставим в самом центре (спавн игрока)
-        if (Math.abs(cx - width/2) < 3 && Math.abs(cy - height/2) < 3) continue;
-        grid[cy][cx] = 1;
-        // Иногда делаем препятствие 2x2
-        if (rand.next() > 0.5) {
-             if(cx+1 < width-margin) grid[cy][cx+1] = 1;
-             if(cy+1 < height-margin) grid[cy+1][cx] = 1;
-             if(cx+1 < width-margin && cy+1 < height-margin) grid[cy+1][cx+1] = 1;
-        }
-    }
-    return grid;
-}
-
-// === ОСНОВНОЙ ЭКСПОРТ ===
-
-const DungeonGeneratorModule = {
-    generateLevel: function(x, y, width, height) {
-        const seedVal = createSeed(x, y);
-        const rand = new SeededRandom(seedVal);
-        
-        // 1. Выбираем тип
-        const dungeonType = selectDungeonType(rand);
-        
-        // 2. Генерируем геометрию
-        let mapGrid;
-        if (dungeonType.name === 'cellular') {
-            mapGrid = generateCellularMap(rand, width, height);
-        } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
-            mapGrid = generateArenaMap(rand, width, height);
-        } else {
-            mapGrid = generateRoomCorridorMap(rand, width, height);
-        }
-        
-        // 3. Находим точку старта
-        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
-        
-        // Если центр стена, ищем ближайший пол
-        if (mapGrid[startPos.y][startPos.x] === 1) {
-            let found = false;
-            for(let r=1; r<Math.max(width,height); r++) {
-                for(let dy=-r; dy<=r; dy++) {
-                    for(let dx=-r; dx<=r; dx++) {
-                        const ny = startPos.y + dy;
-                        const nx = startPos.x + dx;
-                        if(ny>=0 && ny<height && nx>=0 && nx<width && mapGrid[ny][nx]===0) {
-                            startPos = {x: nx, y: ny};
-                            found = true;
-                            break;
+        function generateCellularMap(rand, size = 50) {
+            let grid = Array(size).fill().map(() => Array(size).fill('wall'));
+            const fillChance = 0.45;
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (rand.next() < fillChance) {
+                        grid[y][x] = 'floor';
+                    }
+                }
+            }
+            for (let iter = 0; iter < 4; iter++) {
+                const newGrid = Array(size).fill().map(() => Array(size).fill('wall'));
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        if (x === 0 || x === size - 1 || y === 0 || y === size - 1) {
+                            newGrid[y][x] = 'wall';
+                            continue;
+                        }
+                        let wallCount = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                if (grid[y + dy][x + dx] === 'wall') wallCount++;
+                            }
+                        }
+                        if (wallCount >= 5) {
+                            newGrid[y][x] = 'wall';
+                        } else {
+                            newGrid[y][x] = 'floor';
                         }
                     }
-                    if(found) break;
                 }
-                if(found) break;
+                grid = newGrid;
+            }
+            return grid.flat();
+        }
+
+        function generateArenaMap(rand, size = 50) {
+            const grid = Array(size).fill().map(() => Array(size).fill('wall'));
+            const margin = rand.int(1, 2);
+            for (let y = margin; y < size - margin; y++) {
+                for (let x = margin; x < size - margin; x++) {
+                    grid[y][x] = 'floor';
+                }
+            }
+            const colCount = rand.int(0, 6);
+            for (let i = 0; i < colCount; i++) {
+                const cx = rand.int(margin + 1, size - margin - 2);
+                const cy = rand.int(margin + 1, size - margin - 2);
+                if (Math.abs(cx - size/2) < 2 && Math.abs(cy - size/2) < 2) continue;
+                grid[cy][cx] = 'wall';
+            }
+            return grid.flat();
+        }
+
+        // === ФУНКЦИЯ РАЗМЕЩЕНИЯ ДВЕРИ И СТАРТА ===
+        function placeDoorAndFindStart(rawMap, size, rand) {
+            const floorTiles = [];
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (rawMap[y * size + x] === 'floor') {
+                        floorTiles.push({x, y});
+                    }
+                }
+            }
+
+            if (floorTiles.length === 0) {
+                // fallback: используем центр
+                return { door: null, start: {x: Math.floor(size/2), y: Math.floor(size/2)} };
+            }
+
+            // Выбираем случайную клетку для двери
+            const doorIndex = Math.floor(rand.next() * floorTiles.length);
+            const door = floorTiles[doorIndex];
+
+            // Находим самую удалённую по манхэттенскому расстоянию
+            let farthest = floorTiles[0];
+            let maxDist = -1;
+            for (const tile of floorTiles) {
+                const dist = Math.abs(tile.x - door.x) + Math.abs(tile.y - door.y);
+                if (dist > maxDist) {
+                    maxDist = dist;
+                    farthest = tile;
+                }
+            }
+
+            return { door, start: farthest };
+        }
+
+        // === ГЕНЕРАЦИЯ КАРТЫ С ДВЕРЬЮ ===
+        function generateMapWithDoor(rand, type, size = 50) {
+            let rawMap;
+            if (['dungeon', 'rogue', 'icy'].includes(type.name)) {
+                rawMap = generateRoomCorridorMap(rand, size);
+            } else if (['cave', 'cellular'].includes(type.name)) {
+                rawMap = generateCellularMap(rand, size);
+            } else if (['arena', 'boss'].includes(type.name)) {
+                rawMap = generateArenaMap(rand, size);
+            } else {
+                rawMap = Array(size * size).fill('floor');
+            }
+
+            const { door, start } = placeDoorAndFindStart(rawMap, size, rand);
+
+            // Преобразуем в эмодзи
+            const emojiMap = rawMap.map(cell => 
+                cell === 'wall' ? type.emoji : type.floor
+            );
+
+            // Ставим дверь
+            if (door) {
+                const idx = door.y * size + door.x;
+                emojiMap[idx] = '🚪';
+            }
+
+            return { emojiMap, start };
+        }
+
+        // === Отрисовка видимой части ===
+        function renderVisibleMap() {
+            const mapEl = document.getElementById('map');
+            mapEl.innerHTML = '';
+            for (let y = 0; y < VIEW_HEIGHT; y++) {
+                for (let x = 0; x < VIEW_WIDTH; x++) {
+                    const worldX = cameraX + x;
+                    const worldY = cameraY + y;
+                    let emoji = '❓';
+                    if (worldX >= 0 && worldX < MAP_SIZE && worldY >= 0 && worldY < MAP_SIZE) {
+                        const index = worldY * MAP_SIZE + worldX;
+                        emoji = fullMap[index];
+                    }
+                    const div = document.createElement('div');
+                    div.className = 'cell';
+                    div.textContent = emoji;
+                    mapEl.appendChild(div);
+                }
             }
         }
 
-        return {
-            mapData: mapGrid,
-            dungeonType: dungeonType,
-            startPos: startPos,
-            seed: seedVal
-        };
-    }
-};
+        function generateNameAndDesc(rand, typeKey) {
+            const themeKeys = Object.keys(NAME_COMPONENTS.themes);
+            const theme = NAME_COMPONENTS.themes[rand.choice(themeKeys)];
+            let name = rand.choice(theme.prefixes);
+            if (rand.next() > 0.5) name += rand.choice(theme.roots);
+            if (rand.next() > 0.5) name += rand.choice(NAME_COMPONENTS.extras);
+            name += rand.choice(theme.suffixes);
+            name = name.charAt(0).toUpperCase() + name.slice(1);
+            const locType = rand.choice(NAME_COMPONENTS.locationTypes[typeKey] || ['Локация']);
+            const desc = `${rand.choice(['забытые', 'проклятые', 'древние'])}, ${rand.choice(['освещённые тусклым светом', 'полные эха', 'окутанные туманом'])}`;
+            return { name: `${locType} ${name}`, desc };
+        }
+
+        // === Основная функция ===
+        function generateLocation() {
+            const x = parseInt(document.getElementById('coordX').value) || 0;
+            const y = parseInt(document.getElementById('coordY').value) || 0;
+            const seed = createSeed(x, y);
+
+            const typeRand = new SeededRandom(seed);
+            const dungeonType = selectDungeonType(typeRand);
+
+            const nameRand = new SeededRandom(seed);
+            const { name, desc } = generateNameAndDesc(nameRand, dungeonType.name);
+
+            const mapRand = new SeededRandom(seed);
+            const { emojiMap, start } = generateMapWithDoor(mapRand, dungeonType, MAP_SIZE);
+            fullMap = emojiMap;
+
+            // Центрируем вьюпорт на стартовой позиции
+            cameraX = Math.max(0, Math.min(MAP_SIZE - VIEW_WIDTH, start.x - Math.floor(VIEW_WIDTH / 2)));
+            cameraY = Math.max(0, Math.min(MAP_SIZE - VIEW_HEIGHT, start.y - Math.floor(VIEW_HEIGHT / 2)));
+
+            document.getElementById('locationName').textContent = name;
+            document.getElementById('locationDescription').textContent = desc;
+            const badge = document.getElementById('typeBadge');
+            badge.textContent = dungeonType.name;
+            badge.className = 'type-badge ' + dungeonType.name;
+
+            renderVisibleMap();
+            document.getElementById('seedInfo').textContent = `Семя: ${seed} (X: ${x}, Y: ${y})`;
+        }
+
+        function moveCamera(dx, dy) {
+            const newX = Math.max(0, Math.min(MAP_SIZE - VIEW_WIDTH, cameraX + dx));
+            const newY = Math.max(0, Math.min(MAP_SIZE - VIEW_HEIGHT, cameraY + dy));
+            if (newX !== cameraX || newY !== cameraY) {
+                cameraX = newX;
+                cameraY = newY;
+                renderVisibleMap();
+            }
+        }
+
+        window.onload = generateLocation;
+        document.getElementById('coordX').addEventListener('keypress', e => { if (e.key === 'Enter') generateLocation(); });
+        document.getElementById('coordY').addEventListener('keypress', e => { if (e.key === 'Enter') generateLocation(); });
+    </script>
+</body>
+</html>
