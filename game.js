@@ -205,64 +205,56 @@ const GameModule = (function() {
     }
     
     // Загрузка подземелья с указанным типом и глубиной
-    function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName) {
+    // В loadDungeonLevel добавьте параметр entryPoint
+    function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         console.log("=== ЗАГРУЗКА УРОВНЯ ПОДЗЕМЕЛЬЯ ===");
-        console.log("Входные параметры: gx=", gx, "gy=", gy, "depth=", depth, "dungeonType=", dungeonType);
-        
+        console.log("Входные параметры: gx=", gx, "gy=", gy, "depth=", depth, "entryPoint=", entryPoint);
+    
         // Очищаем старые данные
         enemies = [];
         items = [];
         explored.clear();
-        
-        // Генерируем новую карту с заданной глубиной
-        const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType);
-        
+    
+        // Генерируем новую карту с указанием точки входа
+        const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType, entryPoint);
+    
         // Сохраняем параметры подземелья
         dungeonX = gx;
         dungeonY = gy;
         currentDepth = depth;
         currentDungeonTypeName = dungeonType;
         currentDungeonFullName = dungeonName;
-        
-        console.log("Сохранённая глубина currentDepth =", currentDepth);
-        console.log("Лестница вверх:", MapModule.stairsUp);
-        console.log("Лестница вниз:", MapModule.stairsDown);
-        
-        // Создаём или перемещаем игрока
+    
+        console.log("Стартовая позиция игрока:", startPos);
+    
+        // Перемещаем игрока
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
             player.x = startPos.x;
             player.y = startPos.y;
-        
-            // НЕ восстанавливаем здоровье, если не хотите
-            // player.hp = player.maxHp; // раскомментируйте, если нужно лечить при спуске
         }
-
-
-
-        
+    
         // Спавним врагов и предметы
         spawnDungeonEntities(gx, gy, depth);
-        
-        // Обновляем UI с явным указанием уровня
+    
+        // Обновляем UI
         currentLocData = {
             fullName: `${dungeonName} [Уровень ${depth + 1}]`,
             description: `Подземелье типа ${dungeonType}, уровень ${depth + 1}`,
             themeName: MapModule.currentDungeonType ? MapModule.currentDungeonType.name : dungeonType
         };
-        
+    
         currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
-        
+    
         if (currentWorldTrend.name !== "Обычный уровень") {
             RenderModule.log(`Тренд мира: ${currentWorldTrend.name}`, "event");
         }
-        
-        RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
-        
-        renderFrame();
-    }
     
+        RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
+    
+        renderFrame();
+    }    
     // Спавн врагов и предметов в подземелье
     function spawnDungeonEntities(gx, gy, depth) {
         const enemyCount = 8 + Math.floor(depth * 1.5);
