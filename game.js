@@ -32,8 +32,10 @@ const GameModule = (function() {
         // Запускаем в глобальном режиме
         gameMode = 'global';
         
-        // Начальная позиция на глобальной карте (близко к 1,1)
-        GlobalMapModule.setPlayerPosition(1, 1);
+        // Начальная позиция на глобальной карте с поиском безопасной клетки
+        // Ищем проходимую клетку в радиусе 3 от (1,1)
+        const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
+        RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
         
         // Отрисовываем глобальную карту
         renderGlobalMap();
@@ -44,7 +46,6 @@ const GameModule = (function() {
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
         RenderModule.log("Используйте стрелки для перемещения по миру. Входите в города (C) и подземелья (D)", "info");
     }
-
     // === Обработка сенсорного управления ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
