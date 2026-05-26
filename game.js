@@ -127,7 +127,8 @@ const GameModule = (function() {
         } else if (poi.type === 'dungeon') {
             RenderModule.log(`Вы входите в подземелье ${poi.name}`, "info");
             currentDepth = 0;
-            console.log("NEW currentDepth =", currentDepth);
+            console.log("=== ВХОД В ПОДЗЕМЕЛЬЕ ===");
+            console.log("Установлена глубина:", currentDepth);
             currentDungeonTypeName = poi.dungeonType;
             currentDungeonFullName = poi.name;
             loadDungeonLevel(poi.x, poi.y, currentDepth, poi.dungeonType, poi.name);
@@ -199,6 +200,9 @@ const GameModule = (function() {
     
     // Загрузка подземелья с указанным типом и глубиной
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName) {
+        console.log("=== ЗАГРУЗКА УРОВНЯ ПОДЗЕМЕЛЬЯ ===");
+        console.log("Входные параметры: gx=", gx, "gy=", gy, "depth=", depth, "dungeonType=", dungeonType);
+        
         // Очищаем старые данные
         enemies = [];
         items = [];
@@ -214,22 +218,24 @@ const GameModule = (function() {
         currentDungeonTypeName = dungeonType;
         currentDungeonFullName = dungeonName;
         
+        console.log("Сохранённая глубина currentDepth =", currentDepth);
+        console.log("Лестница вверх:", MapModule.stairsUp);
+        console.log("Лестница вниз:", MapModule.stairsDown);
+        
         // Создаём или перемещаем игрока
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
             player.x = startPos.x;
             player.y = startPos.y;
-            // Восстанавливаем здоровье при спуске (необязательно)
-            // player.hp = player.maxHp;
         }
         
         // Спавним врагов и предметы
         spawnDungeonEntities(gx, gy, depth);
         
-        // Обновляем UI
+        // Обновляем UI с явным указанием уровня
         currentLocData = {
-            fullName: dungeonName,
+            fullName: `${dungeonName} [Уровень ${depth + 1}]`,
             description: `Подземелье типа ${dungeonType}, уровень ${depth + 1}`,
             themeName: MapModule.currentDungeonType ? MapModule.currentDungeonType.name : dungeonType
         };
@@ -240,7 +246,7 @@ const GameModule = (function() {
             RenderModule.log(`Тренд мира: ${currentWorldTrend.name}`, "event");
         }
         
-        RenderModule.log(`Уровень ${depth + 1} подземелья "${dungeonName}"`, "info");
+        RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
         
         renderFrame();
     }
@@ -354,28 +360,38 @@ const GameModule = (function() {
                 items.splice(idx, 1);
             }
 
+            // === ОТЛАДКА ЛЕСТНИЦ ===
+            console.log("=== ПРОВЕРКА ЛЕСТНИЦ ===");
+            console.log("Текущая глубина (currentDepth):", currentDepth);
+            console.log("Координаты игрока:", nx, ny);
+            console.log("stairsUp:", MapModule.stairsUp);
+            console.log("stairsDown:", MapModule.stairsDown);
+            
+            // Проверка лестницы вниз (спуск на следующий уровень) - ПРОВЕРЯЕМ ПЕРВОЙ
+            if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
+                const nextDepth = currentDepth + 1;
+                console.log("🔻 СПУСК! Было:", currentDepth, "станет:", nextDepth);
+                RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
+                loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName);
+                return;
+            }
+
             // Проверка лестницы вверх (выход на предыдущий уровень или глобальную карту)
             if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
+                console.log("🔺 ПОДЪЁМ! Текущая глубина:", currentDepth);
                 if (currentDepth === 0) {
                     RenderModule.log("Вы поднимаетесь на поверхность...", "info");
                     exitToGlobal();
                 } else {
                     const prevDepth = currentDepth - 1;
+                    console.log("Подъём на уровень:", prevDepth);
                     RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
                     loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName);
                 }
                 return;
             }
-
-            // Проверка лестницы вниз (спуск на следующий уровень)
-            if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
-                const nextDepth = currentDepth + 1;
-                RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
-                loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName);
-                return;
-            }
         
-            // Движение врагов (только если игрок жив) - теперь внутри else
+            // Движение врагов (только если игрок жив)
             if (player.hp > 0) {
                 enemies.forEach(e => {
                     if (e.hp <= 0) return;
@@ -401,7 +417,7 @@ const GameModule = (function() {
                     }
                 });
             }
-        } // ← Закрывающая скобка для else
+        }
 
         if (player.hp <= 0) {
             RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
