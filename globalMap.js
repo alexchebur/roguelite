@@ -13,24 +13,26 @@ const GLOBAL_CONFIG = {
     ROAD_CONNECT_RADIUS: 30  // радиус соединения дорогами POI
 };
 
-// Кэш чанков: ключ "cx,cy" -> { tiles, pois, roads }
+// Кэш чанков: ключ "cx,cy" -> { tiles, pois }
 const chunkCache = new Map();
 
 // Текущая позиция игрока (глобальные координаты)
-let playerGlobalX = 0, playerGlobalY = 0;
+let playerGlobalX = 1;
+let playerGlobalY = 1;
 
 // === Вспомогательные функции ===
 
 // Детерминированный генератор случайных чисел для чанка
 function getChunkRandom(cx, cy) {
-    const seed = GLOBAL_CONFIG.WORLD_SEED + cx * 1000003 + cy;
+    const seed = GLOBAL_CONFIG.WORLD_SEED + cx * 1000003 + cy * 1000033;
     return new SeededRandom(seed);
 }
 
 // Генерация ландшафта (типы клеток) для чанка
 function generateTerrain(rand, width, height) {
     const tiles = Array(height).fill().map(() => Array(width).fill('plain'));
-    // Горы: случайные области (простейший способ)
+    
+    // Горы: случайные области
     const mountainCount = rand.int(5, 15);
     for (let i = 0; i < mountainCount; i++) {
         const mx = rand.int(0, width-1);
@@ -40,25 +42,32 @@ function generateTerrain(rand, width, height) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = mx+dx, y = my+dy;
                 if (x>=0 && x<width && y>=0 && y<height && Math.abs(dx)+Math.abs(dy) <= radius) {
-                    tiles[y][x] = 'mountain';
+                    if (tiles[y][x] !== 'city' && tiles[y][x] !== 'dungeon_entrance') {
+                        tiles[y][x] = 'mountain';
+                    }
                 }
             }
         }
     }
+    
     // Леса: случайные точки
     const forestCount = rand.int(10, 30);
     for (let i = 0; i < forestCount; i++) {
         const fx = rand.int(0, width-1);
-        const fy = rand.int(0, width-1);
+        const fy = rand.int(0, height-1);
         if (tiles[fy][fx] === 'plain') tiles[fy][fx] = 'forest';
     }
+    
     // Реки (линии)
     const riverCount = rand.int(1, 3);
     for (let r = 0; r < riverCount; r++) {
         let x = rand.int(0, width-1);
         let y = rand.int(0, height-1);
-        for (let step = 0; step < 20; step++) {
-            if (x>=0 && x<width && y>=0 && y<height && tiles[y][x] !== 'mountain') {
+        for (let step = 0; step < 30; step++) {
+            if (x>=0 && x<width && y>=0 && y<height && 
+                tiles[y][x] !== 'mountain' && 
+                tiles[y][x] !== 'city' && 
+                tiles[y][x] !== 'dungeon_entrance') {
                 tiles[y][x] = 'water';
             }
             const dir = rand.int(0, 3);
@@ -80,39 +89,43 @@ function generatePOIs(rand, cx, cy, tiles) {
     // Города
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            if (tiles[y][x] === 'plain' && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
+            if ((tiles[y][x] === 'plain' || tiles[y][x] === 'forest') && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
                 tiles[y][x] = 'city';
                 const globalX = cx * width + x;
                 const globalY = cy * height + y;
-                // Название города (генерируем через NameGeneratorModule)
                 const cityName = NameGeneratorModule.generateCityName(globalX, globalY);
                 pois.push({ x: globalX, y: globalY, type: 'city', name: cityName });
             }
         }
     }
+    
     // Входы в подземелья (чаще в горах или рядом)
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            if ((tiles[y][x] === 'mountain' || tiles[y][x] === 'plain') && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
-                tiles[y][x] = 'dungeon_entrance';
-                const globalX = cx * width + x;
-                const globalY = cy * height + y;
-                // Выбираем тип подземелья (на основе весов из dungeon_generator)
-                const dungeonType = selectDungeonType(rand).name;
-                // Генерируем название подземелья
-                const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
-                pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType, name: fullName });
+            const isMountainArea = tiles[y][x] === 'mountain';
+            const isPlainNearby = !isMountainArea && (tiles[y][x] === 'plain' || tiles[y][x] === 'forest');
+            if ((isMountainArea || isPlainNearby) && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
+                if (tiles[y][x] !== 'city') {
+                    tiles[y][x] = 'dungeon_entrance';
+                    const globalX = cx * width + x;
+                    const globalY = cy * height + y;
+                    // Выбираем случайный тип подземелья из DUNGEON_TYPES
+                    const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
+                    const dungeonType = rand.choice(dungeonTypes);
+                    const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
+                    pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
+                }
             }
         }
     }
     return pois;
 }
 
-// Построение дорог между точками интереса (минимальное остовное дерево)
+// Построение дорог между точками интереса
 function connectPOIsWithRoads(tiles, poisLocal, rand) {
     if (poisLocal.length < 2) return;
-    // Простой алгоритм: соединяем каждую POI с ближайшей (жадный)
-    const used = new Set();
+    
+    // Соединяем каждую POI с ближайшей
     const edges = [];
     for (let i = 0; i < poisLocal.length; i++) {
         let closest = null;
@@ -129,6 +142,7 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
             edges.push([i, closest]);
         }
     }
+    
     // Уникальные ребра
     const uniqueEdges = [];
     for (const [a,b] of edges) {
@@ -136,22 +150,28 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
             uniqueEdges.push([a,b]);
         }
     }
+    
     // Прокладываем L-образные дороги
     for (const [i,j] of uniqueEdges) {
         const p1 = poisLocal[i];
         const p2 = poisLocal[j];
+        
         // Горизонтальный отрезок
         const stepX = p1.x <= p2.x ? 1 : -1;
         for (let x = p1.x; stepX > 0 ? x <= p2.x : x >= p2.x; x += stepX) {
-            if (tiles[p1.y][x] !== 'mountain' && tiles[p1.y][x] !== 'water') {
-                tiles[p1.y][x] = 'road';
+            if (x >= 0 && x < tiles[0].length && p1.y >= 0 && p1.y < tiles.length) {
+                if (tiles[p1.y][x] !== 'mountain' && tiles[p1.y][x] !== 'water') {
+                    tiles[p1.y][x] = 'road';
+                }
             }
         }
         // Вертикальный отрезок
         const stepY = p1.y <= p2.y ? 1 : -1;
         for (let y = p1.y; stepY > 0 ? y <= p2.y : y >= p2.y; y += stepY) {
-            if (tiles[y][p2.x] !== 'mountain' && tiles[y][p2.x] !== 'water') {
-                tiles[y][p2.x] = 'road';
+            if (y >= 0 && y < tiles.length && p2.x >= 0 && p2.x < tiles[0].length) {
+                if (tiles[y][p2.x] !== 'mountain' && tiles[y][p2.x] !== 'water') {
+                    tiles[y][p2.x] = 'road';
+                }
             }
         }
     }
@@ -162,9 +182,14 @@ function generateChunk(cx, cy) {
     const rand = getChunkRandom(cx, cy);
     const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE);
     const pois = generatePOIs(rand, cx, cy, tiles);
+    
     // Дороги строим на основе локальных координат POI
-    const poisLocal = pois.map(p => ({ x: p.x - cx*GLOBAL_CONFIG.CHUNK_SIZE, y: p.y - cy*GLOBAL_CONFIG.CHUNK_SIZE }));
+    const poisLocal = pois.map(p => ({ 
+        x: p.x - cx * GLOBAL_CONFIG.CHUNK_SIZE, 
+        y: p.y - cy * GLOBAL_CONFIG.CHUNK_SIZE 
+    }));
     connectPOIsWithRoads(tiles, poisLocal, rand);
+    
     return { tiles, pois };
 }
 
@@ -189,7 +214,10 @@ const GlobalMapModule = {
         const chunk = getChunkForCell(globalX, globalY);
         const localX = globalX - cx * GLOBAL_CONFIG.CHUNK_SIZE;
         const localY = globalY - cy * GLOBAL_CONFIG.CHUNK_SIZE;
-        return chunk.tiles[localY][localX];
+        if (localY >= 0 && localY < chunk.tiles.length && localX >= 0 && localX < chunk.tiles[0].length) {
+            return chunk.tiles[localY][localX];
+        }
+        return 'plain';
     },
     
     // Проверка проходимости
@@ -230,5 +258,12 @@ const GlobalMapModule = {
     },
     
     // Получить размер чанка (для отрисовки)
-    getChunkSize() { return GLOBAL_CONFIG.CHUNK_SIZE; }
+    getChunkSize() { 
+        return GLOBAL_CONFIG.CHUNK_SIZE; 
+    },
+    
+    // Получить конфигурацию
+    getConfig() {
+        return GLOBAL_CONFIG;
+    }
 };
