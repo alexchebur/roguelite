@@ -17,8 +17,8 @@ const GLOBAL_CONFIG = {
 const chunkCache = new Map();
 
 // Текущая позиция игрока (глобальные координаты)
-let playerGlobalX = 1;
-let playerGlobalY = 1;
+let playerGlobalX = 0;
+let playerGlobalY = 0;
 
 // === Вспомогательные функции ===
 
@@ -109,7 +109,6 @@ function generatePOIs(rand, cx, cy, tiles) {
                     tiles[y][x] = 'dungeon_entrance';
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
-                    // Выбираем случайный тип подземелья из DUNGEON_TYPES
                     const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
                     const dungeonType = rand.choice(dungeonTypes);
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
@@ -125,7 +124,6 @@ function generatePOIs(rand, cx, cy, tiles) {
 function connectPOIsWithRoads(tiles, poisLocal, rand) {
     if (poisLocal.length < 2) return;
     
-    // Соединяем каждую POI с ближайшей
     const edges = [];
     for (let i = 0; i < poisLocal.length; i++) {
         let closest = null;
@@ -143,7 +141,6 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
         }
     }
     
-    // Уникальные ребра
     const uniqueEdges = [];
     for (const [a,b] of edges) {
         if (!uniqueEdges.some(e => (e[0]===a && e[1]===b) || (e[0]===b && e[1]===a))) {
@@ -151,12 +148,10 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
         }
     }
     
-    // Прокладываем L-образные дороги
     for (const [i,j] of uniqueEdges) {
         const p1 = poisLocal[i];
         const p2 = poisLocal[j];
         
-        // Горизонтальный отрезок
         const stepX = p1.x <= p2.x ? 1 : -1;
         for (let x = p1.x; stepX > 0 ? x <= p2.x : x >= p2.x; x += stepX) {
             if (x >= 0 && x < tiles[0].length && p1.y >= 0 && p1.y < tiles.length) {
@@ -165,7 +160,6 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
                 }
             }
         }
-        // Вертикальный отрезок
         const stepY = p1.y <= p2.y ? 1 : -1;
         for (let y = p1.y; stepY > 0 ? y <= p2.y : y >= p2.y; y += stepY) {
             if (y >= 0 && y < tiles.length && p2.x >= 0 && p2.x < tiles[0].length) {
@@ -183,7 +177,6 @@ function generateChunk(cx, cy) {
     const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE);
     const pois = generatePOIs(rand, cx, cy, tiles);
     
-    // Дороги строим на основе локальных координат POI
     const poisLocal = pois.map(p => ({ 
         x: p.x - cx * GLOBAL_CONFIG.CHUNK_SIZE, 
         y: p.y - cy * GLOBAL_CONFIG.CHUNK_SIZE 
@@ -202,6 +195,38 @@ function getChunkForCell(globalX, globalY) {
         chunkCache.set(key, generateChunk(cx, cy));
     }
     return chunkCache.get(key);
+}
+
+// === НОВАЯ ФУНКЦИЯ: поиск безопасной стартовой позиции ===
+function findSafeStartPosition(startX, startY, radius = 3) {
+    // Пробуем найти проходимую клетку в радиусе radius
+    for (let r = 0; r <= radius; r++) {
+        for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+                const testX = startX + dx;
+                const testY = startY + dy;
+                
+                // Проверяем, что клетка существует и проходима
+                if (GlobalMapModule.isWalkable(testX, testY)) {
+                    // Дополнительно проверяем, что вокруг не слишком много гор
+                    let obstacleCount = 0;
+                    for (let ny = -1; ny <= 1; ny++) {
+                        for (let nx = -1; nx <= 1; nx++) {
+                            if (!GlobalMapModule.isWalkable(testX + nx, testY + ny)) {
+                                obstacleCount++;
+                            }
+                        }
+                    }
+                    // Если в радиусе 1 не более 3 препятствий - подходит
+                    if (obstacleCount <= 4) {
+                        return { x: testX, y: testY };
+                    }
+                }
+            }
+        }
+    }
+    // Если ничего не нашли, возвращаем исходную позицию
+    return { x: startX, y: startY };
 }
 
 // === Публичный API ===
@@ -257,7 +282,15 @@ const GlobalMapModule = {
         playerGlobalY = y;
     },
     
-    // Получить размер чанка (для отрисовки)
+    // НОВЫЙ МЕТОД: инициализация с поиском безопасной позиции
+    initSafeStart(startX, startY, radius = 3) {
+        const safePos = findSafeStartPosition(startX, startY, radius);
+        playerGlobalX = safePos.x;
+        playerGlobalY = safePos.y;
+        return { x: playerGlobalX, y: playerGlobalY };
+    },
+    
+    // Получить размер чанка
     getChunkSize() { 
         return GLOBAL_CONFIG.CHUNK_SIZE; 
     },
