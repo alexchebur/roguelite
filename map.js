@@ -32,43 +32,63 @@ const MapModule = (function() {
         return excludePos || { x: 0, y: 0 };
     }
 
-    // Генерация уровня со случайным типом
-    function generate(gx, gy) {
-        const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+    function generate(gx, gy, depth) {
+        const result = DungeonGeneratorModule.generateLevel(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
         currentMapData = result.mapData;
         currentDungeonType = result.dungeonType;
-        const levelSeed = `lvl_${gx}_${gy}`;
-        stairsDown = findRandomFloor(result.startPos, false, levelSeed + '_down');
-        stairsUp = findRandomFloor(result.startPos, true, levelSeed + '_up');
-        return result.startPos;
+    
+        // 1. Генерируем лестницу вверх (выход на глобальную карту)
+        const upSeed = `up_${gx}_${gy}_${depth}`;
+        stairsUp = findRandomFloor(null, false, upSeed);
+    
+        // 2. Стартовая позиция игрока – клетка лестницы вверх
+        const startPos = { x: stairsUp.x, y: stairsUp.y };
+    
+        // 3. Лестница вниз – далеко от старта (если не город)
+        if (currentDungeonType.name !== 'city') {
+            const downSeed = `down_${gx}_${gy}_${depth}`;
+            stairsDown = findRandomFloor(stairsUp, true, downSeed);
+        } else {
+            stairsDown = null;
+        }
+    
+        return startPos;
     }
 
-    // Генерация с принудительным типом подземелья
-    function generateWithType(gx, gy, dungeonType) {
-        const result = DungeonGeneratorModule.generateLevelWithType(
-            gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType
-        );
+    function generateWithType(gx, gy, depth, dungeonType) {
+        const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
         currentDungeonType = result.dungeonType;
-        const levelSeed = `lvl_${gx}_${gy}_${dungeonType}`;
-        stairsDown = findRandomFloor(result.startPos, false, levelSeed + '_down');
-        stairsUp = findRandomFloor(result.startPos, true, levelSeed + '_up');
-        return result.startPos;
+    
+        const upSeed = `up_${gx}_${gy}_${depth}`;
+        stairsUp = findRandomFloor(null, false, upSeed);
+        const startPos = { x: stairsUp.x, y: stairsUp.y };
+    
+        if (currentDungeonType.name !== 'city') {
+            const downSeed = `down_${gx}_${gy}_${depth}`;
+            stairsDown = findRandomFloor(stairsUp, true, downSeed);
+        } else {
+            stairsDown = null;
+        }
+    
+        return startPos;
     }
 
-    // Генерация города (без лестницы вниз)
-    function generateCity(gx, gy) {
-        const result = DungeonGeneratorModule.generateLevel(gx, gy, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+    function generateCity(gx, gy, depth) {
+        const result = DungeonGeneratorModule.generateLevel(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
         currentMapData = result.mapData;
         currentDungeonType = { 
             name: 'city', 
             wallChar: '#', floorChar: '.', 
             wallColor: '#555', floorColor: '#333' 
         };
-        const levelSeed = `city_${gx}_${gy}`;
-        stairsUp = findRandomFloor(result.startPos, false, levelSeed + '_up');
+    
+        const upSeed = `up_city_${gx}_${gy}_${depth}`;
+        stairsUp = findRandomFloor(null, false, upSeed);
+        const startPos = { x: stairsUp.x, y: stairsUp.y };
         stairsDown = null;
-        return result.startPos;
+    
+        return startPos;
     }
 
     function isWall(x, y) {
