@@ -15,8 +15,7 @@ const GameModule = (function() {
     let dungeonX = 0;
     let dungeonY = 0;
     let currentDepth = 0;  // глубина текущего подземелья (0 – первый уровень)
-    let lastDungeonX = null;
-    let lastDungeonY = null;
+    let currentDungeonTypeName = null; // тип текущего подземелья
     
     // === Глобальные координаты (для глобальной карты) ===
     let currentLocData = null;
@@ -34,11 +33,9 @@ const GameModule = (function() {
         gameMode = 'global';
         
         // Начальная позиция на глобальной карте с поиском безопасной клетки
-        // Ищем проходимую клетку в радиусе 3 от (1,1)
         const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
         RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
         
-        // Отрисовываем глобальную карту
         renderGlobalMap();
         
         window.addEventListener("keydown", (e) => handleInput(e));
@@ -47,6 +44,7 @@ const GameModule = (function() {
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
         RenderModule.log("Используйте стрелки для перемещения по миру. Входите в города (C) и подземелья (D)", "info");
     }
+    
     // === Обработка сенсорного управления ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
@@ -103,17 +101,13 @@ const GameModule = (function() {
         
         if (dx === 0 && dy === 0) return;
         
-        // Пытаемся переместить игрока на глобальной карте
         if (GlobalMapModule.tryMove(dx, dy)) {
             const playerPos = GlobalMapModule.getPlayerPosition();
-            
-            // Проверяем, есть ли точка интереса на новой позиции
             const poi = GlobalMapModule.getPOI(playerPos.x, playerPos.y);
             if (poi) {
                 enterPOI(poi);
                 return;
             }
-            
             renderGlobalMap();
         } else {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
@@ -128,12 +122,12 @@ const GameModule = (function() {
         
         if (poi.type === 'city') {
             RenderModule.log(`Вы входите в город ${poi.name}`, "info");
-            // Генерируем городскую карту (передаём координаты для детерминизма)
             loadCityLevel(poi.x, poi.y, poi.name);
         } else if (poi.type === 'dungeon') {
             RenderModule.log(`Вы входите в подземелье ${poi.name}`, "info");
-            // Генерируем подземелье с заданным типом
-            loadDungeonLevel(poi.x, poi.y, poi.dungeonType, poi.name);
+            currentDepth = 0;
+            currentDungeonTypeName = poi.dungeonType;
+            loadDungeonLevel(poi.x, poi.y, currentDepth, poi.dungeonType, poi.name);
         }
         
         busy = false;
@@ -143,7 +137,6 @@ const GameModule = (function() {
     function exitToGlobal() {
         gameMode = 'global';
         
-        // Восстанавливаем позицию на глобальной карте
         if (entrancePos) {
             GlobalMapModule.setPlayerPosition(entrancePos.x, entrancePos.y);
             entrancePos = null;
@@ -152,12 +145,12 @@ const GameModule = (function() {
         // Сбрасываем подземельные данные
         dungeonX = 0;
         dungeonY = 0;
-        lastDungeonX = null;
-        lastDungeonY = null;
+        currentDepth = 0;
+        currentDungeonTypeName = null;
         enemies = [];
         items = [];
         explored.clear();
-        player = null; // игрок будет создан заново при входе в следующее подземелье
+        player = null;
         
         RenderModule.log("Вы вернулись на поверхность", "info");
         renderGlobalMap();
@@ -169,10 +162,8 @@ const GameModule = (function() {
         items = [];
         explored.clear();
         
-        // Генерируем городскую карту (тип 'city')
-        const startPos = MapModule.generateCity(gx, gy);
+        const startPos = MapModule.generateCity(gx, gy, 0);
         
-        // Создаём игрока, если его нет
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -181,42 +172,40 @@ const GameModule = (function() {
         }
         
         // Город: без врагов, но с предметами
-        const itemMult = 1.0;
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                6, // в городе больше предметов
-                itemMult,
+                6,
+                1.0,
                 2
             );
         }
         
-        // Городское название для UI
         currentLocData = {
             fullName: cityName,
             description: "Город, где можно отдохнуть и пополнить запасы",
             themeName: "Город"
         };
         
+        currentWorldTrend = null;
         renderFrame();
     }
     
-    // Загрузка подземелья с указанным типом
-    function loadDungeonLevel(gx, gy, dungeonType, dungeonName) {
+    // Загрузка подземелья с указанным типом и глубиной
+    function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName) {
         enemies = [];
         items = [];
         explored.clear();
         
-        // Генерируем подземелье с принудительным типом
-        const startPos = MapModule.generateWithType(gx, gy, dungeonType);
+        const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType);
         
-        // Сохраняем координаты подземелья для навигации по лестницам
         dungeonX = gx;
         dungeonY = gy;
+        currentDepth = depth;
+        currentDungeonTypeName = dungeonType;
         
-        // Создаём игрока, если его нет
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -224,13 +213,11 @@ const GameModule = (function() {
             player.y = startPos.y;
         }
         
-        // Спавним врагов и предметы
-        spawnDungeonEntities(gx, gy);
+        spawnDungeonEntities(gx, gy, depth);
         
-        // Название для UI
         currentLocData = {
             fullName: dungeonName,
-            description: `Подземелье типа ${dungeonType}`,
+            description: `Подземелье типа ${dungeonType}, уровень ${depth + 1}`,
             themeName: MapModule.currentDungeonType ? MapModule.currentDungeonType.name : dungeonType
         };
         
@@ -244,9 +231,9 @@ const GameModule = (function() {
     }
     
     // Спавн врагов и предметов в подземелье
-    function spawnDungeonEntities(gx, gy) {
-        const enemyCount = 8;
-        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
+    function spawnDungeonEntities(gx, gy, depth) {
+        const enemyCount = 8 + Math.floor(depth * 1.5); // больше врагов на глубине
+        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
         
         enemies = EntityModule.spawnEnemies(
             MapModule.currentMapData,
@@ -257,11 +244,11 @@ const GameModule = (function() {
             3
         );
         
-        const rng = new Math.seedrandom(`ent_${gx}_${gy}`);
+        const rng = new Math.seedrandom(`ent_${gx}_${gy}_${depth}`);
         const oldRand = Math.random;
         Math.random = rng;
         
-        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy);
+        const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
@@ -287,20 +274,17 @@ const GameModule = (function() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
         
-        // Обновляем UI для глобального режима
         document.getElementById("ui-loc-name").textContent = "Глобальная карта";
         document.getElementById("ui-loc-desc").textContent = "Исследуйте мир, находите города и подземелья";
         document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА | Координаты: ${playerPos.x}, ${playerPos.y}`;
         document.getElementById("ui-loc-coords").textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         
-        // Скрываем панели персонажа и инвентаря в глобальном режиме
         document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
         document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
         
         const invDiv = document.getElementById("inventory-list");
         if (invDiv) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Недоступно</div>";
         
-        // Обновляем миникарту глобальной карты
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
 
@@ -347,15 +331,18 @@ const GameModule = (function() {
                 items.splice(idx, 1);
             }
 
-            // Проверка лестниц (выход на глобальную карту)
+            // Проверка лестницы вверх (выход на глобальную карту)
             if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
                 RenderModule.log("Вы поднимаетесь на поверхность...", "info");
                 setTimeout(() => exitToGlobal(), 100);
                 return;
             }
+            
+            // Проверка лестницы вниз (спуск на следующий уровень)
             if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
                 RenderModule.log("Вы спускаетесь глубже...", "info");
-                setTimeout(() => loadDungeonLevel(dungeonX, dungeonY + 1, MapModule.currentDungeonType.name, currentLocData.fullName), 100);
+                const nextDepth = currentDepth + 1;
+                setTimeout(() => loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentLocData.fullName), 100);
                 return;
             }
         }
@@ -393,7 +380,6 @@ const GameModule = (function() {
     }
     
     function checkDeath() {
-        // Удаляем мёртвых врагов
         enemies = enemies.filter(e => e.hp > 0);
     }
 
