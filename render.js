@@ -127,12 +127,15 @@ const RenderModule = (function() {
                 
                 let ch, fg;
                 let type = 'plain';
+                // Дополнительная проверка на POI для правильного отображения символов
+                let type = 'plain';
+                
                 
                 // Получаем тип тайла из глобального модуля
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
                     type = GlobalMapModule.getTileType(gx, gy);
                 }
-                
+                const poi = typeof GlobalMapModule !== 'undefined' ? GlobalMapModule.getPOI(gx, gy) : null;
                 switch(type) {
                     case 'plain':
                         ch = '.'; fg = '#8c8c8c';
