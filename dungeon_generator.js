@@ -131,7 +131,7 @@ function generateArenaMap(rand, width, height) {
 }
 
 const DungeonGeneratorModule = {
-    generateLevel: function(x, y, width, height) {
+    generateLevel: function(x, y, depth, width, height) {
         const seedVal = createSeed(x, y, depth);
         const rand = new SeededRandom(seedVal);
         const dungeonType = selectDungeonType(rand);
@@ -170,7 +170,7 @@ const DungeonGeneratorModule = {
         };
     },
 
-    generateLevelWithType: function(x, y, width, height, forcedType) {
+    generateLevelWithType: function(x, y, depth, width, height, forcedType) {
         const seedVal = createSeed(x, y, depth);
         const rand = new SeededRandom(seedVal);
         let dungeonType = DUNGEON_TYPES.find(t => t.name === forcedType);
