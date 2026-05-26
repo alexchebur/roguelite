@@ -145,6 +145,12 @@ const GameModule = (function() {
             GlobalMapModule.setPlayerPosition(entrancePos.x, entrancePos.y);
             entrancePos = null;
         }
+        // Очищаем кеш лестниц
+        if (MapModule.clearCache) {
+            MapModule.clearCache();
+        }
+
+
         
         // Сбрасываем подземельные данные
         dungeonX = 0;
@@ -155,7 +161,7 @@ const GameModule = (function() {
         enemies = [];
         items = [];
         explored.clear();
-        player = null;
+       
         
         RenderModule.log("Вы вернулись на поверхность", "info");
         renderGlobalMap();
