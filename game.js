@@ -303,6 +303,26 @@ const GameModule = (function() {
     }
 
     // === ПОДЗЕМЕЛЬНЫЙ РЕЖИМ ===
+    function handleInput(e) {
+        if (busy || (player && player.hp <= 0)) return;
+        
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowUp") dy = -1;
+        if (e.key === "ArrowDown") dy = 1;
+        if (e.key === "ArrowLeft") dx = -1;
+        if (e.key === "ArrowRight") dx = 1;
+        
+        if (dx !== 0 || dy !== 0 || e.key === " ") {
+            e.preventDefault();
+            if (gameMode === 'global') {
+                processGlobalTurn(dx, dy);
+            } else {
+                processTurn(dx, dy);
+            }
+        }
+    }
+
+    
     function processTurn(dx, dy) {
         const nx = player.x + dx;
         const ny = player.y + dy;
