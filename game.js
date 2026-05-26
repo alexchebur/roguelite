@@ -98,8 +98,9 @@ const GameModule = (function() {
         const startPos = MapModule.generate(gx, gy);
         const dungeonTypeName = MapModule.currentDungeonType ? MapModule.currentDungeonType.name : null;
         document.getElementById("ui-loc-coords").textContent = `X: ${gx}, Y: ${gy}`;
-        RenderModule.log(`Локация: ${currentLocData.fullName}`, "info");
+        
         currentLocData = NameGeneratorModule.generateLocationData(gx, gy);
+        RenderModule.log(`Локация: ${currentLocData.fullName}`, "info");
         currentWorldTrend = WorldCurveModule.getWorldTrend(gx, gy);
 
         if (currentWorldTrend.name !== "Обычный уровень") {
