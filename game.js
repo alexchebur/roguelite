@@ -127,6 +127,7 @@ const GameModule = (function() {
         } else if (poi.type === 'dungeon') {
             RenderModule.log(`Вы входите в подземелье ${poi.name}`, "info");
             currentDepth = 0;
+            console.log("NEW currentDepth =", currentDepth);
             currentDungeonTypeName = poi.dungeonType;
             currentDungeonFullName = poi.name;
             loadDungeonLevel(poi.x, poi.y, currentDepth, poi.dungeonType, poi.name);
