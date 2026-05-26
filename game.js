@@ -14,6 +14,7 @@ const GameModule = (function() {
     // === Подземельные координаты (для лестниц) ===
     let dungeonX = 0;
     let dungeonY = 0;
+    let currentDepth = 0;  // глубина текущего подземелья (0 – первый уровень)
     let lastDungeonX = null;
     let lastDungeonY = null;
     
