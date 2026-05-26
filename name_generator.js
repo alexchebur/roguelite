@@ -74,6 +74,22 @@ function createSeed(x, y) {
 
 // Генератор названий
 const NameGeneratorModule = {
+    
+    
+    
+    // Добавить в NameGeneratorModule
+    generateCityName(x, y) {
+        const seed = createSeed(x, y);
+        const rng = new SeededRandom(seed);
+        const themes = ['древний', 'новый', 'северный', 'южный', 'восточный', 'западный', 'каменный', 'речной', 'лесной', 'приозёрный'];
+        const suffixes = ['град', 'город', 'бург', 'виль', 'хейм', 'форд', 'порт', 'полис', 'холм', 'дол'];
+        const prefix = rng.choice(themes);
+        const suffix = rng.choice(suffixes);
+        return prefix.charAt(0).toUpperCase() + prefix.slice(1) + suffix;
+    },
+    
+    
+    
     generateName(random, theme) {
         let name = '';
         const partCount = random.int(2, 5);
