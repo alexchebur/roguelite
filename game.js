@@ -303,25 +303,6 @@ const GameModule = (function() {
     }
 
     // === ПОДЗЕМЕЛЬНЫЙ РЕЖИМ ===
-    function handleInput(e) {
-        if (busy || (player && player.hp <= 0)) return;
-        
-        let dx = 0, dy = 0;
-        if (e.key === "ArrowUp") dy = -1;
-        if (e.key === "ArrowDown") dy = 1;
-        if (e.key === "ArrowLeft") dx = -1;
-        if (e.key === "ArrowRight") dx = 1;
-        
-        if (dx !== 0 || dy !== 0 || e.key === " ") {
-            e.preventDefault();
-            if (gameMode === 'global') {
-                processGlobalTurn(dx, dy);
-            } else {
-                processTurn(dx, dy);
-            }
-        }
-    }
-
     function processTurn(dx, dy) {
         const nx = player.x + dx;
         const ny = player.y + dy;
@@ -332,7 +313,7 @@ const GameModule = (function() {
         if (enemy) {
             CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
             checkDeath();
-            
+        
             // Если игрок умер после атаки врага
             if (player.hp <= 0) {
                 RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
@@ -372,39 +353,39 @@ const GameModule = (function() {
                 loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName);
                 return;
             }
-            
-
-        // Движение врагов (только если игрок жив)
-        if (player.hp > 0) {
-            enemies.forEach(e => {
-                if (e.hp <= 0) return;
-                const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-                if (dist < 8) {
-                    if (dist === 1) {
-                        CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
-                        checkDeath();
-                    } else {
-                        const astar = new ROT.Path.AStar(player.x, player.y,
-                            (x, y) => !MapModule.isWall(x, y), { topology: 8 });
-                        let next = null;
-                        astar.compute(e.x, e.y, (x, y) => {
-                            if (!next && (x !== e.x || y !== e.y)) next = { x, y };
-                        });
-                        if (next) {
-                            if (!enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y)) {
-                                e.x = next.x;
-                                e.y = next.y;
+        
+            // Движение врагов (только если игрок жив) - теперь внутри else
+            if (player.hp > 0) {
+                enemies.forEach(e => {
+                    if (e.hp <= 0) return;
+                    const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
+                    if (dist < 8) {
+                        if (dist === 1) {
+                            CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                            checkDeath();
+                        } else {
+                            const astar = new ROT.Path.AStar(player.x, player.y,
+                                (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                            let next = null;
+                            astar.compute(e.x, e.y, (x, y) => {
+                                if (!next && (x !== e.x || y !== e.y)) next = { x, y };
+                            });
+                            if (next) {
+                                if (!enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y)) {
+                                    e.x = next.x;
+                                    e.y = next.y;
+                                }
                             }
                         }
                     }
-                }
-            });
-        }
+                });
+            }
+        } // ← Закрывающая скобка для else
 
         if (player.hp <= 0) {
             RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
         }
-        
+    
         renderFrame();
     }
     
