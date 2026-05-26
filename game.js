@@ -16,6 +16,7 @@ const GameModule = (function() {
     let dungeonY = 0;
     let currentDepth = 0;  // глубина текущего подземелья (0 – первый уровень)
     let currentDungeonTypeName = null; // тип текущего подземелья
+    let currentDungeonFullName = null; // полное название подземелья для UI
     
     // === Глобальные координаты (для глобальной карты) ===
     let currentLocData = null;
@@ -127,6 +128,7 @@ const GameModule = (function() {
             RenderModule.log(`Вы входите в подземелье ${poi.name}`, "info");
             currentDepth = 0;
             currentDungeonTypeName = poi.dungeonType;
+            currentDungeonFullName = poi.name;
             loadDungeonLevel(poi.x, poi.y, currentDepth, poi.dungeonType, poi.name);
         }
         
@@ -147,6 +149,7 @@ const GameModule = (function() {
         dungeonY = 0;
         currentDepth = 0;
         currentDungeonTypeName = null;
+        currentDungeonFullName = null;
         enemies = [];
         items = [];
         explored.clear();
@@ -195,26 +198,35 @@ const GameModule = (function() {
     
     // Загрузка подземелья с указанным типом и глубиной
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName) {
+        // Очищаем старые данные
         enemies = [];
         items = [];
         explored.clear();
         
+        // Генерируем новую карту с заданной глубиной
         const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType);
         
+        // Сохраняем параметры подземелья
         dungeonX = gx;
         dungeonY = gy;
         currentDepth = depth;
         currentDungeonTypeName = dungeonType;
+        currentDungeonFullName = dungeonName;
         
+        // Создаём или перемещаем игрока
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
             player.x = startPos.x;
             player.y = startPos.y;
+            // Восстанавливаем здоровье при спуске (необязательно)
+            // player.hp = player.maxHp;
         }
         
+        // Спавним врагов и предметы
         spawnDungeonEntities(gx, gy, depth);
         
+        // Обновляем UI
         currentLocData = {
             fullName: dungeonName,
             description: `Подземелье типа ${dungeonType}, уровень ${depth + 1}`,
@@ -227,12 +239,14 @@ const GameModule = (function() {
             RenderModule.log(`Тренд мира: ${currentWorldTrend.name}`, "event");
         }
         
+        RenderModule.log(`Уровень ${depth + 1} подземелья "${dungeonName}"`, "info");
+        
         renderFrame();
     }
     
     // Спавн врагов и предметов в подземелье
     function spawnDungeonEntities(gx, gy, depth) {
-        const enemyCount = 8 + Math.floor(depth * 1.5); // больше врагов на глубине
+        const enemyCount = 8 + Math.floor(depth * 1.5);
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
         
         enemies = EntityModule.spawnEnemies(
@@ -318,6 +332,13 @@ const GameModule = (function() {
         if (enemy) {
             CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
             checkDeath();
+            
+            // Если игрок умер после атаки врага
+            if (player.hp <= 0) {
+                RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+                renderFrame();
+                return;
+            }
         } else {
             player.x = nx;
             player.y = ny;
@@ -334,43 +355,46 @@ const GameModule = (function() {
             // Проверка лестницы вверх (выход на глобальную карту)
             if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
                 RenderModule.log("Вы поднимаетесь на поверхность...", "info");
-                setTimeout(() => exitToGlobal(), 100);
+                exitToGlobal();
                 return;
             }
             
             // Проверка лестницы вниз (спуск на следующий уровень)
             if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
-                RenderModule.log("Вы спускаетесь глубже...", "info");
                 const nextDepth = currentDepth + 1;
-                setTimeout(() => loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentLocData.fullName), 100);
+                RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
+                // ВАЖНО: используем синхронный вызов без setTimeout
+                loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName);
                 return;
             }
         }
 
-        // Движение врагов
-        enemies.forEach(e => {
-            if (e.hp <= 0) return;
-            const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-            if (dist < 8) {
-                if (dist === 1) {
-                    CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
-                    checkDeath();
-                } else {
-                    const astar = new ROT.Path.AStar(player.x, player.y,
-                        (x, y) => !MapModule.isWall(x, y), { topology: 8 });
-                    let next = null;
-                    astar.compute(e.x, e.y, (x, y) => {
-                        if (!next && (x !== e.x || y !== e.y)) next = { x, y };
-                    });
-                    if (next) {
-                        if (!enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y)) {
-                            e.x = next.x;
-                            e.y = next.y;
+        // Движение врагов (только если игрок жив)
+        if (player.hp > 0) {
+            enemies.forEach(e => {
+                if (e.hp <= 0) return;
+                const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
+                if (dist < 8) {
+                    if (dist === 1) {
+                        CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                        checkDeath();
+                    } else {
+                        const astar = new ROT.Path.AStar(player.x, player.y,
+                            (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                        let next = null;
+                        astar.compute(e.x, e.y, (x, y) => {
+                            if (!next && (x !== e.x || y !== e.y)) next = { x, y };
+                        });
+                        if (next) {
+                            if (!enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y)) {
+                                e.x = next.x;
+                                e.y = next.y;
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         if (player.hp <= 0) {
             RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
@@ -384,6 +408,7 @@ const GameModule = (function() {
     }
 
     function renderFrame() {
+        if (!player) return;
         const vis = RenderModule.draw(player, enemies, items);
         vis.forEach(k => explored.add(k));
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
