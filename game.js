@@ -352,22 +352,27 @@ const GameModule = (function() {
                 items.splice(idx, 1);
             }
 
-            // Проверка лестницы вверх (выход на глобальную карту)
+            // Проверка лестницы вверх (выход на предыдущий уровень или глобальную карту)
             if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
-                RenderModule.log("Вы поднимаетесь на поверхность...", "info");
-                exitToGlobal();
+                if (currentDepth === 0) {
+                    RenderModule.log("Вы поднимаетесь на поверхность...", "info");
+                    exitToGlobal();
+                } else {
+                    const prevDepth = currentDepth - 1;
+                    RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
+                    loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName);
+                }
                 return;
             }
-            
+
             // Проверка лестницы вниз (спуск на следующий уровень)
             if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
                 const nextDepth = currentDepth + 1;
                 RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
-                // ВАЖНО: используем синхронный вызов без setTimeout
                 loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName);
                 return;
             }
-        }
+            
 
         // Движение врагов (только если игрок жив)
         if (player.hp > 0) {
