@@ -196,6 +196,50 @@ const DungeonGeneratorModule = {
                 if(found) break;
             }
         }
+    // Добавьте эту функцию в DungeonGeneratorModule (после generateLevel)
+
+    generateLevelWithType: function(x, y, width, height, forcedType) {
+        const seedVal = createSeed(x, y);
+        const rand = new SeededRandom(seedVal);
+    
+        // Найти объект типа по имени
+        let dungeonType = DUNGEON_TYPES.find(t => t.name === forcedType);
+        if (!dungeonType) {
+            // fallback на случайный тип, если имя не найдено
+            dungeonType = selectDungeonType(rand);
+        }
+    
+        // Генерация геометрии в зависимости от типа
+        let mapGrid;
+        if (dungeonType.name === 'cellular') {
+            mapGrid = generateCellularMap(rand, width, height);
+        } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
+            mapGrid = generateArenaMap(rand, width, height);
+        } else {
+            mapGrid = generateRoomCorridorMap(rand, width, height);
+        }
+    
+        // Поиск стартовой позиции (как в generateLevel)
+        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+        if (mapGrid[startPos.y][startPos.x] === 1) {
+            let found = false;
+            for(let r=1; r<Math.max(width,height); r++) {
+                for(let dy=-r; dy<=r; dy++) {
+                    for(let dx=-r; dx<=r; dx++) {
+                        const ny = startPos.y + dy;
+                        const nx = startPos.x + dx;
+                        if(ny>=0 && ny<height && nx>=0 && nx<width && mapGrid[ny][nx]===0) {
+                            startPos = {x: nx, y: ny};
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(found) break;
+                }
+                if(found) break;
+            }
+        }
+      
 
         return {
             mapData: mapGrid,
