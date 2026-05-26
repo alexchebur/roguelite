@@ -116,27 +116,26 @@ const RenderModule = (function() {
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     function drawGlobalMap(centerX, centerY) {
         display.clear();
-        
+    
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
-        
+    
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-                
+            
                 let ch, fg;
-                let type = 'plain';
-                // Дополнительная проверка на POI для правильного отображения символов
-                let type = 'plain';
-                
-                
+                let tileType = 'plain';
+            
                 // Получаем тип тайла из глобального модуля
-                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
-                    type = GlobalMapModule.getTileType(gx, gy);
+                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
+                    tileType = GlobalMapModule.getDisplayTileType(gx, gy);
+                } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
+                    tileType = GlobalMapModule.getTileType(gx, gy);
                 }
-                const poi = typeof GlobalMapModule !== 'undefined' ? GlobalMapModule.getPOI(gx, gy) : null;
-                switch(type) {
+            
+                switch(tileType) {
                     case 'plain':
                         ch = '.'; fg = '#8c8c8c';
                         break;
@@ -161,12 +160,12 @@ const RenderModule = (function() {
                     default:
                         ch = '·'; fg = '#555';
                 }
-                
+            
                 // Игрок в центре
                 if (gx === centerX && gy === centerY) {
                     ch = '@'; fg = '#fff';
                 }
-                
+            
                 display.draw(sx, sy, ch, fg, '#000');
             }
         }
