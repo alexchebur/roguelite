@@ -235,6 +235,12 @@ const GameModule = (function() {
             player.x = startPos.x;
             player.y = startPos.y;
         }
+            // НЕ восстанавливаем здоровье, если не хотите
+            // player.hp = player.maxHp; // раскомментируйте, если нужно лечить при спуске
+        }
+
+
+
         
         // Спавним врагов и предметы
         spawnDungeonEntities(gx, gy, depth);
