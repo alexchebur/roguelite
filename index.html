@@ -9,19 +9,21 @@
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
-    <!-- Старые модули (генераторы) -->
+
     <script src="name_generator.js"></script>
     <script src="worldCurve.js"></script>
-    <script src="dungeon_generator.js"></script>
-    
-    <!-- Новые модули (порядок важен!) -->
+    <script src="dungeon_generator.js"></script>   <!-- DUNGEON_TYPES здесь -->
     <script src="data.js"></script>
     <script src="map.js"></script>
     <script src="entity.js"></script>
     <script src="combat.js"></script>
-    <script src="globalMap.js"></script>    <!-- <-- ДОБАВИТЬ ЭТОТ -->
+    <script src="globalMap.js"></script>   <!-- использует DUNGEON_TYPES -->
     <script src="render.js"></script>
     <script src="game.js"></script>
+
+
+
+    
     
     <style>
         :root {
