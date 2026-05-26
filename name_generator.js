@@ -66,9 +66,8 @@ class SeededRandom {
     }
 }
 
-// Создание уникального семени из координат (Улучшенная версия)
-function createSeed(x, y) {
-    const seed = (x * 73856093) ^ (y * 19349663);
+function createSeed(x, y, depth = 0) {
+    const seed = (x * 73856093) ^ (y * 19349663) ^ (depth * 9999991);
     return (Math.abs(seed) % 2147483647) || 1;
 }
 
