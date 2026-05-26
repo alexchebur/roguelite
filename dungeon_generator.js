@@ -195,7 +195,7 @@ const DungeonGeneratorModule = {
                 }
                 if(found) break;
             }
-        }
+        },
     // Добавьте эту функцию в DungeonGeneratorModule (после generateLevel)
 
     generateLevelWithType: function(x, y, width, height, forcedType) {
