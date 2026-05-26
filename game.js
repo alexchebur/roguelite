@@ -371,12 +371,13 @@ const GameModule = (function() {
             console.log("stairsUp:", MapModule.stairsUp);
             console.log("stairsDown:", MapModule.stairsDown);
             
-            // Проверка лестницы вниз (спуск на следующий уровень) - ПРОВЕРЯЕМ ПЕРВОЙ
+            // Проверка лестницы вниз (спуск на следующий уровень)
             if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
                 const nextDepth = currentDepth + 1;
                 console.log("🔻 СПУСК! Было:", currentDepth, "станет:", nextDepth);
                 RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
-                loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName);
+                // entryPoint = 'down' означает, что пришли сверху, нужно появиться на stairsUp следующего уровня
+                loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName, 'down');
                 return;
             }
 
@@ -390,7 +391,8 @@ const GameModule = (function() {
                     const prevDepth = currentDepth - 1;
                     console.log("Подъём на уровень:", prevDepth);
                     RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
-                    loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName);
+                    // entryPoint = 'up' означает, что пришли снизу, нужно появиться на stairsDown предыдущего уровня
+                    loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName, 'up');
                 }
                 return;
             }
