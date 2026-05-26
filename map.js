@@ -86,67 +86,78 @@ const MapModule = (function() {
         return { x: stairsUp.x, y: stairsUp.y };
     }
 
-    function generateWithType(gx, gy, depth, dungeonType) {
+    // В map.js - исправленная версия generateWithType
+
+    function generateWithType(gx, gy, depth, dungeonType, entryPoint = null) {
         const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
         currentDungeonType = result.dungeonType;
-    
+
         const cacheKey = `${gx}_${gy}_${depth}`;
-        
+    
         // Пытаемся получить лестницы из кеша
         if (stairsCache.has(cacheKey)) {
             const cached = stairsCache.get(cacheKey);
             stairsUp = cached.stairsUp;
             stairsDown = cached.stairsDown;
-            return { x: stairsUp.x, y: stairsUp.y };
-        }
         
+            // Определяем позицию игрока на основе точки входа
+            let startPos;
+            if (entryPoint === 'up') {
+                // Пришли сверху (нажали >) → нужно появиться на stairsDown
+                startPos = stairsDown || stairsUp;
+            } else if (entryPoint === 'down') {
+                // Пришли снизу (нажали <) → нужно появиться на stairsUp
+                startPos = stairsUp || stairsDown;
+            } else {
+                startPos = stairsUp; // по умолчанию
+            }
+            return startPos;
+        }
+    
         // Генерируем лестницу вверх
         const upSeed = `up_${gx}_${gy}_${depth}`;
         stairsUp = findRandomFloor(null, false, upSeed);
-        
-        // Генерируем лестницу вниз
+    
+        // Генерируем лестницу вниз (связываем с уровнем выше/ниже)
         if (currentDungeonType.name !== 'city') {
-            // Пытаемся найти позицию для лестницы вниз, связанную с лестницей вверх следующего уровня
+            const downSeed = `down_${gx}_${gy}_${depth}`;
+            stairsDown = findRandomFloor(stairsUp, true, downSeed);
+        
+            // Связываем с соседними уровнями через кеш
+            const prevLevelKey = `${gx}_${gy}_${depth - 1}`;
             const nextLevelKey = `${gx}_${gy}_${depth + 1}`;
-            const nextLevelCache = stairsCache.get(nextLevelKey);
-            
-            if (nextLevelCache && nextLevelCache.stairsUp) {
-                // Если следующий уровень уже сгенерирован, используем его stairsUp как stairsDown текущего
-                stairsDown = { x: nextLevelCache.stairsUp.x, y: nextLevelCache.stairsUp.y };
-                
-                // Проверяем, что клетка свободна и не совпадает со stairsUp
-                if (currentMapData[stairsDown.y][stairsDown.x] !== 0 || 
-                    (stairsDown.x === stairsUp.x && stairsDown.y === stairsUp.y)) {
-                    // Если занята, генерируем новую
-                    const downSeed = `down_${gx}_${gy}_${depth}`;
-                    stairsDown = findRandomFloor(stairsUp, true, downSeed);
-                }
-            } else {
-                // Иначе генерируем новую
-                const downSeed = `down_${gx}_${gy}_${depth}`;
-                stairsDown = findRandomFloor(stairsUp, true, downSeed);
+        
+            if (depth > 0 && stairsCache.has(prevLevelKey)) {
+                const prevCache = stairsCache.get(prevLevelKey);
+                // Убеждаемся, что stairsDown текущего уровня совпадает с stairsUp предыдущего
+                prevCache.stairsDown = stairsUp;
+                stairsCache.set(prevLevelKey, prevCache);
             }
-        } else {
-            stairsDown = null;
-        }
         
-        // Сохраняем в кеш
-        stairsCache.set(cacheKey, { stairsUp, stairsDown });
-        
-        // Также запоминаем для следующего уровня связь
-        if (stairsDown) {
-            const nextLevelKey = `${gx}_${gy}_${depth + 1}`;
-            if (!stairsCache.has(nextLevelKey)) {
-                stairsCache.set(nextLevelKey, { stairsUp: stairsDown, stairsDown: null });
-            } else {
+            if (stairsCache.has(nextLevelKey)) {
                 const nextCache = stairsCache.get(nextLevelKey);
                 nextCache.stairsUp = stairsDown;
                 stairsCache.set(nextLevelKey, nextCache);
             }
+        } else {
+            stairsDown = null;
         }
-        
-        return { x: stairsUp.x, y: stairsUp.y };
+    
+        // Сохраняем в кеш
+        stairsCache.set(cacheKey, { stairsUp, stairsDown });
+    
+        // Определяем позицию игрока на основе точки входа
+        let startPos;
+        if (entryPoint === 'up') {
+            startPos = stairsDown || stairsUp;
+        } else if (entryPoint === 'down') {
+            startPos = stairsUp || stairsDown;
+        } else {
+            startPos = stairsUp;
+        }
+    
+        return startPos;
     }
 
     function generateCity(gx, gy, depth) {
