@@ -175,34 +175,36 @@ const RenderModule = (function() {
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
-        
+    
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
         const ctx = cvs.getContext("2d");
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
-        
+    
         // Размер миникарты: 20x20 клеток вокруг центра
         const MINIMAP_SIZE = 20;
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
-        
+    
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
         const startY = centerY - Math.floor(MINIMAP_SIZE / 2);
-        
+    
         for (let dy = 0; dy < MINIMAP_SIZE; dy++) {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
                 const gy = startY + dy;
-                
-                let type = 'plain';
-                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
-                    type = GlobalMapModule.getTileType(gx, gy);
+            
+                let displayType = 'plain';
+                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
+                    displayType = GlobalMapModule.getDisplayTileType(gx, gy);
+                } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
+                    displayType = GlobalMapModule.getTileType(gx, gy);
                 }
-                
+            
                 let color;
-                switch(type) {
+                switch(displayType) {
                     case 'plain': color = '#555'; break;
                     case 'forest': color = '#2e8b57'; break;
                     case 'mountain': color = '#888'; break;
@@ -212,12 +214,12 @@ const RenderModule = (function() {
                     case 'road': color = '#b8860b'; break;
                     default: color = '#333';
                 }
-                
+            
                 // Игрок
                 if (gx === centerX && gy === centerY) {
                     color = '#0f0';
                 }
-                
+            
                 ctx.fillStyle = color;
                 ctx.fillRect(dx * cellW, dy * cellH, cellW, cellH);
             }
