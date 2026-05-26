@@ -244,6 +244,18 @@ const GlobalMapModule = {
         }
         return 'plain';
     },
+
+    // Получить тип тайла для отображения (учитывая POI)
+    getDisplayTileType(globalX, globalY) {
+        // Сначала проверяем, есть ли POI в этой точке
+        const poi = this.getPOI(globalX, globalY);
+        if (poi) {
+            return poi.type === 'city' ? 'city' : 'dungeon_entrance';
+        }
+    
+        // Если POI нет, возвращаем обычный тип ландшафта
+        return this.getTileType(globalX, globalY);
+    },
     
     // Проверка проходимости
     isWalkable(globalX, globalY) {
