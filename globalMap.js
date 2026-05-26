@@ -263,11 +263,12 @@ const GlobalMapModule = {
         return type !== 'mountain' && type !== 'water';
     },
     
+
+
     // Получить точку интереса в клетке (если есть)
     getPOI(globalX, globalY) {
-        const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
-        const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
         const chunk = getChunkForCell(globalX, globalY);
+        if (!chunk || !chunk.pois) return null;
         return chunk.pois.find(p => p.x === globalX && p.y === globalY);
     },
     
