@@ -4,8 +4,8 @@ const EntityModule = (function() {
         return {
             x: x, y: y,
             char: "@", color: "#FFF",
-            hp: 100, maxHp: 100,
-            atk: 5, def: 2,
+            hp: 100, maxHp: 100, // Ваше значение
+            atk: 5, def: 3,      // <-- Увеличили защиту с 2 до 3
             level: 1, xp: 0,
             inventory: [],
             equipment: { weapon: null, armor: null }
