@@ -4,8 +4,8 @@ const EntityModule = (function() {
         return {
             x: x, y: y,
             char: "@", color: "#FFF",
-            hp: 100, maxHp: 100, // Ваше значение
-            atk: 5, def: 3,      // <-- Увеличили защиту с 2 до 3
+            hp: 100, maxHp: 100,
+            atk: 5, def: 3,
             level: 1, xp: 0,
             inventory: [],
             equipment: { weapon: null, armor: null }
@@ -13,9 +13,10 @@ const EntityModule = (function() {
     }
 
     function createEnemy(template, x, y, difficultyMult) {
-        const hp = Math.floor(template.hp[0] * difficultyMult);
-        const atk = Math.floor(template.atk[0] * difficultyMult);
-        const def = Math.floor(template.def[0] * difficultyMult);
+        // Используем среднее значение диапазона для более предсказуемой сложности
+        const hp = Math.floor(((template.hp[0] + template.hp[1]) / 2) * difficultyMult);
+        const atk = Math.floor(((template.atk[0] + template.atk[1]) / 2) * difficultyMult);
+        const def = Math.floor(((template.def[0] + template.def[1]) / 2) * difficultyMult);
 
         return {
             x: x, y: y, name: template.name,
@@ -32,10 +33,9 @@ const EntityModule = (function() {
         if (plural) return adjObj.plural;
         if (gender === "she") return adjObj.she;
         if (gender === "it") return adjObj.it;
-        return adjObj.base; // по умолчанию — мужской род
+        return adjObj.base; 
     }
 
-    
     function createItem(template, x, y, itemPowerMult) {
         const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
         const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
@@ -55,11 +55,40 @@ const EntityModule = (function() {
         };
     }
 
+    // === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по уровню ===
+    function getAvailableEnemies(depth) {
+        // depth вычисляется как сумма модулей координат в game.js перед вызовом
+        // Уровень 0-2: Только слабые
+        // Уровень 3-6: Средние
+        // Уровень 7+: Все, включая боссов
+        
+        if (depth <= 2) {
+            return DataModule.ENEMY_TYPES.filter(e => 
+                ["Крыса", "Гоблин", "Волк", "Слизень"].includes(e.name)
+            );
+        } else if (depth <= 6) {
+            return DataModule.ENEMY_TYPES.filter(e => 
+                ["Бандит", "Скелет", "Орк-разведчик", "Зомби", "Гарпия", "Призрак"].includes(e.name)
+            );
+        } else {
+            // На глубоких уровнях добавляем всех остальных
+            return DataModule.ENEMY_TYPES.filter(e => 
+                ["Тролль", "Вампир", "Лич", "Голем", "Демон", "Дракон"].includes(e.name)
+            );
+        }
+    }
+
     // Безопасное размещение врагов с проверкой дистанции
-    function spawnEnemies(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3) {
+    function spawnEnemies(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3, depth = 0) {
         const height = mapGrid.length;
         const width = mapGrid[0].length;
         const validTiles = [];
+
+        // 1. Фильтруем шаблоны врагов в зависимости от глубины
+        const availableTemplates = getAvailableEnemies(depth);
+        
+        // Если вдруг фильтр вернул пустой массив (на всякий случай), берем всех
+        const templatesToUse = availableTemplates.length > 0 ? availableTemplates : enemyTemplates;
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
@@ -94,7 +123,8 @@ const EntityModule = (function() {
 
             if (!tooClose) {
                 occupiedCoords.push({ x: tile.x, y: tile.y });
-                const template = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)];
+                // Выбираем врага ТОЛЬКО из доступных для этой глубины
+                const template = templatesToUse[Math.floor(Math.random() * templatesToUse.length)];
                 placedEnemies.push(createEnemy(template, tile.x, tile.y, difficultyMult));
             }
         }
@@ -108,7 +138,6 @@ const EntityModule = (function() {
         const width = mapGrid[0].length;
         const validTiles = [];
 
-        // Собираем все клетки пола, исключая близкие к игроку
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 if (mapGrid[y][x] === 0) {
@@ -120,13 +149,11 @@ const EntityModule = (function() {
             }
         }
 
-        // Перемешиваем массив
         for (let i = validTiles.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
         }
 
-        // Размещаем предметы на первых count уникальных клетках
         const placedItems = [];
         for (let i = 0; i < Math.min(count, validTiles.length); i++) {
             const tile = validTiles[i];
