@@ -98,6 +98,7 @@ const RenderModule = (function() {
             }
         });
 
+        // ... (код отрисовки врагов) ...
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
@@ -108,6 +109,19 @@ const RenderModule = (function() {
             }
         });
 
+        // === ОТРИСОВКА NPC (добавлено) ===
+        if (window.currentCityNpcs) {
+            window.currentCityNpcs.forEach(npc => {
+                const sx = npc.x - cam.x;
+                const sy = npc.y - cam.y;
+                // NPC видны всегда, если в поле зрения (FOV)
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
+                    display.draw(sx, sy, npc.char, npc.color);
+                }
+            });
+        }
+
+        // Игрок
         display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), player.char, player.color);
 
         return visible;
