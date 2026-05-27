@@ -232,6 +232,7 @@ const GameModule = (function() {
         // Очищаем старые данные
         enemies = [];
         items = [];
+        npcs = [];
         explored.clear();
     
         // Генерируем новую карту с указанием точки входа
