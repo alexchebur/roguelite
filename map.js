@@ -38,44 +38,42 @@ const MapModule = (function() {
     // Генерация или восстановление лестниц для уровня
     function generateStaircase(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
-        
-        // Если уже есть в кеше, просто возвращаем
+        const prevKey  = `${gx}_${gy}_${depth - 1}`;
+
+        // 1. Пытаемся восстановить из полного кеша
         if (stairsCache.has(cacheKey)) {
             const cached = stairsCache.get(cacheKey);
+            // Если кеш полный (есть и up, и down), используем его без перегенерации
+            if (cached.stairsUp && cached.stairsDown) {
+                stairsUp = cached.stairsUp;
+                stairsDown = cached.stairsDown;
+                return;
+            }
+            // Если в кеше только stairsUp (предкеш со старого уровня), берём его
             stairsUp = cached.stairsUp;
-            stairsDown = cached.stairsDown;
-            return;
+        } else if (depth > 0 && stairsCache.has(prevKey)) {
+            // Первый вход на уровень: stairsUp должен совпадать с stairsDown предыдущего уровня
+            stairsUp = stairsCache.get(prevKey).stairsDown;
         }
-        
-        // Генерируем лестницу вверх (всегда новая)
-        const upSeed = `up_${gx}_${gy}_${depth}`;
-        stairsUp = findRandomFloor(null, false, upSeed);
-        
-        // Генерируем лестницу вниз (если не город)
+
+        // 2. Если stairsUp всё ещё нет (глубина 0 или кеш стёрт), генерируем его
+        if (!stairsUp) {
+            const upSeed = `up_${gx}_${gy}_${depth}`;
+            stairsUp = findRandomFloor(null, false, upSeed);
+        }
+
+        // 3. Всегда генерируем stairsDown заново для текущего уровня (кроме городов)
         if (currentDungeonType.name !== 'city') {
-            // Пытаемся найти или создать stairsDown
             const downSeed = `down_${gx}_${gy}_${depth}`;
             stairsDown = findRandomFloor(stairsUp, true, downSeed);
         } else {
             stairsDown = null;
         }
-        
-        // Сохраняем в кеш
+
+        // 4. Сохраняем полную пару в кеш для будущих возвратов
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
         
-        // Если есть stairsDown, связываем его с лестницей вверх следующего уровня
-        if (stairsDown) {
-            const nextKey = `${gx}_${gy}_${depth + 1}`;
-            if (!stairsCache.has(nextKey)) {
-                // Предварительно создаём запись для следующего уровня
-                stairsCache.set(nextKey, { stairsUp: stairsDown, stairsDown: null });
-            } else {
-                // Обновляем существующую запись
-                const nextCache = stairsCache.get(nextKey);
-                nextCache.stairsUp = stairsDown;
-                stairsCache.set(nextKey, nextCache);
-            }
-        }
+        console.log(`🪜 Лестницы ур.${depth+1}: up=(${stairsUp.x},${stairsUp.y}), down=(${stairsDown ? stairsDown.x : 'null'},${stairsDown ? stairsDown.y : 'null'})`);
     }
 
     // Основная функция генерации уровня
