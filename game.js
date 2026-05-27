@@ -437,108 +437,91 @@ const GameModule = (function() {
     
     
     function processTurn(dx, dy) {
+        // 1. Вычисляем целевую клетку
         const nx = player.x + dx;
         const ny = player.y + dy;
 
+        // Если не двигаемся (например, пробел), просто пропускаем ход
+        if (dx === 0 && dy === 0) {
+            // Пропуск хода: двигаем NPC и врагов, но игрок стоит
+            moveNpcs(); 
+            moveEnemies();
+            renderFrame();
+            return;
+        }
+
+        // 2. Проверка стен
         if (MapModule.isWall(nx, ny)) return;
 
+        // 3. Проверка врагов (Атака)
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
             CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
             checkDeath();
-        
-            // Если игрок умер после атаки врага
+            
             if (player.hp <= 0) {
                 RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
                 renderFrame();
                 return;
             }
-        } else {
-            player.x = nx;
-            player.y = ny;
+            // После атаки ход переходит к другим существам
+            moveNpcs();
+            moveEnemies();
+            renderFrame();
+            return;
+        }
 
-            // Подбор предметов
-            const idx = items.findIndex(i => i.x === nx && i.y === ny);
-            if (idx !== -1) {
-                const item = items[idx];
-                player.inventory.push(item);
-                RenderModule.log(`Подобрано: ${item.name}`, "loot");
-                items.splice(idx, 1);
-            }
+        // 4. Проверка NPC (Взаимодействие)
+        // Если на целевой клетке стоит NPC, мы говорим с ним, но НЕ двигаемся
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
+        if (npc) {
+            RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            // NPC тоже могут немного подвинуться или просто постоять, пока мы говорим
+            moveNpcs(); 
+            moveEnemies();
+            renderFrame();
+            return; 
+        }
 
+        // 5. Движение игрока (если путь свободен от стен, врагов и NPC)
+        player.x = nx;
+        player.y = ny;
 
-            // === ПРОВЕРКА NPC ===
-            if (window.currentCityNpcs) {
-                const npc = window.currentCityNpcs.find(n => n.x === nx && n.y === ny);
-                if (npc) {
-                    RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
-                    // Игрок не двигается на клетку NPC, он просто говорит с ним
-                    renderFrame();
-                    return; 
-                }
-            }
+        // 6. Подбор предметов
+        const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
+        if (itemIdx !== -1) {
+            const item = items[itemIdx];
+            player.inventory.push(item);
+            RenderModule.log(`Подобрано: ${item.name}`, "loot");
+            items.splice(itemIdx, 1);
+        }
 
-            
-            
-            // === ОТЛАДКА ЛЕСТНИЦ ===
-            console.log("=== ПРОВЕРКА ЛЕСТНИЦ ===");
-            console.log("Текущая глубина (currentDepth):", currentDepth);
-            console.log("Координаты игрока:", nx, ny);
-            console.log("stairsUp:", MapModule.stairsUp);
-            console.log("stairsDown:", MapModule.stairsDown);
-            
-            // Проверка лестницы вниз (спуск на следующий уровень)
-            if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
-                const nextDepth = currentDepth + 1;
-                console.log("🔻 СПУСК! Было:", currentDepth, "станет:", nextDepth);
-                RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
-                // entryPoint = 'down' означает, что пришли сверху, нужно появиться на stairsUp следующего уровня
-                loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName, 'down');
-                return;
-            }
+        // 7. Проверка лестниц
+        // Спуск вниз
+        if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
+            const nextDepth = currentDepth + 1;
+            RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
+            loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName, 'down');
+            return; // Загружаем новый уровень, дальнейшая логика не нужна
+        }
 
-            // Проверка лестницы вверх (выход на предыдущий уровень или глобальную карту)
-            if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
-                console.log("🔺 ПОДЪЁМ! Текущая глубина:", currentDepth);
-                if (currentDepth === 0) {
-                    RenderModule.log("Вы поднимаетесь на поверхность...", "info");
-                    exitToGlobal();
-                } else {
-                    const prevDepth = currentDepth - 1;
-                    console.log("Подъём на уровень:", prevDepth);
-                    RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
-                    // entryPoint = 'up' означает, что пришли снизу, нужно появиться на stairsDown предыдущего уровня
-                    loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName, 'up');
-                }
-                return;
+        // Подъем вверх
+        if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
+            if (currentDepth === 0) {
+                RenderModule.log("Вы поднимаетесь на поверхность...", "info");
+                exitToGlobal();
+            } else {
+                const prevDepth = currentDepth - 1;
+                RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
+                loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName, 'up');
             }
-        
-            // Движение врагов (только если игрок жив)
-            if (player.hp > 0) {
-                enemies.forEach(e => {
-                    if (e.hp <= 0) return;
-                    const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-                    if (dist < 8) {
-                        if (dist === 1) {
-                            CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
-                            checkDeath();
-                        } else {
-                            const astar = new ROT.Path.AStar(player.x, player.y,
-                                (x, y) => !MapModule.isWall(x, y), { topology: 8 });
-                            let next = null;
-                            astar.compute(e.x, e.y, (x, y) => {
-                                if (!next && (x !== e.x || y !== e.y)) next = { x, y };
-                            });
-                            if (next) {
-                                if (!enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y)) {
-                                    e.x = next.x;
-                                    e.y = next.y;
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+            return; // Загружаем уровень/карту
+        }
+
+        // 8. Ход других существ (только если игрок жив)
+        if (player.hp > 0) {
+            moveNpcs();
+            moveEnemies();
         }
 
         if (player.hp <= 0) {
@@ -547,17 +530,102 @@ const GameModule = (function() {
     
         renderFrame();
     }
+
+    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДВИЖЕНИЯ ===
+    
+    // Движение NPC (стратегия: прямо до препятствия, затем смена направления)
+    function moveNpcs() {
+        if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
+
+        const width = DataModule.MAP_WIDTH;
+        const height = DataModule.MAP_HEIGHT;
+
+        window.currentCityNpcs.forEach(npc => {
+            // Если направления нет, задаем случайное
+            if (!npc.direction) {
+                const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
+                npc.direction = dirs[Math.floor(Math.random() * dirs.length)];
+            }
+
+            let moved = false;
+            let attempts = 0;
+
+            // Пытаемся двигаться в текущем направлении
+            while (!moved && attempts < 4) {
+                const nx = npc.x + npc.direction.dx;
+                const ny = npc.y + npc.direction.dy;
+
+                // Проверка границ и стен
+                if (nx < 0 || nx >= width || ny < 0 || ny >= height || MapModule.isWall(nx, ny)) {
+                    npc.direction = getRandomDirection();
+                    attempts++;
+                    continue;
+                }
+
+                // Проверка коллизий с другими NPC и игроком
+                const blockedByNpc = window.currentCityNpcs.some(other => other !== npc && other.x === nx && other.y === ny);
+                const blockedByPlayer = (player.x === nx && player.y === ny);
+                // Враги тоже препятствие для NPC
+                const blockedByEnemy = enemies.some(e => e.hp > 0 && e.x === nx && e.y === ny);
+
+                if (blockedByNpc || blockedByPlayer || blockedByEnemy) {
+                    npc.direction = getRandomDirection();
+                    attempts++;
+                    continue;
+                }
+
+                // Путь свободен
+                npc.x = nx;
+                npc.y = ny;
+                moved = true;
+            }
+        });
+    }
+
+    function getRandomDirection() {
+        const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
+        return dirs[Math.floor(Math.random() * dirs.length)];
+    }
+
+    // Движение врагов (вынесено в отдельную функцию для чистоты кода)
+    function moveEnemies() {
+        enemies.forEach(e => {
+            if (e.hp <= 0) return;
+            const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
+            
+            // Агро-радиус 8 клеток
+            if (dist < 8) {
+                if (dist === 1) {
+                    // Атака, если рядом
+                    CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                    checkDeath();
+                } else {
+                    // Преследование по кратчайшему пути (A*)
+                    const astar = new ROT.Path.AStar(player.x, player.y,
+                        (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                    
+                    let next = null;
+                    astar.compute(e.x, e.y, (x, y) => {
+                        if (!next && (x !== e.x || y !== e.y)) next = { x, y };
+                    });
+
+                    if (next) {
+                        // Не наступать на других врагов и NPC
+                        const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
+                        const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
+                        
+                        if (!isBlockedByNpc && !isBlockedByEnemy) {
+                            e.x = next.x;
+                            e.y = next.y;
+                        }
+                    }
+                }
+            }
+        });
+    }
     
     function checkDeath() {
         enemies = enemies.filter(e => e.hp > 0);
-    }
-
-    function renderFrame() {
-        if (!player) return;
-        const vis = RenderModule.draw(player, enemies, items, npcs);
-        vis.forEach(k => explored.add(k));
-        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-        RenderModule.drawMinimap(player, explored);
     }
 
     return {
