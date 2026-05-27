@@ -34,84 +34,100 @@ const MapModule = (function() {
         }
         return excludePos || { x: 0, y: 0 };
     }
+    // Вспомогательная функция: гарантирует, что позиция будет на полу, а не в стене
+    function getSafePos(pos) {
+        if (!pos) return { x: 2, y: 2 };
+        // Если координата уже на полу, возвращаем её
+        if (currentMapData[pos.y] && currentMapData[pos.y][pos.x] === 0) return pos;
+        
+        // Иначе ищем ближайший пол по спирали
+        for (let r = 1; r < 15; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    const nx = pos.x + dx, ny = pos.y + dy;
+                    if (ny >= 0 && ny < DataModule.MAP_HEIGHT && nx >= 0 && nx < DataModule.MAP_WIDTH) {
+                        if (currentMapData[ny][nx] === 0) return { x: nx, y: ny };
+                    }
+                }
+            }
+        }
+        return pos; // fallback, если всё заполнено стенами (почти невозможно)
+    }
 
     // Генерация или восстановление лестниц для уровня
     function generateStaircase(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
-        const prevKey  = `${gx}_${gy}_${depth - 1}`;
+        let cached = stairsCache.get(cacheKey);
 
-        // 1. Пытаемся восстановить из полного кеша
-        if (stairsCache.has(cacheKey)) {
-            const cached = stairsCache.get(cacheKey);
-            // Если кеш полный (есть и up, и down), используем его без перегенерации
-            if (cached.stairsUp && cached.stairsDown) {
+        // Если есть кеш, строго проверяем валидность координат на ТЕКУЩЕЙ карте
+        if (cached) {
+            const upValid = cached.stairsUp && currentMapData[cached.stairsUp.y]?.[cached.stairsUp.x] === 0;
+            const downValid = cached.stairsDown && currentMapData[cached.stairsDown.y]?.[cached.stairsDown.x] === 0;
+
+            // Если обе лестницы на полу (или в городе, где down=null), используем кеш
+            if (upValid && (currentDungeonType.name === 'city' || downValid)) {
                 stairsUp = cached.stairsUp;
                 stairsDown = cached.stairsDown;
                 return;
             }
-            // Если в кеше только stairsUp (предкеш со старого уровня), берём его
-            stairsUp = cached.stairsUp;
-        } else if (depth > 0 && stairsCache.has(prevKey)) {
-            // Первый вход на уровень: stairsUp должен совпадать с stairsDown предыдущего уровня
-            stairsUp = stairsCache.get(prevKey).stairsDown;
+            // Кеш повреждён или карта изменилась → очищаем и генерируем заново
+            stairsCache.delete(cacheKey);
         }
 
-        // 2. Если stairsUp всё ещё нет (глубина 0 или кеш стёрт), генерируем его
-        if (!stairsUp) {
-            const upSeed = `up_${gx}_${gy}_${depth}`;
-            stairsUp = findRandomFloor(null, false, upSeed);
+        // 1. Определяем stairsUp
+        if (depth > 0) {
+            // Связываем с лестницей вниз предыдущего уровня
+            const prevKey = `${gx}_${gy}_${depth - 1}`;
+            const prevCached = stairsCache.get(prevKey);
+            if (prevCached?.stairsDown) {
+                stairsUp = prevCached.stairsDown;
+                // Проверяем, не стала ли она стеной на новом уровне
+                if (currentMapData[stairsUp.y]?.[stairsUp.x] !== 0) {
+                    stairsUp = findRandomFloor(null, false, `up_fb_${gx}_${gy}_${depth}`);
+                }
+            } else {
+                stairsUp = findRandomFloor(null, false, `up_${gx}_${gy}_${depth}`);
+            }
+        } else {
+            stairsUp = findRandomFloor(null, false, `up_${gx}_${gy}_${depth}`);
         }
 
-        // 3. Всегда генерируем stairsDown заново для текущего уровня (кроме городов)
+        // 2. Определяем stairsDown
         if (currentDungeonType.name !== 'city') {
-            const downSeed = `down_${gx}_${gy}_${depth}`;
-            stairsDown = findRandomFloor(stairsUp, true, downSeed);
+            stairsDown = findRandomFloor(stairsUp, true, `down_${gx}_${gy}_${depth}`);
         } else {
             stairsDown = null;
         }
 
-        // 4. Сохраняем полную пару в кеш для будущих возвратов
+        // 3. Сохраняем корректную пару в кеш
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
-        
-        console.log(`🪜 Лестницы ур.${depth+1}: up=(${stairsUp.x},${stairsUp.y}), down=(${stairsDown ? stairsDown.x : 'null'},${stairsDown ? stairsDown.y : 'null'})`);
     }
 
     // Основная функция генерации уровня
     function generateLevel(gx, gy, depth, dungeonType, entryPoint = null) {
-        // Генерируем карту подземелья
         const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
         currentDungeonType = result.dungeonType;
         
-        // Генерируем или восстанавливаем лестницы
         generateStaircase(gx, gy, depth);
         
-        // Проверяем, нужно ли корректировать stairsDown при подъёме
-        if (entryPoint === 'up' && stairsDown) {
-            // Убеждаемся, что stairsDown не null и доступен
-            console.log(`Подъём на уровень ${depth}: используем stairsDown (${stairsDown.x},${stairsDown.y})`);
-        }
-        
-        // Определяем стартовую позицию
-        // Определяем стартовую позицию
         let startPos;
         if (entryPoint === 'down') {
-            // При спуске на следующий уровень - появляемся у лестницы ВВЕРХ (>)
-            startPos = stairsUp ? { x: stairsUp.x, y: stairsUp.y } : result.startPos;
-            console.log(`✅ Спуск: появляемся у лестницы вверх (>) (${startPos.x},${startPos.y})`);
+            // Наступили на < (спуск) → появляемся у > (stairsUp)
+            startPos = getSafePos(stairsUp);
+            console.log(`✅ Спуск: появляемся у > (${startPos.x},${startPos.y})`);
         } else if (entryPoint === 'up') {
-            // При подъёме на предыдущий уровень - появляемся у лестницы ВНИЗ (<)
-            startPos = stairsDown ? { x: stairsDown.x, y: stairsDown.y } : result.startPos;
-            console.log(`✅ Подъём: появляемся у лестницы вниз (<) (${startPos.x},${startPos.y})`);
+            // Наступили на > (подъём) → появляемся у < (stairsDown)
+            startPos = getSafePos(stairsDown);
+            console.log(`✅ Подъём: появляемся у < (${startPos.x},${startPos.y})`);
         } else {
-            // Первый вход в подземелье или город (по умолчанию у лестницы вверх)
-            startPos = stairsUp ? { x: stairsUp.x, y: stairsUp.y } : result.startPos;
-            console.log(`✅ Вход: появляемся у лестницы вверх (>) (${startPos.x},${startPos.y})`);
+            // Первый вход в подземелье
+            startPos = getSafePos(stairsUp);
+            console.log(`✅ Вход: появляемся у > (${startPos.x},${startPos.y})`);
         }
         
         return startPos;
     }
-
     // Публичные методы
     function generate(gx, gy, depth) {
         return generateLevel(gx, gy, depth, null);
