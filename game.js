@@ -476,7 +476,7 @@ const GameModule = (function() {
 
     function renderFrame() {
         if (!player) return;
-        const vis = RenderModule.draw(player, enemies, items);
+        const vis = RenderModule.draw(player, enemies, items, npcs);
         vis.forEach(k => explored.add(k));
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawMinimap(player, explored);
