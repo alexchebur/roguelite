@@ -137,6 +137,58 @@ const MapModule = (function() {
         return generateLevel(gx, gy, depth, dungeonType, entryPoint);
     }
 
+    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА ===
+    function generateCityLayout(rand, width, height) {
+        // 1. Создаём карту: по краям стены, внутри всё пол (улицы)
+        const grid = Array(height).fill().map(() => Array(width).fill(1));
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                grid[y][x] = 0;
+            }
+        }
+
+        const STREET_W = 2; // Ширина улиц между зданиями
+        let y = 2;
+        
+        // 2. Размещаем здания по рядам
+        while (y < height - 6) {
+            const bh = rand.int(4, 6); // Высота здания (небольшой разброс)
+            let x = 2;
+            
+            while (x < width - 6) {
+                const bw = rand.int(4, 9); // Ширина здания
+                if (x + bw + STREET_W >= width) break; // Не вылезаем за границу
+
+                // Рисуем здание (стены)
+                for (let dy = 0; dy < bh; dy++) {
+                    for (let dx = 0; dx < bw; dx++) {
+                        grid[y + dy][x + dx] = 1;
+                    }
+                }
+
+                // 3. Вырезаем дверь на случайной стороне здания
+                const side = rand.int(0, 3); // 0:верх, 1:право, 2:низ, 3:лево
+                let doorX = x, doorY = y;
+                
+                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y - 1; }
+                else if (side === 1) { doorX = x + bw; doorY = y + rand.int(1, bh - 2); }
+                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh; }
+                else { doorX = x - 1; doorY = y + rand.int(1, bh - 2); }
+                
+                // Убеждаемся, что дверь не выходит за границы карты
+                if (doorX >= 0 && doorX < width && doorY >= 0 && doorY < height) {
+                    grid[doorY][doorX] = 0;
+                }
+
+                // Сдвигаемся вправо: ширина здания + улица
+                x += bw + STREET_W;
+            }
+            // Сдвигаемся вниз: высота здания + улица
+            y += bh + STREET_W;
+        }
+        return grid;
+    }
+    
     function generateCity(gx, gy, depth) {
         const result = DungeonGeneratorModule.generateLevel(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
         currentMapData = result.mapData;
