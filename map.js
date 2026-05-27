@@ -190,21 +190,28 @@ const MapModule = (function() {
     }
     
     function generateCity(gx, gy, depth) {
-        const result = DungeonGeneratorModule.generateLevel(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
-        currentMapData = result.mapData;
+        // Используем детерминированный генератор (SeededRandom уже подключен глобально)
+        const seedVal = createSeed(gx, gy, depth);
+        const rand = new SeededRandom(seedVal);
+
+        // Генерируем планировку города
+        currentMapData = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+
+        // Визуальное оформление города (отличается от подземелий)
         currentDungeonType = { 
-            name: 'city', 
-            wallChar: '#', floorChar: '.', 
-            wallColor: '#555', floorColor: '#333' 
+            name: 'city',
+            wallChar: '█',  // Чёткий символ для стен зданий
+            floorChar: '·', // Точки для улиц
+            wallColor: '#6b7280', // Серые стены
+            floorColor: '#374151' // Тёмно-серые улицы
         };
         
-        // Город: только лестница вверх (выход на глобальную карту)
+        // Лестница вверх (выход на глобальную карту) - гарантированно на улице
         const upSeed = `up_city_${gx}_${gy}_${depth}`;
         stairsUp = findRandomFloor(null, false, upSeed);
         stairsDown = null;
         
-        const startPos = { x: stairsUp.x, y: stairsUp.y };
-        return startPos;
+        return { x: stairsUp.x, y: stairsUp.y };
     }
     
     function clearCache() {
