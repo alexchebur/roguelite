@@ -1,39 +1,76 @@
-/** npc_generator.js */
+/**
+ * МОДУЛЬ ГЕНЕРАЦИИ NPC (npc_generator.js)
+ * Создает нейтральных персонажей для городов.
+ */
+
 const NpcGeneratorModule = (function() {
     'use strict';
+
+    // Базы данных
     const NPC_DATA = {
         titles: ["Стражник", "Торговец", "Старейшина", "Пьяница", "Кузнец", "Бродяга"],
         phrases: [
-            "Добро пожаловать в наш город.", "Осторожнее за стенами, там полно тварей.",
-            "Хочешь купить чего-нибудь?", "Говорят, в подземельях на севере нашли золото.",
-            "Я видел, как ты входил. Ты выглядишь опасно.", "Мирного тебе пути."
+            "Добро пожаловать в наш город.",
+            "Осторожнее за стенами, там полно тварей.",
+            "Хочешь купить чего-нибудь?",
+            "Говорят, в подземельях на севере нашли золото.",
+            "Я видел, как ты входил. Ты выглядишь опасно.",
+            "Мирного тебе пути."
         ]
     };
 
-    function generateCityNpcs(gx, gy, mapGrid, playerStart) {
-        const seedVal = createSeed(gx, gy) + 555;
+    /**
+     * Генерирует список NPC для города
+     * @param {number} gx - глобальная X
+     * @param {number} gy - глобальная Y
+     * @param {Array} mapGrid - двумерный массив карты города (0 - пол, 1 - стена)
+     * @returns {Array} массив объектов NPC
+     */
+    function generateCityNpcs(gx, gy, mapGrid) {
+        const seedVal = createSeed(gx, gy) + 555; // Уникальный сид для NPC в этом городе
         const rng = new SeededRandom(seedVal);
+        
         const npcs = [];
-        const h = mapGrid.length, w = mapGrid[0].length;
-        const count = rng.int(3, 6);
+        const height = mapGrid.length;
+        const width = mapGrid[0].length;
+        
+        // Количество NPC зависит от размера карты, но не более 5-8
+        const npcCount = rng.int(3, 60); 
         let attempts = 0;
 
-        while (npcs.length < count && attempts < 200) {
+        while (npcs.length < npcCount && attempts < 100) {
             attempts++;
-            const x = rng.int(1, w - 2), y = rng.int(1, h - 2);
-            if (mapGrid[y][x] !== 0) continue; // Только пол
-            if (Math.abs(x - playerStart.x) + Math.abs(y - playerStart.y) < 3) continue; // Не рядом со стартом
-            if (npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 2)) continue; // Не рядом с другими
+            
+            // 1. Случайная позиция
+            const x = rng.int(1, width - 2);
+            const y = rng.int(1, height - 2);
 
+            // 2. Проверка: это пол?
+            if (mapGrid[y][x] !== 0) continue;
+
+            // 3. Проверка: не слишком ли близко к другим NPC или лестнице (упрощенно)
+            // Можно добавить проверку дистанции до stairsUp, если нужно
+            
+            // 4. Создаем NPC
+            const title = rng.choice(NPC_DATA.titles);
+            const phrase = rng.choice(NPC_DATA.phrases);
+            
             npcs.push({
-                x, y,
-                name: rng.choice(NPC_DATA.titles),
-                char: "☺", color: "#58a6ff",
-                dialog: rng.choice(NPC_DATA.phrases),
-                isNPC: true
+                x: x,
+                y: y,
+                name: title,
+                char: "☺",
+                color: "#58a6ff", // Синий цвет для дружественных
+                dialog: phrase,
+                isNPC: true,
+                id: `npc_${x}_${y}` // Уникальный ID для этого NPC
             });
         }
+
         return npcs;
     }
-    return { generateCityNpcs };
+
+    return {
+        generateCityNpcs: generateCityNpcs
+    };
 })();
