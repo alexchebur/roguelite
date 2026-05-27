@@ -83,7 +83,60 @@ const GameModule = (function() {
             console.warn("Canvas не найден для сенсорного управления");
             return;
         }
+    // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ (ОСМОТР) ===
+    function handleMapClick(e) {
+        if (!player) return;
+
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
         
+        // Учитываем масштабирование CSS
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        // Координаты клика внутри Canvas
+        const clickX = (e.clientX - rect.left) * scaleX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+
+        // Размеры клетки
+        const cellW = canvas.width / RenderModule.COLS;
+        const cellH = canvas.height / RenderModule.ROWS;
+
+        // Индекс клетки на экране
+        const sx = Math.floor(clickX / cellW);
+        const sy = Math.floor(clickY / cellH);
+
+        // Преобразуем в глобальные координаты карты
+        const cam = RenderModule.getCameraOffset(player);
+        const wx = sx + cam.x;
+        const wy = sy + cam.y;
+
+        // 1. Проверяем Врагов
+        const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
+        if (enemy) {
+            RenderModule.log(`👁️ Осмотр: ${enemy.name} [HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.atk}, DEF: ${enemy.def}]`, "info");
+            return;
+        }
+
+        // 2. Проверяем NPC
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+        if (npc) {
+            RenderModule.log(`👁️ Осмотр: ${npc.name} ("${npc.dialog}")`, "info");
+            return;
+        }
+
+        // 3. Проверяем Предметы
+        const item = items.find(i => i.x === wx && i.y === wy);
+        if (item) {
+             let info = "";
+             if (item.stat) info = `${item.stat.toUpperCase()}: +${item.val}`;
+             if (item.effect) info = `Эффект: ${item.effect} (${item.val})`;
+             RenderModule.log(`👁️ Предмет: ${item.name} [${info}]`, "loot");
+             return;
+        }
+    }        
         canvas.addEventListener("touchstart", (e) => {
             e.preventDefault();
             
