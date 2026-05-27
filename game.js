@@ -285,7 +285,8 @@ const GameModule = (function() {
             DataModule.ENEMY_TYPES,
             enemyCount,
             enemyMult,
-            3
+            3,
+            depth
         );
         
         const rng = new Math.seedrandom(`ent_${gx}_${gy}_${depth}`);
