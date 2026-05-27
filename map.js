@@ -138,79 +138,111 @@ const MapModule = (function() {
     }
 
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА ===
+    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
     function generateCityLayout(rand, width, height) {
-        // 1. Создаём карту: по краям стены, внутри всё пол (улицы)
+        // 1. Стартуем с полной сетки стен
         const grid = Array(height).fill().map(() => Array(width).fill(1));
+
+        // 2. Вырезаем внутреннее пространство (улицы по всей карте)
         for (let y = 1; y < height - 1; y++) {
             for (let x = 1; x < width - 1; x++) {
                 grid[y][x] = 0;
             }
         }
 
-        const STREET_W = 2; // Ширина улиц между зданиями
-        let y = 2;
-        
-        // 2. Размещаем здания по рядам
-        while (y < height - 6) {
-            const bh = rand.int(4, 6); // Высота здания (небольшой разброс)
-            let x = 2;
-            
-            while (x < width - 6) {
-                const bw = rand.int(4, 9); // Ширина здания
-                if (x + bw + STREET_W >= width) break; // Не вылезаем за границу
+        const STREET_W = 2; // Ширина улиц
+        let y = 2; // Отступ от верхней стены
 
-                // Рисуем здание (стены)
+        // 3. Размещаем здания по упорядоченной сетке
+        while (y < height - 6) {
+            const bh = rand.int(4, 6); // Высота здания (4..6)
+            let x = 2; // Отступ от левой стены
+
+            while (x < width - 6) {
+                const bw = rand.int(5, 8); // Ширина здания (5..8)
+                if (x + bw + STREET_W >= width - 1) break;
+
+                // Рисуем здание: стены по периметру, пол внутри
                 for (let dy = 0; dy < bh; dy++) {
                     for (let dx = 0; dx < bw; dx++) {
-                        grid[y + dy][x + dx] = 1;
+                        const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
+                        grid[y + dy][x + dx] = isPerimeter ? 1 : 0;
                     }
                 }
 
-                // 3. Вырезаем дверь на случайной стороне здания
+                // 4. Вырезаем дверь на случайной стороне
                 const side = rand.int(0, 3); // 0:верх, 1:право, 2:низ, 3:лево
-                let doorX = x, doorY = y;
+                let doorX = 0, doorY = 0;
                 
-                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y - 1; }
-                else if (side === 1) { doorX = x + bw; doorY = y + rand.int(1, bh - 2); }
-                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh; }
-                else { doorX = x - 1; doorY = y + rand.int(1, bh - 2); }
-                
-                // Убеждаемся, что дверь не выходит за границы карты
-                if (doorX >= 0 && doorX < width && doorY >= 0 && doorY < height) {
-                    grid[doorY][doorX] = 0;
+                if (side === 0) { // Верх
+                    doorX = x + rand.int(1, bw - 2);
+                    doorY = y;
+                } else if (side === 1) { // Право
+                    doorX = x + bw - 1;
+                    doorY = y + rand.int(1, bh - 2);
+                } else if (side === 2) { // Низ
+                    doorX = x + rand.int(1, bw - 2);
+                    doorY = y + bh - 1;
+                } else { // Лево
+                    doorX = x;
+                    doorY = y + rand.int(1, bh - 2);
                 }
+                
+                grid[doorY][doorX] = 0; // Прорезаем проход
 
-                // Сдвигаемся вправо: ширина здания + улица
+                // Сдвигаемся вправо: здание + улица
                 x += bw + STREET_W;
             }
-            // Сдвигаемся вниз: высота здания + улица
+            // Сдвигаемся вниз: здание + улица
             y += bh + STREET_W;
         }
         return grid;
     }
     
     function generateCity(gx, gy, depth) {
-        // Используем детерминированный генератор (SeededRandom уже подключен глобально)
         const seedVal = createSeed(gx, gy, depth);
         const rand = new SeededRandom(seedVal);
-
-        // Генерируем планировку города
+        
+        // Генерируем планировку
         currentMapData = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
-
-        // Визуальное оформление города (отличается от подземелий)
+        
         currentDungeonType = { 
             name: 'city',
-            wallChar: '█',  // Чёткий символ для стен зданий
-            floorChar: '·', // Точки для улиц
-            wallColor: '#6b7280', // Серые стены
-            floorColor: '#374151' // Тёмно-серые улицы
+            wallChar: '█',  
+            floorChar: '·', 
+            wallColor: '#6b7280', 
+            floorColor: '#374151' 
         };
         
-        // Лестница вверх (выход на глобальную карту) - гарантированно на улице
+        // === ЛЕСТНИЦА ">" СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
         const upSeed = `up_city_${gx}_${gy}_${depth}`;
-        stairsUp = findRandomFloor(null, false, upSeed);
-        stairsDown = null;
+        const rng = new Math.seedrandom(upSeed);
+        const w = DataModule.MAP_WIDTH;
+        const h = DataModule.MAP_HEIGHT;
         
+        // Собираем все клетки пола, прилегающие к границе карты
+        const edgeTiles = [];
+        
+        // Левый и правый край (x=1 и x=w-2)
+        for (let y = 1; y < h - 1; y++) {
+            if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
+            if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
+        }
+        // Верхний и нижний край (y=1 и y=h-2)
+        for (let x = 1; x < w - 1; x++) {
+            if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
+            if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
+        }
+        
+        // Выбираем случайную клетку у края
+        if (edgeTiles.length > 0) {
+            stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
+        } else {
+            // Fallback на случай крайне редкой конфигурации
+            stairsUp = { x: 2, y: 2 };
+        }
+        
+        stairsDown = null;
         return { x: stairsUp.x, y: stairsUp.y };
     }
     
