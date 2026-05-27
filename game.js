@@ -628,7 +628,21 @@ const GameModule = (function() {
     function checkDeath() {
         enemies = enemies.filter(e => e.hp > 0);
     }
-
+    // === ФУНКЦИЯ ОТРИСОВКИ КАДРА ===
+    function renderFrame() {
+        if (!player) return;
+        
+        // Важно: передаем npcs четвертым аргументом, если они есть
+        // Если вы еще не добавили NPC, можно оставить 3 аргумента, но лучше сразу 4
+        const vis = RenderModule.draw(player, enemies, items, npcs || []);
+        
+        // Обновляем исследованную область
+        vis.forEach(k => explored.add(k));
+        
+        // Обновляем интерфейс и миникарту
+        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        RenderModule.drawMinimap(player, explored);
+    }
     return {
         init
     };
