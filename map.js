@@ -139,7 +139,8 @@ const MapModule = (function() {
 
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА ===
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
-    function generateCityLayout(rand, width, height) {
+    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с разной плотностью) ===
+    function generateCityLayout(rand, width, height, density = 0.7) {
         // 1. Стартуем с полной сетки стен
         const grid = Array(height).fill().map(() => Array(width).fill(1));
 
@@ -151,15 +152,23 @@ const MapModule = (function() {
         }
 
         const STREET_W = 2; // Ширина улиц
-        let y = 2; // Отступ от верхней стены
+        let y = 2; 
 
         // 3. Размещаем здания по упорядоченной сетке
         while (y < height - 6) {
-            const bh = rand.int(4, 6); // Высота здания (4..6)
-            let x = 2; // Отступ от левой стены
+            const bh = rand.int(4, 7); // Немного увеличил разброс высоты
+            let x = 2; 
 
             while (x < width - 6) {
-                const bw = rand.int(5, 8); // Ширина здания (5..8)
+                const bw = rand.int(5, 9); // Немного увеличил разброс ширины
+                
+                // === ГЛАВНОЕ ИЗМЕНЕНИЕ: Проверка плотности ===
+                // Если случайное число больше плотности, пропускаем это место (будет пустырь/площадь)
+                if (rand.next() > density) {
+                    x += bw + STREET_W;
+                    continue;
+                }
+
                 if (x + bw + STREET_W >= width - 1) break;
 
                 // Рисуем здание: стены по периметру, пол внутри
@@ -170,30 +179,19 @@ const MapModule = (function() {
                     }
                 }
 
-                // 4. Вырезаем дверь на случайной стороне
-                const side = rand.int(0, 3); // 0:верх, 1:право, 2:низ, 3:лево
+                // 4. Вырезаем дверь
+                const side = rand.int(0, 3); 
                 let doorX = 0, doorY = 0;
                 
-                if (side === 0) { // Верх
-                    doorX = x + rand.int(1, bw - 2);
-                    doorY = y;
-                } else if (side === 1) { // Право
-                    doorX = x + bw - 1;
-                    doorY = y + rand.int(1, bh - 2);
-                } else if (side === 2) { // Низ
-                    doorX = x + rand.int(1, bw - 2);
-                    doorY = y + bh - 1;
-                } else { // Лево
-                    doorX = x;
-                    doorY = y + rand.int(1, bh - 2);
-                }
+                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
+                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); }
+                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
+                else { doorX = x; doorY = y + rand.int(1, bh - 2); }
                 
-                grid[doorY][doorX] = 0; // Прорезаем проход
+                grid[doorY][doorX] = 0; 
 
-                // Сдвигаемся вправо: здание + улица
                 x += bw + STREET_W;
             }
-            // Сдвигаемся вниз: здание + улица
             y += bh + STREET_W;
         }
         return grid;
@@ -203,8 +201,12 @@ const MapModule = (function() {
         const seedVal = createSeed(gx, gy, depth);
         const rand = new SeededRandom(seedVal);
         
-        // Генерируем планировку
-        currentMapData = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT);
+        // 1. Определяем "тип" города (плотность застройки)
+        // 0.3 - маленькая деревня, 0.9 - огромный мегаполис
+        const density = rand.next() * 0.6 + 0.3; 
+        
+        // Генерируем планировку с учетом плотности
+        currentMapData = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
         
         currentDungeonType = { 
             name: 'city',
@@ -220,25 +222,19 @@ const MapModule = (function() {
         const w = DataModule.MAP_WIDTH;
         const h = DataModule.MAP_HEIGHT;
         
-        // Собираем все клетки пола, прилегающие к границе карты
         const edgeTiles = [];
-        
-        // Левый и правый край (x=1 и x=w-2)
         for (let y = 1; y < h - 1; y++) {
             if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
             if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
         }
-        // Верхний и нижний край (y=1 и y=h-2)
         for (let x = 1; x < w - 1; x++) {
             if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
             if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
         }
         
-        // Выбираем случайную клетку у края
         if (edgeTiles.length > 0) {
             stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
         } else {
-            // Fallback на случай крайне редкой конфигурации
             stairsUp = { x: 2, y: 2 };
         }
         
