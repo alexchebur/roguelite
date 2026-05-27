@@ -168,13 +168,16 @@ const GameModule = (function() {
     }
     
     // Загрузка города (без врагов)
+    // Загрузка города (с NPC)
     function loadCityLevel(gx, gy, cityName) {
-        enemies = [];
+        enemies = []; // В городах нет врагов
         items = [];
         explored.clear();
         
+        // 1. Генерируем карту города
         const startPos = MapModule.generateCity(gx, gy, 0);
         
+        // 2. Создаем или перемещаем игрока
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
@@ -182,13 +185,34 @@ const GameModule = (function() {
             player.y = startPos.y;
         }
         
-        // Город: без врагов, но с предметами
+        // 3. Генерируем NPC используя новый модуль
+        // Передаем текущую карту из MapModule, чтобы NPC не попали в стены
+        if (typeof NpcGeneratorModule !== 'undefined') {
+            const cityNpcs = NpcGeneratorModule.generateCityNpcs(gx, gy, MapModule.currentMapData);
+            // Мы используем массив enemies для всех существ, кроме игрока, 
+            // но помечаем их как isNPC, чтобы боевая система их игнорировала или обрабатывала иначе.
+            // Для простоты добавим их в отдельный массив npcs в GameModule, если он есть, 
+            // или просто в enemies, но с флагом.
+            // Давайте добавим отдельный массив npcs в начало GameModule, если его нет.
+            
+            // Добавляем NPC в список сущностей для отрисовки
+            // Примечание: RenderModule.draw ожидает enemies и items. 
+            // Нам нужно либо добавить npcs в render.js, либо временно добавить их в enemies.
+            // Лучший вариант: добавить поддержку npcs в render.js.
+            
+            // Пока что сохраним их в глобальной переменной модуля игры
+            window.currentCityNpcs = cityNpcs; 
+        } else {
+            window.currentCityNpcs = [];
+        }
+
+        // 4. Спавним предметы (торговля или лут)
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                6,
+                6, // чуть больше предметов в городе
                 1.0,
                 2
             );
@@ -196,7 +220,7 @@ const GameModule = (function() {
         
         currentLocData = {
             fullName: cityName,
-            description: "Город, где можно отдохнуть и пополнить запасы",
+            description: "Безопасное место. Здесь можно отдохнуть.",
             themeName: "Город"
         };
         
