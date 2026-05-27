@@ -93,19 +93,20 @@ const MapModule = (function() {
         }
         
         // Определяем стартовую позицию
+        // Определяем стартовую позицию
         let startPos;
         if (entryPoint === 'down') {
-            // При спуске на следующий уровень - появляемся у лестницы вниз (<)
-            startPos = stairsDown ? { x: stairsDown.x, y: stairsDown.y } : result.startPos;
-            console.log(`✅ Спуск: появляемся у лестницы вниз (${startPos.x},${startPos.y})`);
-        } else if (entryPoint === 'up') {
-            // При подъёме на предыдущий уровень - появляемся у лестницы вверх (>)
+            // При спуске на следующий уровень - появляемся у лестницы ВВЕРХ (>)
             startPos = stairsUp ? { x: stairsUp.x, y: stairsUp.y } : result.startPos;
-            console.log(`✅ Подъём: появляемся у лестницы вверх (${startPos.x},${startPos.y})`);
+            console.log(`✅ Спуск: появляемся у лестницы вверх (>) (${startPos.x},${startPos.y})`);
+        } else if (entryPoint === 'up') {
+            // При подъёме на предыдущий уровень - появляемся у лестницы ВНИЗ (<)
+            startPos = stairsDown ? { x: stairsDown.x, y: stairsDown.y } : result.startPos;
+            console.log(`✅ Подъём: появляемся у лестницы вниз (<) (${startPos.x},${startPos.y})`);
         } else {
             // Первый вход в подземелье или город (по умолчанию у лестницы вверх)
             startPos = stairsUp ? { x: stairsUp.x, y: stairsUp.y } : result.startPos;
-            console.log(`✅ Вход: появляемся у лестницы вверх (${startPos.x},${startPos.y})`);
+            console.log(`✅ Вход: появляемся у лестницы вверх (>) (${startPos.x},${startPos.y})`);
         }
         
         return startPos;
