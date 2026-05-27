@@ -402,6 +402,20 @@ const GameModule = (function() {
                 items.splice(idx, 1);
             }
 
+
+            // === ПРОВЕРКА NPC ===
+            if (window.currentCityNpcs) {
+                const npc = window.currentCityNpcs.find(n => n.x === nx && n.y === ny);
+                if (npc) {
+                    RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+                    // Игрок не двигается на клетку NPC, он просто говорит с ним
+                    renderFrame();
+                    return; 
+                }
+            }
+
+            
+            
             // === ОТЛАДКА ЛЕСТНИЦ ===
             console.log("=== ПРОВЕРКА ЛЕСТНИЦ ===");
             console.log("Текущая глубина (currentDepth):", currentDepth);
