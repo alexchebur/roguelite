@@ -26,8 +26,19 @@ const EntityModule = (function() {
         };
     }
 
+    // === Вспомогательная функция: выбор формы прилагательного ===
+    function getAdjectiveForm(adjObj, gender, plural) {
+        if (!adjObj) return "";
+        if (plural) return adjObj.plural;
+        if (gender === "she") return adjObj.she;
+        if (gender === "it") return adjObj.it;
+        return adjObj.base; // по умолчанию — мужской род
+    }
+
+    
     function createItem(template, x, y, itemPowerMult) {
-        const adj = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
+        const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
+        const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
         const name = `${adj} ${template.baseName}`;
 
         const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
