@@ -191,6 +191,7 @@ const GameModule = (function() {
         // 3. ГЕНЕРАЦИЯ NPC
         if (typeof NpcGeneratorModule !== 'undefined') {
             npcs = NpcGeneratorModule.generateCityNpcs(gx, gy, MapModule.currentMapData, startPos);
+            RenderModule.log("NPC созданы", "info");
         }
 
 
