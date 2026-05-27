@@ -31,7 +31,7 @@ const NpcGeneratorModule = (function() {
         const rng = new SeededRandom(seedVal);
         const npcs = [];
         const h = mapGrid.length, w = mapGrid[0].length;
-        const count = rng.int(3, 6);
+        const count = rng.int(20, 60);
         let attempts = 0;
 
         // Возможные направления: [dx, dy]
