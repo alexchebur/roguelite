@@ -156,7 +156,7 @@ const MapModule = (function() {
 
         // 3. Размещаем здания по упорядоченной сетке
         while (y < height - 6) {
-            const bh = rand.int(4, 7); // Немного увеличил разброс высоты
+            const bh = rand.int(4, 8); // Немного увеличил разброс высоты
             let x = 2; 
 
             while (x < width - 6) {
