@@ -371,6 +371,70 @@ const GameModule = (function() {
         }
     }
 
+
+    // === ЛОГИКА ДВИЖЕНИЯ NPC ===
+    function moveNpcs() {
+        if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
+
+        const width = MapModule.currentMapData[0].length;
+        const height = MapModule.currentMapData.length;
+
+        window.currentCityNpcs.forEach(npc => {
+            let moved = false;
+            let attempts = 0;
+
+            // Пытаемся двигаться в текущем направлении
+            while (!moved && attempts < 4) {
+                const nx = npc.x + npc.direction.dx;
+                const ny = npc.y + npc.direction.dy;
+
+                // Проверка границ карты
+                if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+                    // Уперлись в край мира -> меняем направление
+                    npc.direction = getRandomDirection();
+                    attempts++;
+                    continue;
+                }
+
+                // Проверка стен
+                if (MapModule.isWall(nx, ny)) {
+                    // Уперлись в стену -> меняем направление
+                    npc.direction = getRandomDirection();
+                    attempts++;
+                    continue;
+                }
+
+                // Проверка других NPC (чтобы не накладывались друг на друга)
+                const blockedByNpc = window.currentCityNpcs.some(other => 
+                    other !== npc && other.x === nx && other.y === ny
+                );
+                
+                // Проверка игрока (NPC не должен наступать на игрока)
+                const blockedByPlayer = (player.x === nx && player.y === ny);
+
+                if (blockedByNpc || blockedByPlayer) {
+                    // Уперлись в существо -> меняем направление
+                    npc.direction = getRandomDirection();
+                    attempts++;
+                    continue;
+                }
+
+                // Путь свободен -> двигаемся
+                npc.x = nx;
+                npc.y = ny;
+                moved = true;
+            }
+        });
+    }
+
+    function getRandomDirection() {
+        const dirs = [
+            { dx: 0, dy: -1 }, { dx: 0, dy: 1 }, 
+            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
+        ];
+        return dirs[Math.floor(Math.random() * dirs.length)];
+    }
+    
     
     function processTurn(dx, dy) {
         const nx = player.x + dx;
