@@ -26,47 +26,39 @@ const NpcGeneratorModule = (function() {
      * @param {Array} mapGrid - двумерный массив карты города (0 - пол, 1 - стена)
      * @returns {Array} массив объектов NPC
      */
-    function generateCityNpcs(gx, gy, mapGrid) {
-        const seedVal = createSeed(gx, gy) + 555; // Уникальный сид для NPC в этом городе
+    function generateCityNpcs(gx, gy, mapGrid, playerStart) {
+        const seedVal = createSeed(gx, gy) + 555;
         const rng = new SeededRandom(seedVal);
-        
         const npcs = [];
-        const height = mapGrid.length;
-        const width = mapGrid[0].length;
-        
-        // Количество NPC зависит от размера карты, но не более 5-8
-        const npcCount = rng.int(3, 60); 
+        const h = mapGrid.length, w = mapGrid[0].length;
+        const count = rng.int(3, 6);
         let attempts = 0;
 
-        while (npcs.length < npcCount && attempts < 100) {
+        // Возможные направления: [dx, dy]
+        const directions = [
+            { dx: 0, dy: -1 }, // Вверх
+            { dx: 0, dy: 1 },  // Вниз
+            { dx: -1, dy: 0 }, // Влево
+            { dx: 1, dy: 0 }   // Вправо
+        ];
+
+        while (npcs.length < count && attempts < 200) {
             attempts++;
-            
-            // 1. Случайная позиция
-            const x = rng.int(1, width - 2);
-            const y = rng.int(1, height - 2);
+            const x = rng.int(1, w - 2), y = rng.int(1, h - 2);
+            if (mapGrid[y][x] !== 0) continue; 
+            if (Math.abs(x - playerStart.x) + Math.abs(y - playerStart.y) < 3) continue; 
+            if (npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 2)) continue; 
 
-            // 2. Проверка: это пол?
-            if (mapGrid[y][x] !== 0) continue;
-
-            // 3. Проверка: не слишком ли близко к другим NPC или лестнице (упрощенно)
-            // Можно добавить проверку дистанции до stairsUp, если нужно
-            
-            // 4. Создаем NPC
-            const title = rng.choice(NPC_DATA.titles);
-            const phrase = rng.choice(NPC_DATA.phrases);
-            
             npcs.push({
-                x: x,
-                y: y,
-                name: title,
-                char: "☺",
-                color: "#58a6ff", // Синий цвет для дружественных
-                dialog: phrase,
+                x, y,
+                name: rng.choice(NPC_DATA.titles),
+                char: "☺", color: "#58a6ff",
+                dialog: rng.choice(NPC_DATA.phrases),
                 isNPC: true,
-                id: `npc_${x}_${y}` // Уникальный ID для этого NPC
+                // Выбираем начальное случайное направление
+                direction: directions[rng.int(0, 3)] 
             });
         }
-
         return npcs;
     }
 
