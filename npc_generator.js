@@ -1,105 +1,79 @@
 /**
  * МОДУЛЬ ГЕНЕРАЦИИ NPC (npc_generator.js)
- * Создает нейтральных персонажей с диалогами и квестами.
- * Зависит от: name_generator.js (SeededRandom, createSeed)
+ * Создает нейтральных персонажей для городов.
  */
-
-if (typeof SeededRandom === 'undefined') {
-    console.error("Ошибка: name_generator.js должен быть загружен перед npc_generator.js");
-}
 
 const NpcGeneratorModule = (function() {
     'use strict';
 
-    // Базы данных для генерации
+    // Базы данных
     const NPC_DATA = {
-        titles: ["Странник", "Торговец", "Изгнанник", "Мудрец", "Наемник", "Бродяга", "Кузнец", "Алхимик"],
-        
-        origins: [
-            "из далеких земель", "из разрушенной деревни", "из глубоких пещер", 
-            "из забытого храма", "с поверхности", "из другого измерения"
-        ],
-
-        dialogStart: [
-            "Приветствую, путник.", "Осторожнее здесь.", "Редко вижу живых в этих местах.", 
-            "У меня есть информация.", "Ты выглядишь сильным.", "Не доверяй теням."
-        ],
-
-        dialogMiddle: [
-            "Говорят, на глубине скрыты сокровища.", "Воздух здесь становится тяжелее.", 
-            "Я видел странные огни впереди.", "Мой товар редкий, но полезный.", 
-            "Берегись красных глаз в темноте.", "Древние руны предупреждают об опасности."
-        ],
-
-        dialogEnd: [
-            "Удачи тебе.", "Да пребудет с тобой сила.", "Возвращайся целым.", 
-            "Помни о цене знаний.", "До встречи в хабе.", "Свет да осветит твой путь."
-        ],
-
-        questHints: [
-            "Найди древний артефакт в следующей комнате.", 
-            "Принеси мне голову вожака орков.", 
-            "Исследуй скрытый проход за стеной.", 
-            "Собери 3 лечебных травы в этой локации."
+        titles: ["Стражник", "Торговец", "Старейшина", "Пьяница", "Кузнец", "Бродяга"],
+        phrases: [
+            "Добро пожаловать в наш город.",
+            "Осторожнее за стенами, там полно тварей.",
+            "Хочешь купить чего-нибудь?",
+            "Говорят, в подземельях на севере нашли золото.",
+            "Я видел, как ты входил. Ты выглядишь опасно.",
+            "Мирного тебе пути."
         ]
     };
 
     /**
-     * Генерирует случайного NPC для конкретных координат
-     * @param {number} x - глобальная X
-     * @param {number} y - глобальная Y
-     * @param {object} startPos - позиция спавна игрока (чтобы не спавнить NPC прямо на нем)
-     * @returns {object|null} объект NPC или null, если NPC на этом уровне нет (шанс 70%)
+     * Генерирует список NPC для города
+     * @param {number} gx - глобальная X
+     * @param {number} gy - глобальная Y
+     * @param {Array} mapGrid - двумерный массив карты города (0 - пол, 1 - стена)
+     * @returns {Array} массив объектов NPC
      */
-    function generateNPC(x, y, startPos) {
-        // Уникальный сид для NPC этого уровня
-        const seedVal = createSeed(x, y) + 777; 
+    function generateCityNpcs(gx, gy, mapGrid) {
+        const seedVal = createSeed(gx, gy) + 555; // Уникальный сид для NPC в этом городе
         const rng = new SeededRandom(seedVal);
-
-        // Шанс появления NPC на уровне (30%)
-        if (rng.next() > 0.3) {
-            return null;
-        }
-
-        // Генерация имени/титла
-        const title = rng.choice(NPC_DATA.titles);
-        const origin = rng.choice(NPC_DATA.origins);
-        const name = `${title} ${origin}`; // Упрощенное имя
-
-        // Генерация позиции (случайная точка на карте, но не на старте)
-        // Примечание: точную позицию мы определим позже при спавне, 
-        // здесь мы только решаем, "кто" это.
         
-        // Генерация диалога
-        const p1 = rng.choice(NPC_DATA.dialogStart);
-        const p2 = rng.choice(NPC_DATA.middle ? NPC_DATA.dialogMiddle : NPC_DATA.dialogStart); // fallback
-        const p3 = rng.choice(NPC_DATA.dialogEnd);
-        const fullDialog = `${p1} ${p2} ${p3}`;
+        const npcs = [];
+        const height = mapGrid.length;
+        const width = mapGrid[0].length;
+        
+        // Количество NPC зависит от размера карты, но не более 5-8
+        const npcCount = rng.int(3, 6); 
+        let attempts = 0;
 
-        // Шанс наличия квеста (если есть диалог)
-        let quest = null;
-        if (rng.next() < 0.4) { // 40% шанс квеста у NPC
-            quest = {
-                type: "fetch", // заглушка типа
-                description: rng.choice(NPC_DATA.questHints),
-                completed: false,
-                reward: "gold" // заглушка награды
-            };
+        while (npcs.length < npcCount && attempts < 100) {
+            attempts++;
+            
+            // 1. Случайная позиция
+            const x = rng.int(1, width - 2);
+            const y = rng.int(1, height - 2);
+
+            // 2. Проверка: это пол?
+            if (mapGrid[y][x] !== 0) continue;
+
+            // 3. Проверка: не слишком ли близко к другим NPC или лестнице (упрощенно)
+            // Можно добавить проверку дистанции до stairsUp, если нужно
+            
+            // 4. Создаем NPC
+            const title = rng.choice(NPC_DATA.titles);
+            const phrase = rng.choice(NPC_DATA.phrases);
+            
+            npcs.push({
+                x: x,
+                y: y,
+                name: title,
+                char: "☺",
+                color: "#58a6ff", // Синий цвет для дружественных
+                dialog: phrase,
+                isNPC: true,
+                id: `npc_${x}_${y}` // Уникальный ID для этого NPC
+            });
         }
 
-        return {
-            name: name,
-            char: "☺", // Символ на карте
-            color: "#58a6ff", // Цвет (синий, как акцент)
-            dialog: fullDialog,
-            quest: quest,
-            isNPC: true,
-            x: null, y: null // Координаты будут назначены при размещении
-        };
+        return npcs;
     }
 
     return {
-        generateNPC: generateNPC
+        generateCityNpcs: generateCityNpcs
+    };
+})();
     };
 
 })();
