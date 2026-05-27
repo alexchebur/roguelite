@@ -203,7 +203,7 @@ const MapModule = (function() {
         
         // 1. Определяем "тип" города (плотность застройки)
         // 0.3 - маленькая деревня, 0.9 - огромный мегаполис
-        const density = rand.next() * 0.6 + 0.3; 
+        const density = rand.next() * 0.3 + 0.3; 
         
         // Генерируем планировку с учетом плотности
         currentMapData = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
