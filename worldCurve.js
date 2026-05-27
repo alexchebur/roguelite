@@ -80,9 +80,10 @@ const WorldCurveModule = (function() {
             const depth = Math.abs(x) + Math.abs(y);
             // Более плавный рост: 1.08 вместо 1.15. 
             // На глубине 0 множитель будет ~1.15, на глубине 10 ~2.5 (вместо 4.0)
-            return 1.0 * Math.pow(1.08, depth) + 0.1; 
+            return 1.0 * Math.pow(1.02, depth) + 0.0; 
         },
 
+    
         /**
          * Множитель силы предметов (качества) от глубины
          */
