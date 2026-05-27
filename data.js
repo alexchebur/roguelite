@@ -1,6 +1,13 @@
 // =========================== Модуль данных ===========================
 const DataModule = (function() {
-    const ITEM_ADJECTIVES = ["Ржавый", "Новый", "Тяжелый", "Острый", "Древний", "Магический"];
+    const ITEM_ADJECTIVES = [
+        { base: "Ржавый", she: "Ржавая", it: "Ржавое", plural: "Ржавые" },
+        { base: "Новый", she: "Новая", it: "Новое", plural: "Новые" },
+        { base: "Тяжелый", she: "Тяжелая", it: "Тяжелое", plural: "Тяжелые" },
+        { base: "Острый", she: "Острая", it: "Острое", plural: "Острые" },
+        { base: "Древний", she: "Древняя", it: "Древнее", plural: "Древние" },
+        { base: "Магический", she: "Магическая", it: "Магическое", plural: "Магические" }
+    ];
 
     const ENEMY_TYPES = [
         // Базовые (глубина 1-3)
@@ -31,20 +38,21 @@ const DataModule = (function() {
     ];
 
     const ITEM_TYPES = [
-        // ОРУЖИЕ (stat: "atk")
-        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5] },
-        { type: "weapon", char: "^", color: "#FFD700", baseName: "Топор", stat: "atk", val: [3, 7] },
-        { type: "weapon", char: ")", color: "#FFD700", baseName: "Булава", stat: "atk", val: [2, 6] },
-        { type: "weapon", char: "(", color: "#FFD700", baseName: "Лук", stat: "atk", val: [3, 6] },
-        { type: "weapon", char: "*", color: "#FF9800", baseName: "Кинжал", stat: "atk", val: [1, 3] },
-        { type: "weapon", char: "|", color: "#B39DDB", baseName: "Посох", stat: "atk", val: [1, 4] },
+        // === ОРУЖИЕ (stat: "atk") ===
+        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5], gender: "he", plural: false },
+        { type: "weapon", char: "^", color: "#FFD700", baseName: "Топор", stat: "atk", val: [3, 7], gender: "he", plural: false },
+        { type: "weapon", char: ")", color: "#FFD700", baseName: "Булава", stat: "atk", val: [2, 6], gender: "she", plural: false },
+        { type: "weapon", char: "(", color: "#FFD700", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false },
+        { type: "weapon", char: "*", color: "#FF9800", baseName: "Кинжал", stat: "atk", val: [1, 3], gender: "he", plural: false },
+        { type: "weapon", char: "|", color: "#B39DDB", baseName: "Посох", stat: "atk", val: [1, 4], gender: "he", plural: false },
         
-        // БРОНЯ (stat: "def")
-        { type: "armor", char: "]", color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3] },
-        { type: "armor", char: "[", color: "#9E9E9E", baseName: "Кольчуга", stat: "def", val: [3, 6] },
-        { type: "armor", char: "}", color: "#795548", baseName: "Щит", stat: "def", val: [2, 4] },
-        { type: "armor", char: "o", color: "#4CAF50", baseName: "Наголенники", stat: "def", val: [1, 3] },
-        { type: "armor", char: "{", color: "#8D6E63", baseName: "Плащ теней", stat: "def", val: [2, 3] },
+        // === БРОНЯ (stat: "def") ===
+        { type: "armor", char: "]", color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3], gender: "she", plural: false },
+        { type: "armor", char: "[", color: "#9E9E9E", baseName: "Кольчуга", stat: "def", val: [3, 6], gender: "she", plural: false },
+        { type: "armor", char: "}", color: "#795548", baseName: "Щит", stat: "def", val: [2, 4], gender: "he", plural: false },
+        { type: "armor", char: "o", color: "#4CAF50", baseName: "Наголенники", stat: "def", val: [1, 3], gender: "he", plural: true },
+        { type: "armor", char: "{", color: "#8D6E63", baseName: "Плащ теней", stat: "def", val: [2, 3], gender: "he", plural: false }
+    ];
         
         // ЗЕЛЬЯ И ЕДА (effect: "heal" или "buff_atk")
         { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
