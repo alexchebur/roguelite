@@ -173,6 +173,7 @@ const GameModule = (function() {
     function loadCityLevel(gx, gy, cityName) {
         enemies = []; // В городах нет врагов
         items = [];
+        npcs = [];
         explored.clear();
         
         // 1. Генерируем карту города
