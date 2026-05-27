@@ -4,6 +4,7 @@ const GameModule = (function() {
     let player = null;
     let enemies = [];
     let items = [];
+    let npcs = []; // <--- ДОБАВИТЬ СЮДА
     let explored = new Set();
     let busy = false;
     
