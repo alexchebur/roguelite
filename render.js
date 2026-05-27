@@ -49,7 +49,7 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
-    function draw(player, enemies, items) {
+    function draw(player, enemies, items, npcs = []) {
         display.clear();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = getCameraOffset(player);
