@@ -171,9 +171,10 @@ const GameModule = (function() {
     // Загрузка города (без врагов)
     // Загрузка города (с NPC)
     function loadCityLevel(gx, gy, cityName) {
-        enemies = []; // В городах нет врагов
+        enemies = []; 
         items = [];
-        npcs = [];
+        npcs = []; // Очищаем локальный массив NPC
+        window.currentCityNpcs = []; // Очищаем глобальный (для безопасности)
         explored.clear();
         
         // 1. Генерируем карту города
@@ -187,34 +188,27 @@ const GameModule = (function() {
             player.y = startPos.y;
         }
         
-        // 3. Генерируем NPC используя новый модуль
-        // Передаем текущую карту из MapModule, чтобы NPC не попали в стены
-        if (typeof NpcGeneratorModule !== 'undefined') {
-            const cityNpcs = NpcGeneratorModule.generateCityNpcs(gx, gy, MapModule.currentMapData);
-            // Мы используем массив enemies для всех существ, кроме игрока, 
-            // но помечаем их как isNPC, чтобы боевая система их игнорировала или обрабатывала иначе.
-            // Для простоты добавим их в отдельный массив npcs в GameModule, если он есть, 
-            // или просто в enemies, но с флагом.
-            // Давайте добавим отдельный массив npcs в начало GameModule, если его нет.
-            
-            // Добавляем NPC в список сущностей для отрисовки
-            // Примечание: RenderModule.draw ожидает enemies и items. 
-            // Нам нужно либо добавить npcs в render.js, либо временно добавить их в enemies.
-            // Лучший вариант: добавить поддержку npcs в render.js.
-            
-            // Пока что сохраним их в глобальной переменной модуля игры
-            window.currentCityNpcs = cityNpcs; 
-        } else {
-            window.currentCityNpcs = [];
+        // 3. Генерируем NPC
+        if (typeof NpcGeneratorModule !== 'undefined' && NpcGeneratorModule.generateCityNpcs) {
+            try {
+                // Генерируем NPC и сохраняем И в npcs, И в window.currentCityNpcs
+                const generatedNpcs = NpcGeneratorModule.generateCityNpcs(gx, gy, MapModule.currentMapData, startPos);
+                npcs = generatedNpcs;
+                window.currentCityNpcs = generatedNpcs;
+            } catch (e) {
+                console.error("Ошибка генерации NPC:", e);
+                npcs = [];
+                window.currentCityNpcs = [];
+            }
         }
 
-        // 4. Спавним предметы (торговля или лут)
+        // 4. Спавним предметы
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                6, // чуть больше предметов в городе
+                6,
                 1.0,
                 2
             );
@@ -227,9 +221,8 @@ const GameModule = (function() {
         };
         
         currentWorldTrend = null;
-        renderFrame();
-    }
-    
+        renderFrame(); // Теперь здесь npcs уже заполнен
+    }    
     // Загрузка подземелья с указанным типом и глубиной
     // В loadDungeonLevel добавьте параметр entryPoint
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
@@ -632,14 +625,10 @@ const GameModule = (function() {
     function renderFrame() {
         if (!player) return;
         
-        // Важно: передаем npcs четвертым аргументом, если они есть
-        // Если вы еще не добавили NPC, можно оставить 3 аргумента, но лучше сразу 4
-        const vis = RenderModule.draw(player, enemies, items, npcs || []);
+        // Передаем локальный массив npcs
+        const vis = RenderModule.draw(player, enemies, items, npcs);
         
-        // Обновляем исследованную область
         vis.forEach(k => explored.add(k));
-        
-        // Обновляем интерфейс и миникарту
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawMinimap(player, explored);
     }
