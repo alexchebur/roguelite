@@ -160,6 +160,8 @@ const GameModule = (function() {
         currentDungeonTypeName = null;
         currentDungeonFullName = null;
         enemies = [];
+        npcs = [];             // <--- ДОБАВИТЬ
+        window.currentCityNpcs = []; // <--- ДОБАВИТЬ
         items = [];
         explored.clear();
        
