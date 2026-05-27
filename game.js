@@ -295,20 +295,33 @@ const GameModule = (function() {
     }
     
     // Отрисовка глобальной карты
+
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
         
-        document.getElementById("ui-loc-name").textContent = "Глобальная карта";
-        document.getElementById("ui-loc-desc").textContent = "Исследуйте мир, находите города и подземелья";
-        document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА | Координаты: ${playerPos.x}, ${playerPos.y}`;
+        // Обновляем координаты вручную
         document.getElementById("ui-loc-coords").textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         
-        document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
-        document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
-        
-        const invDiv = document.getElementById("inventory-list");
-        if (invDiv) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Недоступно</div>";
+        // Если игрок уже создан (вышел из подземелья или только начал), обновляем UI штатным методом
+        if (player) {
+            const globalLocData = {
+                fullName: "Глобальная карта",
+                description: "Исследуйте мир, находите города и подземелья",
+                themeName: "Поверхность"
+            };
+            // updateUI автоматически отрисует HP, атаку, защиту, экипировку и инвентарь
+            RenderModule.updateUI(player, globalLocData, null);
+        } else {
+            // Для самого первого запуска (когда player ещё null) оставляем заглушки
+            document.getElementById("ui-loc-name").textContent = "Глобальная карта";
+            document.getElementById("ui-loc-desc").textContent = "Исследуйте мир, находите города и подземелья";
+            document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА | Координаты: ${playerPos.x}, ${playerPos.y}`;
+            document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
+            document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
+            const invDiv = document.getElementById("inventory-list");
+            if (invDiv) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
+        }
         
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
