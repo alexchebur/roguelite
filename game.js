@@ -25,26 +25,53 @@ const GameModule = (function() {
 
     function init() {
         try {
+            // 1. Инициализация рендеринга
+            if (typeof RenderModule === 'undefined') {
+                throw new Error("RenderModule не загружен");
+            }
             RenderModule.init();
         } catch (e) {
-            console.error(e);
+            console.error("Критическая ошибка при инициализации:", e);
+            document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
             return;
         }
 
-        // Запускаем в глобальном режиме
+        // 2. Установка начального режима
         gameMode = 'global';
         
-        // Начальная позиция на глобальной карте с поиском безопасной клетки
-        const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
-        RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
+        // 3. Поиск безопасной стартовой позиции на глобальной карте
+        if (typeof GlobalMapModule !== 'undefined') {
+            const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
+            RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
+        } else {
+            RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
+            return;
+        }
         
+        // 4. Первая отрисовка глобальной карты
         renderGlobalMap();
         
+        // 5. Подключение управления клавиатурой
         window.addEventListener("keydown", (e) => handleInput(e));
-        addTouchControls();
         
+        // 6. Подключение сенсорного управления (для мобильных)
+        addTouchControls();
+
+        // 7. Подключение обработки кликов мышью (для осмотра врагов/NPC/предметов)
+        const mapContainer = document.getElementById("map-container");
+        if (mapContainer) {
+            // Используем mousedown, так как он срабатывает быстрее click на canvas
+            mapContainer.addEventListener("mousedown", (e) => {
+                if (gameMode === 'dungeon') {
+                    handleMapClick(e);
+                }
+            });
+        }
+        
+        // 8. Приветственные сообщения
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
-        RenderModule.log("Используйте стрелки для перемещения по миру. Входите в города (C) и подземелья (D)", "info");
+        RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
+        RenderModule.log("💡 Кликайте по врагам и предметам в подземелье, чтобы осмотреть их.", "info");
     }
     
     // === Обработка сенсорного управления ===
@@ -97,6 +124,69 @@ const GameModule = (function() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
 
+    // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ ===
+    function handleMapClick(e) {
+        if (!player || gameMode !== 'dungeon') return;
+
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        
+        // Учитываем масштабирование CSS (transform: scale)
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        // Координаты клика внутри Canvas
+        const clickX = (e.clientX - rect.left) * scaleX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+
+        // Получаем размеры одной клетки из ROT.Display
+        const tileWidth = display ? display.getOptions().width : 0; // Это может не сработать напрямую, лучше использовать COLS/ROWS
+        
+        // Более надежный способ: используем известные размеры сетки из RenderModule
+        // Но так как display - локальная переменная в RenderModule, нам нужно получить размер клетки иначе.
+        // Проще всего: ширина канваса / COLS
+        const cellW = canvas.width / RenderModule.COLS;
+        const cellH = canvas.height / RenderModule.ROWS;
+
+        // Индекс клетки на экране (sx, sy)
+        const sx = Math.floor(clickX / cellW);
+        const sy = Math.floor(clickY / cellH);
+
+        // Преобразуем экранные координаты в глобальные координаты карты
+        const cam = RenderModule.getCameraOffset(player);
+        const wx = sx + cam.x;
+        const wy = sy + cam.y;
+
+        // 1. Проверяем Врагов
+        const enemy = enemies.find(e => e.hp > 0 && e.x === wx && e.y === wy);
+        if (enemy) {
+            RenderModule.log(`👁️ Осмотр: ${enemy.name} [HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.atk}, DEF: ${enemy.def}]`, "info");
+            return;
+        }
+
+        // 2. Проверяем NPC
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+        if (npc) {
+            RenderModule.log(`👁️ Осмотр: ${npc.name} ("${npc.dialog}")`, "info");
+            return;
+        }
+
+        // 3. Проверяем Предметы
+        const item = items.find(i => i.x === wx && i.y === wy);
+        if (item) {
+             let info = "";
+             if (item.stat) info = `${item.stat.toUpperCase()}: +${item.val}`;
+             if (item.effect) info = `Эффект: ${item.effect} (${item.val})`;
+             RenderModule.log(`👁️ Предмет: ${item.name} [${info}]`, "loot");
+             return;
+        }
+        
+        // Если кликнули в пустоту, можно просто вывести координаты (для отладки)
+        // RenderModule.log(`Координаты: ${wx}, ${wy}`, "info");
+    }
+    
     // === ГЛОБАЛЬНЫЙ РЕЖИМ ===
     function processGlobalTurn(dx, dy) {
         if (busy) return;
