@@ -77,14 +77,28 @@ const NameGeneratorModule = {
     
     
     // Добавить в NameGeneratorModule
+    // === ГЕНЕРАЦИЯ НАЗВАНИЙ ГОРОДОВ (обновленная) ===
     generateCityName(x, y) {
         const seed = createSeed(x, y);
         const rng = new SeededRandom(seed);
-        const themes = ['древний', 'новый', 'северный', 'южный', 'восточный', 'западный', 'каменный', 'речной', 'лесной', 'приозёрный'];
-        const suffixes = ['град', 'город', 'бург', 'виль', 'хейм', 'форд', 'порт', 'полис', 'холм', 'дол'];
-        const prefix = rng.choice(themes);
-        const suffix = rng.choice(suffixes);
-        return prefix.charAt(0).toUpperCase() + prefix.slice(1) + suffix;
+        
+        // 1. Используем слоги из "Светлого мира" для основы названия
+        const lightTheme = NAME_COMPONENTS.themes.light;
+        
+        // Выбираем префикс и корень
+        const prefix = rng.choice(lightTheme.prefixes);
+        const root = rng.choice(lightTheme.roots);
+        
+        // Собираем основу: Префикс + Корень (иногда можно добавить еще один корень для длины)
+        let baseName = prefix + root;
+        
+        // 2. Используем классические окончания для городов
+        const citySuffixes = ['град', 'стед', 'борг', 'виль', 'хейм', 'форд', 'порт', 'полис', 'хольм', 'дол', 'фьорд', 'федль', 'карт', 'хольт', 'трис', 'трайн', 'кройн'];
+        const suffix = rng.choice(citySuffixes);
+        
+        // 3. Формируем итоговое название с большой буквы
+        // Пример: Лум + ан + град = Луманград
+        return (baseName + suffix).charAt(0).toUpperCase() + (baseName + suffix).slice(1);
     },
     
     
