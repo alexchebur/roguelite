@@ -7,6 +7,7 @@ const EntityModule = (function() {
             hp: 100, maxHp: 100,
             atk: 5, def: 3,
             level: 1, xp: 0,
+            gold: 0,
             inventory: [],
             equipment: { weapon: null, armor: null }
         };
@@ -37,14 +38,30 @@ const EntityModule = (function() {
     }
 
     function createItem(template, x, y, itemPowerMult) {
-        // 1. Генерация имени с учетом рода и числа
-        const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-        const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
-        const name = `${adj} ${template.baseName}`;
+        let name = template.baseName;
+        let finalVal = 0;
 
-        // 2. Расчет базового значения (атаки/защиты/лечения)
-        const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
-        const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
+        // 1. Логика для ЗОЛОТА (отдельная обработка)
+        if (template.type === 'gold') {
+            // Золото не получает прилагательных. 
+            // Его количество зависит от базового диапазона и множителя глубины/мира.
+            const baseAmount = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
+            finalVal = Math.max(1, Math.floor(baseAmount * itemPowerMult));
+            
+            // Формируем имя, например "55 золотых"
+            name = `${finalVal} золотых`;
+        } 
+        // 2. Логика для ОБЫЧНЫХ ПРЕДМЕТОВ (оружие, броня, зелья)
+        else {
+            // Генерация имени с учетом рода и числа
+            const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
+            const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
+            name = `${adj} ${template.baseName}`;
+
+            // Расчет базового значения (атаки/защиты/лечения)
+            const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
+            finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
+        }
 
         // 3. Создание объекта предмета
         return {
@@ -58,7 +75,7 @@ const EntityModule = (function() {
             val: finalVal,
             isItem: true,
             
-            // === НОВЫЕ СВОЙСТВА ДЛЯ ОРУЖИЯ ===
+            // === СВОЙСТВА ДЛЯ ОРУЖИЯ ===
             // Тип атаки: true - ближний бой, false - дальний
             meleeType: template.meleeType !== undefined ? template.meleeType : true,
             
@@ -72,7 +89,6 @@ const EntityModule = (function() {
             currentAmmo: template.maxAmmo || 0
         };
     }
-
     // === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по уровню ===
     function getAvailableEnemies(depth) {
         // depth вычисляется как сумма модулей координат в game.js перед вызовом
