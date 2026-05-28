@@ -288,19 +288,17 @@ const RenderModule = (function() {
                 } else {
                     // 1. Группируем предметы
                     const grouped = {};
-                    // Храним порядок появления групп, чтобы инвентарь не скакал
                     const order = []; 
 
                     player.inventory.forEach((item, originalIndex) => {
-                        // Ключ группировки: имя + тип (чтобы меч и зелье с похожим именем не смешивались)
-                        // Также учитываем maxAmmo, чтобы лук на 20 стрел не группировался с луком на 50, если такие будут
+                        // Ключ группировки: имя + тип + макс. боезапас (чтобы разные луки не смешивались)
                         const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
                         
                         if (!grouped[key]) {
                             grouped[key] = { 
-                                item: item,       // Берем первый предмет как образец для отображения
-                                count: 0,         // Количество таких предметов
-                                indices: []       // Список оригинальных индексов в массиве inventory
+                                item: item,
+                                count: 0,
+                                indices: []
                             };
                             order.push(key);
                         }
@@ -318,25 +316,26 @@ const RenderModule = (function() {
                         div.style.color = item.color;
                         
                         // Формируем текст отображения
-                        let text = `${item.char} ${item.name}`;
+                        let html = `${item.char} ${item.name}`;
                         
-                        // Добавляем значение бонуса, если это экипировка или зелье
+                        // Добавляем значение бонуса
                         if (item.val) {
-                            text += ` (+${item.val})`;
+                            html += ` (+${item.val})`;
                         }
 
                         // Если предметов больше 1, добавляем количество
                         if (group.count > 1) {
-                            text += ` <span style="opacity:0.7">(${group.count})</span>`;
+                            html += ` <span style="opacity:0.7">(${group.count})</span>`;
                         } 
-                        // Если предмет одиночный, но имеет боезапас (дальнее оружие в инвентаре)
+                        // Если предмет одиночный, но имеет боезапас
                         else if (item.maxAmmo > 0) {
-                            text += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
+                            html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
                         }
 
-                        div.textContent = text;
+                        // ВАЖНО: используем innerHTML вместо textContent, чтобы тег <span> сработал
+                        div.innerHTML = html;
                         
-                        // При клике используем ПЕРВЫЙ предмет из группы (с наименьшим индексом)
+                        // При клике используем ПЕРВЫЙ предмет из группы
                         div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
                         
                         invDiv.appendChild(div);
