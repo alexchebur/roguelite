@@ -318,7 +318,23 @@ const RenderModule = (function() {
         ctx.fillStyle = "#0F0";
         ctx.fillRect(player.x * cw, player.y * ch, cw + 1, ch + 1);
     }
+    // ... (другие функции RenderModule) ...
 
+    function updateInspector(title, details, type = "neutral") {
+        const div = document.getElementById("ui-inspector");
+        if (!div) return;
+
+        let color = "var(--text-dim)";
+        if (type === "enemy") color = "var(--danger)";
+        if (type === "loot") color = "var(--gold)";
+        if (type === "npc") color = "var(--accent)";
+
+        div.innerHTML = `
+            <div style="color: ${color}; font-weight: bold; margin-bottom: 4px;">${title}</div>
+            <div style="white-space: pre-line;">${details}</div>
+        `;
+    }
+    
     return {
         init,
         draw,
@@ -328,6 +344,7 @@ const RenderModule = (function() {
         log,
         drawMinimap,
         getCameraOffset,
+        updateInspector, 
         COLS,
         ROWS
     };
