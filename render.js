@@ -262,6 +262,7 @@ const RenderModule = (function() {
                 <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
                 <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
                 <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
+                <div class="stat-row"><span>Золото</span> <span style="color: #FFD700">$ ${player.gold}</span></div>
             `;
             
             // Отображение экипировки с боезапасом (если есть)
