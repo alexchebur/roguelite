@@ -37,21 +37,39 @@ const EntityModule = (function() {
     }
 
     function createItem(template, x, y, itemPowerMult) {
+        // 1. Генерация имени с учетом рода и числа
         const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
         const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
         const name = `${adj} ${template.baseName}`;
 
+        // 2. Расчет базового значения (атаки/защиты/лечения)
         const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
         const finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
 
+        // 3. Создание объекта предмета
         return {
-            x: x, y: y, name: name,
-            char: template.char, color: template.color,
+            x: x, y: y, 
+            name: name,
+            char: template.char, 
+            color: template.color,
             type: template.type,
             stat: template.stat,
             effect: template.effect,
             val: finalVal,
-            isItem: true
+            isItem: true,
+            
+            // === НОВЫЕ СВОЙСТВА ДЛЯ ОРУЖИЯ ===
+            // Тип атаки: true - ближний бой, false - дальний
+            meleeType: template.meleeType !== undefined ? template.meleeType : true,
+            
+            // Дальность атаки в клетках (для дальнего оружия)
+            range: template.range || 1,
+            
+            // Максимальный боезапас (если 0 или не указано - бесконечно)
+            maxAmmo: template.maxAmmo || 0,
+            
+            // Текущий боезапас (при создании равен максимальному)
+            currentAmmo: template.maxAmmo || 0
         };
     }
 
