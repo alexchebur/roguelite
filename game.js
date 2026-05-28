@@ -57,13 +57,13 @@ const GameModule = (function() {
         // 6. Подключение сенсорного управления (для мобильных)
         addTouchControls();
 
-        // 7. Подключение обработки кликов мышью (для осмотра врагов/NPC/предметов)
+        // 7. Подключение обработки кликов мышью (для ПК)
         const mapContainer = document.getElementById("map-container");
         if (mapContainer) {
-            // Используем mousedown, так как он срабатывает быстрее click на canvas
             mapContainer.addEventListener("mousedown", (e) => {
-                if (gameMode === 'dungeon') {
-                    handleMapClick(e);
+                // Проверяем, что это не мобильное устройство (чтобы не дублировать с touchend)
+                if (!isMobileDevice() && gameMode === 'dungeon') {
+                    handleMapClick(e.clientX, e.clientY);
                 }
             });
         }
@@ -71,9 +71,93 @@ const GameModule = (function() {
         // 8. Приветственные сообщения
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
         RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
-        RenderModule.log("💡 Кликайте по врагам и предметам в подземелье, чтобы осмотреть их.", "info");
+        RenderModule.log("💡 ПК: Клик для осмотра. Мобильные: Тап для осмотра, Свайп для движения.", "info");
     }
-    
+
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР) ===
+    function handleMapClick(clientX, clientY) {
+        if (!player || gameMode !== 'dungeon') return;
+
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        
+        // 1. Учитываем масштабирование CSS
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        // 2. Координаты внутри Canvas
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        // 3. Размер клетки
+        const cellW = canvas.width / RenderModule.COLS;
+        const cellH = canvas.height / RenderModule.ROWS;
+
+        // 4. Индекс клетки на экране
+        const sx = Math.floor(clickX / cellW);
+        const sy = Math.floor(clickY / cellH);
+
+        // 5. Глобальные координаты карты
+        const cam = RenderModule.getCameraOffset(player);
+        const wx = sx + cam.x;
+        const wy = sy + cam.y;
+
+        // 6. Поиск сущности
+        
+        // Враги
+        const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
+        if (enemy) {
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(
+                    `⚔️ ${enemy.name}`, 
+                    `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, 
+                    "enemy"
+                );
+            }
+            RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
+            return;
+        }
+
+        // NPC
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+        if (npc) {
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(
+                    `☺ ${npc.name}`, 
+                    `"${npc.dialog}"`, 
+                    "npc"
+                );
+            }
+            RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            return;
+        }
+
+        // Предметы
+        const item = items.find(i => i.x === wx && i.y === wy);
+        if (item) {
+             let details = "";
+             if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
+             if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
+             
+             if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(
+                    `🎒 ${item.name}`, 
+                    details, 
+                    "loot"
+                );
+             }
+            RenderModule.log(`Предмет: ${item.name}`, "loot");
+            return;
+        }
+
+        // Пусто
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
+        }
+    }
+
     // === Обработка сенсорного управления ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
@@ -83,6 +167,66 @@ const GameModule = (function() {
             console.warn("Canvas не найден для сенсорного управления");
             return;
         }
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Начало касания
+        canvas.addEventListener("touchstart", (e) => {
+            if (busy || (player && player.hp <= 0)) return;
+            
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+        }, { passive: false });
+
+        // Конец касания
+        canvas.addEventListener("touchend", (e) => {
+            if (busy || (player && player.hp <= 0)) return;
+            e.preventDefault();
+
+            const touch = e.changedTouches[0];
+            const touchEndX = touch.clientX;
+            const touchEndY = touch.clientY;
+            const timeDiff = Date.now() - touchStartTime;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            // Если касание короткое (< 200мс) и палец почти не двигался (< 15px)
+            // Считаем это КЛИКОМ для осмотра
+            if (timeDiff < 200 && Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15) {
+                handleMapClick(touchEndX, touchEndY);
+                return;
+            }
+
+            // Иначе считаем это СВАЙПОМ для движения
+            if (Math.abs(deltaX) > 20 || Math.abs(deltaY) > 20) {
+                let dx = 0, dy = 0;
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    dx = deltaX > 0 ? 1 : -1;
+                } else {
+                    dy = deltaY > 0 ? 1 : -1;
+                }
+                
+                if (gameMode === 'global') {
+                    processGlobalTurn(dx, dy);
+                } else {
+                    processTurn(dx, dy);
+                }
+            }
+        }, { passive: false });
+        
+        if (isMobileDevice()) {
+            RenderModule.log("💡 Тап для осмотра, Свайп для движения", "info");
+        }
+    }
+    
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
     // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ (ОСМОТР) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР) ===
     function handleMapClick(clientX, clientY) {
