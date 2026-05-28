@@ -263,28 +263,88 @@ const RenderModule = (function() {
                 <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
                 <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
             `;
-            const w = player.equipment.weapon ? player.equipment.weapon.name : "—";
+            
+            // Отображение экипировки с боезапасом (если есть)
+            const w = player.equipment.weapon ? 
+                (player.equipment.weapon.maxAmmo > 0 ? 
+                    `${player.equipment.weapon.name} (${player.equipment.weapon.currentAmmo})` : 
+                    player.equipment.weapon.name) 
+                : "—";
+                
             const a = player.equipment.armor ? player.equipment.armor.name : "—";
+            
             document.getElementById("ui-equip").innerHTML = `
                 <div class="equip-slot">Рука: <span class="equip-item">${w}</span></div>
                 <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
             `;
+
+            // === ОТРИСОВКА ИНВЕНТАРЯ С ГРУППИРОВКОЙ ===
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
-                if (player.inventory.length === 0) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
-                player.inventory.forEach((item, idx) => {
-                    const div = document.createElement("div");
-                    div.className = "inv-item";
-                    div.style.color = item.color;
-                    div.textContent = `${item.char} ${item.name} (+${item.val})`;
-                    div.onclick = () => CombatModule.useItem(player, idx, log, () => updateUI(player, locData, worldTrend));
-                    invDiv.appendChild(div);
-                });
+                
+                if (player.inventory.length === 0) {
+                    invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
+                } else {
+                    // 1. Группируем предметы
+                    const grouped = {};
+                    // Храним порядок появления групп, чтобы инвентарь не скакал
+                    const order = []; 
+
+                    player.inventory.forEach((item, originalIndex) => {
+                        // Ключ группировки: имя + тип (чтобы меч и зелье с похожим именем не смешивались)
+                        // Также учитываем maxAmmo, чтобы лук на 20 стрел не группировался с луком на 50, если такие будут
+                        const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
+                        
+                        if (!grouped[key]) {
+                            grouped[key] = { 
+                                item: item,       // Берем первый предмет как образец для отображения
+                                count: 0,         // Количество таких предметов
+                                indices: []       // Список оригинальных индексов в массиве inventory
+                            };
+                            order.push(key);
+                        }
+                        grouped[key].count++;
+                        grouped[key].indices.push(originalIndex);
+                    });
+
+                    // 2. Отрисовываем группы
+                    order.forEach(key => {
+                        const group = grouped[key];
+                        const item = group.item;
+                        
+                        const div = document.createElement("div");
+                        div.className = "inv-item";
+                        div.style.color = item.color;
+                        
+                        // Формируем текст отображения
+                        let text = `${item.char} ${item.name}`;
+                        
+                        // Добавляем значение бонуса, если это экипировка или зелье
+                        if (item.val) {
+                            text += ` (+${item.val})`;
+                        }
+
+                        // Если предметов больше 1, добавляем количество
+                        if (group.count > 1) {
+                            text += ` <span style="opacity:0.7">(${group.count})</span>`;
+                        } 
+                        // Если предмет одиночный, но имеет боезапас (дальнее оружие в инвентаре)
+                        else if (item.maxAmmo > 0) {
+                            text += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
+                        }
+
+                        div.textContent = text;
+                        
+                        // При клике используем ПЕРВЫЙ предмет из группы (с наименьшим индексом)
+                        div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
+                        
+                        invDiv.appendChild(div);
+                    });
+                }
             }
         }
     }
-
     function log(msg, type = "info") {
         const list = document.getElementById("log-list");
         const div = document.createElement("div");
