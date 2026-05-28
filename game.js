@@ -84,6 +84,7 @@ const GameModule = (function() {
             return;
         }
     // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ (ОСМОТР) ===
+    // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ (ОСМОТР) ===
     function handleMapClick(e) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -91,60 +92,65 @@ const GameModule = (function() {
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
-        
-        // 1. Учитываем масштабирование CSS (transform: scale)
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
 
-        // 2. Координаты клика внутри Canvas (в пикселях)
         const clickX = (e.clientX - rect.left) * scaleX;
         const clickY = (e.clientY - rect.top) * scaleY;
 
-        // 3. Вычисляем размер одной клетки
-        // Используем COLS и ROWS из RenderModule, так как display недоступен напрямую
         const cellW = canvas.width / RenderModule.COLS;
         const cellH = canvas.height / RenderModule.ROWS;
 
-        // 4. Индекс клетки на экране (sx, sy)
         const sx = Math.floor(clickX / cellW);
         const sy = Math.floor(clickY / cellH);
 
-        // 5. Преобразуем экранные координаты в глобальные координаты карты
-        // getCameraOffset также экспортирован из RenderModule
         const cam = RenderModule.getCameraOffset(player);
         const wx = sx + cam.x;
         const wy = sy + cam.y;
 
-        // 6. Поиск сущности по координатам
-        
-        // Проверяем Врагов
+        // 1. Проверяем Врагов
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
-            RenderModule.log(`👁️ Осмотр: ${enemy.name} [HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.atk}, DEF: ${enemy.def}]`, "info");
+            RenderModule.updateInspector(
+                `⚔️ ${enemy.name}`, 
+                `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, 
+                "enemy"
+            );
+            RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
             return;
         }
 
-        // Проверяем NPC
+        // 2. Проверяем NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
-            RenderModule.log(`👁️ Осмотр: ${npc.name} ("${npc.dialog}")`, "info");
+            RenderModule.updateInspector(
+                `☺ ${npc.name}`, 
+                `"${npc.dialog}"`, 
+                "npc"
+            );
+            RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             return;
         }
 
-        // Проверяем Предметы
+        // 3. Проверяем Предметы
         const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
-             let info = "";
-             if (item.stat) info = `${item.stat.toUpperCase()}: +${item.val}`;
-             if (item.effect) info = `Эффект: ${item.effect} (${item.val})`;
-             RenderModule.log(`👁️ Предмет: ${item.name} [${info}]`, "loot");
-             return;
+             let details = "";
+             if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
+             if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
+             
+             RenderModule.updateInspector(
+                `🎒 ${item.name}`, 
+                details, 
+                "loot"
+            );
+            RenderModule.log(`Предмет: ${item.name}`, "loot");
+            return;
         }
-        
-        // Если кликнули в пустоту или стену
-        // RenderModule.log(`Координаты: ${wx}, ${wy}`, "info");
-    
-    }        
+
+        // 4. Если пусто
+        RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
+    }    
         canvas.addEventListener("touchstart", (e) => {
             e.preventDefault();
             
