@@ -92,10 +92,25 @@ const GameModule = (function() {
         // Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
-            if (typeof RenderModule.updateInspector === 'function') {
-                RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
+            const weapon = player.equipment.weapon;
+            
+            // Если экипировано дальнее оружие, пытаемся стрелять
+            if (weapon && !weapon.meleeType) {
+                const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
+                if (killed) {
+                    enemies = enemies.filter(e => e.hp > 0); // Удаляем труп
+                }
+                // После выстрела ход переходит к врагам
+                moveNpcs();
+                moveEnemies();
+                renderFrame();
+            } else {
+                // Иначе просто осмотр
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
+                }
+                RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
             }
-            RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
             return;
         }
 
