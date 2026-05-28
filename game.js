@@ -538,6 +538,14 @@ const GameModule = (function() {
     }
     
     function checkDeath() {
+        // Находим всех умерших врагов
+        const deadEnemies = enemies.filter(e => e.hp <= 0);
+    
+        deadEnemies.forEach(enemy => {
+            CombatModule.dropLoot(enemy, player, currentDepth, RenderModule.log);
+        });
+
+        // Удаляем мертвых из массива
         enemies = enemies.filter(e => e.hp > 0);
     }
 
@@ -585,8 +593,15 @@ const GameModule = (function() {
         const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
         if (itemIdx !== -1) {
             const item = items[itemIdx];
-            player.inventory.push(item);
-            RenderModule.log(`Подобрано: ${item.name}`, "loot");
+        
+            if (item.type === 'gold') {
+                player.gold += item.val;
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+            } else {
+                player.inventory.push(item);
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+            }
+        
             items.splice(itemIdx, 1);
         }
 
