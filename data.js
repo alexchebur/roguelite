@@ -41,15 +41,17 @@ const DataModule = (function() {
         { name: "Дракон", char: "D", color: "#FF5722", hp: [100, 150], atk: [15, 22], def: [5, 8] } // Финальный босс
     ];
     const ITEM_TYPES = [
-        // === ОРУЖИЕ (stat: "atk") ===
-        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5], gender: "he", plural: false },
-        { type: "weapon", char: "^", color: "#FFD700", baseName: "Топор", stat: "atk", val: [3, 7], gender: "he", plural: false },
-        { type: "weapon", char: ")", color: "#FFD700", baseName: "Булава", stat: "atk", val: [2, 6], gender: "she", plural: false },
-        { type: "weapon", char: "(", color: "#FFD700", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false },
-        { type: "weapon", char: "*", color: "#FF9800", baseName: "Кинжал", stat: "atk", val: [1, 3], gender: "he", plural: false },
-        { type: "weapon", char: "|", color: "#B39DDB", baseName: "Посох", stat: "atk", val: [1, 4], gender: "he", plural: false },
-        { type: "weapon", char: "Y", color: "#FFD700", baseName: "Копьё", stat: "atk", val: [4, 8], gender: "it", plural: false },
-        { type: "weapon", char: "=", color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false },
+        // === МЕЛЕЕ ОРУЖИЕ (meleeType: true) ===
+        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5], gender: "he", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: "^", color: "#FFD700", baseName: "Топор", stat: "atk", val: [3, 7], gender: "he", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: ")", color: "#FFD700", baseName: "Булава", stat: "atk", val: [2, 6], gender: "she", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: "*", color: "#FF9800", baseName: "Кинжал", stat: "atk", val: [1, 3], gender: "he", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: "Y", color: "#FFD700", baseName: "Копьё", stat: "atk", val: [4, 8], gender: "it", plural: false, meleeType: true, range: 1 }, // Можно использовать и как метательное, но пока melee
+        
+        // === ДИСТАНЦИОННОЕ ОРУЖИЕ (meleeType: false) ===
+        { type: "weapon", char: "(", color: "#FF9800", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false, meleeType: false, range: 6, maxAmmo: 20 },
+        { type: "weapon", char: "=", color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false, meleeType: false, range: 8, maxAmmo: 15 },
+        { type: "weapon", char: "|", color: "#B39DDB", baseName: "Посох огня", stat: "atk", val: [2, 4], gender: "he", plural: false, meleeType: false, range: 5, maxAmmo: 50 }, // Магическое оружие с большим запасом
         
         // === БРОНЯ (stat: "def") ===
         { type: "armor", char: "]", color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3], gender: "she", plural: false },
