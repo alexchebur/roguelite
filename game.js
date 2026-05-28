@@ -377,29 +377,29 @@ const GameModule = (function() {
     
     // === СПАВН СУЩНОСТЕЙ С УЧЕТОМ ГЛУБИНЫ ===
     function spawnDungeonEntities(gx, gy, depth) {
+        // 1. Спавн врагов
         const enemyCount = 8 + Math.floor(depth * 1.5);
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
         
         // Фильтрация врагов по глубине
         let availableEnemies = DataModule.ENEMY_TYPES;
         if (depth < 3) {
-            // Только слабые
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
         } else if (depth < 7) {
-            // Средние
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
         }
-        // Если глубина >= 7, доступны все (включая драконов)
+        // Если глубина >= 7, доступны все
 
         enemies = EntityModule.spawnEnemies(
             MapModule.currentMapData,
             player,
-            availableEnemies, // Передаем отфильтрованный список
+            availableEnemies,
             enemyCount,
             enemyMult,
             3
         );
         
+        // 2. Спавн обычных предметов (оружие, броня, зелья)
         const rng = new Math.seedrandom(`ent_${gx}_${gy}_${depth}`);
         const oldRand = Math.random;
         Math.random = rng;
@@ -410,15 +410,49 @@ const GameModule = (function() {
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                4,
+                4, // Количество обычных предметов
                 itemMult,
                 3
             );
         }
         
         Math.random = oldRand;
-    }
-    
+
+        // 3. Спавн золота на карте (разбросанные кучки)
+        // Количество кучек: 2 на 1-м уровне, +1 за каждые 2 уровня глубины
+        const goldPilesCount = 2 + Math.floor(depth / 2);
+        
+        for (let i = 0; i < goldPilesCount; i++) {
+            // Ищем свободную клетку пола
+            const pos = MapModule.getRandomFloor(player);
+            if (pos) {
+                // Находим шаблон золота в data.js
+                const goldTemplate = DataModule.ITEM_TYPES.find(item => item.type === 'gold');
+                
+                if (goldTemplate) {
+                    // Расчет количества золота: база (5-15) * множитель мира * коэффициент глубины
+                    // Чем глубже, тем больше золота в одной кучке
+                    const depthBonus = 1 + (depth * 0.5); // +50% за каждый уровень
+                    const worldMult = WorldCurveModule.getGoldMultiplier ? WorldCurveModule.getGoldMultiplier(gx, gy) : 1;
+                    
+                    // Создаем объект золота вручную, так как spawnItems может не поддерживать тип 'gold' корректно без доработок
+                    const baseAmount = Math.floor(goldTemplate.val[0] + Math.random() * (goldTemplate.val[1] - goldTemplate.val[0]));
+                    const finalAmount = Math.max(1, Math.floor(baseAmount * depthBonus * worldMult));
+
+                    items.push({
+                        x: pos.x,
+                        y: pos.y,
+                        name: `${finalAmount} золотых`,
+                        char: '$',
+                        color: '#FFD700',
+                        type: 'gold',
+                        val: finalAmount,
+                        isItem: true
+                    });
+                }
+            }
+        }
+    }    
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
