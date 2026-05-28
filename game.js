@@ -129,58 +129,96 @@ const GameModule = (function() {
     }
 
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
+    // === Обработка сенсорного управления (Движение по касанию) ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
         const canvas = mapContainer.querySelector("canvas");
         
-        if (!canvas) return;
+        if (!canvas) {
+            console.warn("Canvas не найден для сенсорного управления");
+            return;
+        }
 
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchStartTime = 0;
-
+        // Обработчик касания для движения
         canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault(); // Предотвращаем скролл страницы
+            
             if (busy || (player && player.hp <= 0)) return;
+            
+            const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            touchStartTime = Date.now();
-        }, { passive: false });
-
-        canvas.addEventListener("touchend", (e) => {
-            if (busy || (player && player.hp <= 0)) return;
-            e.preventDefault();
-
-            const touch = e.changedTouches[0];
-            const deltaX = touch.clientX - touchStartX;
-            const deltaY = touch.clientY - touchStartY;
-            const timeDiff = Date.now() - touchStartTime;
-
-            // Тап для осмотра
-            if (timeDiff < 200 && Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15) {
-                handleMapClick(touch.clientX, touch.clientY);
-                return;
+            
+            // Координаты касания относительно левого верхнего угла canvas
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            
+            // Центр экрана
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            let dx = 0, dy = 0;
+            const offsetX = touchX - centerX;
+            const offsetY = touchY - centerY;
+            
+            // Определяем направление по большей оси (горизонталь или вертикаль)
+            if (Math.abs(offsetX) > Math.abs(offsetY)) {
+                dx = offsetX > 0 ? 1 : -1;
+            } else {
+                dy = offsetY > 0 ? 1 : -1;
+            }
+            
+            // Выполняем ход
+            if (gameMode === 'global') {
+                processGlobalTurn(dx, dy);
+            } else {
+                processTurn(dx, dy);
             }
 
-            // Свайп для движения
-            if (Math.abs(deltaX) > 20 || Math.abs(deltaY) > 20) {
-                let dx = 0, dy = 0;
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    dx = deltaX > 0 ? 1 : -1;
-                } else {
-                    dy = deltaY > 0 ? 1 : -1;
+            // === ПАРАЛЛЕЛЬНАЯ ИНСПЕКЦИЯ (если попали в существо) ===
+            // Так как мы уже сделали ход, игрок мог сместиться, но мы проверяем 
+            // клетку, на которую только что попытались шагнуть (или где стоим, если стена)
+            // Для простоты вызываем инспекцию по координатам касания на карте
+            
+            // Вычисляем координаты клетки, на которую нажали
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (touch.clientX - rect.left) * scaleX;
+            const clickY = (touch.clientY - rect.top) * scaleY;
+            
+            const cellW = canvas.width / RenderModule.COLS;
+            const cellH = canvas.height / RenderModule.ROWS;
+            
+            const sx = Math.floor(clickX / cellW);
+            const sy = Math.floor(clickY / cellH);
+            
+            // Важно: камера могла сместиться, если ход был успешным. 
+            // Но для мгновенной реакции лучше использовать позицию игрока ДО хода или просто текущую.
+            // Используем текущую камеру для точности отображения того, что под пальцем СЕЙЧАС.
+            const cam = RenderModule.getCameraOffset(player);
+            const wx = sx + cam.x;
+            const wy = sy + cam.y;
+
+            // Проверяем, есть ли там кто-то, и выводим инфо
+            const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
+            if (enemy) {
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
                 }
-                
-                if (gameMode === 'global') processGlobalTurn(dx, dy);
-                else processTurn(dx, dy);
             }
+
+            const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+            if (npc) {
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
+                }
+            }
+            
         }, { passive: false });
         
         if (isMobileDevice()) {
-            RenderModule.log("💡 Тап для осмотра, Свайп для движения", "info");
+            RenderModule.log("💡 Коснитесь части экрана для движения", "info");
         }
-    }
-    
+    }    
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
