@@ -84,174 +84,158 @@ const GameModule = (function() {
             return;
         }
     // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ (ОСМОТР) ===
-    // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ (ОСМОТР) ===
-    function handleMapClick(e) {
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР) ===
+    function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
+        
+        // 1. Учитываем масштабирование CSS
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
 
-        const clickX = (e.clientX - rect.left) * scaleX;
-        const clickY = (e.clientY - rect.top) * scaleY;
+        // 2. Координаты внутри Canvas
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
 
+        // 3. Размер клетки
         const cellW = canvas.width / RenderModule.COLS;
         const cellH = canvas.height / RenderModule.ROWS;
 
+        // 4. Индекс клетки на экране
         const sx = Math.floor(clickX / cellW);
         const sy = Math.floor(clickY / cellH);
 
+        // 5. Глобальные координаты карты
         const cam = RenderModule.getCameraOffset(player);
         const wx = sx + cam.x;
         const wy = sy + cam.y;
 
-        // 1. Проверяем Врагов
+        // 6. Поиск сущности
+        
+        // Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
-            RenderModule.updateInspector(
-                `⚔️ ${enemy.name}`, 
-                `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, 
-                "enemy"
-            );
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(
+                    `⚔️ ${enemy.name}`, 
+                    `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, 
+                    "enemy"
+                );
+            }
             RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
             return;
         }
 
-        // 2. Проверяем NPC
+        // NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
-            RenderModule.updateInspector(
-                `☺ ${npc.name}`, 
-                `"${npc.dialog}"`, 
-                "npc"
-            );
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(
+                    `☺ ${npc.name}`, 
+                    `"${npc.dialog}"`, 
+                    "npc"
+                );
+            }
             RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             return;
         }
 
-        // 3. Проверяем Предметы
+        // Предметы
         const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
              let details = "";
              if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
              if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
              
-             RenderModule.updateInspector(
-                `🎒 ${item.name}`, 
-                details, 
-                "loot"
-            );
+             if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(
+                    `🎒 ${item.name}`, 
+                    details, 
+                    "loot"
+                );
+             }
             RenderModule.log(`Предмет: ${item.name}`, "loot");
             return;
         }
 
-        // 4. Если пусто
-        RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
-    }    
+        // Пусто
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
+        }
+    }
+
+    // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ (СВАЙПЫ И ТАПЫ) ===
+    function addTouchControls() {
+        const mapContainer = document.getElementById("map-container");
+        const canvas = mapContainer.querySelector("canvas");
+        
+        if (!canvas) {
+            console.warn("Canvas не найден для сенсорного управления");
+            return;
+        }
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Начало касания
         canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            
             if (busy || (player && player.hp <= 0)) return;
             
-            const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0];
-            
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
-            
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            
-            let dx = 0, dy = 0;
-            const offsetX = touchX - centerX;
-            const offsetY = touchY - centerY;
-            
-            if (Math.abs(offsetX) > Math.abs(offsetY)) {
-                dx = offsetX > 0 ? 1 : -1;
-            } else {
-                dy = offsetY > 0 ? 1 : -1;
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+        }, { passive: false });
+
+        // Конец касания
+        canvas.addEventListener("touchend", (e) => {
+            if (busy || (player && player.hp <= 0)) return;
+            e.preventDefault();
+
+            const touch = e.changedTouches[0];
+            const touchEndX = touch.clientX;
+            const touchEndY = touch.clientY;
+            const timeDiff = Date.now() - touchStartTime;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            // Если касание короткое (< 200мс) и палец почти не двигался (< 15px)
+            // Считаем это КЛИКОМ для осмотра
+            if (timeDiff < 200 && Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15) {
+                handleMapClick(touchEndX, touchEndY);
+                return;
             }
-            
-            if (gameMode === 'global') {
-                processGlobalTurn(dx, dy);
-            } else {
-                processTurn(dx, dy);
+
+            // Иначе считаем это СВАЙПОМ для движения
+            if (Math.abs(deltaX) > 20 || Math.abs(deltaY) > 20) {
+                let dx = 0, dy = 0;
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    dx = deltaX > 0 ? 1 : -1;
+                } else {
+                    dy = deltaY > 0 ? 1 : -1;
+                }
+                
+                if (gameMode === 'global') {
+                    processGlobalTurn(dx, dy);
+                } else {
+                    processTurn(dx, dy);
+                }
             }
-        });
+        }, { passive: false });
         
         if (isMobileDevice()) {
-            RenderModule.log("💡 Коснитесь части экрана для движения", "info");
+            RenderModule.log("💡 Тап для осмотра, Свайп для движения", "info");
         }
     }
     
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-
-    // === ОБРАБОТКА КЛИКА МЫШЬЮ ПО КАРТЕ ===
-    function handleMapClick(e) {
-        if (!player || gameMode !== 'dungeon') return;
-
-        const canvas = document.querySelector("#map-container canvas");
-        if (!canvas) return;
-
-        const rect = canvas.getBoundingClientRect();
-        
-        // Учитываем масштабирование CSS (transform: scale)
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-
-        // Координаты клика внутри Canvas
-        const clickX = (e.clientX - rect.left) * scaleX;
-        const clickY = (e.clientY - rect.top) * scaleY;
-
-        // Получаем размеры одной клетки из ROT.Display
-        const tileWidth = display ? display.getOptions().width : 0; // Это может не сработать напрямую, лучше использовать COLS/ROWS
-        
-        // Более надежный способ: используем известные размеры сетки из RenderModule
-        // Но так как display - локальная переменная в RenderModule, нам нужно получить размер клетки иначе.
-        // Проще всего: ширина канваса / COLS
-        const cellW = canvas.width / RenderModule.COLS;
-        const cellH = canvas.height / RenderModule.ROWS;
-
-        // Индекс клетки на экране (sx, sy)
-        const sx = Math.floor(clickX / cellW);
-        const sy = Math.floor(clickY / cellH);
-
-        // Преобразуем экранные координаты в глобальные координаты карты
-        const cam = RenderModule.getCameraOffset(player);
-        const wx = sx + cam.x;
-        const wy = sy + cam.y;
-
-        // 1. Проверяем Врагов
-        const enemy = enemies.find(e => e.hp > 0 && e.x === wx && e.y === wy);
-        if (enemy) {
-            RenderModule.log(`👁️ Осмотр: ${enemy.name} [HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.atk}, DEF: ${enemy.def}]`, "info");
-            return;
-        }
-
-        // 2. Проверяем NPC
-        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
-        if (npc) {
-            RenderModule.log(`👁️ Осмотр: ${npc.name} ("${npc.dialog}")`, "info");
-            return;
-        }
-
-        // 3. Проверяем Предметы
-        const item = items.find(i => i.x === wx && i.y === wy);
-        if (item) {
-             let info = "";
-             if (item.stat) info = `${item.stat.toUpperCase()}: +${item.val}`;
-             if (item.effect) info = `Эффект: ${item.effect} (${item.val})`;
-             RenderModule.log(`👁️ Предмет: ${item.name} [${info}]`, "loot");
-             return;
-        }
-        
-        // Если кликнули в пустоту, можно просто вывести координаты (для отладки)
-        // RenderModule.log(`Координаты: ${wx}, ${wy}`, "info");
     }
     
     // === ГЛОБАЛЬНЫЙ РЕЖИМ ===
