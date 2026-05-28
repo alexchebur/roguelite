@@ -154,22 +154,22 @@ const RenderModule = (function() {
                         ch = '.'; fg = '#8c8c8c';
                         break;
                     case 'forest':
-                        ch = '🌲'; fg = '#2e8b57';
+                        ch = 'T'; fg = '#2e8b57';
                         break;
                     case 'mountain':
-                        ch = '⛰️'; fg = '#a0a0a0';
+                        ch = '^'; fg = '#a0a0a0';
                         break;
                     case 'water':
                         ch = '≈'; fg = '#4682b4';
                         break;
                     case 'city':
-                        ch = '🏰'; fg = '#ffd700';
+                        ch = 'C'; fg = '#ffd700';
                         break;
                     case 'dungeon_entrance':
-                        ch = '🕳️'; fg = '#cd5c5c';
+                        ch = 'D'; fg = '#cd5c5c';
                         break;
                     case 'road':
-                        ch = '🟫'; fg = '#b8860b';
+                        ch = '█'; fg = '#b8860b';
                         break;
                     default:
                         ch = '·'; fg = '#555';
@@ -177,7 +177,7 @@ const RenderModule = (function() {
             
                 // Игрок в центре
                 if (gx === centerX && gy === centerY) {
-                    ch = '🧙‍♂️'; fg = '#fff';
+                    ch = '@'; fg = '#fff';
                 }
             
                 display.draw(sx, sy, ch, fg, '#000');
