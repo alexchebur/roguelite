@@ -8,17 +8,17 @@ const CombatModule = (function() {
         defender.hp -= dmg;
         
         // === ЭФФЕКТ МЕРЦАНИЯ ПРИ ПОПАДАНИИ ===
-        // Если защищается игрок - мерцает игрок, если враг - мерцает враг
-        if (defender === GameModule.getPlayer()) { // Нужна функция getPlayer в GameModule или передача флага
-             RenderModule.addBlinkEffect(defender.x, defender.y, 500, "rgba(255,0,0,0.5)");
-        } else {
-             RenderModule.addBlinkEffect(defender.x, defender.y, 500, "rgba(255,0,0,0.5)");
-        }
+        // Мерцает тот, кто получил урон.
+        RenderModule.addBlinkEffect(defender.x, defender.y, 500, "rgba(255, 0, 0, 0.5)");
 
-        logFn(`${attacker.name || "Вы"} бьет ${defender.name || "врага"} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
+        const attackerName = attacker.name || "Вы";
+        const defenderName = defender.name || "враг";
+        const verb = attackerName === "Вы" ? "бьете" : "бьет";
+        
+        logFn(`${attackerName} ${verb} ${defenderName} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
         if (defender.hp <= 0) {
-            logFn(`${defender.name || "Враг"} погибает!`, "info");
+            logFn(`${defenderName} погибает!`, "info");
             return true;
         }
         return false;
@@ -50,7 +50,7 @@ const CombatModule = (function() {
         target.hp -= dmg;
         
         // Мерцание врага при попадании стрелы
-        RenderModule.addBlinkEffect(target.x, target.y, 500, "rgba(255,255,0,0.5)");
+        RenderModule.addBlinkEffect(target.x, target.y, 500, "rgba(255, 255, 0, 0.5)");
 
         logFn(`Вы стреляете в ${target.name} из ${weapon.name} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
