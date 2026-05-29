@@ -21,7 +21,7 @@ const DataModule = (function() {
         // === УРОВЕНЬ 4-6: Человекоподобные (Оружие/Золото) и Монстры ===
         { name: "Бандит", char: "b", color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon" },
         { name: "Скелет", char: "s", color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold" },
-        { name: "Слизень", char: "j", color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [3, 5], lootType: "food" }, // Слизь съедобна? Пусть будет еда :)
+        { name: "Слизень", char: "j", color: "#00BCD4", hp: [20, 30], atk: [2, 3], def: [1, 2], lootType: "food" },
         { name: "Орк-разведчик", char: "O", color: "#8BC34A", hp: [35, 50], atk: [4, 7], def: [2, 3], lootType: "weapon" },
 
         // === УРОВЕНЬ 7-9: Серьезные противники ===
