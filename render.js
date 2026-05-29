@@ -12,6 +12,8 @@ const RenderModule = (function() {
     
     // Храним текущее смещение камеры, чтобы эффекты рисовались правильно
     let currentCameraOffset = { x: 0, y: 0 };
+    // Ссылка на текущего игрока для обновления камеры в цикле анимации
+    let currentPlayerRef = null;
 
     function init() {
         if (typeof ROT === 'undefined') {
@@ -62,6 +64,7 @@ const RenderModule = (function() {
 
     function updateEffects() {
         if (activeEffects.length === 0) return;
+        if (!display) return; // Защита до инициализации
 
         const now = Date.now();
         // Фильтруем завершившиеся эффекты
@@ -80,9 +83,6 @@ const RenderModule = (function() {
                 // Эффект должен рисоваться относительно видимой области экрана
                 const screenX = (effect.x - currentCameraOffset.x) * tileW;
                 const screenY = (effect.y - currentCameraOffset.y) * tileH;
-
-                // Проверяем, попадает ли эффект в видимую область (опционально, но полезно для оптимизации)
-                // if (screenX < -tileW || screenX > COLS * tileW || screenY < -tileH || screenY > ROWS * tileH) return;
 
                 if (effect.type === 'blink') {
                     const alpha = Math.abs(Math.sin(now * 0.02)) * 0.5; 
@@ -140,6 +140,9 @@ const RenderModule = (function() {
     }
 
     function getCameraOffset(player) {
+        // Обновляем глобальную ссылку на игрока для цикла анимации
+        currentPlayerRef = player;
+        
         const cam = {
             x: player.x - Math.floor(COLS / 2),
             y: player.y - Math.floor(ROWS / 2)
@@ -151,9 +154,12 @@ const RenderModule = (function() {
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
     function draw(player, enemies, items, npcs = []) {
+        // Принудительно обновляем камеру перед отрисовкой
+        getCameraOffset(player);
+
         display.clear();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-        const cam = getCameraOffset(player);
+        const cam = currentCameraOffset; // Используем уже вычисленное
 
         const visible = new Set();
         fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
