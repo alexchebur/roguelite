@@ -1,5 +1,22 @@
 // =========================== Модуль боя и использования предметов ===========================
 const CombatModule = (function() {
+    
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ АНИМАЦИИ УДАРА ===
+    function triggerHitAnimation() {
+        let frames = 0;
+        const maxFrames = 5; // Количество кадров анимации (примерно 150-200мс)
+        
+        const interval = setInterval(() => {
+            frames++;
+            RenderModule.requestRedraw(); // Принудительно перерисовываем экран
+            
+            if (frames >= maxFrames) {
+                clearInterval(interval);
+                RenderModule.requestRedraw(); // Финальная перерисовка, чтобы вернуть обычный символ
+            }
+        }, 40); // Частота обновления (40мс = 25 FPS для анимации)
+    }
+
     // === АТАКА БЛИЖНЕГО БОЯ ===
     function attack(attacker, defender, logFn) { 
         let dmg = Math.max(1, attacker.atk - defender.def);
@@ -9,9 +26,11 @@ const CombatModule = (function() {
         defender.hp -= dmg;
         
         // === ЭФФЕКТ ВСПЫШКИ ===
-        // Устанавливаем время окончания вспышки (текущее время + 200мс)
-        defender.flashEndTime = Date.now() + 200;
-        defender.flashChar = "!"; // Символ восклицания при ударе
+        defender.flashEndTime = Date.now() + 200; // Длительность 200мс
+        defender.flashChar = "!"; 
+        
+        // Запускаем анимацию перерисовки
+        triggerHitAnimation();
 
         const attackerName = attacker.name || "Вы";
         const defenderName = defender.name || "враг";
@@ -28,12 +47,12 @@ const CombatModule = (function() {
 
     // === ДИСТАНЦИОННАЯ АТАКА ===
     function rangedAttack(player, target, weapon, logFn, updateUiFn) {
+        // ... (проверки без изменений) ...
         if (!weapon || weapon.meleeType !== false) return false;
         if (weapon.currentAmmo <= 0) {
             logFn(`Нет боеприпасов для ${weapon.name}!`, "combat");
             return false;
         }
-
         const dist = Math.abs(player.x - target.x) + Math.abs(player.y - target.y);
         if (dist > weapon.range) {
             logFn(`${target.name} слишком далеко для ${weapon.name} (макс. ${weapon.range})!`, "combat");
@@ -41,16 +60,18 @@ const CombatModule = (function() {
         }
 
         weapon.currentAmmo--;
-
         let dmg = Math.max(1, player.atk - target.def); 
         let crit = Math.random() < 0.1;
         if (crit) dmg = Math.floor(dmg * 1.5);
 
         target.hp -= dmg;
         
-        // === ЭФФЕКТ ВСПЫШКИ ДЛЯ ЦЕЛИ ===
+        // === ЭФФЕКТ ВСПЫШКИ ===
         target.flashEndTime = Date.now() + 200;
-        target.flashChar = "*"; // Звездочка при попадании стрелы
+        target.flashChar = "*";
+        
+        // Запускаем анимацию перерисовки
+        triggerHitAnimation();
 
         logFn(`Вы стреляете в ${target.name} из ${weapon.name} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
@@ -62,6 +83,8 @@ const CombatModule = (function() {
         }
         return false;
     }
+
+    // ... (остальной код combat.js без изменений) ...
 
     function dropLoot(enemy, depth, itemsArray, logFn) {
         if (!enemy.lootType) return;
