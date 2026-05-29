@@ -271,7 +271,7 @@ const RenderModule = (function() {
                     case 'water': ch = '≈'; fg = '#4682b4'; break;
                     case 'city': ch = 'C'; fg = '#ffd700'; break;
                     case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
-                    case 'road': ch = '░'; fg = '#b8860b'; break;
+                    case 'road': ch = '▮'; fg = '#b8860b'; break;
                     default: ch = '·'; fg = '#555';
                 }
              
