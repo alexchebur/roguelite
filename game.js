@@ -29,6 +29,7 @@ const GameModule = (function() {
                 throw new Error("RenderModule не загружен");
             }
             RenderModule.init();
+            RenderModule.setRedrawCallback(renderFrame);
         } catch (e) {
             console.error("Критическая ошибка при инициализации:", e);
             document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
