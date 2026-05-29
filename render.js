@@ -5,6 +5,10 @@ const RenderModule = (function() {
     const COLS = 60;
     const ROWS = 40;
     const FONT_SIZE = 14;
+    
+    // === СИСТЕМА ЭФФЕКТОВ ===
+    let activeEffects = []; // Массив активных анимаций
+    let animationFrameId = null;
 
     function init() {
         if (typeof ROT === 'undefined') {
@@ -39,6 +43,100 @@ const RenderModule = (function() {
 
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
+        
+        // Запускаем цикл анимации
+        startAnimationLoop();
+    }
+
+    // === ЦИКЛ АНИМАЦИИ ===
+    function startAnimationLoop() {
+        function loop() {
+            updateEffects();
+            animationFrameId = requestAnimationFrame(loop);
+        }
+        loop();
+    }
+
+    function updateEffects() {
+        if (activeEffects.length === 0) return;
+
+        const now = Date.now();
+        // Фильтруем завершившиеся эффекты
+        activeEffects = activeEffects.filter(effect => now < effect.endTime);
+
+        if (activeEffects.length > 0) {
+            // Перерисовываем только если есть эффекты, чтобы не нагружать CPU зря
+            // Но так как у нас нет слоя поверх canvas в ROT.js, нам придется рисовать прямо на контексте
+            const ctx = display.getContainer().getContext('2d');
+            
+            // Сохраняем состояние контекста
+            ctx.save();
+            
+            // Применяем тот же масштаб, что и у canvas через CSS
+            // (Это сложно сделать точно внутри canvas без учета CSS transform, 
+            // поэтому мы будем рисовать в координатах клетки, предполагая, что canvas не скейлится внутри JS)
+            // ROT.js сам управляет размером шрифта.
+            
+            const options = display.getOptions();
+            const tileW = options.width; // Ширина клетки в пикселях (примерно)
+            const tileH = options.height;
+
+            activeEffects.forEach(effect => {
+                if (effect.type === 'blink') {
+                    // Мерцание: рисуем полупрозрачный квадрат или меняем цвет символа
+                    // Проще всего нарисовать красный/белый оверлей
+                    const progress = (effect.endTime - now) / (effect.duration);
+                    const alpha = Math.abs(Math.sin(now * 0.02)) * 0.5; // Пульсация прозрачности
+                    
+                    ctx.fillStyle = effect.color || `rgba(255, 0, 0, ${alpha})`;
+                    ctx.fillRect(effect.x * tileW, effect.y * tileH, tileW, tileH);
+                } 
+                else if (effect.type === 'projectile') {
+                    // Летящая точка
+                    const totalDist = Math.sqrt(Math.pow(effect.tx - effect.sx, 2) + Math.pow(effect.ty - effect.sy, 2));
+                    const totalTime = effect.duration;
+                    const elapsed = now - effect.startTime;
+                    const t = Math.min(1, elapsed / totalTime);
+
+                    // Интерполяция позиции
+                    const curX = effect.sx + (effect.tx - effect.sx) * t;
+                    const curY = effect.sy + (effect.ty - effect.sy) * t;
+
+                    ctx.fillStyle = "#FFFF00"; // Желтый цвет
+                    ctx.font = `${options.fontSize}px ${options.fontFamily}`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    
+                    // Рисуем точку '.'
+                    ctx.fillText(".", curX * tileW + tileW/2, curY * tileH + tileH/2);
+                }
+            });
+
+            ctx.restore();
+        }
+    }
+
+    // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
+    function addBlinkEffect(x, y, duration = 500, color = null) {
+        activeEffects.push({
+            type: 'blink',
+            x: x, y: y,
+            startTime: Date.now(),
+            endTime: Date.now() + duration,
+            duration: duration,
+            color: color
+        });
+    }
+
+    function addProjectileEffect(sx, sy, tx, ty, duration = 300) {
+        activeEffects.push({
+            type: 'projectile',
+            sx: sx, sy: sy,
+            tx: tx, ty: ty,
+            startTime: Date.now(),
+            endTime: Date.now() + duration,
+            duration: duration
+        });
     }
 
     function getCameraOffset(player) {
@@ -98,7 +196,6 @@ const RenderModule = (function() {
             }
         });
 
-        // ... (код отрисовки врагов) ...
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
@@ -109,19 +206,16 @@ const RenderModule = (function() {
             }
         });
 
-        // === ОТРИСОВКА NPC (добавлено) ===
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x;
                 const sy = npc.y - cam.y;
-                // NPC видны всегда, если в поле зрения (FOV)
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
                     display.draw(sx, sy, npc.char, npc.color);
                 }
             });
         }
 
-        // Игрок
         display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), player.char, player.color);
 
         return visible;
@@ -142,7 +236,6 @@ const RenderModule = (function() {
                 let ch, fg;
                 let tileType = 'plain';
             
-                // Получаем тип тайла из глобального модуля
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     tileType = GlobalMapModule.getDisplayTileType(gx, gy);
                 } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
@@ -150,32 +243,16 @@ const RenderModule = (function() {
                 }
             
                 switch(tileType) {
-                    case 'plain':
-                        ch = '.'; fg = '#8c8c8c';
-                        break;
-                    case 'forest':
-                        ch = 'T'; fg = '#2e8b57';
-                        break;
-                    case 'mountain':
-                        ch = '^'; fg = '#a0a0a0';
-                        break;
-                    case 'water':
-                        ch = '≈'; fg = '#4682b4';
-                        break;
-                    case 'city':
-                        ch = 'C'; fg = '#ffd700';
-                        break;
-                    case 'dungeon_entrance':
-                        ch = 'D'; fg = '#cd5c5c';
-                        break;
-                    case 'road':
-                        ch = '█'; fg = '#b8860b';
-                        break;
-                    default:
-                        ch = '·'; fg = '#555';
+                    case 'plain': ch = '.'; fg = '#8c8c8c'; break;
+                    case 'forest': ch = 'T'; fg = '#2e8b57'; break;
+                    case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
+                    case 'water': ch = '≈'; fg = '#4682b4'; break;
+                    case 'city': ch = 'C'; fg = '#ffd700'; break;
+                    case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
+                    case 'road': ch = '#'; fg = '#b8860b'; break;
+                    default: ch = '·'; fg = '#555';
                 }
-            
-                // Игрок в центре
+             
                 if (gx === centerX && gy === centerY) {
                     ch = '@'; fg = '#fff';
                 }
@@ -184,8 +261,7 @@ const RenderModule = (function() {
             }
         }
     }
-    
-    // === МИНИКАРТА ДЛЯ ГЛОБАЛЬНОЙ КАРТЫ ===
+     
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
@@ -197,7 +273,6 @@ const RenderModule = (function() {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
     
-        // Размер миникарты: 20x20 клеток вокруг центра
         const MINIMAP_SIZE = 20;
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
@@ -229,7 +304,6 @@ const RenderModule = (function() {
                     default: color = '#333';
                 }
             
-                // Игрок
                 if (gx === centerX && gy === centerY) {
                     color = '#0f0';
                 }
@@ -240,7 +314,6 @@ const RenderModule = (function() {
         }
     }
 
-    // === UI И ЛОГ ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
@@ -255,17 +328,15 @@ const RenderModule = (function() {
             document.getElementById("ui-loc-type").textContent = typeText;
         }
         
-        // Если есть игрок, показываем его статы
         if (player && player.hp !== undefined) {
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
                 <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
                 <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
                 <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
-                <div class="stat-row"><span>Золото</span> <span style="color: #FFD700">$ ${player.gold}</span></div>
+                <div class="stat-row"><span>Золото</span> <span style="color: #FFD700">$ ${player.gold || 0}</span></div>
             `;
             
-            // Отображение экипировки с боезапасом (если есть)
             const w = player.equipment.weapon ? 
                 (player.equipment.weapon.maxAmmo > 0 ? 
                     `${player.equipment.weapon.name} (${player.equipment.weapon.currentAmmo})` : 
@@ -279,7 +350,6 @@ const RenderModule = (function() {
                 <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
             `;
 
-            // === ОТРИСОВКА ИНВЕНТАРЯ С ГРУППИРОВКОЙ ===
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
@@ -287,27 +357,20 @@ const RenderModule = (function() {
                 if (player.inventory.length === 0) {
                     invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
                 } else {
-                    // 1. Группируем предметы
                     const grouped = {};
                     const order = []; 
 
                     player.inventory.forEach((item, originalIndex) => {
-                        // Ключ группировки: имя + тип + макс. боезапас (чтобы разные луки не смешивались)
                         const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
                         
                         if (!grouped[key]) {
-                            grouped[key] = { 
-                                item: item,
-                                count: 0,
-                                indices: []
-                            };
+                            grouped[key] = { item: item, count: 0, indices: [] };
                             order.push(key);
                         }
                         grouped[key].count++;
                         grouped[key].indices.push(originalIndex);
                     });
 
-                    // 2. Отрисовываем группы
                     order.forEach(key => {
                         const group = grouped[key];
                         const item = group.item;
@@ -316,27 +379,16 @@ const RenderModule = (function() {
                         div.className = "inv-item";
                         div.style.color = item.color;
                         
-                        // Формируем текст отображения
                         let html = `${item.char} ${item.name}`;
-                        
-                        // Добавляем значение бонуса
-                        if (item.val) {
-                            html += ` (+${item.val})`;
-                        }
+                        if (item.val) html += ` (+${item.val})`;
 
-                        // Если предметов больше 1, добавляем количество
                         if (group.count > 1) {
                             html += ` <span style="opacity:0.7">(${group.count})</span>`;
-                        } 
-                        // Если предмет одиночный, но имеет боезапас
-                        else if (item.maxAmmo > 0) {
+                        } else if (item.maxAmmo > 0) {
                             html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
                         }
 
-                        // ВАЖНО: используем innerHTML вместо textContent, чтобы тег <span> сработал
                         div.innerHTML = html;
-                        
-                        // При клике используем ПЕРВЫЙ предмет из группы
                         div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
                         
                         invDiv.appendChild(div);
@@ -345,6 +397,7 @@ const RenderModule = (function() {
             }
         }
     }
+
     function log(msg, type = "info") {
         const list = document.getElementById("log-list");
         const div = document.createElement("div");
@@ -354,7 +407,6 @@ const RenderModule = (function() {
         if (list.children.length > 50) list.lastChild.remove();
     }
 
-    // === МИНИКАРТА ДЛЯ ПОДЗЕМЕЛЬЯ ===
     function drawMinimap(player, explored) {
         const cvs = document.getElementById("minimap");
         if (!cvs || !player) return;
@@ -371,30 +423,14 @@ const RenderModule = (function() {
         explored.forEach(k => {
             const [x, y] = k.split(',').map(Number);
             ctx.fillStyle = MapModule.isWall(x, y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5; 
             ctx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
             ctx.globalAlpha = 1.0;
         });
         ctx.fillStyle = "#0F0";
         ctx.fillRect(player.x * cw, player.y * ch, cw + 1, ch + 1);
     }
-    // ... (другие функции RenderModule) ...
 
-    function updateInspector(title, details, type = "neutral") {
-        const div = document.getElementById("ui-inspector");
-        if (!div) return;
-
-        let color = "var(--text-dim)";
-        if (type === "enemy") color = "var(--danger)";
-        if (type === "loot") color = "var(--gold)";
-        if (type === "npc") color = "var(--accent)";
-
-        div.innerHTML = `
-            <div style="color: ${color}; font-weight: bold; margin-bottom: 4px;">${title}</div>
-            <div style="white-space: pre-line;">${details}</div>
-        `;
-    }
-    
     return {
         init,
         draw,
@@ -404,7 +440,9 @@ const RenderModule = (function() {
         log,
         drawMinimap,
         getCameraOffset,
-        updateInspector, 
+        // Экспортируем функции эффектов
+        addBlinkEffect,
+        addProjectileEffect,
         COLS,
         ROWS
     };
