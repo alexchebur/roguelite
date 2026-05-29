@@ -7,8 +7,11 @@ const RenderModule = (function() {
     const FONT_SIZE = 14;
     
     // === СИСТЕМА ЭФФЕКТОВ ===
-    let activeEffects = []; // Массив активных анимаций
+    let activeEffects = []; 
     let animationFrameId = null;
+    
+    // Храним текущее смещение камеры, чтобы эффекты рисовались правильно
+    let currentCameraOffset = { x: 0, y: 0 };
 
     function init() {
         if (typeof ROT === 'undefined') {
@@ -65,50 +68,47 @@ const RenderModule = (function() {
         activeEffects = activeEffects.filter(effect => now < effect.endTime);
 
         if (activeEffects.length > 0) {
-            // Перерисовываем только если есть эффекты, чтобы не нагружать CPU зря
-            // Но так как у нас нет слоя поверх canvas в ROT.js, нам придется рисовать прямо на контексте
             const ctx = display.getContainer().getContext('2d');
-            
-            // Сохраняем состояние контекста
             ctx.save();
             
-            // Применяем тот же масштаб, что и у canvas через CSS
-            // (Это сложно сделать точно внутри canvas без учета CSS transform, 
-            // поэтому мы будем рисовать в координатах клетки, предполагая, что canvas не скейлится внутри JS)
-            // ROT.js сам управляет размером шрифта.
-            
             const options = display.getOptions();
-            const tileW = options.width; // Ширина клетки в пикселях (примерно)
+            const tileW = options.width; 
             const tileH = options.height;
 
             activeEffects.forEach(effect => {
+                // === ВАЖНО: Учитываем смещение камеры ===
+                // Эффект должен рисоваться относительно видимой области экрана
+                const screenX = (effect.x - currentCameraOffset.x) * tileW;
+                const screenY = (effect.y - currentCameraOffset.y) * tileH;
+
+                // Проверяем, попадает ли эффект в видимую область (опционально, но полезно для оптимизации)
+                // if (screenX < -tileW || screenX > COLS * tileW || screenY < -tileH || screenY > ROWS * tileH) return;
+
                 if (effect.type === 'blink') {
-                    // Мерцание: рисуем полупрозрачный квадрат или меняем цвет символа
-                    // Проще всего нарисовать красный/белый оверлей
-                    const progress = (effect.endTime - now) / (effect.duration);
-                    const alpha = Math.abs(Math.sin(now * 0.02)) * 0.5; // Пульсация прозрачности
-                    
+                    const alpha = Math.abs(Math.sin(now * 0.02)) * 0.5; 
                     ctx.fillStyle = effect.color || `rgba(255, 0, 0, ${alpha})`;
-                    ctx.fillRect(effect.x * tileW, effect.y * tileH, tileW, tileH);
+                    // Рисуем прямоугольник поверх клетки
+                    ctx.fillRect(screenX, screenY, tileW, tileH);
                 } 
                 else if (effect.type === 'projectile') {
-                    // Летящая точка
-                    const totalDist = Math.sqrt(Math.pow(effect.tx - effect.sx, 2) + Math.pow(effect.ty - effect.sy, 2));
                     const totalTime = effect.duration;
                     const elapsed = now - effect.startTime;
                     const t = Math.min(1, elapsed / totalTime);
 
-                    // Интерполяция позиции
-                    const curX = effect.sx + (effect.tx - effect.sx) * t;
-                    const curY = effect.sy + (effect.ty - effect.sy) * t;
+                    // Интерполяция позиции в МИРОВЫХ координатах
+                    const worldCurX = effect.sx + (effect.tx - effect.sx) * t;
+                    const worldCurY = effect.sy + (effect.ty - effect.sy) * t;
 
-                    ctx.fillStyle = "#FFFF00"; // Желтый цвет
+                    // Переводим в ЭКРАННЫЕ координаты
+                    const screenCurX = (worldCurX - currentCameraOffset.x) * tileW + tileW / 2;
+                    const screenCurY = (worldCurY - currentCameraOffset.y) * tileH + tileH / 2;
+
+                    ctx.fillStyle = "#FFFF00"; 
                     ctx.font = `${options.fontSize}px ${options.fontFamily}`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
                     
-                    // Рисуем точку '.'
-                    ctx.fillText(".", curX * tileW + tileW/2, curY * tileH + tileH/2);
+                    ctx.fillText(".", screenCurX, screenCurY);
                 }
             });
 
@@ -140,10 +140,13 @@ const RenderModule = (function() {
     }
 
     function getCameraOffset(player) {
-        return {
+        const cam = {
             x: player.x - Math.floor(COLS / 2),
             y: player.y - Math.floor(ROWS / 2)
         };
+        // Обновляем глобальное смещение для системы эффектов
+        currentCameraOffset = cam;
+        return cam;
     }
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
