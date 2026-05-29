@@ -677,9 +677,15 @@ const GameModule = (function() {
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawMinimap(player, explored);
     }
+    // ... (внутри GameModule) ...
+    
+    function getPlayer() {
+        return player;
+    }
 
     return {
-        init
+        init,
+        getPlayer // <--- ДОБАВИТЬ
     };
 })();
 
