@@ -401,11 +401,9 @@ const GameModule = (function() {
         );
         
         // 2. Спавн обычных предметов (оружие, броня, зелья)
-        const rng = new Math.seedrandom(`ent_${gx}_${gy}_${depth}`);
-        const oldRand = Math.random;
-        Math.random = rng;
-        
+        // Убран фиксированный сид: лут теперь генерируется случайно при каждом входе
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
+        
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
@@ -416,8 +414,6 @@ const GameModule = (function() {
                 3
             );
         }
-        
-        Math.random = oldRand;
 
         // 3. Спавн золота на карте (разбросанные кучки)
         // Количество кучек: 2 на 1-м уровне, +1 за каждые 2 уровня глубины
