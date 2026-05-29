@@ -22,7 +22,7 @@ const RenderModule = (function() {
             fontSize: FONT_SIZE,
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
-            bg: "#2d572c"
+            bg: "#000"
         });
 
         const container = document.getElementById("map-container");
