@@ -577,7 +577,7 @@ const GameModule = (function() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
     
         deadEnemies.forEach(enemy => {
-            CombatModule.dropLoot(enemy, player, currentDepth, RenderModule.log);
+            CombatModule.dropLoot(enemy, player, currentDepth, items, RenderModule.log);
         });
 
         // Удаляем мертвых из массива
