@@ -573,17 +573,16 @@ const GameModule = (function() {
     }
     
     function checkDeath() {
-        // Находим всех умерших врагов
         const deadEnemies = enemies.filter(e => e.hp <= 0);
-    
+        
         deadEnemies.forEach(enemy => {
-            CombatModule.dropLoot(enemy, player, currentDepth, items, RenderModule.log);
+            // ✅ ИСПРАВЛЕНО: правильный порядок аргументов (enemy, depth, itemsArray, logFn)
+            CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
         });
 
         // Удаляем мертвых из массива
         enemies = enemies.filter(e => e.hp > 0);
     }
-
     // === ОСНОВНОЙ ХОД ИГРЫ ===
     function processTurn(dx, dy) {
         const nx = player.x + dx;
