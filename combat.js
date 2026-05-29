@@ -27,7 +27,7 @@ const CombatModule = (function() {
         
         // === ЭФФЕКТ ВСПЫШКИ ===
         defender.flashEndTime = Date.now() + 200; // Длительность 200мс
-        defender.flashChar = "!"; 
+        defender.flashChar = "*"; 
         
         // Запускаем анимацию перерисовки
         triggerHitAnimation();
