@@ -86,16 +86,23 @@ const CombatModule = (function() {
 
     // ... (остальной код combat.js без изменений) ...
 
-    function dropLoot(enemy, depth, itemsArray, logFn) {
+    // === ВЫПАДЕНИЕ ЛУТА ===
+    // Исправленная сигнатура: (enemy, player, depth, itemsArray, logFn)
+    function dropLoot(enemy, player, depth, itemsArray, logFn) {
         if (!enemy.lootType) return;
+
+        // Шанс выпадения 40% (если random > 0.4, то выходим)
         if (Math.random() > 0.4) return;
 
         let droppedItem = null;
-        const rng = new Math.seedrandom(`loot_${Date.now()}_${Math.random()}`);
+        // Используем seedrandom для разнообразия, но можно и Math.random
+        const rng = new Math.seedrandom(`loot_${enemy.x}_${enemy.y}_${Date.now()}`);
 
         if (enemy.lootType === 'gold') {
+            // Золото: количество растет с глубиной
             const baseGold = 5 + Math.floor(depth * 2.5);
-            const amount = Math.floor(baseGold * (0.8 + Math.random() * 0.4));
+            const amount = Math.floor(baseGold * (0.8 + Math.random() * 0.4)); 
+            
             droppedItem = {
                 x: enemy.x, y: enemy.y,
                 name: `${amount} золотых`,
@@ -106,16 +113,20 @@ const CombatModule = (function() {
             };
         } 
         else if (enemy.lootType === 'food') {
+            // Еда
             const foods = DataModule.ITEM_TYPES.filter(i => i.type === 'food');
             if (foods.length > 0) {
                 const template = rng.choice(foods);
+                // createItem принимает: (template, x, y, itemPowerMult)
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, 1.0);
             }
         } 
         else if (enemy.lootType === 'weapon') {
+            // Оружие/Броня
             const equips = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
             if (equips.length > 0) {
                 const template = rng.choice(equips);
+                // Множитель силы зависит от глубины
                 const powerMult = 1.0 + (depth * 0.15); 
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, powerMult);
             }
