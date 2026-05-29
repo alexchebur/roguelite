@@ -8,7 +8,6 @@ const RenderModule = (function() {
     
     // === СИСТЕМА ЭФФЕКТОВ ===
     let activeEffects = []; 
-    let animationFrameId = null;
     let currentCameraOffset = { x: 0, y: 0 };
 
     function init() {
@@ -40,77 +39,25 @@ const RenderModule = (function() {
             const ch = canvas.height;
             const scale = Math.min(fw / cw, fh / ch);
             canvas.style.transform = `scale(${scale})`;
+            canvas.style.transformOrigin = "center center";
         };
 
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
         
-        // Запускаем цикл анимации эффектов
-        startAnimationLoop();
+        // Запускаем цикл обновления эффектов (для удаления старых)
+        startEffectLoop();
     }
 
-    // === ЦИКЛ АНИМАЦИИ ЭФФЕКТОВ ===
-    function startAnimationLoop() {
-        function loop() {
-            updateEffects();
-            animationFrameId = requestAnimationFrame(loop);
-        }
-        loop();
+    // Цикл только для очистки старых эффектов (не для рисования!)
+    function startEffectLoop() {
+        setInterval(() => {
+            const now = Date.now();
+            activeEffects = activeEffects.filter(effect => now < effect.endTime);
+        }, 100);
     }
 
-    function updateEffects() {
-        if (activeEffects.length === 0) return;
-        if (!display) return;
-
-        const now = Date.now();
-        // Удаляем завершившиеся эффекты
-        activeEffects = activeEffects.filter(effect => now < effect.endTime);
-
-        if (activeEffects.length > 0) {
-            const ctx = display.getContainer().getContext('2d');
-            ctx.save();
-            
-            const options = display.getOptions();
-            const tileW = options.width; 
-            const tileH = options.height;
-
-            activeEffects.forEach(effect => {
-                // Расчет экранных координат с учетом камеры
-                const screenX = (effect.x - currentCameraOffset.x) * tileW;
-                const screenY = (effect.y - currentCameraOffset.y) * tileH;
-
-                if (effect.type === 'blink') {
-                    // Мерцание (пульсирующая прозрачность)
-                    const alpha = Math.abs(Math.sin(now * 0.02)) * 0.5; 
-                    ctx.fillStyle = effect.color || `rgba(255, 0, 0, ${alpha})`;
-                    ctx.fillRect(screenX, screenY, tileW, tileH);
-                } 
-                else if (effect.type === 'projectile') {
-                    // Летящий снаряд
-                    const totalTime = effect.duration;
-                    const elapsed = now - effect.startTime;
-                    const t = Math.min(1, elapsed / totalTime);
-
-                    // Интерполяция позиции
-                    const worldCurX = effect.sx + (effect.tx - effect.sx) * t;
-                    const worldCurY = effect.sy + (effect.ty - effect.sy) * t;
-
-                    const screenCurX = (worldCurX - currentCameraOffset.x) * tileW + tileW / 2;
-                    const screenCurY = (worldCurY - currentCameraOffset.y) * tileH + tileH / 2;
-
-                    ctx.fillStyle = "#FFFF00"; 
-                    ctx.font = `${options.fontSize}px ${options.fontFamily}`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(".", screenCurX, screenCurY);
-                }
-            });
-
-            ctx.restore();
-        }
-    }
-
-    // === ДОБАВЛЕНИЕ ЭФФЕКТОВ (ЭКСПОРТИРУЕМЫЕ ФУНКЦИИ) ===
+    // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
     function addBlinkEffect(x, y, duration = 500, color = null) {
         activeEffects.push({
             type: 'blink',
@@ -118,7 +65,7 @@ const RenderModule = (function() {
             startTime: Date.now(),
             endTime: Date.now() + duration,
             duration: duration,
-            color: color
+            color: color || "rgba(255, 0, 0, 0.5)"
         });
     }
 
@@ -133,30 +80,77 @@ const RenderModule = (function() {
         });
     }
 
+    // === ОТРИСОВКА ЭФФЕКТОВ (вызывается внутри draw) ===
+    function drawEffects(ctx, cam, options) {
+        const now = Date.now();
+        const tileW = options.width;
+        const tileH = options.height;
+
+        activeEffects.forEach(effect => {
+            if (effect.type === 'blink') {
+                // Пульсация прозрачности
+                const progress = (effect.endTime - now) / effect.duration;
+                const alpha = Math.abs(Math.sin(now * 0.015)) * 0.6; 
+                
+                ctx.fillStyle = effect.color.replace(/[\d\.]+\)$/g, `${alpha})`);
+                
+                // Рисуем прямоугольник поверх клетки
+                // Учитываем смещение камеры
+                const screenX = (effect.x - cam.x) * tileW;
+                const screenY = (effect.y - cam.y) * tileH;
+                
+                // Рисуем только если в поле зрения
+                if (screenX >= -tileW && screenX < COLS * tileW && screenY >= -tileH && screenY < ROWS * tileH) {
+                    ctx.fillRect(screenX, screenY, tileW, tileH);
+                }
+            } 
+            else if (effect.type === 'projectile') {
+                const totalTime = effect.duration;
+                const elapsed = now - effect.startTime;
+                const t = Math.min(1, elapsed / totalTime);
+
+                // Интерполяция позиции
+                const worldCurX = effect.sx + (effect.tx - effect.sx) * t;
+                const worldCurY = effect.sy + (effect.ty - effect.sy) * t;
+
+                const screenCurX = (worldCurX - cam.x) * tileW + tileW / 2;
+                const screenCurY = (worldCurY - cam.y) * tileH + tileH / 2;
+
+                ctx.fillStyle = "#FFFF00"; 
+                ctx.font = `bold ${options.fontSize}px ${options.fontFamily}`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                
+                // Тень для точки, чтобы её было видно на светлом фоне
+                ctx.shadowColor = "black";
+                ctx.shadowBlur = 2;
+                ctx.fillText(".", screenCurX, screenCurY);
+                ctx.shadowBlur = 0;
+            }
+        });
+    }
+
     function getCameraOffset(player) {
         const cam = {
             x: player.x - Math.floor(COLS / 2),
             y: player.y - Math.floor(ROWS / 2)
         };
-        // Обновляем глобальную камеру для системы эффектов
         currentCameraOffset = cam;
         return cam;
     }
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
     function draw(player, enemies, items, npcs = []) {
-        // Обновляем камеру перед отрисовкой
-        getCameraOffset(player);
-
         display.clear();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-        const cam = currentCameraOffset;
+        const cam = getCameraOffset(player);
 
         const visible = new Set();
         fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
+        // 1. Отрисовка карты (стены, пол, лестницы)
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
@@ -188,6 +182,7 @@ const RenderModule = (function() {
             }
         }
 
+        // 2. Отрисовка предметов
         items.forEach(i => {
             const sx = i.x - cam.x;
             const sy = i.y - cam.y;
@@ -196,6 +191,7 @@ const RenderModule = (function() {
             }
         });
 
+        // 3. Отрисовка врагов
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
@@ -206,6 +202,7 @@ const RenderModule = (function() {
             }
         });
 
+        // 4. Отрисовка NPC
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x;
@@ -216,15 +213,20 @@ const RenderModule = (function() {
             });
         }
 
+        // 5. Отрисовка игрока
         display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), player.char, player.color);
+
+        // 6. === ОТРИСОВКА ЭФФЕКТОВ ПОВЕРХ ВСЕГО ===
+        const ctx = display.getContainer().getContext('2d');
+        const options = display.getOptions();
+        drawEffects(ctx, cam, options);
 
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
+    // === ОСТАЛЬНЫЕ ФУНКЦИИ (Global Map, UI, Log) БЕЗ ИЗМЕНЕНИЙ ===
     function drawGlobalMap(centerX, centerY) {
         display.clear();
-    
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
     
@@ -232,7 +234,6 @@ const RenderModule = (function() {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-            
                 let ch, fg;
                 let tileType = 'plain';
             
@@ -265,18 +266,15 @@ const RenderModule = (function() {
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
-    
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
         const ctx = cvs.getContext("2d");
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
-    
         const MINIMAP_SIZE = 20;
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
-    
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
         const startY = centerY - Math.floor(MINIMAP_SIZE / 2);
     
@@ -284,14 +282,12 @@ const RenderModule = (function() {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
                 const gy = startY + dy;
-            
                 let displayType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     displayType = GlobalMapModule.getDisplayTileType(gx, gy);
                 } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
                     displayType = GlobalMapModule.getTileType(gx, gy);
                 }
-            
                 let color;
                 switch(displayType) {
                     case 'plain': color = '#555'; break;
@@ -303,18 +299,13 @@ const RenderModule = (function() {
                     case 'road': color = '#b8860b'; break;
                     default: color = '#333';
                 }
-            
-                if (gx === centerX && gy === centerY) {
-                    color = '#0f0';
-                }
-            
+                if (gx === centerX && gy === centerY) color = '#0f0';
                 ctx.fillStyle = color;
                 ctx.fillRect(dx * cellW, dy * cellH, cellW, cellH);
             }
         }
     }
 
-    // === UI И ЛОГ ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
@@ -354,16 +345,13 @@ const RenderModule = (function() {
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
-                
                 if (player.inventory.length === 0) {
                     invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
                 } else {
                     const grouped = {};
                     const order = []; 
-
                     player.inventory.forEach((item, originalIndex) => {
                         const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
-                        
                         if (!grouped[key]) {
                             grouped[key] = { item: item, count: 0, indices: [] };
                             order.push(key);
@@ -375,23 +363,18 @@ const RenderModule = (function() {
                     order.forEach(key => {
                         const group = grouped[key];
                         const item = group.item;
-                        
                         const div = document.createElement("div");
                         div.className = "inv-item";
                         div.style.color = item.color;
-                        
                         let html = `${item.char} ${item.name}`;
                         if (item.val) html += ` (+${item.val})`;
-
                         if (group.count > 1) {
                             html += ` <span style="opacity:0.7">(${group.count})</span>`;
                         } else if (item.maxAmmo > 0) {
                             html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
                         }
-
                         div.innerHTML = html;
                         div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
-                        
                         invDiv.appendChild(div);
                     });
                 }
@@ -411,7 +394,6 @@ const RenderModule = (function() {
     function drawMinimap(player, explored) {
         const cvs = document.getElementById("minimap");
         if (!cvs || !player) return;
-        
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
@@ -435,12 +417,10 @@ const RenderModule = (function() {
     function updateInspector(title, details, type = "neutral") {
         const div = document.getElementById("ui-inspector");
         if (!div) return;
-
         let color = "var(--text-dim)";
         if (type === "enemy") color = "var(--danger)";
         if (type === "loot") color = "var(--gold)";
         if (type === "npc") color = "var(--accent)";
-
         div.innerHTML = `
             <div style="color: ${color}; font-weight: bold; margin-bottom: 4px;">${title}</div>
             <div style="white-space: pre-line;">${details}</div>
@@ -457,7 +437,6 @@ const RenderModule = (function() {
         drawMinimap,
         getCameraOffset,
         updateInspector,
-        // Экспорт функций эффектов
         addBlinkEffect,
         addProjectileEffect,
         COLS,
