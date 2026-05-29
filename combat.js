@@ -1,5 +1,6 @@
 // =========================== Модуль боя и использования предметов ===========================
 const CombatModule = (function() {
+    // === АТАКА БЛИЖНЕГО БОЯ ===
     function attack(attacker, defender, logFn) { 
         let dmg = Math.max(1, attacker.atk - defender.def);
         let crit = Math.random() < 0.1;
@@ -7,9 +8,10 @@ const CombatModule = (function() {
 
         defender.hp -= dmg;
         
-        // === ЭФФЕКТ МЕРЦАНИЯ ПРИ ПОПАДАНИИ ===
-        // Мерцает тот, кто получил урон.
-        RenderModule.addBlinkEffect(defender.x, defender.y, 500, "rgba(255, 0, 0, 0.5)");
+        // === ЭФФЕКТ ВСПЫШКИ ===
+        // Устанавливаем время окончания вспышки (текущее время + 200мс)
+        defender.flashEndTime = Date.now() + 200;
+        defender.flashChar = "!"; // Символ восклицания при ударе
 
         const attackerName = attacker.name || "Вы";
         const defenderName = defender.name || "враг";
@@ -24,9 +26,9 @@ const CombatModule = (function() {
         return false;
     }
 
+    // === ДИСТАНЦИОННАЯ АТАКА ===
     function rangedAttack(player, target, weapon, logFn, updateUiFn) {
         if (!weapon || weapon.meleeType !== false) return false;
-
         if (weapon.currentAmmo <= 0) {
             logFn(`Нет боеприпасов для ${weapon.name}!`, "combat");
             return false;
@@ -38,9 +40,6 @@ const CombatModule = (function() {
             return false;
         }
 
-        // === ЭФФЕКТ ВЫСТРЕЛА ===
-        RenderModule.addProjectileEffect(player.x, player.y, target.x, target.y, 300);
-
         weapon.currentAmmo--;
 
         let dmg = Math.max(1, player.atk - target.def); 
@@ -49,8 +48,9 @@ const CombatModule = (function() {
 
         target.hp -= dmg;
         
-        // Мерцание врага при попадании стрелы
-        RenderModule.addBlinkEffect(target.x, target.y, 500, "rgba(255, 255, 0, 0.5)");
+        // === ЭФФЕКТ ВСПЫШКИ ДЛЯ ЦЕЛИ ===
+        target.flashEndTime = Date.now() + 200;
+        target.flashChar = "*"; // Звездочка при попадании стрелы
 
         logFn(`Вы стреляете в ${target.name} из ${weapon.name} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
