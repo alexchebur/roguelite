@@ -140,6 +140,7 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
+    // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
     function draw(player, enemies, items, npcs = []) {
         display.clear();
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
@@ -150,12 +151,11 @@ const RenderModule = (function() {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 1. Отрисовка карты (стены, пол, лестницы)
+        // 1. Отрисовка карты
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
                 const wy = sy + cam.y;
-
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
                 const isVisible = visible.has(`${wx},${wy}`);
@@ -164,13 +164,12 @@ const RenderModule = (function() {
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
                     fg = isVisible ? dtype.wallColor : '#222';
-                    bg = "#000";
                 } else {
                     ch = dtype.floorChar;
                     fg = isVisible ? dtype.floorColor : '#111';
-                    bg = "#000";
                 }
-
+                
+                // Лестницы
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
                     ch = ">"; fg = isVisible ? "#FFF" : "#333";
                 }
@@ -178,11 +177,11 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                display.draw(sx, sy, ch, fg, bg);
+                display.draw(sx, sy, ch, fg, "#000");
             }
         }
 
-        // 2. Отрисовка предметов
+        // 2. Предметы
         items.forEach(i => {
             const sx = i.x - cam.x;
             const sy = i.y - cam.y;
@@ -191,39 +190,61 @@ const RenderModule = (function() {
             }
         });
 
-        // 3. Отрисовка врагов
+        // 3. Враги (с эффектом вспышки)
+        const now = Date.now();
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const sx = e.x - cam.x;
                 const sy = e.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                    display.draw(sx, sy, e.char, e.color);
+                    
+                    let drawChar = e.char;
+                    let drawColor = e.color;
+
+                    // === ЭФФЕКТ ВСПЫШКИ ПРИ УРОНЕ ===
+                    if (e.flashEndTime && now < e.flashEndTime) {
+                        drawChar = e.flashChar || "*"; // Символ вспышки
+                        drawColor = "#FFFFFF";         // Белый цвет вспышки
+                    }
+
+                    display.draw(sx, sy, drawChar, drawColor);
                 }
             }
         });
 
-        // 4. Отрисовка NPC
+        // 4. NPC (тоже могут получать урон или просто для единообразия)
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x;
                 const sy = npc.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    display.draw(sx, sy, npc.char, npc.color);
+                    
+                    let drawChar = npc.char;
+                    let drawColor = npc.color;
+
+                    if (npc.flashEndTime && now < npc.flashEndTime) {
+                        drawChar = npc.flashChar || "*";
+                        drawColor = "#FFFFFF";
+                    }
+
+                    display.draw(sx, sy, drawChar, drawColor);
                 }
             });
         }
 
-        // 5. Отрисовка игрока
-        display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), player.char, player.color);
-
-        // 6. === ОТРИСОВКА ЭФФЕКТОВ ПОВЕРХ ВСЕГО ===
-        const ctx = display.getContainer().getContext('2d');
-        const options = display.getOptions();
-        drawEffects(ctx, cam, options);
+        // 5. Игрок (с эффектом вспышки)
+        let playerChar = player.char;
+        let playerColor = player.color;
+        
+        if (player.flashEndTime && now < player.flashEndTime) {
+            playerChar = player.flashChar || "*";
+            playerColor = "#FF0000"; // Красная вспышка для игрока
+        }
+        
+        display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), playerChar, playerColor);
 
         return visible;
     }
-
     // === ОСТАЛЬНЫЕ ФУНКЦИИ (Global Map, UI, Log) БЕЗ ИЗМЕНЕНИЙ ===
     function drawGlobalMap(centerX, centerY) {
         display.clear();
