@@ -448,6 +448,21 @@ const RenderModule = (function() {
         `;
     }
     
+    // ... (предыдущий код render.js без изменений) ...
+
+    // Функция для запроса перерисовки извне (например, из системы эффектов)
+    let redrawCallback = null;
+
+    function setRedrawCallback(callback) {
+        redrawCallback = callback;
+    }
+
+    function requestRedraw() {
+        if (redrawCallback) {
+            redrawCallback();
+        }
+    }
+
     return {
         init,
         draw,
@@ -458,8 +473,8 @@ const RenderModule = (function() {
         drawMinimap,
         getCameraOffset,
         updateInspector,
-        addBlinkEffect,
-        addProjectileEffect,
+        setRedrawCallback, // <--- ДОБАВИТЬ ЭКСПОРТ
+        requestRedraw,     // <--- ДОБАВИТЬ ЭКСПОРТ
         COLS,
         ROWS
     };
