@@ -16,19 +16,28 @@ const RenderModule = (function() {
             throw new Error("ROT missing");
         }
 
+        // 1. Создаём дисплей с размером клетки 16px
         display = new ROT.Display({
             width: COLS,
             height: ROWS,
-            fontSize: FONT_SIZE,
+            fontSize: 16,          // <- Важно: задаёт размер клетки
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
-            bg: "#000"
+            bg: "#000",
+            forceSquareRatio: true // <- Гарантирует квадратные клетки
         });
 
         const container = document.getElementById("map-container");
         container.innerHTML = "";
-        const canvas = display.getContainer();
-        container.appendChild(canvas);
+        container.appendChild(display.getContainer());
+
+        // 2. Загружаем тайлсеты
+        TilesetRenderer.init();
+
+        fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
+
+        // ... остальной код init (resize, listeners) без изменений ...
+    
 
         fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
 
