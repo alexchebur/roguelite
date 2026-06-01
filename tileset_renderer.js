@@ -40,7 +40,7 @@ const TilesetRenderer = (function() {
         'T': { file: 'creature', x: 12, y: 0 },
         'L': { file: 'creature', x: 13, y: 0 },
         'M': { file: 'creature', x: 14, y: 0 },
-        'D': { file: 'creature', x: 15, y: 0 },
+        'q': { file: 'creature', x: 15, y: 0 },
         '☺': { file: 'creature', x: 8, y: 3 },
 
         // 🎒 Items
