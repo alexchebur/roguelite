@@ -19,7 +19,7 @@ const TilesetRenderer = (function() {
         'C': { file: 'terrain', x: 9, y: 2 },
         'D': { file: 'terrain', x: 6, y: 0 },
         '█': { file: 'terrain', x: 11, y: 2 },
-        '·': { file: 'terrain', x: 0, y: 1 },
+        //'·': { file: 'terrain', x: 0, y: 1 },
         'o': { file: 'terrain', x: 3, y: 2 },
         'O': { file: 'terrain', x: 4, y: 2 },
         // ... остальные без изменений пока что
