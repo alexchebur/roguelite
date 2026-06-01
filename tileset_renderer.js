@@ -9,27 +9,27 @@ const TilesetRenderer = (function() {
     // Убедитесь, что координаты x,y соответствуют вашему PNG!
     const TILE_MAP = {
         //  Terrain (ПОПРОБУЙТЕ СДВИНУТЬ Y НА 1, ЕСЛИ ПЕРВЫЙ РЯД ПУСТОЙ)
-        '#': { file: 'terrain', x: 0, y: 1 }, 
+        '#': { file: 'terrain', x: 1, y: 2 }, 
         '.': { file: 'terrain', x: 1, y: 1 },
-        '>': { file: 'terrain', x: 2, y: 1 },
-        '<': { file: 'terrain', x: 3, y: 1 },
-        'T': { file: 'terrain', x: 4, y: 1 },
-        '^': { file: 'terrain', x: 5, y: 1 },
-        '≈': { file: 'terrain', x: 6, y: 1 },
-        'C': { file: 'terrain', x: 7, y: 1 },
-        'D': { file: 'terrain', x: 8, y: 1 },
-        '█': { file: 'terrain', x: 9, y: 1 },
-        '·': { file: 'terrain', x: 10, y: 1 },
-        'o': { file: 'terrain', x: 11, y: 1 },
-        'O': { file: 'terrain', x: 12, y: 1 },
+        '>': { file: 'terrain', x: 3, y: 0 },
+        '<': { file: 'terrain', x: 2, y: 0 },
+        'T': { file: 'terrain', x: 8, y: 2 },
+        '^': { file: 'terrain', x: 5, y: 2 },
+        '≈': { file: 'terrain', x: 7, y: 2 },
+        'C': { file: 'terrain', x: 9, y: 2 },
+        'D': { file: 'terrain', x: 6, y: 0 },
+        '█': { file: 'terrain', x: 11, y: 2 },
+        '·': { file: 'terrain', x: 0, y: 1 },
+        'o': { file: 'terrain', x: 3, y: 2 },
+        'O': { file: 'terrain', x: 4, y: 2 },
         // ... остальные без изменений пока что
 
         //  Creatures & NPCs
-        '@': { file: 'creature', x: 0, y: 0 },
-        'r': { file: 'creature', x: 1, y: 0 },
-        'g': { file: 'creature', x: 2, y: 0 },
-        'w': { file: 'creature', x: 3, y: 0 },
-        'j': { file: 'creature', x: 4, y: 0 },
+        '@': { file: 'creature', x: 2, y: 0 },
+        'r': { file: 'creature', x: 8, y: 9 },
+        'g': { file: 'creature', x: 12, y: 3 },
+        'w': { file: 'creature', x: 1, y: 9 },
+        'j': { file: 'creature', x: 3, y: 15 },
         'b': { file: 'creature', x: 5, y: 0 },
         's': { file: 'creature', x: 6, y: 0 },
         'O': { file: 'creature', x: 7, y: 0 }, 
@@ -41,7 +41,7 @@ const TilesetRenderer = (function() {
         'L': { file: 'creature', x: 13, y: 0 },
         'M': { file: 'creature', x: 14, y: 0 },
         'D': { file: 'creature', x: 15, y: 0 },
-        '☺': { file: 'creature', x: 16, y: 0 },
+        '☺': { file: 'creature', x: 8, y: 3 },
 
         // 🎒 Items
         '/': { file: 'item', x: 0, y: 0 },
