@@ -33,6 +33,7 @@ const GameModule = (function() {
                 throw new Error("RenderModule не загружен");
             }
             RenderModule.init();
+            RenderModule.setRedrawCallback(renderFrame);
         } catch (e) {
             console.error("Критическая ошибка при инициализации:", e);
             document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
@@ -404,11 +405,9 @@ const GameModule = (function() {
         );
         
         // 2. Спавн обычных предметов (оружие, броня, зелья)
-        const rng = new Math.seedrandom(`ent_${gx}_${gy}_${depth}`);
-        const oldRand = Math.random;
-        Math.random = rng;
-        
+        // Убран фиксированный сид: лут теперь генерируется случайно при каждом входе
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
+        
         if (EntityModule.spawnItems) {
             items = EntityModule.spawnItems(
                 MapModule.currentMapData,
@@ -419,44 +418,27 @@ const GameModule = (function() {
                 3
             );
         }
-        
-        Math.random = oldRand;
 
-        // 3. Спавн золота на карте (разбросанные кучки)
-        // Количество кучек: 2 на 1-м уровне, +1 за каждые 2 уровня глубины
-        const goldPilesCount = 2 + Math.floor(depth / 2);
-        
-        for (let i = 0; i < goldPilesCount; i++) {
-            // Ищем свободную клетку пола
-            const pos = MapModule.getRandomFloor(player);
-            if (pos) {
-                // Находим шаблон золота в data.js
-                const goldTemplate = DataModule.ITEM_TYPES.find(item => item.type === 'gold');
-                
-                if (goldTemplate) {
-                    // Расчет количества золота: база (5-15) * множитель мира * коэффициент глубины
-                    // Чем глубже, тем больше золота в одной кучке
-                    const depthBonus = 1 + (depth * 0.5); // +50% за каждый уровень
-                    const worldMult = WorldCurveModule.getGoldMultiplier ? WorldCurveModule.getGoldMultiplier(gx, gy) : 1;
-                    
-                    // Создаем объект золота вручную, так как spawnItems может не поддерживать тип 'gold' корректно без доработок
-                    const baseAmount = Math.floor(goldTemplate.val[0] + Math.random() * (goldTemplate.val[1] - goldTemplate.val[0]));
-                    const finalAmount = Math.max(1, Math.floor(baseAmount * depthBonus * worldMult));
-
-                    items.push({
-                        x: pos.x,
-                        y: pos.y,
-                        name: `${finalAmount} золотых`,
-                        char: '$',
-                        color: '#FFD700',
-                        type: 'gold',
-                        val: finalAmount,
-                        isItem: true
-                    });
-                }
-            }
+        // 3. Спавн золота через EntityModule (случайное распределение при каждом входе)
+        const goldTemplate = DataModule.ITEM_TYPES.find(item => item.type === 'gold');
+        if (goldTemplate && EntityModule.spawnGold) {
+            // Количество кучек: 2 на 1-м уровне, +1 за каждые 2 уровня глубины
+            const goldPilesCount = 2 + Math.floor(depth / 2);
+            const worldGoldMult = WorldCurveModule.getGoldMultiplier ? WorldCurveModule.getGoldMultiplier(gx, gy) : 1;
+            
+            const goldItems = EntityModule.spawnGold(
+                MapModule.currentMapData,
+                player,
+                goldTemplate,
+                goldPilesCount,
+                depth,
+                worldGoldMult
+            );
+            
+            // Добавляем сгенерированное золото в общий массив предметов levels
+            items.push(...goldItems);
         }
-    }    
+    }  
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
@@ -576,17 +558,16 @@ const GameModule = (function() {
     }
     
     function checkDeath() {
-        // Находим всех умерших врагов
         const deadEnemies = enemies.filter(e => e.hp <= 0);
-    
+        
         deadEnemies.forEach(enemy => {
-            CombatModule.dropLoot(enemy, player, currentDepth, RenderModule.log);
+            // ✅ ИСПРАВЛЕНО: правильный порядок аргументов (enemy, depth, itemsArray, logFn)
+            CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
         });
 
         // Удаляем мертвых из массива
         enemies = enemies.filter(e => e.hp > 0);
     }
-
     // === ОСНОВНОЙ ХОД ИГРЫ ===
     function processTurn(dx, dy) {
         const nx = player.x + dx;
@@ -681,14 +662,19 @@ const GameModule = (function() {
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawMinimap(player, explored);
     }
+    // ... (внутри GameModule) ...
+    
+    function getPlayer() {
+        return player;
+    }
 
     return {
-        init
+        init,
+        getPlayer // <--- ДОБАВИТЬ
     };
 })();
 
 window.onload = () => GameModule.init();
-
 ```
 # dungeon_generator.js
 ```js
@@ -929,7 +915,6 @@ const EntityModule = (function() {
     }
 
     function createEnemy(template, x, y, difficultyMult) {
-        // Используем среднее значение диапазона для более предсказуемой сложности
         const hp = Math.floor(((template.hp[0] + template.hp[1]) / 2) * difficultyMult);
         const atk = Math.floor(((template.atk[0] + template.atk[1]) / 2) * difficultyMult);
         const def = Math.floor(((template.def[0] + template.def[1]) / 2) * difficultyMult);
@@ -958,22 +943,15 @@ const EntityModule = (function() {
 
         // 1. Логика для ЗОЛОТА (отдельная обработка)
         if (template.type === 'gold') {
-            // Золото не получает прилагательных. 
-            // Его количество зависит от базового диапазона и множителя глубины/мира.
             const baseAmount = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
             finalVal = Math.max(1, Math.floor(baseAmount * itemPowerMult));
-            
-            // Формируем имя, например "55 золотых"
             name = `${finalVal} золотых`;
         } 
-        // 2. Логика для ОБЫЧНЫХ ПРЕДМЕТОВ (оружие, броня, зелья)
+        // 2. Логика для ОБЫЧНЫХ ПРЕДМЕТОВ
         else {
-            // Генерация имени с учетом рода и числа
             const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
             const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
             name = `${adj} ${template.baseName}`;
-
-            // Расчет базового значения (атаки/защиты/лечения)
             const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
             finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
         }
@@ -989,28 +967,15 @@ const EntityModule = (function() {
             effect: template.effect,
             val: finalVal,
             isItem: true,
-            
-            // === СВОЙСТВА ДЛЯ ОРУЖИЯ ===
-            // Тип атаки: true - ближний бой, false - дальний
             meleeType: template.meleeType !== undefined ? template.meleeType : true,
-            
-            // Дальность атаки в клетках (для дальнего оружия)
             range: template.range || 1,
-            
-            // Максимальный боезапас (если 0 или не указано - бесконечно)
             maxAmmo: template.maxAmmo || 0,
-            
-            // Текущий боезапас (при создании равен максимальному)
             currentAmmo: template.maxAmmo || 0
         };
     }
+
     // === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по уровню ===
     function getAvailableEnemies(depth) {
-        // depth вычисляется как сумма модулей координат в game.js перед вызовом
-        // Уровень 0-2: Только слабые
-        // Уровень 3-6: Средние
-        // Уровень 7+: Все, включая боссов
-        
         if (depth <= 2) {
             return DataModule.ENEMY_TYPES.filter(e => 
                 ["Крыса", "Гоблин", "Волк", "Слизень"].includes(e.name)
@@ -1020,23 +985,19 @@ const EntityModule = (function() {
                 ["Бандит", "Скелет", "Орк-разведчик", "Зомби", "Гарпия", "Призрак"].includes(e.name)
             );
         } else {
-            // На глубоких уровнях добавляем всех остальных
             return DataModule.ENEMY_TYPES.filter(e => 
                 ["Тролль", "Вампир", "Лич", "Голем", "Демон", "Дракон"].includes(e.name)
             );
         }
     }
 
-    // Безопасное размещение врагов с проверкой дистанции
+    // Безопасное размещение врагов
     function spawnEnemies(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3, depth = 0) {
         const height = mapGrid.length;
         const width = mapGrid[0].length;
         const validTiles = [];
 
-        // 1. Фильтруем шаблоны врагов в зависимости от глубины
         const availableTemplates = getAvailableEnemies(depth);
-        
-        // Если вдруг фильтр вернул пустой массив (на всякий случай), берем всех
         const templatesToUse = availableTemplates.length > 0 ? availableTemplates : enemyTemplates;
 
         for (let y = 0; y < height; y++) {
@@ -1061,7 +1022,6 @@ const EntityModule = (function() {
 
         for (const tile of validTiles) {
             if (placedEnemies.length >= count) break;
-
             let tooClose = false;
             for (const occ of occupiedCoords) {
                 if (Math.abs(tile.x - occ.x) + Math.abs(tile.y - occ.y) < minDist) {
@@ -1069,19 +1029,16 @@ const EntityModule = (function() {
                     break;
                 }
             }
-
             if (!tooClose) {
                 occupiedCoords.push({ x: tile.x, y: tile.y });
-                // Выбираем врага ТОЛЬКО из доступных для этой глубины
                 const template = templatesToUse[Math.floor(Math.random() * templatesToUse.length)];
                 placedEnemies.push(createEnemy(template, tile.x, tile.y, difficultyMult));
             }
         }
-
         return placedEnemies;
     }
 
-    // Размещение предметов на разных клетках
+    // Размещение предметов (оружие, броня, зелья)
     function spawnItems(mapGrid, startPos, itemTemplates, count, itemPowerMult, minDistFromPlayer = 3) {
         const height = mapGrid.length;
         const width = mapGrid[0].length;
@@ -1104,13 +1061,68 @@ const EntityModule = (function() {
         }
 
         const placedItems = [];
+        // Исключаем золото из обычного спавна предметов
+        const nonGoldTemplates = itemTemplates.filter(t => t.type !== 'gold');
+        
         for (let i = 0; i < Math.min(count, validTiles.length); i++) {
             const tile = validTiles[i];
-            const template = itemTemplates[Math.floor(Math.random() * itemTemplates.length)];
+            const template = nonGoldTemplates[Math.floor(Math.random() * nonGoldTemplates.length)];
             placedItems.push(createItem(template, tile.x, tile.y, itemPowerMult));
         }
-
         return placedItems;
+    }
+
+    // === НОВАЯ ФУНКЦИЯ: Случайное разбрасывание золота ===
+    // Вызывается отдельно при каждом входе в подземелье для генерации нового распределения
+    function spawnGold(mapGrid, startPos, goldTemplate, count, depth, worldGoldMult = 1) {
+        const height = mapGrid.length;
+        const width = mapGrid[0].length;
+        const validTiles = [];
+
+        // Собираем все проходимые клетки, кроме стартовой позиции игрока
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (mapGrid[y][x] === 0) {
+                    const distToStart = Math.abs(x - startPos.x) + Math.abs(y - startPos.y);
+                    if (distToStart >= 3) { // Не спавним золото прямо у ног
+                        validTiles.push({ x, y });
+                    }
+                }
+            }
+        }
+
+        // Перемешиваем клетки для случайного выбора
+        for (let i = validTiles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
+        }
+
+        const goldPiles = [];
+        const placed = new Set(); // Чтобы не класть две кучки в одну клетку
+
+        for (let i = 0; i < Math.min(count, validTiles.length); i++) {
+            const tile = validTiles[i];
+            const key = `${tile.x},${tile.y}`;
+            if (placed.has(key)) continue;
+            placed.add(key);
+
+            // Расчёт количества золота: база × множитель глубины × множитель мира
+            const depthBonus = 1 + (depth * 0.1); // +50% за каждый уровень глубины
+            const baseAmount = Math.floor(goldTemplate.val[0] + Math.random() * (goldTemplate.val[1] - goldTemplate.val[0]));
+            const finalAmount = Math.max(1, Math.floor(baseAmount * depthBonus * worldGoldMult));
+
+            goldPiles.push({
+                x: tile.x,
+                y: tile.y,
+                name: `${finalAmount} золотых`,
+                char: '$',
+                color: '#FFD700',
+                type: 'gold',
+                val: finalAmount,
+                isItem: true
+            });
+        }
+        return goldPiles;
     }
 
     return {
@@ -1118,7 +1130,8 @@ const EntityModule = (function() {
         createEnemy,
         createItem,
         spawnEnemies,
-        spawnItems
+        spawnItems,
+        spawnGold  // ← Новая функция экспортирована
     };
 })();
 ```
