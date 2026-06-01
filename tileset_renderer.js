@@ -9,7 +9,7 @@ const TilesetRenderer = (function() {
     // Убедитесь, что координаты x,y соответствуют вашему PNG!
     const TILE_MAP = {
         //  Terrain (ПОПРОБУЙТЕ СДВИНУТЬ Y НА 1, ЕСЛИ ПЕРВЫЙ РЯД ПУСТОЙ)
-        '#': { file: 'terrain', x: 1, y: 2 }, 
+        '#': { file: 'terrain', x: 1, y: 3 }, 
         '.': { file: 'terrain', x: 1, y: 1 },
         '>': { file: 'terrain', x: 3, y: 0 },
         '<': { file: 'terrain', x: 2, y: 0 },
