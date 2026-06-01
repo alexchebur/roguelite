@@ -111,26 +111,29 @@ const TilesetRenderer = (function() {
         
         // Если тайлсет не загружен
         if (!img || !isReady) {
-            ctx.fillStyle = '#ff0000';
+            ctx.fillStyle = '#ff0000'; // КРАСНЫЙ = не загружено
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Arial';
+            ctx.fillText('NO IMG', destX + 2, destY + 10);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // === ДИАГНОСТИКА: Рамка и информация ===
+        // === ДИАГНОСТИКА: Рамка и координаты ===
         ctx.save();
-        ctx.strokeStyle = '#00ff00'; // Зеленая рамка
+        ctx.strokeStyle = '#00ff00'; // Зеленая рамка клетки
         ctx.lineWidth = 1;
         ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
         
-        // Пишем координаты источника и символ мелким шрифтом
+        // Пишем символ и координаты источника
         ctx.fillStyle = '#0f0';
         ctx.font = '9px Arial';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(`${ch}(${tile.x},${tile.y})`, destX + 1, destY + 1);
+        ctx.fillText(`${ch} src(${srcX},${srcY})`, destX + 1, destY + 1);
         ctx.restore();
 
         // Сохраняем состояние
@@ -140,8 +143,11 @@ const TilesetRenderer = (function() {
 
         // Проверка границ изображения
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00'; // Желтый = выход за границы
+            ctx.fillStyle = '#ffff00'; // ЖЕЛТЫЙ = выход за границы PNG
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#000';
+            ctx.font = '10px Arial';
+            ctx.fillText('OUT OF BOUNDS', destX + 2, destY + 5);
             ctx.restore();
             return;
         }
@@ -149,6 +155,11 @@ const TilesetRenderer = (function() {
         // 2. Рисуем спрайт
         try {
             ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+            
+            // === ОТЛАДКА: Рисуем красную рамку вокруг исходного куска в PNG (если бы мы могли) ===
+            // Вместо этого проверим, пуст ли он. 
+            // Если после drawImage ничего не появилось, значит пиксели прозрачные или белые на белом.
+            
         } catch (e) {
             console.error("Ошибка drawImage:", e);
         }
