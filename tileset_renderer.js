@@ -8,20 +8,21 @@ const TilesetRenderer = (function() {
     // === МАППИНГ: символ → (файл, колонка, строка) ===
     // Убедитесь, что координаты x,y соответствуют вашему PNG!
     const TILE_MAP = {
-        // 🌍 Terrain
-        '#': { file: 'terrain', x: 0, y: 0 },
-        '.': { file: 'terrain', x: 1, y: 0 },
-        '>': { file: 'terrain', x: 2, y: 0 },
-        '<': { file: 'terrain', x: 3, y: 0 },
-        'T': { file: 'terrain', x: 4, y: 0 },
-        '^': { file: 'terrain', x: 5, y: 0 },
-        '≈': { file: 'terrain', x: 6, y: 0 },
-        'C': { file: 'terrain', x: 7, y: 0 },
-        'D': { file: 'terrain', x: 8, y: 0 },
-        '█': { file: 'terrain', x: 9, y: 0 },
-        '·': { file: 'terrain', x: 10, y: 0 },
-        'o': { file: 'terrain', x: 11, y: 0 },
-        'O': { file: 'terrain', x: 12, y: 0 },
+        //  Terrain (ПОПРОБУЙТЕ СДВИНУТЬ Y НА 1, ЕСЛИ ПЕРВЫЙ РЯД ПУСТОЙ)
+        '#': { file: 'terrain', x: 0, y: 1 }, 
+        '.': { file: 'terrain', x: 1, y: 1 },
+        '>': { file: 'terrain', x: 2, y: 1 },
+        '<': { file: 'terrain', x: 3, y: 1 },
+        'T': { file: 'terrain', x: 4, y: 1 },
+        '^': { file: 'terrain', x: 5, y: 1 },
+        '≈': { file: 'terrain', x: 6, y: 1 },
+        'C': { file: 'terrain', x: 7, y: 1 },
+        'D': { file: 'terrain', x: 8, y: 1 },
+        '█': { file: 'terrain', x: 9, y: 1 },
+        '·': { file: 'terrain', x: 10, y: 1 },
+        'o': { file: 'terrain', x: 11, y: 1 },
+        'O': { file: 'terrain', x: 12, y: 1 },
+        // ... остальные без изменений пока что
 
         //  Creatures & NPCs
         '@': { file: 'creature', x: 0, y: 0 },
