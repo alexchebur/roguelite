@@ -224,12 +224,45 @@ const EntityModule = (function() {
         return goldPiles;
     }
 
+
+
+
+    // === НОВАЯ ФУНКЦИЯ: Спавн предметов ВНУТРИ зданий (для городов) ===
+    function spawnItemsInCity(interiorCoords, itemTemplates, count, itemPowerMult) {
+        if (!interiorCoords || interiorCoords.length === 0) {
+            console.warn("Нет внутренних помещений для спавна предметов");
+            return [];
+        }
+
+        // Перемешиваем доступные внутренние клетки
+        const shuffledCoords = [...interiorCoords];
+        for (let i = shuffledCoords.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledCoords[i], shuffledCoords[j]] = [shuffledCoords[j], shuffledCoords[i]];
+        }
+
+        const placedItems = [];
+        // Берем столько клеток, сколько нужно предметов (или сколько есть)
+        const limit = Math.min(count, shuffledCoords.length);
+
+        for (let i = 0; i < limit; i++) {
+            const pos = shuffledCoords[i];
+            const template = itemTemplates[Math.floor(Math.random() * itemTemplates.length)];
+            // Создаем предмет на этой позиции
+            placedItems.push(createItem(template, pos.x, pos.y, itemPowerMult));
+        }
+
+        return placedItems;
+    }
+
     return {
         createPlayer,
         createEnemy,
         createItem,
         spawnEnemies,
         spawnItems,
-        spawnGold  // ← Новая функция экспортирована
+        spawnGold,
+        spawnItemsInCity // <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
+
