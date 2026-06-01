@@ -138,14 +138,14 @@ const TilesetRenderer = (function() {
         // === ВРЕМЕННО ОТКЛЮЧАЕМ ОКРАСКУ ДЛЯ ПРОВЕРКИ ===
         // Раскомментируйте блок ниже, когда сделаете спрайты белыми
         
-        /*
+        
         const fillColor = color || '#ffffff';
         if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
             ctx.globalCompositeOperation = 'source-atop';
             ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
         }
-        */
+        
 
         ctx.restore();
     }
