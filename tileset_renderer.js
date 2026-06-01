@@ -94,18 +94,10 @@ const TilesetRenderer = (function() {
         const destX = sx * TILE_SIZE;
         const destY = sy * TILE_SIZE;
 
-        // Дебаг-режим: рисуем цветные квадраты вместо спрайтов
-        if (debugMode) {
-            ctx.fillStyle = '#ff00ff';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = '#fff';
-            ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            return;
-        }
-
+        // 1. Проверяем маппинг
         const tile = TILE_MAP[ch];
         
-        // Если нет маппинга, рисуем текст
+        // Если нет маппинга, рисуем текст (как было)
         if (!tile) {
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
@@ -117,24 +109,47 @@ const TilesetRenderer = (function() {
 
         const img = spriteSheets[tile.file];
         
-        // Если тайлсет не загружен, рисуем серый квадрат
+        // Если тайлсет не загружен, рисуем красный квадрат с ошибкой
         if (!img || !isReady) {
-            ctx.fillStyle = '#555';
+            ctx.fillStyle = '#ff0000'; // КРАСНЫЙ = не загружено
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Arial';
+            ctx.fillText('ERR', destX + 2, destY + 10);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
+        // === ДИАГНОСТИКА: Рисуем рамку, чтобы видеть границы клетки ===
+        ctx.save();
+        ctx.strokeStyle = '#00ff00'; // ЗЕЛЕНАЯ РАМКА = клетка отрисована
+        ctx.lineWidth = 1;
+        ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        ctx.restore();
+
+        // Сохраняем состояние
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
 
-        // Рисуем белый спрайт
-        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+        // 2. Рисуем спрайт
+        // ВАЖНО: Убедимся, что координаты не выходят за пределы изображения
+        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
+            ctx.fillStyle = '#ffff00'; // ЖЕЛТЫЙ = координаты вне картинки
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.restore();
+            return;
+        }
 
-        // Красим спрайт
+        try {
+            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+        } catch (e) {
+            console.error("Ошибка drawImage:", e);
+        }
+
+        // 3. Красим спрайт
         const fillColor = color || '#ffffff';
         if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
             ctx.globalCompositeOperation = 'source-atop';
