@@ -34,7 +34,7 @@ const DataModule = (function() {
         { name: "Тролль", char: "T", color: "#4CAF50", hp: [80, 120], atk: [10, 15], def: [2, 3], lootType: "gold" },
         { name: "Лич", char: "L", color: "#7B1FA2", hp: [70, 100], atk: [12, 18], def: [2, 4], lootType: "weapon" },
         { name: "Голем", char: "M", color: "#90A4AE", hp: [120, 180], atk: [12, 16], def: [8, 12], lootType: "gold" },
-        { name: "Дракон", char: "D", color: "#FF5722", hp: [100, 150], atk: [15, 22], def: [5, 8], lootType: "weapon" }
+        { name: "Дракон", char: "q", color: "#FF5722", hp: [100, 150], atk: [15, 22], def: [5, 8], lootType: "weapon" }
     ];
     const ITEM_TYPES = [
         // === МЕЛЕЕ ОРУЖИЕ (meleeType: true) ===
