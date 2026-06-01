@@ -206,7 +206,7 @@ const EntityModule = (function() {
             placed.add(key);
 
             // Расчёт количества золота: база × множитель глубины × множитель мира
-            const depthBonus = 1 + (depth * 0.5); // +50% за каждый уровень глубины
+            const depthBonus = 1 + (depth * 0.1); // +50% за каждый уровень глубины
             const baseAmount = Math.floor(goldTemplate.val[0] + Math.random() * (goldTemplate.val[1] - goldTemplate.val[0]));
             const finalAmount = Math.max(1, Math.floor(baseAmount * depthBonus * worldGoldMult));
 
