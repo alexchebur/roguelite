@@ -95,11 +95,10 @@ const TilesetRenderer = (function() {
         const destX = sx * TILE_SIZE;
         const destY = sy * TILE_SIZE;
 
-        // 1. Проверяем маппинг
         const tile = TILE_MAP[ch];
         
-        // Если нет маппинга, рисуем текст
         if (!tile) {
+            // Fallback: рисуем текст
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -110,68 +109,43 @@ const TilesetRenderer = (function() {
 
         const img = spriteSheets[tile.file];
         
-        // Если тайлсет не загружен
         if (!img || !isReady) {
-            ctx.fillStyle = '#ff0000'; // КРАСНЫЙ = не загружено
+            ctx.fillStyle = '#ff0000';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.fillStyle = '#fff';
-            ctx.font = '10px Arial';
-            ctx.fillText('NO IMG', destX + 2, destY + 10);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // === ДИАГНОСТИКА: Рамка и координаты ===
-        ctx.save();
-        ctx.strokeStyle = '#00ff00'; // Зеленая рамка клетки
-        ctx.lineWidth = 1;
-        ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
-        
-        // Пишем символ и координаты источника
-        ctx.fillStyle = '#0f0';
-        ctx.font = '9px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(`${ch} src(${srcX},${srcY})`, destX + 1, destY + 1);
-        ctx.restore();
+        // Проверка границ
+        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#000';
+            ctx.font = '10px Arial';
+            ctx.fillText('OOB', destX + 2, destY + 5);
+            return;
+        }
 
-        // Сохраняем состояние
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
 
-        // Проверка границ изображения
-        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00'; // ЖЕЛТЫЙ = выход за границы PNG
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.fillStyle = '#000';
-            ctx.font = '10px Arial';
-            ctx.fillText('OUT OF BOUNDS', destX + 2, destY + 5);
-            ctx.restore();
-            return;
-        }
+        // Рисуем спрайт КАК ЕСТЬ (без окраски)
+        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
 
-        // 2. Рисуем спрайт
-        try {
-            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-            
-            // === ОТЛАДКА: Рисуем красную рамку вокруг исходного куска в PNG (если бы мы могли) ===
-            // Вместо этого проверим, пуст ли он. 
-            // Если после drawImage ничего не появилось, значит пиксели прозрачные или белые на белом.
-            
-        } catch (e) {
-            console.error("Ошибка drawImage:", e);
-        }
-
-        // 3. Красим спрайт
+        // === ВРЕМЕННО ОТКЛЮЧАЕМ ОКРАСКУ ДЛЯ ПРОВЕРКИ ===
+        // Раскомментируйте блок ниже, когда сделаете спрайты белыми
+        
+        /*
         const fillColor = color || '#ffffff';
         if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
             ctx.globalCompositeOperation = 'source-atop';
             ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
         }
+        */
 
         ctx.restore();
     }
