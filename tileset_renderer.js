@@ -97,7 +97,7 @@ const TilesetRenderer = (function() {
         // 1. Проверяем маппинг
         const tile = TILE_MAP[ch];
         
-        // Если нет маппинга, рисуем текст (как было)
+        // Если нет маппинга, рисуем текст
         if (!tile) {
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
@@ -109,24 +109,28 @@ const TilesetRenderer = (function() {
 
         const img = spriteSheets[tile.file];
         
-        // Если тайлсет не загружен, рисуем красный квадрат с ошибкой
+        // Если тайлсет не загружен
         if (!img || !isReady) {
-            ctx.fillStyle = '#ff0000'; // КРАСНЫЙ = не загружено
+            ctx.fillStyle = '#ff0000';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.fillStyle = '#fff';
-            ctx.font = '10px Arial';
-            ctx.fillText('ERR', destX + 2, destY + 10);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // === ДИАГНОСТИКА: Рисуем рамку, чтобы видеть границы клетки ===
+        // === ДИАГНОСТИКА: Рамка и информация ===
         ctx.save();
-        ctx.strokeStyle = '#00ff00'; // ЗЕЛЕНАЯ РАМКА = клетка отрисована
+        ctx.strokeStyle = '#00ff00'; // Зеленая рамка
         ctx.lineWidth = 1;
         ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        
+        // Пишем координаты источника и символ мелким шрифтом
+        ctx.fillStyle = '#0f0';
+        ctx.font = '9px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${ch}(${tile.x},${tile.y})`, destX + 1, destY + 1);
         ctx.restore();
 
         // Сохраняем состояние
@@ -134,15 +138,15 @@ const TilesetRenderer = (function() {
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
 
-        // 2. Рисуем спрайт
-        // ВАЖНО: Убедимся, что координаты не выходят за пределы изображения
+        // Проверка границ изображения
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00'; // ЖЕЛТЫЙ = координаты вне картинки
+            ctx.fillStyle = '#ffff00'; // Желтый = выход за границы
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             ctx.restore();
             return;
         }
 
+        // 2. Рисуем спрайт
         try {
             ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
         } catch (e) {
