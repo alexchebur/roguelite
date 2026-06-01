@@ -328,9 +328,11 @@ const RenderModule = (function() {
     }
 
     function updateUI(player, locData, worldTrend) {
+        // === 1. ОБНОВЛЕНИЕ ИНФОРМАЦИИ О ЛОКАЦИИ И КОМПАСА ===
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
             document.getElementById("ui-loc-desc").textContent = locData.description;
+            
             let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
                 typeText += ` | ${worldTrend.name}`;
@@ -340,7 +342,38 @@ const RenderModule = (function() {
             }
             document.getElementById("ui-loc-type").textContent = typeText;
         }
+
+        // === КОМПАС: НАПРАВЛЕНИЕ К ВЫХОДУ ===
+        const exitEl = document.getElementById("ui-loc-coords");
+        if (exitEl) {
+            // На поверхности или без лестницы → сброс
+            if (!player || locData?.themeName === "Поверхность" || !MapModule.stairsUp) {
+                exitEl.textContent = "Выход: —";
+            } else {
+                const sx = MapModule.stairsUp.x, sy = MapModule.stairsUp.y;
+                const dx = sx - player.x, dy = sy - player.y;
+                
+                let arrow = (dx === 0 && dy === 0) ? '🏠' : '';
+                if (!arrow) {
+                    // Определяем вертикальную составляющую
+                    if (dy < 0) arrow += '↑'; 
+                    else if (dy > 0) arrow += '↓';
+                    
+                    // Определяем горизонтальную составляющую
+                    if (dx > 0) arrow += '→'; 
+                    else if (dx < 0) arrow += '←';
+                    
+                    // Объединяем диагонали в единые символы
+                    if (arrow === '↑←') arrow = '↖';
+                    if (arrow === '↑→') arrow = '↗';
+                    if (arrow === '↓←') arrow = '↙';
+                    if (arrow === '↓→') arrow = '↘';
+                }
+                exitEl.textContent = `Выход: ${arrow}`;
+            }
+        }
         
+        // === 2. ОБНОВЛЕНИЕ СТАТОВ ИГРОКА ===
         if (player && player.hp !== undefined) {
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
@@ -363,6 +396,7 @@ const RenderModule = (function() {
                 <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
             `;
 
+            // === 3. ОБНОВЛЕНИЕ ИНВЕНТАРЯ ===
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
