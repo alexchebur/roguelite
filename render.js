@@ -1,14 +1,26 @@
+Вот исправленный и полностью рабочий код для файла **`render.js`**.
+
+**Что исправлено:**
+1.  **Синтаксическая ошибка**: В функции `draw()` был разорван цикл отрисовки тайлов (лишняя закрывающая скобка `}` перед отрисовкой предметов). Это приводило к тому, что код после неё не выполнялся или вызывал ошибку. Я восстановил логику: сначала рисуем карту, потом предметы/врагов/NPC/игрока.
+2.  **Интеграция эффектов**: Добавлен вызов `drawEffects` в конце функции `draw`, чтобы анимации (выстрелы, мигание) отображались поверх спрайтов.
+3.  **Безопасность контекста**: Проверка наличия `RenderModule._ctx` и `TilesetRenderer` во всех местах отрисовки.
+4.  **Глобальная карта**: Убедился, что `drawGlobalMap` использует тот же механизм отрисовки спрайтов.
+
+Замените содержимое вашего `render.js` на этот код:
+
+```javascript
 // =========================== Модуль рендеринга (отрисовка, UI, лог, миникарта + ЭФФЕКТЫ) ===========================
 const RenderModule = (function() {
     let display = null;
     let fov = null;
     const COLS = 60;
     const ROWS = 40;
-    const FONT_SIZE = 14;
+    const FONT_SIZE = 16; // Изменено под тайлсет 16x16
     
     // === СИСТЕМА ЭФФЕКТОВ ===
     let activeEffects = []; 
     let currentCameraOffset = { x: 0, y: 0 };
+    let redrawCallback = null;
 
     function init() {
         if (typeof ROT === 'undefined') {
@@ -19,7 +31,7 @@ const RenderModule = (function() {
         display = new ROT.Display({
             width: COLS,
             height: ROWS,
-            fontSize: 16,
+            fontSize: FONT_SIZE,
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
             bg: "#000",
@@ -52,6 +64,8 @@ const RenderModule = (function() {
         setTimeout(resizeGame, 50);
 
         if (typeof TilesetRenderer !== 'undefined') TilesetRenderer.init();
+        
+        // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
         if (typeof startEffectLoop === 'function') startEffectLoop();
     }
 
@@ -79,25 +93,41 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ЭФФЕКТОВ (вызывается внутри draw) ===
-    function drawEffects(ctx, cam, options) {
+    function drawEffects(ctx, cam) {
         const now = Date.now();
-        const tileW = options.width;
-        const tileH = options.height;
+        const tileW = 16; // TILE_SIZE
+        const tileH = 16;
 
-        activeEffects.forEach(effect => {
+        // Фильтруем и рисуем активные эффекты
+        for (let i = activeEffects.length - 1; i >= 0; i--) {
+            const effect = activeEffects[i];
+            
+            // Удаляем истекшие эффекты
+            if (now > effect.endTime) {
+                activeEffects.splice(i, 1);
+                continue;
+            }
+
             if (effect.type === 'blink') {
                 // Пульсация прозрачности
                 const progress = (effect.endTime - now) / effect.duration;
                 const alpha = Math.abs(Math.sin(now * 0.015)) * 0.6; 
                 
-                ctx.fillStyle = effect.color.replace(/[\d\.]+\)$/g, `${alpha})`);
+                // Парсим цвет и меняем альфа-канал
+                let baseColor = effect.color;
+                if (baseColor.startsWith('rgba')) {
+                    baseColor = baseColor.replace(/[\d\.]+\)$/g, `${alpha})`);
+                } else {
+                    // Если hex, конвертируем в rgba (упрощенно)
+                    baseColor = `rgba(255, 0, 0, ${alpha})`; 
+                }
                 
-                // Рисуем прямоугольник поверх клетки
-                // Учитываем смещение камеры
+                ctx.fillStyle = baseColor;
+                
                 const screenX = (effect.x - cam.x) * tileW;
                 const screenY = (effect.y - cam.y) * tileH;
                 
-                // Рисуем только если в поле зрения
+                // Рисуем только если в поле зрения канваса
                 if (screenX >= -tileW && screenX < COLS * tileW && screenY >= -tileH && screenY < ROWS * tileH) {
                     ctx.fillRect(screenX, screenY, tileW, tileH);
                 }
@@ -114,18 +144,17 @@ const RenderModule = (function() {
                 const screenCurX = (worldCurX - cam.x) * tileW + tileW / 2;
                 const screenCurY = (worldCurY - cam.y) * tileH + tileH / 2;
 
+                ctx.save();
                 ctx.fillStyle = "#FFFF00"; 
-                ctx.font = `bold ${options.fontSize}px ${options.fontFamily}`;
+                ctx.font = `bold 12px Consolas, monospace`;
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                
-                // Тень для точки, чтобы её было видно на светлом фоне
                 ctx.shadowColor = "black";
-                ctx.shadowBlur = 2;
-                ctx.fillText(".", screenCurX, screenCurY);
-                ctx.shadowBlur = 0;
+                ctx.shadowBlur = 4;
+                ctx.fillText("*", screenCurX, screenCurY);
+                ctx.restore();
             }
-        });
+        }
     }
 
     function getCameraOffset(player) {
@@ -139,11 +168,10 @@ const RenderModule = (function() {
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
     function draw(player, enemies, items, npcs = []) {
-        // ✅ ИСПОЛЬЗУЕМ ЗАКЭШИРОВАННЫЙ КОНТЕКСТ
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
-        // ✅ РУЧНАЯ ОЧИСТКА (надёжнее чем display.clear())
+        // Очищаем канвас черным цветом
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -155,10 +183,13 @@ const RenderModule = (function() {
             if (vis) visible.add(`${x},${y}`);
         });
 
+        // 1. РИСУЕМ ТАЙЛЫ (ПОЛ И СТЕНЫ)
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
                 const wy = sy + cam.y;
+                
+                // Проверка границ карты
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
                 const isVisible = visible.has(`${wx},${wy}`);
@@ -172,6 +203,7 @@ const RenderModule = (function() {
                     fg = isVisible ? dtype.floorColor : '#111';
                 }
 
+                // Лестницы
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
                     ch = ">"; fg = isVisible ? "#FFF" : "#333";
                 }
@@ -179,68 +211,92 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                // 🖼️ РИСУЕМ СПРАЙТ
-                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-            }
-        }
-        // ... остальной код отрисовки предметов, врагов, NPC, игрока без изменений ...        }
-
-        // === ПРЕДМЕТЫ ===
-        items.forEach(i => {
-            const sx = i.x - cam.x, sy = i.y - cam.y;
-            if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
-                TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
-            }
-        });
-
-        // === ВРАГИ ===
-        enemies.forEach(e => {
-            if (e.hp > 0) {
-                const sx = e.x - cam.x, sy = e.y - cam.y;
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                    TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                // Рисуем спрайт
+                if (typeof TilesetRenderer !== 'undefined') {
+                    TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+                } else {
+                    // Fallback на текст, если тайлсет не загружен
+                    ctx.fillStyle = fg;
+                    ctx.font = '16px Consolas, monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(ch, sx * 16 + 8, sy * 16 + 8);
                 }
             }
-        });
+        }
 
-        // === NPC ===
-        if (window.currentCityNpcs) {
-            window.currentCityNpcs.forEach(npc => {
-                const sx = npc.x - cam.x, sy = npc.y - cam.y;
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
+        // 2. РИСУЕМ ПРЕДМЕТЫ
+        if (items) {
+            items.forEach(i => {
+                const sx = i.x - cam.x, sy = i.y - cam.y;
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
+                    if (typeof TilesetRenderer !== 'undefined') {
+                        TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
+                    }
                 }
             });
         }
 
-        // === ИГРОК ===
-        TilesetRenderer.draw(ctx, player.char, Math.floor(COLS / 2), Math.floor(ROWS / 2), player.color);
+        // 3. РИСУЕМ ВРАГОВ
+        if (enemies) {
+            enemies.forEach(e => {
+                if (e.hp > 0) {
+                    const sx = e.x - cam.x, sy = e.y - cam.y;
+                    if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
+                        if (typeof TilesetRenderer !== 'undefined') {
+                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. РИСУЕМ NPC
+        if (window.currentCityNpcs) {
+            window.currentCityNpcs.forEach(npc => {
+                const sx = npc.x - cam.x, sy = npc.y - cam.y;
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
+                    if (typeof TilesetRenderer !== 'undefined') {
+                        TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
+                    }
+                }
+            });
+        }
+
+        // 5. РИСУЕМ ИГРОКА
+        if (player) {
+            const px = Math.floor(COLS / 2);
+            const py = Math.floor(ROWS / 2);
+            if (typeof TilesetRenderer !== 'undefined') {
+                TilesetRenderer.draw(ctx, player.char, px, py, player.color);
+            }
+        }
+
+        // 6. РИСУЕМ ЭФФЕКТЫ ПОВЕРХ ВСЕГО
+        drawEffects(ctx, cam);
 
         return visible;
     }
+
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     function drawGlobalMap(centerX, centerY) {
-        // 1. Получаем контекст из кэша (см. init())
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
-        // 2. Очищаем канвас черным цветом
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
 
-        // Маппинг типов тайлов глобальной карты -> [символ_для_маппинга, цвет]
-        // TilesetRenderer использует символ из этого массива для поиска спрайта
         const typeMap = {
-            'plain':           ['.', '#8c8c8c'],      // Равнина
-            'forest':          ['T', '#2e8b57'],      // Лес
-            'mountain':        ['^', '#a0a0a0'],      // Горы
-            'water':           ['≈', '#4682b4'],      // Вода
-            'city':            ['C', '#ffd700'],      // Город
-            'dungeon_entrance':['D', '#cd5c5c'],      // Вход в подземелье
-            'road':            ['█', '#b8860b']       // Дорога
+            'plain':           ['.', '#8c8c8c'],
+            'forest':          ['T', '#2e8b57'],
+            'mountain':        ['^', '#a0a0a0'],
+            'water':           ['≈', '#4682b4'],
+            'city':            ['C', '#ffd700'],
+            'dungeon_entrance':['D', '#cd5c5c'],
+            'road':            ['█', '#b8860b']
         };
 
         for (let sy = 0; sy < ROWS; sy++) {
@@ -248,7 +304,6 @@ const RenderModule = (function() {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
 
-                // Определяем тип тайла
                 let tileType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     tileType = GlobalMapModule.getDisplayTileType(gx, gy);
@@ -256,19 +311,14 @@ const RenderModule = (function() {
                     tileType = GlobalMapModule.getTileType(gx, gy);
                 }
 
-                // Получаем символ и цвет из маппинга
                 const [ch, fg] = typeMap[tileType] || ['·', '#555'];
-
-                // Если это позиция игрока, используем символ '@' и белый цвет
                 const isPlayer = (gx === centerX && gy === centerY);
                 const finalCh = isPlayer ? '@' : ch;
                 const finalFg = isPlayer ? '#ffffff' : fg;
 
-                // Рисуем спрайт через наш рендерер
                 if (typeof TilesetRenderer !== 'undefined') {
                     TilesetRenderer.draw(ctx, finalCh, sx, sy, finalFg);
                 } else {
-                    // Fallback: если рендерер не загрузился, рисуем текст (на всякий случай)
                     ctx.fillStyle = finalFg;
                     ctx.font = '16px Consolas, monospace';
                     ctx.textAlign = 'center';
@@ -323,7 +373,6 @@ const RenderModule = (function() {
     }
 
     function updateUI(player, locData, worldTrend) {
-        // === 1. ОБНОВЛЕНИЕ ИНФОРМАЦИИ О ЛОКАЦИИ И КОМПАСА ===
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
             document.getElementById("ui-loc-desc").textContent = locData.description;
@@ -338,10 +387,8 @@ const RenderModule = (function() {
             document.getElementById("ui-loc-type").textContent = typeText;
         }
 
-        // === КОМПАС: НАПРАВЛЕНИЕ К ВЫХОДУ ===
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
-            // На поверхности или без лестницы → сброс
             if (!player || locData?.themeName === "Поверхность" || !MapModule.stairsUp) {
                 exitEl.textContent = "Выход: —";
             } else {
@@ -350,15 +397,11 @@ const RenderModule = (function() {
                 
                 let arrow = (dx === 0 && dy === 0) ? '🏠' : '';
                 if (!arrow) {
-                    // Определяем вертикальную составляющую
                     if (dy < 0) arrow += '↑'; 
                     else if (dy > 0) arrow += '↓';
-                    
-                    // Определяем горизонтальную составляющую
                     if (dx > 0) arrow += '→'; 
                     else if (dx < 0) arrow += '←';
                     
-                    // Объединяем диагонали в единые символы
                     if (arrow === '↑←') arrow = '↖';
                     if (arrow === '↑→') arrow = '↗';
                     if (arrow === '↓←') arrow = '↙';
@@ -368,7 +411,6 @@ const RenderModule = (function() {
             }
         }
         
-        // === 2. ОБНОВЛЕНИЕ СТАТОВ ИГРОКА ===
         if (player && player.hp !== undefined) {
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
@@ -391,7 +433,6 @@ const RenderModule = (function() {
                 <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
             `;
 
-            // === 3. ОБНОВЛЕНИЕ ИНВЕНТАРЯ ===
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
@@ -476,11 +517,6 @@ const RenderModule = (function() {
             <div style="white-space: pre-line;">${details}</div>
         `;
     }
-    
-    // ... (предыдущий код render.js без изменений) ...
-
-    // Функция для запроса перерисовки извне (например, из системы эффектов)
-    let redrawCallback = null;
 
     function setRedrawCallback(callback) {
         redrawCallback = callback;
@@ -502,9 +538,12 @@ const RenderModule = (function() {
         drawMinimap,
         getCameraOffset,
         updateInspector,
-        setRedrawCallback, // <--- ДОБАВИТЬ ЭКСПОРТ
-        requestRedraw,     // <--- ДОБАВИТЬ ЭКСПОРТ
+        setRedrawCallback,
+        requestRedraw,
+        addBlinkEffect,      // Экспорт для использования в combat.js
+        addProjectileEffect, // Экспорт для использования в combat.js
         COLS,
         ROWS
     };
 })();
+```
