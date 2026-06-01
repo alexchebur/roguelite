@@ -149,18 +149,18 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
-    // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
     function draw(player, enemies, items, npcs = []) {
-        display.clear();
+        display.clear(); // Очищает фон #000
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-        const cam = getCameraOffset(player);
+        const cam = RenderModule.getCameraOffset(player);
+        const ctx = display.getContainer().getContext('2d');
 
         const visible = new Set();
         fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 1. Отрисовка карты
+        // === РИСУЕМ ТАЙЛЫ ===
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
@@ -168,7 +168,7 @@ const RenderModule = (function() {
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
                 const isVisible = visible.has(`${wx},${wy}`);
-                let ch, fg, bg;
+                let ch, fg;
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
@@ -177,8 +177,7 @@ const RenderModule = (function() {
                     ch = dtype.floorChar;
                     fg = isVisible ? dtype.floorColor : '#111';
                 }
-                
-                // Лестницы
+
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
                     ch = ">"; fg = isVisible ? "#FFF" : "#333";
                 }
@@ -186,109 +185,77 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                display.draw(sx, sy, ch, fg, "#000");
+                // 🖼️ РИСУЕМ СПРАЙТ ВМЕСТО ТЕКСТА
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
 
-        // 2. Предметы
+        // === ПРЕДМЕТЫ ===
         items.forEach(i => {
-            const sx = i.x - cam.x;
-            const sy = i.y - cam.y;
+            const sx = i.x - cam.x, sy = i.y - cam.y;
             if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
-                display.draw(sx, sy, i.char, i.color);
+                TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
             }
         });
 
-        // 3. Враги (с эффектом вспышки)
-        const now = Date.now();
+        // === ВРАГИ ===
         enemies.forEach(e => {
             if (e.hp > 0) {
-                const sx = e.x - cam.x;
-                const sy = e.y - cam.y;
+                const sx = e.x - cam.x, sy = e.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                    
-                    let drawChar = e.char;
-                    let drawColor = e.color;
-
-                    // === ЭФФЕКТ ВСПЫШКИ ПРИ УРОНЕ ===
-                    if (e.flashEndTime && now < e.flashEndTime) {
-                        drawChar = e.flashChar || "*"; // Символ вспышки
-                        drawColor = "#FFFFFF";         // Белый цвет вспышки
-                    }
-
-                    display.draw(sx, sy, drawChar, drawColor);
+                    TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
                 }
             }
         });
 
-        // 4. NPC (тоже могут получать урон или просто для единообразия)
+        // === NPC ===
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
-                const sx = npc.x - cam.x;
-                const sy = npc.y - cam.y;
+                const sx = npc.x - cam.x, sy = npc.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    
-                    let drawChar = npc.char;
-                    let drawColor = npc.color;
-
-                    if (npc.flashEndTime && now < npc.flashEndTime) {
-                        drawChar = npc.flashChar || "*";
-                        drawColor = "#FFFFFF";
-                    }
-
-                    display.draw(sx, sy, drawChar, drawColor);
+                    TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
                 }
             });
         }
 
-        // 5. Игрок (с эффектом вспышки)
-        let playerChar = player.char;
-        let playerColor = player.color;
-        
-        if (player.flashEndTime && now < player.flashEndTime) {
-            playerChar = player.flashChar || "*";
-            playerColor = "#FF0000"; // Красная вспышка для игрока
-        }
-        
-        display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), playerChar, playerColor);
+        // === ИГРОК ===
+        TilesetRenderer.draw(ctx, player.char, Math.floor(COLS / 2), Math.floor(ROWS / 2), player.color);
 
         return visible;
     }
     // === ОСТАЛЬНЫЕ ФУНКЦИИ (Global Map, UI, Log) БЕЗ ИЗМЕНЕНИЙ ===
     function drawGlobalMap(centerX, centerY) {
         display.clear();
-        const halfW = Math.floor(COLS / 2);
-        const halfH = Math.floor(ROWS / 2);
+        const ctx = display.getContainer().getContext('2d');
+        const halfW = Math.floor(COLS / 2), halfH = Math.floor(ROWS / 2);
     
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-                let ch, fg;
-                let tileType = 'plain';
             
+                let tileType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     tileType = GlobalMapModule.getDisplayTileType(gx, gy);
                 } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
                     tileType = GlobalMapModule.getTileType(gx, gy);
                 }
             
-                switch(tileType) {
-                    case 'plain': ch = '.'; fg = '#8c8c8c'; break;
-                    case 'forest': ch = 'T'; fg = '#2e8b57'; break;
-                    case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
-                    case 'water': ch = '≈'; fg = '#4682b4'; break;
-                    case 'city': ch = 'C'; fg = '#ffd700'; break;
-                    case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
-                    case 'road': ch = '▮'; fg = '#b8860b'; break;
-                    default: ch = '·'; fg = '#555';
-                }
-             
-                if (gx === centerX && gy === centerY) {
-                    ch = '@'; fg = '#fff';
-                }
+                const typeMap = {
+                    'plain': ['.', '#8c8c8c'],
+                    'forest': ['T', '#2e8b57'],
+                    'mountain': ['^', '#a0a0a0'],
+                    'water': ['≈', '#4682b4'],
+                    'city': ['C', '#ffd700'],
+                    'dungeon_entrance': ['D', '#cd5c5c'],
+                    'road': ['█', '#b8860b']
+                };
+                
+                const [ch, fg] = typeMap[tileType] || ['·', '#555'];
+                const finalCh = (gx === centerX && gy === centerY) ? '@' : ch;
+                const finalFg = (gx === centerX && gy === centerY) ? '#fff' : fg;
             
-                display.draw(sx, sy, ch, fg, '#000');
+                TilesetRenderer.draw(ctx, finalCh, sx, sy, finalFg);
             }
         }
     }
