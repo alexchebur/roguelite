@@ -16,46 +16,60 @@ const RenderModule = (function() {
             throw new Error("ROT missing");
         }
 
-        // 1. Создаём дисплей с размером клетки 16px
+        // 1. Создаём дисплей с размером клетки 16px (под тайлсет 16x16)
         display = new ROT.Display({
             width: COLS,
             height: ROWS,
-            fontSize: 16,          // <- Важно: задаёт размер клетки
+            fontSize: 16,          // Важно: задаёт размер клетки 16x16
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
             bg: "#000",
-            forceSquareRatio: true // <- Гарантирует квадратные клетки
+            forceSquareRatio: true // Гарантирует квадратные клетки
         });
 
         const container = document.getElementById("map-container");
         container.innerHTML = "";
-        container.appendChild(display.getContainer());
+        
+        // 2. Получаем ссылку на canvas и добавляем его в DOM
+        const canvas = display.getContainer(); 
+        container.appendChild(canvas);
 
-        // 2. Загружаем тайлсеты
-        TilesetRenderer.init();
-
+        // 3. Инициализируем FOV
         fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
 
-        // ... остальной код init (resize, listeners) без изменений ...
-    
-
-        fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
-
+        // 4. Функция масштабирования (исправлена ошибка с canvas)
         const resizeGame = () => {
+            if (!canvas) return; 
+            
             const fw = container.clientWidth;
             const fh = container.clientHeight;
-            const cw = canvas.width;
-            const ch = canvas.height;
+            const cw = canvas.width;   // Внутренняя ширина (COLS * 16)
+            const ch = canvas.height;  // Внутренняя высота (ROWS * 16)
+            
+            // Вычисляем масштаб, чтобы канвас вписался в контейнер
             const scale = Math.min(fw / cw, fh / ch);
+            
+            // Применяем трансформацию
             canvas.style.transform = `scale(${scale})`;
             canvas.style.transformOrigin = "center center";
         };
 
         window.addEventListener("resize", resizeGame);
+        
+        // Небольшая задержка, чтобы браузер успел отрисовать DOM перед расчетом размеров
         setTimeout(resizeGame, 50);
         
-        // Запускаем цикл обновления эффектов (для удаления старых)
-        startEffectLoop();
+        // 5. Загружаем тайлсеты (асинхронно)
+        if (typeof TilesetRenderer !== 'undefined') {
+            TilesetRenderer.init();
+        } else {
+            console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
+        }
+
+        // 6. Запуск цикла эффектов (если модуль подключен)
+        if (typeof startEffectLoop === 'function') {
+            startEffectLoop();
+        }
     }
 
     // Цикл только для очистки старых эффектов (не для рисования!)
