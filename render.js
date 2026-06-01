@@ -16,68 +16,43 @@ const RenderModule = (function() {
             throw new Error("ROT missing");
         }
 
-        // 1. Создаём дисплей с размером клетки 16px (под тайлсет 16x16)
         display = new ROT.Display({
             width: COLS,
             height: ROWS,
-            fontSize: 16,          // Важно: задаёт размер клетки 16x16
+            fontSize: 16,
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
             bg: "#000",
-            forceSquareRatio: true // Гарантирует квадратные клетки
+            forceSquareRatio: true
         });
 
         const container = document.getElementById("map-container");
         container.innerHTML = "";
-        
-        // 2. Получаем ссылку на canvas и добавляем его в DOM
-        const canvas = display.getContainer(); 
+        const canvas = display.getContainer();
         container.appendChild(canvas);
 
-        // 3. Инициализируем FOV
+        // ✅ КЭШИРУЕМ КОНТЕКСТ ОДИН РАЗ
+        const ctx = canvas.getContext('2d');
+        RenderModule._ctx = ctx; 
+
         fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
 
-        // 4. Функция масштабирования (исправлена ошибка с canvas)
         const resizeGame = () => {
-            if (!canvas) return; 
-            
+            if (!canvas) return;
             const fw = container.clientWidth;
             const fh = container.clientHeight;
-            const cw = canvas.width;   // Внутренняя ширина (COLS * 16)
-            const ch = canvas.height;  // Внутренняя высота (ROWS * 16)
-            
-            // Вычисляем масштаб, чтобы канвас вписался в контейнер
+            const cw = canvas.width;
+            const ch = canvas.height;
             const scale = Math.min(fw / cw, fh / ch);
-            
-            // Применяем трансформацию
             canvas.style.transform = `scale(${scale})`;
             canvas.style.transformOrigin = "center center";
         };
 
         window.addEventListener("resize", resizeGame);
-        
-        // Небольшая задержка, чтобы браузер успел отрисовать DOM перед расчетом размеров
         setTimeout(resizeGame, 50);
-        
-        // 5. Загружаем тайлсеты (асинхронно)
-        if (typeof TilesetRenderer !== 'undefined') {
-            TilesetRenderer.init();
-        } else {
-            console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
-        }
 
-        // 6. Запуск цикла эффектов (если модуль подключен)
-        if (typeof startEffectLoop === 'function') {
-            startEffectLoop();
-        }
-    }
-
-    // Цикл только для очистки старых эффектов (не для рисования!)
-    function startEffectLoop() {
-        setInterval(() => {
-            const now = Date.now();
-            activeEffects = activeEffects.filter(effect => now < effect.endTime);
-        }, 100);
+        if (typeof TilesetRenderer !== 'undefined') TilesetRenderer.init();
+        if (typeof startEffectLoop === 'function') startEffectLoop();
     }
 
     // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
@@ -164,17 +139,22 @@ const RenderModule = (function() {
 
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
     function draw(player, enemies, items, npcs = []) {
-        display.clear(); // Очищает фон #000
+        // ✅ ИСПОЛЬЗУЕМ ЗАКЭШИРОВАННЫЙ КОНТЕКСТ
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        // ✅ РУЧНАЯ ОЧИСТКА (надёжнее чем display.clear())
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
-        const cam = RenderModule.getCameraOffset(player);
-        const ctx = display.getContainer().getContext('2d');
+        const cam = getCameraOffset(player);
 
         const visible = new Set();
         fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // === РИСУЕМ ТАЙЛЫ ===
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
@@ -199,10 +179,11 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                // 🖼️ РИСУЕМ СПРАЙТ ВМЕСТО ТЕКСТА
+                // 🖼️ РИСУЕМ СПРАЙТ
                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
+        // ... остальной код отрисовки предметов, врагов, NPC, игрока без изменений ...        }
 
         // === ПРЕДМЕТЫ ===
         items.forEach(i => {
@@ -237,39 +218,63 @@ const RenderModule = (function() {
 
         return visible;
     }
-    // === ОСТАЛЬНЫЕ ФУНКЦИИ (Global Map, UI, Log) БЕЗ ИЗМЕНЕНИЙ ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     function drawGlobalMap(centerX, centerY) {
-        display.clear();
-        const ctx = display.getContainer().getContext('2d');
-        const halfW = Math.floor(COLS / 2), halfH = Math.floor(ROWS / 2);
-    
+        // 1. Получаем контекст из кэша (см. init())
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        // 2. Очищаем канвас черным цветом
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        const halfW = Math.floor(COLS / 2);
+        const halfH = Math.floor(ROWS / 2);
+
+        // Маппинг типов тайлов глобальной карты -> [символ_для_маппинга, цвет]
+        // TilesetRenderer использует символ из этого массива для поиска спрайта
+        const typeMap = {
+            'plain':           ['.', '#8c8c8c'],      // Равнина
+            'forest':          ['T', '#2e8b57'],      // Лес
+            'mountain':        ['^', '#a0a0a0'],      // Горы
+            'water':           ['≈', '#4682b4'],      // Вода
+            'city':            ['C', '#ffd700'],      // Город
+            'dungeon_entrance':['D', '#cd5c5c'],      // Вход в подземелье
+            'road':            ['█', '#b8860b']       // Дорога
+        };
+
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-            
+
+                // Определяем тип тайла
                 let tileType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     tileType = GlobalMapModule.getDisplayTileType(gx, gy);
                 } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
                     tileType = GlobalMapModule.getTileType(gx, gy);
                 }
-            
-                const typeMap = {
-                    'plain': ['.', '#8c8c8c'],
-                    'forest': ['T', '#2e8b57'],
-                    'mountain': ['^', '#a0a0a0'],
-                    'water': ['≈', '#4682b4'],
-                    'city': ['C', '#ffd700'],
-                    'dungeon_entrance': ['D', '#cd5c5c'],
-                    'road': ['█', '#b8860b']
-                };
-                
+
+                // Получаем символ и цвет из маппинга
                 const [ch, fg] = typeMap[tileType] || ['·', '#555'];
-                const finalCh = (gx === centerX && gy === centerY) ? '@' : ch;
-                const finalFg = (gx === centerX && gy === centerY) ? '#fff' : fg;
-            
-                TilesetRenderer.draw(ctx, finalCh, sx, sy, finalFg);
+
+                // Если это позиция игрока, используем символ '@' и белый цвет
+                const isPlayer = (gx === centerX && gy === centerY);
+                const finalCh = isPlayer ? '@' : ch;
+                const finalFg = isPlayer ? '#ffffff' : fg;
+
+                // Рисуем спрайт через наш рендерер
+                if (typeof TilesetRenderer !== 'undefined') {
+                    TilesetRenderer.draw(ctx, finalCh, sx, sy, finalFg);
+                } else {
+                    // Fallback: если рендерер не загрузился, рисуем текст (на всякий случай)
+                    ctx.fillStyle = finalFg;
+                    ctx.font = '16px Consolas, monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(finalCh, sx * 16 + 8, sy * 16 + 8);
+                }
             }
         }
     }
