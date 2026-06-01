@@ -298,6 +298,10 @@ const GameModule = (function() {
         renderGlobalMap();
     }
     
+// В файле game.js
+
+// ... существующий код ...
+
     // === ЗАГРУЗКА ГОРОДА ===
     function loadCityLevel(gx, gy, cityName) {
         enemies = []; 
@@ -324,8 +328,23 @@ const GameModule = (function() {
             }
         }
 
-        if (EntityModule.spawnItems) {
-            items = EntityModule.spawnItems(MapModule.currentMapData, player, DataModule.ITEM_TYPES, 6, 1.0, 2);
+        // === ИЗМЕНЕНИЕ: Спавн предметов внутри зданий ===
+        if (EntityModule.spawnItemsInCity) {
+            // Получаем координаты внутренних помещений из MapModule
+            const interior = MapModule.interiorCoords || [];
+            
+            items = EntityModule.spawnItemsInCity(
+                interior,          // Список разрешенных клеток (внутри зданий)
+                DataModule.ITEM_TYPES,
+                6,                 // Количество предметов
+                1.0,               // Множитель силы
+                2                  // (Этот параметр не используется в новой функции, можно убрать или адаптировать)
+            );
+        } else {
+            // Fallback: если новая функция не загружена, используем старый метод (предметы везде)
+            if (EntityModule.spawnItems) {
+                items = EntityModule.spawnItems(MapModule.currentMapData, player, DataModule.ITEM_TYPES, 6, 1.0, 2);
+            }
         }
         
         currentLocData = {
@@ -336,6 +355,8 @@ const GameModule = (function() {
         currentWorldTrend = null;
         renderFrame();
     }    
+
+
     
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
