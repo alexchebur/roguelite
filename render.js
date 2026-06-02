@@ -569,6 +569,8 @@ const RenderModule = (function() {
         addBlinkEffect,
         addProjectileEffect,
         COLS,
-        ROWS
+        ROWS,
+        _ctx: null, // Будет заполнено в init
+        TILE_SIZE   // Экспортируем размер
     };
 })();
