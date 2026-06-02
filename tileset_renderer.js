@@ -41,7 +41,7 @@ const TilesetRenderer = (function() {
                                                 // Исправьте ключи, если рендерер не поддерживает слои.
                                                 // Например, используйте разные символы для Орка и Стены, если это возможно.
                                                 // Или убедитесь, что при отрисовке врага вы обращаетесь к 'creature' файлу напрямую.
-                                               ),
+                                               //),
         'z': { file: 'creature', x: 8, y: 0 }, // ENEMY_ZOMBIE
         'h': { file: 'creature', x: 9, y: 0 }, // ENEMY_HARPY
         'G': { file: 'creature', x: 10, y: 0 }, // ENEMY_GHOST (и ITEM_GLOVES)
