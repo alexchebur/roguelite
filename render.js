@@ -351,13 +351,17 @@ const RenderModule = (function() {
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
+        
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
         const ctx = cvs.getContext("2d");
+        
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
-        const MINIMAP_SIZE = 20;
+        
+        // ✅ ИСПРАВЛЕНИЕ: Увеличиваем размер до 100x100, чтобы масштаб совпадал с мини-картой подземелья
+        const MINIMAP_SIZE = 100; 
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
@@ -367,12 +371,12 @@ const RenderModule = (function() {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
                 const gy = startY + dy;
+                
                 let displayType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     displayType = GlobalMapModule.getDisplayTileType(gx, gy);
-                } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
-                    displayType = GlobalMapModule.getTileType(gx, gy);
                 }
+                
                 let color;
                 switch(displayType) {
                     case 'plain': color = '#555'; break;
@@ -384,9 +388,12 @@ const RenderModule = (function() {
                     case 'road': color = '#b8860b'; break;
                     default: color = '#333';
                 }
-                if (gx === centerX && gy === centerY) color = '#0f0';
+                
+                if (gx === centerX && gy === centerY) color = '#0f0'; // Игрок
+                
                 ctx.fillStyle = color;
-                ctx.fillRect(dx * cellW, dy * cellH, cellW, cellH);
+                // ✅ ИСПРАВЛЕНИЕ: +0.5 предотвращает появление тонких черных линий между пикселями при маленьком масштабе
+                ctx.fillRect(dx * cellW, dy * cellH, cellW + 0.5, cellH + 0.5);
             }
         }
     }
