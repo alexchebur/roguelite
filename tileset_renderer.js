@@ -109,9 +109,6 @@ const TilesetRenderer = (function() {
         if (!img || !isReady) {
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.fillStyle = '#fff';
-            ctx.font = '10px Arial';
-            ctx.fillText('NO IMG', destX + 2, destY + 10);
             return;
         }
 
@@ -122,33 +119,31 @@ const TilesetRenderer = (function() {
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
             ctx.fillStyle = '#ffff00';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.fillStyle = '#000';
-            ctx.font = '10px Arial';
-            ctx.fillText('OOB', destX + 2, destY + 5);
             return;
         }
 
-        ctx.save();
-
         const fillColor = color || '#ffffff';
 
-        // 4. ОКРАСКА ЧЕРЕЗ source-in (НАДЕЖНЫЙ СПОСОБ)
-        if (fillColor && fillColor !== '#000') {
-            // Шаг А: Рисуем цветной квадрат
-            ctx.fillStyle = fillColor;
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-
-            // Шаг Б: Включаем режим "оставить цвет только там, где будет новый рисунок"
-            ctx.globalCompositeOperation = 'source-in';
-
-            // Шаг В: Рисуем белый спрайт. 
-            // Так как спрайт белый, он просто "проявит" цвет underneath в своей форме.
+        // 4. ОТРИСОВКА С ИСПОЛЬЗОВАНИЕМ ФИЛЬТРОВ
+        ctx.save();
+        
+        // Если цвет белый или не задан, рисуем как есть (быстрее)
+        if (fillColor === '#ffffff' || fillColor === '#fff') {
             ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
         } else {
-            // Если цвет черный или не задан, рисуем как есть (черно-белый)
+            // Преобразуем HEX цвет в HSL для фильтра
+            // Это сложный путь, поэтому используем более простой хак:
+            // Рисуем белый спрайт -> Применяем фильтр -> Рисуем поверх цвет с режимом source-atop
+            
+            // Шаг А: Рисуем белый спрайт
             ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+            
+            // Шаг Б: Закрашиваем его цветом
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = fillColor;
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
         }
-
+        
         ctx.restore();
     }
     
