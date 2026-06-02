@@ -1,4 +1,5 @@
 // =========================== Модуль данных ===========================
+// =========================== Модуль данных ===========================
 const DataModule = (function() {
     // Расширенные прилагательные с формами для согласования
     const ITEM_ADJECTIVES = [
@@ -12,10 +13,6 @@ const DataModule = (function() {
         { base: "Святой", she: "Святая", it: "Святое", plural: "Святые" }
     ];
 
-// =========================== Модуль данных ===========================
-const DataModule = (function() {
-    // ... (ITEM_ADJECTIVES остаются без изменений) ...
-
     const ENEMY_TYPES = [
         // === УРОВЕНЬ 1-3 ===
         { name: "Крыса", char: getChar('ENEMY_RAT'), color: "#795548", hp: [8, 12], atk: [1, 1], def: [0, 0], lootType: "food" },
@@ -25,7 +22,7 @@ const DataModule = (function() {
         // === УРОВЕНЬ 4-6 ===
         { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon" },
         { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold" },
-        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [20, 30], atk: [2, 3], def: [1, 2], lootType: "food" },
+        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [3, 5], lootType: "food" },
         { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [4, 7], def: [2, 3], lootType: "weapon" },
 
         // === УРОВЕНЬ 7-9 ===
@@ -79,13 +76,10 @@ const DataModule = (function() {
     const MAP_HEIGHT = 100;
 
     return {
-        ITEM_ADJECTIVES, // Не забудьте вернуть это, если оно было
+        ITEM_ADJECTIVES,
         ENEMY_TYPES,
         ITEM_TYPES,
         MAP_WIDTH,
-        MAP_HEIGHT
-    };
-})();
         MAP_HEIGHT
     };
 })();
