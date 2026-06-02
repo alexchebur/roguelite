@@ -73,7 +73,7 @@ const TilesetRenderer = (function() {
         '+': { file: 'item_sprites', x: 16, y: 0 }, // Эликсир
         '%': { file: 'item_sprites', x: 17, y: 0 }, // Еда
         '~': { file: 'item_sprites', x: 18, y: 0 }, // Мясо
-        '$': { file: 'item_sprites', x: 6, y: 1 }  // Золото
+        '$': { file: 'item_sprites', x: 13, y: 3 }  // Золото
     };
 
     // === ИНИЦИАЛИЗАЦИЯ (Загрузка изображений) ===
