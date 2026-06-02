@@ -97,8 +97,8 @@ const TilesetRenderer = (function() {
 
         const tile = TILE_MAP[ch];
         
-        // Если нет маппинга, рисуем текст (fallback)
         if (!tile) {
+            // Fallback: рисуем текст
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -109,7 +109,6 @@ const TilesetRenderer = (function() {
 
         const img = spriteSheets[tile.file];
         
-        // Если тайлсет не загружен, рисуем красный квадрат ошибки
         if (!img || !isReady) {
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
@@ -119,7 +118,7 @@ const TilesetRenderer = (function() {
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // Проверка границ изображения
+        // Проверка границ
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
             ctx.fillStyle = '#ffff00';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
@@ -130,22 +129,23 @@ const TilesetRenderer = (function() {
         }
 
         ctx.save();
-        
-        // 1. Рисуем белый спрайт
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
+
+        // Рисуем спрайт КАК ЕСТЬ (без окраски)
         ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
 
-        // 2. ОКРАШИВАЕМ СПРАЙТ (источник цвета - параметр color)
-        const fillColor = color || '#ffffff';
+        // === ВРЕМЕННО ОТКЛЮЧАЕМ ОКРАСКУ ДЛЯ ПРОВЕРКИ ===
+        // Раскомментируйте блок ниже, когда сделаете спрайты белыми
         
-        // Красим только если цвет не черный (чтобы сохранить туман войны темным, но видимым)
-        // Если вы хотите, чтобы черные клетки были полностью черными, оставьте условие как есть.
+        /*
+        const fillColor = color || '#ffffff';
         if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
             ctx.globalCompositeOperation = 'source-atop';
             ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
         }
+        */
 
         ctx.restore();
     }
