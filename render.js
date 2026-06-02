@@ -22,7 +22,7 @@ const RenderModule = (function() {
     let currentCameraOffset = { x: 0, y: 0 };
     let redrawCallback = null;
 
-    function init() {
+    async function init() {
         if (typeof ROT === 'undefined') {
             alert("Ошибка: Библиотека ROT.js не загрузилась.");
             throw new Error("ROT missing");
@@ -62,9 +62,11 @@ const RenderModule = (function() {
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
 
-        // Инициализация тайлсетов (вызывает внешний модуль TilesetRenderer)
+        // === ВАЖНО: Ждем загрузки тайлсетов ===
         if (typeof TilesetRenderer !== 'undefined') {
-            TilesetRenderer.init();
+            console.log("🔄 Загрузка тайлсетов...");
+            await TilesetRenderer.init(); // <--- ЖДЕМ ЗАГРУЗКУ КАРТИНОК
+            console.log("✅ Тайлсеты загружены!");
         } else {
             console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
         }
