@@ -263,59 +263,62 @@ const RenderModule = (function() {
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     function drawGlobalMap(centerX, centerY) {
-        display.clear(); // Используем ROT display
-    
+        // Получаем Canvas из ROT.Display
+        const canvas = display.getContainer();
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
-    
+
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-            
-                let ch, fg;
+
                 let tileType = 'plain';
-            
-                // Получаем тип тайла
-                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
-                    tileType = GlobalMapModule.getDisplayTileType(gx, gy);
-                } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
-                    tileType = GlobalMapModule.getTileType(gx, gy);
+                if (typeof GlobalMapModule !== 'undefined') {
+                    tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
                 }
-            
-                // Маппинг через реестр
-                switch(tileType) {
-                     case 'plain':
-                        ch = getChar('TILE_PLAIN'); fg = '#8c8c8c';
-                        break;
-                    case 'forest':
-                        ch = getChar('TILE_FOREST'); fg = '#2e8b57';
-                        break;
-                    case 'mountain':
-                        ch = getChar('TILE_MOUNTAIN'); fg = '#a0a0a0';
-                        break;
-                    case 'water':
-                        ch = getChar('TILE_WATER'); fg = '#4682b4';
-                        break;
-                    case 'city':
-                        ch = getChar('TILE_CITY'); fg = '#ffd700';
-                        break;
-                    case 'dungeon_entrance':
-                        ch = getChar('TILE_DUNGEON_ENTRANCE'); fg = '#cd5c5c';
-                        break;
-                    case 'road':
-                        ch = getChar('TILE_ROAD'); fg = '#b8860b';
-                        break;
-                    default:
-                        ch = getChar('TILE_PLAIN'); fg = '#555';
+
+                // Маппинг типа тайла → ID из реестра
+                const typeToId = {
+                    'plain': 'TILE_PLAIN', 'forest': 'TILE_FOREST', 'mountain': 'TILE_MOUNTAIN',
+                    'water': 'TILE_WATER', 'city': 'TILE_CITY', 'dungeon_entrance': 'TILE_DUNGEON_ENTRANCE',
+                    'road': 'TILE_ROAD'
+                };
+                
+                const id = typeToId[tileType] || 'TILE_PLAIN';
+                
+                // Попытка нарисовать спрайт
+                const drawn = drawSprite(ctx, id, sx, sy);
+                
+                // Если спрайта нет или картинка не загрузилась → ASCII fallback
+                if (!drawn) {
+                    const ch = getChar(id);
+                    const colors = {
+                        'TILE_PLAIN': '#8c8c8c', 'TILE_FOREST': '#2e8b57', 'TILE_MOUNTAIN': '#a0a0a0',
+                        'TILE_WATER': '#4682b4', 'TILE_CITY': '#ffd700', 'TILE_DUNGEON_ENTRANCE': '#cd5c5c', 'TILE_ROAD': '#b8860b'
+                    };
+                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
+                    ctx.fillStyle = colors[id] || '#555';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
                 }
-             
-                // Игрок в центре
+
+                // Игрок поверх всего
                 if (gx === centerX && gy === centerY) {
-                    ch = getChar('PLAYER'); fg = '#fff';
+                    const playerDrawn = drawSprite(ctx, 'PLAYER', sx, sy);
+                    if (!playerDrawn) {
+                        ctx.font = `${FONT_SIZE}px Consolas, monospace`;
+                        ctx.fillStyle = '#fff';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('@', sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
+                    }
                 }
-            
-                display.draw(sx, sy, ch, fg, '#000');
             }
         }
     }
