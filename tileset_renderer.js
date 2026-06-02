@@ -93,9 +93,8 @@ const TilesetRenderer = (function() {
         const destY = sy * TILE_SIZE;
         const tile = TILE_MAP[ch];
         
-        // 1. Если символ не найден в маппинге
+        // 1. Если символ не найден -> ASCII
         if (!tile) {
-            // Это нормально для некоторых символов, просто рисуем текст
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -106,10 +105,9 @@ const TilesetRenderer = (function() {
 
         const img = spriteSheets[tile.file];
         
-        // 2. Если картинка не загрузилась
+        // 2. Если картинка не готова -> Красный квадрат
         if (!img || !isReady) {
-            console.warn(`⚠️ Спрайт не готов: ${tile.file} для символа '${ch}'`);
-            ctx.fillStyle = '#ff0000'; // Красный
+            ctx.fillStyle = '#ff0000';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             ctx.fillStyle = '#fff';
             ctx.font = '10px Arial';
@@ -120,10 +118,9 @@ const TilesetRenderer = (function() {
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // 3. Если координаты выходят за границы
+        // 3. Если координаты битые -> Желтый квадрат
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            console.error(`❌ OOB Error: Символ '${ch}' (${tile.file}) координаты ${tile.x},${tile.y} вне границ изображения ${img.width}x${img.height}`);
-            ctx.fillStyle = '#ffff00'; // Желтый
+            ctx.fillStyle = '#ffff00';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             ctx.fillStyle = '#000';
             ctx.font = '10px Arial';
@@ -131,25 +128,24 @@ const TilesetRenderer = (function() {
             return;
         }
 
-        // 4. Попытка отрисовки
-        try {
-            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-            
-            // Окраска
-            const fillColor = color || '#ffffff';
-            if (fillColor && fillColor !== '#000') {
-                ctx.save();
-                ctx.globalCompositeOperation = 'source-atop';
-                ctx.fillStyle = fillColor;
-                ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-                ctx.restore();
-            }
-        } catch (e) {
-            console.error(`💥 Ошибка отрисовки спрайта '${ch}':`, e);
-            ctx.fillStyle = '#purple';
+        // 4. ПОПЫТКА ОТРИСОВКИ
+        // Сначала рисуем сам спрайт
+        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+        
+        // === ДИАГНОСТИКА: Рисуем зеленую рамку, если спрайт отобразился ===
+        ctx.strokeStyle = '#00ff00'; // Зеленая рамка
+        ctx.lineWidth = 1;
+        ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
+
+        // Теперь применяем цвет
+        const fillColor = color || '#ffffff';
+        if (fillColor && fillColor !== '#000') {
+            ctx.save();
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.restore();
         }
     }
-
     return { init, draw, TILE_SIZE, isReady: () => isReady };
 })();
