@@ -23,15 +23,16 @@ const GameModule = (function() {
     let currentLocData = null;
     let currentWorldTrend = null;
 
-    function init() {
+    async function init() {
         try {
             if (typeof RenderModule === 'undefined') {
-                throw new Error("RenderModule не загружен");
+                throw new Error("RenderModule не загружен ");
             }
-            RenderModule.init();
+            // Ждем завершения инициализации рендерера (и загрузки спрайтов)
+            await RenderModule.init();
             RenderModule.setRedrawCallback(renderFrame);
         } catch (e) {
-            console.error("Критическая ошибка при инициализации:", e);
+            console.error("Критическая ошибка при инициализации: ", e);
             document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
             return;
         }
