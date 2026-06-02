@@ -10,7 +10,7 @@ const RenderModule = (function() {
     // === ЗАГРУЗКА СПРАЙТОВ (Добавлено) ===
     const spriteImages = {};
     const TILESET_FILES = ['terrain', 'creature', 'item']; 
-    const TILE_SIZE = 16; // Размер тайла
+    
 
     TILESET_FILES.forEach(name => {
         const img = new Image();
