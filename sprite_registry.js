@@ -82,7 +82,7 @@ const SPRITE_REGISTRY = {
     'ITEM_GLOVES':           { char: 'v',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
 
     // Ресурсы и прочее
-    'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 26, y: 0 }, desc: 'Золото' },
+    'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 6, y: 1 }, desc: 'Золото' },
     
     // Зелья и еда
     'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
