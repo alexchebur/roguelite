@@ -302,6 +302,10 @@ const GameModule = (function() {
         renderGlobalMap();
     }
     
+// В файле game.js
+
+// ... существующий код ...
+
     // === ЗАГРУЗКА ГОРОДА ===
     function loadCityLevel(gx, gy, cityName) {
         enemies = []; 
@@ -328,8 +332,23 @@ const GameModule = (function() {
             }
         }
 
-        if (EntityModule.spawnItems) {
-            items = EntityModule.spawnItems(MapModule.currentMapData, player, DataModule.ITEM_TYPES, 6, 1.0, 2);
+        // === ИЗМЕНЕНИЕ: Спавн предметов внутри зданий ===
+        if (EntityModule.spawnItemsInCity) {
+            // Получаем координаты внутренних помещений из MapModule
+            const interior = MapModule.interiorCoords || [];
+            
+            items = EntityModule.spawnItemsInCity(
+                interior,          // Список разрешенных клеток (внутри зданий)
+                DataModule.ITEM_TYPES,
+                6,                 // Количество предметов
+                1.0,               // Множитель силы
+                2                  // (Этот параметр не используется в новой функции, можно убрать или адаптировать)
+            );
+        } else {
+            // Fallback: если новая функция не загружена, используем старый метод (предметы везде)
+            if (EntityModule.spawnItems) {
+                items = EntityModule.spawnItems(MapModule.currentMapData, player, DataModule.ITEM_TYPES, 6, 1.0, 2);
+            }
         }
         
         currentLocData = {
@@ -340,6 +359,8 @@ const GameModule = (function() {
         currentWorldTrend = null;
         renderFrame();
     }    
+
+
     
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
@@ -691,13 +712,13 @@ if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
 }
 
 const DUNGEON_TYPES = [
-    { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: '.', wallChar: '#', floorColor: '#333', wallColor: '#555' }, 
-    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: '.', wallChar: '#', floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
-    { name: 'icy', weight: 20, emoji: '❄️', floorChar: '.', wallChar: '#', floorColor: '#aaddff', wallColor: '#ffffff' },
-    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: '.', wallChar: '#', floorColor: '#1a1a1a', wallColor: '#2a2a2a' },
-    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: 'o', wallChar: 'O', floorColor: '#4caf50', wallColor: '#2e7d32' },
-    { name: 'arena', weight: 3, emoji: '🦴', floorChar: '.', wallChar: '#', floorColor: '#5d4037', wallColor: '#3e2723' },
-    { name: 'boss', weight: 2, emoji: '👑', floorChar: '.', wallChar: '#', floorColor: '#b71c1c', wallColor: '#880e4f' }
+    { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#333', wallColor: '#555' }, 
+    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
+    { name: 'icy', weight: 20, emoji: '❄️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#aaddff', wallColor: '#ffffff' },
+    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#1a1a1a', wallColor: '#2a2a2a' },
+    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: getChar('FLOOR_ORGANIC'), wallChar: getChar('WALL_ORGANIC'), floorColor: '#4caf50', wallColor: '#2e7d32' },
+    { name: 'arena', weight: 3, emoji: '🦴', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#5d4037', wallColor: '#3e2723' },
+    { name: 'boss', weight: 2, emoji: '👑', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#b71c1c', wallColor: '#880e4f' }
 ];
 
 const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
@@ -1125,15 +1146,48 @@ const EntityModule = (function() {
         return goldPiles;
     }
 
+
+
+
+    // === НОВАЯ ФУНКЦИЯ: Спавн предметов ВНУТРИ зданий (для городов) ===
+    function spawnItemsInCity(interiorCoords, itemTemplates, count, itemPowerMult) {
+        if (!interiorCoords || interiorCoords.length === 0) {
+            console.warn("Нет внутренних помещений для спавна предметов");
+            return [];
+        }
+
+        // Перемешиваем доступные внутренние клетки
+        const shuffledCoords = [...interiorCoords];
+        for (let i = shuffledCoords.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledCoords[i], shuffledCoords[j]] = [shuffledCoords[j], shuffledCoords[i]];
+        }
+
+        const placedItems = [];
+        // Берем столько клеток, сколько нужно предметов (или сколько есть)
+        const limit = Math.min(count, shuffledCoords.length);
+
+        for (let i = 0; i < limit; i++) {
+            const pos = shuffledCoords[i];
+            const template = itemTemplates[Math.floor(Math.random() * itemTemplates.length)];
+            // Создаем предмет на этой позиции
+            placedItems.push(createItem(template, pos.x, pos.y, itemPowerMult));
+        }
+
+        return placedItems;
+    }
+
     return {
         createPlayer,
         createEnemy,
         createItem,
         spawnEnemies,
         spawnItems,
-        spawnGold  // ← Новая функция экспортирована
+        spawnGold,
+        spawnItemsInCity // <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
+
 ```
 
 
@@ -1604,108 +1658,130 @@ const MapModule = (function() {
 
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА ===
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
-    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с разной плотностью) ===
-    function generateCityLayout(rand, width, height, density = 0.7) {
-        // 1. Стартуем с полной сетки стен
-        const grid = Array(height).fill().map(() => Array(width).fill(1));
+// В файле map.js
 
-        // 2. Вырезаем внутреннее пространство (улицы по всей карте)
-        for (let y = 1; y < height - 1; y++) {
-            for (let x = 1; x < width - 1; x++) {
-                grid[y][x] = 0;
-            }
+// ... существующий код ...
+
+// === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
+function generateCityLayout(rand, width, height, density = 0.7) {
+    // 1. Стартуем с полной сетки стен
+    const grid = Array(height).fill().map(() => Array(width).fill(1));
+    const interiorCoords = []; // <--- ДОБАВИТЬ: список координат внутри зданий
+
+    // 2. Вырезаем внутреннее пространство (улицы по всей карте)
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            grid[y][x] = 0;
         }
+    }
 
-        const STREET_W = 2; // Ширина улиц
-        let y = 2; 
+    const STREET_W = 2; // Ширина улиц
+    let y = 2; 
 
-        // 3. Размещаем здания по упорядоченной сетке
-        while (y < height - 6) {
-            const bh = rand.int(4, 8); // Немного увеличил разброс высоты
-            let x = 2; 
+    // 3. Размещаем здания по упорядоченной сетке
+    while (y < height - 6) {
+        const bh = rand.int(4, 8); 
+        let x = 2; 
 
-            while (x < width - 6) {
-                const bw = rand.int(5, 9); // Немного увеличил разброс ширины
-                
-                // === ГЛАВНОЕ ИЗМЕНЕНИЕ: Проверка плотности ===
-                // Если случайное число больше плотности, пропускаем это место (будет пустырь/площадь)
-                if (rand.next() > density) {
-                    x += bw + STREET_W;
-                    continue;
-                }
+        while (x < width - 6) {
+            const bw = rand.int(5, 9); 
+            
+            // Проверка плотности
+            if (rand.next() > density) {
+                x += bw + STREET_W;
+                continue;
+            }
 
-                if (x + bw + STREET_W >= width - 1) break;
+            if (x + bw + STREET_W >= width - 1) break;
 
-                // Рисуем здание: стены по периметру, пол внутри
-                for (let dy = 0; dy < bh; dy++) {
-                    for (let dx = 0; dx < bw; dx++) {
-                        const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
-                        grid[y + dy][x + dx] = isPerimeter ? 1 : 0;
+            // Рисуем здание: стены по периметру, пол внутри
+            for (let dy = 0; dy < bh; dy++) {
+                for (let dx = 0; dx < bw; dx++) {
+                    const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
+                    const val = isPerimeter ? 1 : 0;
+                    grid[y + dy][x + dx] = val;
+                    
+                    // Если это пол внутри здания, сохраняем координаты
+                    if (val === 0) {
+                        interiorCoords.push({ x: x + dx, y: y + dy });
                     }
                 }
-
-                // 4. Вырезаем дверь
-                const side = rand.int(0, 3); 
-                let doorX = 0, doorY = 0;
-                
-                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
-                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); }
-                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
-                else { doorX = x; doorY = y + rand.int(1, bh - 2); }
-                
-                grid[doorY][doorX] = 0; 
-
-                x += bw + STREET_W;
             }
-            y += bh + STREET_W;
+
+            // 4. Вырезаем дверь
+            const side = rand.int(0, 3); 
+            let doorX = 0, doorY = 0;
+             
+            if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
+            else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } 
+            else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
+            else { doorX = x; doorY = y + rand.int(1, bh - 2); }
+             
+            grid[doorY][doorX] = 0; 
+            // Дверь тоже считается частью интерьера для спавна? 
+            // Обычно лут лежит внутри, а не на пороге. Но пусть будет внутри.
+            // Дверь уже была помечена как 0 выше, если она внутри периметра, 
+            // но если дверь вырезается в стене (периметре), то добавим её вручную, если хотим.
+            // Для простоты оставим только то, что попало в цикл выше (пол внутри).
+
+            x += bw + STREET_W;
         }
-        return grid;
+        y += bh + STREET_W;
     }
     
+    // Возвращаем объект с сеткой и списком внутренних точек
+    return { grid, interiorCoords };
+}
+
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
         const rand = new SeededRandom(seedVal);
         
-        // 1. Определяем "тип" города (плотность застройки)
-        // 0.3 - маленькая деревня, 0.9 - огромный мегаполис
+        // 1. Определяем тип города (плотность застройки)
         const density = rand.next() * 0.3 + 0.3; 
         
-        // Генерируем планировку с учетом плотности
-        currentMapData = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
+        // Генерируем планировку
+        const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
+        currentMapData = layoutResult.grid; // Предположим, что generateCityLayout возвращает grid
         
         currentDungeonType = { 
-            name: 'city',
-            wallChar: '█',  
-            floorChar: '·', 
+             name: 'city',
+            wallChar: getChar('WALL_CITY'),   // '█'
+            floorChar: getChar('FLOOR_CITY'), // '·'
             wallColor: '#6b7280', 
             floorColor: '#374151' 
         };
         
-        // === ЛЕСТНИЦА ">" СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
-        const upSeed = `up_city_${gx}_${gy}_${depth}`;
-        const rng = new Math.seedrandom(upSeed);
-        const w = DataModule.MAP_WIDTH;
-        const h = DataModule.MAP_HEIGHT;
-        
-        const edgeTiles = [];
-        for (let y = 1; y < h - 1; y++) {
-            if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
-            if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
-        }
-        for (let x = 1; x < w - 1; x++) {
-            if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
-            if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
-        }
-        
-        if (edgeTiles.length > 0) {
-            stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
-        } else {
-            stairsUp = { x: 2, y: 2 };
-        }
-        
-        stairsDown = null;
-        return { x: stairsUp.x, y: stairsUp.y };
+        // ... остальной код генерации лестниц и возврата startPos ...
+    
+    
+    // === ЛЕСТНИЦА ">" СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
+    const upSeed = `up_city_${gx}_${gy}_${depth}`;
+    const rng = new Math.seedrandom(upSeed);
+    const w = DataModule.MAP_WIDTH;
+     const h = DataModule.MAP_HEIGHT;
+    
+    const edgeTiles = [];
+    for (let y = 1; y < h - 1; y++) {
+        if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
+        if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
     }
+     for (let x = 1; x < w - 1; x++) {
+        if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
+        if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
+    }
+     
+    if (edgeTiles.length > 0) {
+        stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
+    } else {
+        stairsUp = { x: 2, y: 2 };
+    }
+    
+    stairsDown = null; 
+    return { x: stairsUp.x, y: stairsUp.y };
+}
+
+
     
     function clearCache() {
         stairsCache.clear();
@@ -1730,11 +1806,19 @@ const MapModule = (function() {
         }
     }
 
+
+
+    // Добавляем переменную для хранения внутренних координат текущего уровня
+    let currentMapInteriorCoords = [];
+
     return {
         get currentMapData() { return currentMapData; },
         get currentDungeonType() { return currentDungeonType; },
         get stairsUp() { return stairsUp; },
         get stairsDown() { return stairsDown; },
+        // Экспортируем доступ к внутренним координатам
+        get interiorCoords() { return currentMapInteriorCoords; },
+        
         generate,
         generateWithType,
         generateCity,
@@ -2041,13 +2125,29 @@ const NpcGeneratorModule = (function() {
 # ###render.js
 
 ```js
-// =========================== Модуль рендеринга (отрисовка, UI, лог, миникарта) ===========================
+// =========================== Модуль рендеринга (отрисовка, UI, лог, миникарта + ЭФФЕКТЫ) ===========================
 const RenderModule = (function() {
     let display = null;
     let fov = null;
     const COLS = 60;
     const ROWS = 40;
-    const FONT_SIZE = 14;
+    const FONT_SIZE = 16; 
+    const TILE_SIZE = 16; 
+
+    // === ЗАГРУЗКА СПРАЙТОВ (Для глобальной карты и fallback) ===
+    const spriteImages = {};
+    const TILESET_FILES = ['terrain_sprites', 'creature_sprites', 'item_sprites']; 
+    
+    TILESET_FILES.forEach(name => {
+        const img = new Image();
+        img.src = `${name}.png`; 
+        spriteImages[name] = img;
+    });
+    
+    // === СИСТЕМА ЭФФЕКТОВ ===
+    let activeEffects = []; 
+    let currentCameraOffset = { x: 0, y: 0 };
+    let redrawCallback = null;
 
     function init() {
         if (typeof ROT === 'undefined') {
@@ -2061,7 +2161,8 @@ const RenderModule = (function() {
             fontSize: FONT_SIZE,
             fontFamily: "Consolas, monospace",
             fg: "#ccc",
-            bg: "#000"
+            bg: "#000",
+            forceSquareRatio: true
         });
 
         const container = document.getElementById("map-container");
@@ -2069,31 +2170,155 @@ const RenderModule = (function() {
         const canvas = display.getContainer();
         container.appendChild(canvas);
 
+        // ✅ СОХРАНЯЕМ КОНТЕКСТ ДЛЯ РУЧНОЙ ОТРИСОВКИ
+        RenderModule._ctx = canvas.getContext('2d'); 
+
         fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
 
         const resizeGame = () => {
+            if (!canvas) return;
             const fw = container.clientWidth;
             const fh = container.clientHeight;
             const cw = canvas.width;
             const ch = canvas.height;
             const scale = Math.min(fw / cw, fh / ch);
             canvas.style.transform = `scale(${scale})`;
+            canvas.style.transformOrigin = "center center";
         };
 
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
+
+        // Инициализация тайлсетов (вызывает внешний модуль TilesetRenderer)
+        if (typeof TilesetRenderer !== 'undefined') {
+            TilesetRenderer.init();
+        } else {
+            console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
+        }
+        
+        // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
+        if (typeof startEffectLoop === 'function') startEffectLoop();
     }
 
+    // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
+    function addBlinkEffect(x, y, duration = 500, color = null) {
+        activeEffects.push({
+            type: 'blink',
+            x: x, y: y,
+            startTime: Date.now(),
+            endTime: Date.now() + duration,
+            duration: duration,
+            color: color || "rgba(255, 0, 0, 0.5)"
+        });
+    }
+
+    function addProjectileEffect(sx, sy, tx, ty, duration = 300) {
+        activeEffects.push({
+            type: 'projectile',
+            sx: sx, sy: sy,
+            tx: tx, ty: ty,
+            startTime: Date.now(),
+            endTime: Date.now() + duration,
+            duration: duration
+        });
+    }
+
+    // === ОТРИСОВКА ЭФФЕКТОВ (вызывается внутри draw) ===
+    function drawEffects(ctx, cam) {
+        const now = Date.now();
+        const tileW = TILE_SIZE; 
+        const tileH = TILE_SIZE;
+
+        for (let i = activeEffects.length - 1; i >= 0; i--) {
+            const effect = activeEffects[i];
+            
+            if (now > effect.endTime) {
+                activeEffects.splice(i, 1);
+                continue;
+            }
+
+            if (effect.type === 'blink') {
+                const progress = (effect.endTime - now) / effect.duration;
+                const alpha = Math.abs(Math.sin(now * 0.015)) * 0.6; 
+                
+                let baseColor = effect.color;
+                if (baseColor.startsWith('rgba')) {
+                    baseColor = baseColor.replace(/[\d\.]+\)$/g, `${alpha})`);
+                } else {
+                    baseColor = `rgba(255, 0, 0, ${alpha})`; 
+                }
+                
+                ctx.fillStyle = baseColor;
+                
+                const screenX = (effect.x - cam.x) * tileW;
+                const screenY = (effect.y - cam.y) * tileH;
+                
+                if (screenX >= -tileW && screenX < COLS * tileW && screenY >= -tileH && screenY < ROWS * tileH) {
+                    ctx.fillRect(screenX, screenY, tileW, tileH);
+                }
+            } 
+            else if (effect.type === 'projectile') {
+                const totalTime = effect.duration;
+                const elapsed = now - effect.startTime;
+                const t = Math.min(1, elapsed / totalTime);
+
+                const worldCurX = effect.sx + (effect.tx - effect.sx) * t;
+                const worldCurY = effect.sy + (effect.ty - effect.sy) * t;
+
+                const screenCurX = (worldCurX - cam.x) * tileW + tileW / 2;
+                const screenCurY = (worldCurY - cam.y) * tileH + tileH / 2;
+
+                ctx.save();
+                ctx.fillStyle = "#FFFF00"; 
+                ctx.font = `bold 12px Consolas, monospace`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.shadowColor = "black";
+                ctx.shadowBlur = 4;
+                ctx.fillText("*", screenCurX, screenCurY);
+                ctx.restore();
+            }
+        }
+    }
+
+    // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Безопасная версия) ===
+    function drawSprite(ctx, id, sx, sy) {
+        // Проверяем, подключен ли реестр
+        if (typeof getTileData !== 'function') return false;
+        
+        const tileData = getTileData(id);
+        if (!tileData || !spriteImages[tileData.file]) return false;
+        
+        const img = spriteImages[tileData.file];
+        if (!img.complete || img.naturalWidth === 0) return false;
+
+        ctx.drawImage(
+            img,
+            tileData.x * TILE_SIZE, tileData.y * TILE_SIZE,
+            TILE_SIZE, TILE_SIZE,
+            sx * TILE_SIZE, sy * TILE_SIZE,
+            TILE_SIZE, TILE_SIZE
+        );
+        return true;
+    }    
+    
     function getCameraOffset(player) {
-        return {
+        const cam = {
             x: player.x - Math.floor(COLS / 2),
             y: player.y - Math.floor(ROWS / 2)
         };
+        currentCameraOffset = cam;
+        return cam;
     }
 
-    // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
+    // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ (Использует TilesetRenderer) ===
     function draw(player, enemies, items, npcs = []) {
-        display.clear();
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = getCameraOffset(player);
 
@@ -2102,24 +2327,23 @@ const RenderModule = (function() {
             if (vis) visible.add(`${x},${y}`);
         });
 
+        // 1. РИСУЕМ ТАЙЛЫ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
                 const wy = sy + cam.y;
-
+                
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
                 const isVisible = visible.has(`${wx},${wy}`);
-                let ch, fg, bg;
+                let ch, fg;
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
                     fg = isVisible ? dtype.wallColor : '#222';
-                    bg = "#000";
                 } else {
                     ch = dtype.floorChar;
                     fg = isVisible ? dtype.floorColor : '#111';
-                    bg = "#000";
                 }
 
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
@@ -2129,122 +2353,149 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                display.draw(sx, sy, ch, fg, bg);
+                // Используем TilesetRenderer для подземелья
+                if (typeof TilesetRenderer !== 'undefined') {
+                    TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+                } else {
+                    // Fallback на ASCII, если рендерер сломался
+                    ctx.fillStyle = fg;
+                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
+                }
             }
         }
 
-        items.forEach(i => {
-            const sx = i.x - cam.x;
-            const sy = i.y - cam.y;
-            if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
-                display.draw(sx, sy, i.char, i.color);
-            }
-        });
-
-        // ... (код отрисовки врагов) ...
-        enemies.forEach(e => {
-            if (e.hp > 0) {
-                const sx = e.x - cam.x;
-                const sy = e.y - cam.y;
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                    display.draw(sx, sy, e.char, e.color);
-                }
-            }
-        });
-
-        // === ОТРИСОВКА NPC (добавлено) ===
-        if (window.currentCityNpcs) {
-            window.currentCityNpcs.forEach(npc => {
-                const sx = npc.x - cam.x;
-                const sy = npc.y - cam.y;
-                // NPC видны всегда, если в поле зрения (FOV)
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    display.draw(sx, sy, npc.char, npc.color);
+        // 2. ПРЕДМЕТЫ
+        if (items) {
+            items.forEach(i => {
+                const sx = i.x - cam.x, sy = i.y - cam.y;
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
+                    if (typeof TilesetRenderer !== 'undefined') {
+                        TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
+                    }
                 }
             });
         }
 
-        // Игрок
-        display.draw(Math.floor(COLS / 2), Math.floor(ROWS / 2), player.char, player.color);
+        // 3. ВРАГИ
+        if (enemies) {
+            enemies.forEach(e => {
+                if (e.hp > 0) {
+                    const sx = e.x - cam.x, sy = e.y - cam.y;
+                    if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
+                        if (typeof TilesetRenderer !== 'undefined') {
+                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. NPC
+        if (window.currentCityNpcs) {
+            window.currentCityNpcs.forEach(npc => {
+                const sx = npc.x - cam.x, sy = npc.y - cam.y;
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
+                    if (typeof TilesetRenderer !== 'undefined') {
+                        TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
+                    }
+                }
+            });
+        }
+
+        // 5. ИГРОК
+        if (player) {
+            const px = Math.floor(COLS / 2);
+            const py = Math.floor(ROWS / 2);
+            if (typeof TilesetRenderer !== 'undefined') {
+                TilesetRenderer.draw(ctx, player.char, px, py, player.color);
+            }
+        }
+
+        // 6. ЭФФЕКТЫ
+        drawEffects(ctx, cam);
 
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует sprite_registry.js) ===
     function drawGlobalMap(centerX, centerY) {
-        display.clear();
-    
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
-    
+
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-            
-                let ch, fg;
+
                 let tileType = 'plain';
-            
-                // Получаем тип тайла из глобального модуля
-                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
-                    tileType = GlobalMapModule.getDisplayTileType(gx, gy);
-                } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
-                    tileType = GlobalMapModule.getTileType(gx, gy);
+                if (typeof GlobalMapModule !== 'undefined') {
+                    tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
                 }
-            
-                switch(tileType) {
-                    case 'plain':
-                        ch = '.'; fg = '#8c8c8c';
-                        break;
-                    case 'forest':
-                        ch = 'T'; fg = '#2e8b57';
-                        break;
-                    case 'mountain':
-                        ch = '^'; fg = '#a0a0a0';
-                        break;
-                    case 'water':
-                        ch = '≈'; fg = '#4682b4';
-                        break;
-                    case 'city':
-                        ch = 'C'; fg = '#ffd700';
-                        break;
-                    case 'dungeon_entrance':
-                        ch = 'D'; fg = '#cd5c5c';
-                        break;
-                    case 'road':
-                        ch = '█'; fg = '#b8860b';
-                        break;
-                    default:
-                        ch = '·'; fg = '#555';
+
+                const typeToId = {
+                    'plain': 'TILE_PLAIN', 'forest': 'TILE_FOREST', 'mountain': 'TILE_MOUNTAIN',
+                    'water': 'TILE_WATER', 'city': 'TILE_CITY', 'dungeon_entrance': 'TILE_DUNGEON_ENTRANCE',
+                    'road': 'TILE_ROAD'
+                };
+                
+                const id = typeToId[tileType] || 'TILE_PLAIN';
+                
+                // 1. Попытка нарисовать спрайт через реестр
+                const drawn = drawSprite(ctx, id, sx, sy);
+                
+                // 2. Fallback на ASCII, если спрайт не загрузился или реестра нет
+                if (!drawn) {
+                    // Проверяем, есть ли функция getChar
+                    const ch = (typeof getChar === 'function') ? getChar(id) : '?';
+                    
+                    const colors = {
+                        'TILE_PLAIN': '#8c8c8c', 'TILE_FOREST': '#2e8b57', 'TILE_MOUNTAIN': '#a0a0a0',
+                        'TILE_WATER': '#4682b4', 'TILE_CITY': '#ffd700', 'TILE_DUNGEON_ENTRANCE': '#cd5c5c', 'TILE_ROAD': '#b8860b'
+                    };
+                    
+                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
+                    ctx.fillStyle = colors[id] || '#555';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
                 }
-            
-                // Игрок в центре
+
+                // 3. Игрок поверх всего
                 if (gx === centerX && gy === centerY) {
-                    ch = '@'; fg = '#fff';
+                    const playerDrawn = drawSprite(ctx, 'PLAYER', sx, sy);
+                    if (!playerDrawn) {
+                        ctx.font = `${FONT_SIZE}px Consolas, monospace`;
+                        ctx.fillStyle = '#fff';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('@', sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
+                    }
                 }
-            
-                display.draw(sx, sy, ch, fg, '#000');
             }
         }
     }
-    
-    // === МИНИКАРТА ДЛЯ ГЛОБАЛЬНОЙ КАРТЫ ===
+     
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
-    
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
         const ctx = cvs.getContext("2d");
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
-    
-        // Размер миникарты: 20x20 клеток вокруг центра
         const MINIMAP_SIZE = 20;
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
-    
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
         const startY = centerY - Math.floor(MINIMAP_SIZE / 2);
     
@@ -2252,14 +2503,12 @@ const RenderModule = (function() {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
                 const gy = startY + dy;
-            
                 let displayType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     displayType = GlobalMapModule.getDisplayTileType(gx, gy);
                 } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
                     displayType = GlobalMapModule.getTileType(gx, gy);
                 }
-            
                 let color;
                 switch(displayType) {
                     case 'plain': color = '#555'; break;
@@ -2271,23 +2520,18 @@ const RenderModule = (function() {
                     case 'road': color = '#b8860b'; break;
                     default: color = '#333';
                 }
-            
-                // Игрок
-                if (gx === centerX && gy === centerY) {
-                    color = '#0f0';
-                }
-            
+                if (gx === centerX && gy === centerY) color = '#0f0';
                 ctx.fillStyle = color;
                 ctx.fillRect(dx * cellW, dy * cellH, cellW, cellH);
             }
         }
     }
 
-    // === UI И ЛОГ ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
             document.getElementById("ui-loc-desc").textContent = locData.description;
+            
             let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
                 typeText += ` | ${worldTrend.name}`;
@@ -2297,8 +2541,31 @@ const RenderModule = (function() {
             }
             document.getElementById("ui-loc-type").textContent = typeText;
         }
+
+        const exitEl = document.getElementById("ui-loc-coords");
+        if (exitEl) {
+            if (!player || locData?.themeName === "Поверхность" || !MapModule.stairsUp) {
+                exitEl.textContent = "Выход: —";
+            } else {
+                const sx = MapModule.stairsUp.x, sy = MapModule.stairsUp.y;
+                const dx = sx - player.x, dy = sy - player.y;
+                
+                let arrow = (dx === 0 && dy === 0) ? '🏠' : '';
+                if (!arrow) {
+                    if (dy < 0) arrow += '↑'; 
+                    else if (dy > 0) arrow += '↓';
+                    if (dx > 0) arrow += '→'; 
+                    else if (dx < 0) arrow += '←';
+                    
+                    if (arrow === '↑←') arrow = '↖';
+                    if (arrow === '↑→') arrow = '↗';
+                    if (arrow === '↓←') arrow = '↙';
+                    if (arrow === '↓→') arrow = '↘';
+                }
+                exitEl.textContent = `Выход: ${arrow}`;
+            }
+        }
         
-        // Если есть игрок, показываем его статы
         if (player && player.hp !== undefined) {
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
@@ -2308,7 +2575,6 @@ const RenderModule = (function() {
                 <div class="stat-row"><span>Золото</span> <span style="color: #FFD700">$ ${player.gold}</span></div>
             `;
             
-            // Отображение экипировки с боезапасом (если есть)
             const w = player.equipment.weapon ? 
                 (player.equipment.weapon.maxAmmo > 0 ? 
                     `${player.equipment.weapon.name} (${player.equipment.weapon.currentAmmo})` : 
@@ -2322,72 +2588,46 @@ const RenderModule = (function() {
                 <div class="equip-slot">Тело: <span class="equip-item">${a}</span></div>
             `;
 
-            // === ОТРИСОВКА ИНВЕНТАРЯ С ГРУППИРОВКОЙ ===
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
-                
                 if (player.inventory.length === 0) {
                     invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
                 } else {
-                    // 1. Группируем предметы
                     const grouped = {};
                     const order = []; 
-
                     player.inventory.forEach((item, originalIndex) => {
-                        // Ключ группировки: имя + тип + макс. боезапас (чтобы разные луки не смешивались)
                         const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
-                        
                         if (!grouped[key]) {
-                            grouped[key] = { 
-                                item: item,
-                                count: 0,
-                                indices: []
-                            };
+                            grouped[key] = { item: item, count: 0, indices: [] };
                             order.push(key);
                         }
                         grouped[key].count++;
                         grouped[key].indices.push(originalIndex);
                     });
 
-                    // 2. Отрисовываем группы
                     order.forEach(key => {
                         const group = grouped[key];
                         const item = group.item;
-                        
                         const div = document.createElement("div");
                         div.className = "inv-item";
                         div.style.color = item.color;
-                        
-                        // Формируем текст отображения
                         let html = `${item.char} ${item.name}`;
-                        
-                        // Добавляем значение бонуса
-                        if (item.val) {
-                            html += ` (+${item.val})`;
-                        }
-
-                        // Если предметов больше 1, добавляем количество
+                        if (item.val) html += ` (+${item.val})`;
                         if (group.count > 1) {
                             html += ` <span style="opacity:0.7">(${group.count})</span>`;
-                        } 
-                        // Если предмет одиночный, но имеет боезапас
-                        else if (item.maxAmmo > 0) {
+                        } else if (item.maxAmmo > 0) {
                             html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
                         }
-
-                        // ВАЖНО: используем innerHTML вместо textContent, чтобы тег <span> сработал
                         div.innerHTML = html;
-                        
-                        // При клике используем ПЕРВЫЙ предмет из группы
                         div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
-                        
                         invDiv.appendChild(div);
                     });
                 }
             }
         }
     }
+
     function log(msg, type = "info") {
         const list = document.getElementById("log-list");
         const div = document.createElement("div");
@@ -2397,11 +2637,9 @@ const RenderModule = (function() {
         if (list.children.length > 50) list.lastChild.remove();
     }
 
-    // === МИНИКАРТА ДЛЯ ПОДЗЕМЕЛЬЯ ===
     function drawMinimap(player, explored) {
         const cvs = document.getElementById("minimap");
         if (!cvs || !player) return;
-        
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
@@ -2414,30 +2652,37 @@ const RenderModule = (function() {
         explored.forEach(k => {
             const [x, y] = k.split(',').map(Number);
             ctx.fillStyle = MapModule.isWall(x, y) ? dtype.wallColor : dtype.floorColor;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5; 
             ctx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
             ctx.globalAlpha = 1.0;
         });
         ctx.fillStyle = "#0F0";
         ctx.fillRect(player.x * cw, player.y * ch, cw + 1, ch + 1);
     }
-    // ... (другие функции RenderModule) ...
 
     function updateInspector(title, details, type = "neutral") {
         const div = document.getElementById("ui-inspector");
         if (!div) return;
-
         let color = "var(--text-dim)";
         if (type === "enemy") color = "var(--danger)";
         if (type === "loot") color = "var(--gold)";
         if (type === "npc") color = "var(--accent)";
-
         div.innerHTML = `
             <div style="color: ${color}; font-weight: bold; margin-bottom: 4px;">${title}</div>
             <div style="white-space: pre-line;">${details}</div>
         `;
     }
-    
+
+    function setRedrawCallback(callback) {
+        redrawCallback = callback;
+    }
+
+    function requestRedraw() {
+        if (redrawCallback) {
+            redrawCallback();
+        }
+    }
+
     return {
         init,
         draw,
@@ -2447,12 +2692,17 @@ const RenderModule = (function() {
         log,
         drawMinimap,
         getCameraOffset,
-        updateInspector, 
+        updateInspector,
+        setRedrawCallback,
+        requestRedraw,
+        addBlinkEffect,
+        addProjectileEffect,
         COLS,
-        ROWS
+        ROWS,
+        _ctx: null, 
+        TILE_SIZE   
     };
 })();
-
 ```
 
 
@@ -2604,11 +2854,11 @@ const WorldCurveModule = (function() {
     <title>Roguelike: Подземелье Координат</title>
     
     <!-- ROT.js v2.2.1 -->
-    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.1/dist/rot.min.js"></script>
+    <script src="rot.min.js"></script>
     <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
-
+    <script src="sprite_registry.js"></script>
     <script src="name_generator.js"></script>
     <script src="worldCurve.js"></script>
     <script src="dungeon_generator.js"></script>   <!-- DUNGEON_TYPES здесь -->
@@ -2617,6 +2867,7 @@ const WorldCurveModule = (function() {
     <script src="entity.js"></script>
     <script src="combat.js"></script>
     <script src="globalMap.js"></script>   <!-- использует DUNGEON_TYPES -->
+    <script src="tileset_renderer.js"></script>
     <script src="render.js"></script>
     <script src="npc_generator.js"></script>
     <script src="game.js"></script>
@@ -2690,9 +2941,9 @@ const WorldCurveModule = (function() {
         }
         .loc-info { text-align: center; width: 100% }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-        .loc-coords { color: var(--text-dim); font-size: 0.85em; }
+        .loc-coords { color: var(--text-dim); font-size: 0.8em; margin-bottom: 8px; }
         .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
-        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 2px; }
+        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 1px; }
         
         #map-container {
             grid-column: 2;
@@ -2784,7 +3035,7 @@ const WorldCurveModule = (function() {
             <div id="ui-loc-name" class="loc-name">Инициализация...</div>
             <div id="ui-loc-type" class="loc-type"></div>
             <div id="ui-loc-desc" class="loc-desc"></div>
-            <div id="ui-loc-coords" class="loc-coords">X: 0, Y: 0</div>
+            <div id="ui-loc-coords" class="loc-coords">Выход: —</div>
         </div>
     </header>
 
@@ -2831,17 +3082,40 @@ const WorldCurveModule = (function() {
 # ###combat.js
 ```js
 
-// =========================== Модуль боя, лута и использования предметов ===========================
+// =========================== Модуль боя и использования предметов ===========================
 const CombatModule = (function() {
+    
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ АНИМАЦИИ УДАРА ===
+    function triggerHitAnimation() {
+        let frames = 0;
+        const maxFrames = 5; // Количество кадров анимации (примерно 150-200мс)
+        
+        const interval = setInterval(() => {
+            frames++;
+            RenderModule.requestRedraw(); // Принудительно перерисовываем экран
+            
+            if (frames >= maxFrames) {
+                clearInterval(interval);
+                RenderModule.requestRedraw(); // Финальная перерисовка, чтобы вернуть обычный символ
+            }
+        }, 40); // Частота обновления (40мс = 25 FPS для анимации)
+    }
 
     // === АТАКА БЛИЖНЕГО БОЯ ===
-    function attack(attacker, defender, logFn) {
+    function attack(attacker, defender, logFn) { 
         let dmg = Math.max(1, attacker.atk - defender.def);
         let crit = Math.random() < 0.1;
         if (crit) dmg = Math.floor(dmg * 1.5);
 
         defender.hp -= dmg;
         
+        // === ЭФФЕКТ ВСПЫШКИ ===
+        defender.flashEndTime = Date.now() + 200; // Длительность 200мс
+        defender.flashChar = "*"; 
+        
+        // Запускаем анимацию перерисовки
+        triggerHitAnimation();
+
         const attackerName = attacker.name || "Вы";
         const defenderName = defender.name || "враг";
         const verb = attackerName === "Вы" ? "бьете" : "бьет";
@@ -2850,67 +3124,68 @@ const CombatModule = (function() {
 
         if (defender.hp <= 0) {
             logFn(`${defenderName} погибает!`, "info");
-            return true; // Цель убита
+            return true;
         }
         return false;
     }
 
     // === ДИСТАНЦИОННАЯ АТАКА ===
     function rangedAttack(player, target, weapon, logFn, updateUiFn) {
-        // Проверка: это дальнобойное оружие?
+        // ... (проверки без изменений) ...
         if (!weapon || weapon.meleeType !== false) return false;
-
-        // Проверка боезапаса
         if (weapon.currentAmmo <= 0) {
             logFn(`Нет боеприпасов для ${weapon.name}!`, "combat");
             return false;
         }
-
-        // Расчет расстояния (Манхэттенское расстояние)
         const dist = Math.abs(player.x - target.x) + Math.abs(player.y - target.y);
-        
         if (dist > weapon.range) {
             logFn(`${target.name} слишком далеко для ${weapon.name} (макс. ${weapon.range})!`, "combat");
             return false;
         }
 
-        // Расход боеприпаса
         weapon.currentAmmo--;
-
-        // Расчет урона (база игрока + бонус оружия, если нужно, минус защита цели)
-        // Здесь используем только атаку игрока, но можно добавить weapon.val
         let dmg = Math.max(1, player.atk - target.def); 
-        
         let crit = Math.random() < 0.1;
         if (crit) dmg = Math.floor(dmg * 1.5);
 
         target.hp -= dmg;
+        
+        // === ЭФФЕКТ ВСПЫШКИ ===
+        target.flashEndTime = Date.now() + 200;
+        target.flashChar = "*";
+        
+        // Запускаем анимацию перерисовки
+        triggerHitAnimation();
+
         logFn(`Вы стреляете в ${target.name} из ${weapon.name} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
-        // Обновляем UI, чтобы показать изменившийся боезапас
         if (updateUiFn) updateUiFn();
 
         if (target.hp <= 0) {
             logFn(`${target.name} погибает от выстрела!`, "info");
-            return true; // Убит
+            return true;
         }
         return false;
     }
 
+    // ... (остальной код combat.js без изменений) ...
+
     // === ВЫПАДЕНИЕ ЛУТА ===
-    function dropLoot(enemy, depth, itemsArray, logFn) {
+    // Исправленная сигнатура: (enemy, player, depth, itemsArray, logFn)
+    function dropLoot(enemy, player, depth, itemsArray, logFn) {
         if (!enemy.lootType) return;
 
-        // Шанс выпадения 40%
+        // Шанс выпадения 40% (если random > 0.4, то выходим)
         if (Math.random() > 0.4) return;
 
         let droppedItem = null;
-        const rng = new Math.seedrandom(`loot_${Date.now()}_${Math.random()}`);
+        // Используем seedrandom для разнообразия, но можно и Math.random
+        const rng = new Math.seedrandom(`loot_${enemy.x}_${enemy.y}_${Date.now()}`);
 
         if (enemy.lootType === 'gold') {
             // Золото: количество растет с глубиной
             const baseGold = 5 + Math.floor(depth * 2.5);
-            const amount = Math.floor(baseGold * (0.8 + Math.random() * 0.4)); // разброс ±20%
+            const amount = Math.floor(baseGold * (0.8 + Math.random() * 0.4)); 
             
             droppedItem = {
                 x: enemy.x, y: enemy.y,
@@ -2922,19 +3197,20 @@ const CombatModule = (function() {
             };
         } 
         else if (enemy.lootType === 'food') {
-            // Еда: выбираем случайный предмет типа food
+            // Еда
             const foods = DataModule.ITEM_TYPES.filter(i => i.type === 'food');
             if (foods.length > 0) {
                 const template = rng.choice(foods);
+                // createItem принимает: (template, x, y, itemPowerMult)
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, 1.0);
             }
         } 
         else if (enemy.lootType === 'weapon') {
-            // Оружие или броня: сила зависит от глубины
+            // Оружие/Броня
             const equips = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
             if (equips.length > 0) {
                 const template = rng.choice(equips);
-                // Множитель силы предмета
+                // Множитель силы зависит от глубины
                 const powerMult = 1.0 + (depth * 0.15); 
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, powerMult);
             }
@@ -2946,14 +3222,12 @@ const CombatModule = (function() {
         }
     }
 
-    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТОВ ===
     function useItem(player, index, logFn, updateUiFn) {
         const item = player.inventory[index];
         if (!item) return;
 
         let used = false;
 
-        // 1. Зелья и еда
         if (item.effect === "heal") {
             player.hp = Math.min(player.maxHp, player.hp + item.val);
             logFn(`Вы использовали ${item.name}. HP +${item.val}.`, "loot");
@@ -2964,22 +3238,16 @@ const CombatModule = (function() {
             logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
             used = true;
         }
-        // 2. Экипировка
         else if (item.type === "weapon") {
-            // Снимаем текущее оружие, если есть
             if (player.equipment.weapon) {
                 player.atk -= player.equipment.weapon.val;
                 player.inventory.push(player.equipment.weapon);
             }
-            // Надеваем новое
             player.equipment.weapon = item;
             player.atk += item.val;
-            
-            // Инициализация боезапаса при надевании (если он еще не задан)
             if (item.maxAmmo > 0 && item.currentAmmo === 0) {
                 item.currentAmmo = item.maxAmmo;
             }
-            
             logFn(`Вы взяли в руки ${item.name}. Атака +${item.val}.`, "loot");
             used = true;
         } 
@@ -3007,11 +3275,11 @@ const CombatModule = (function() {
         useItem
     };
 })();
-
 ```
 
 # ###data.js
 ```js
+// =========================== Модуль данных ===========================
 // =========================== Модуль данных ===========================
 const DataModule = (function() {
     // Расширенные прилагательные с формами для согласования
@@ -3027,61 +3295,62 @@ const DataModule = (function() {
     ];
 
     const ENEMY_TYPES = [
-        // === УРОВЕНЬ 1-3: Животные (Еда) и Гоблины (Золото/Оружие) ===
-        { name: "Крыса", char: "r", color: "#795548", hp: [8, 12], atk: [1, 1], def: [0, 0], lootType: "food" },
-        { name: "Гоблин", char: "g", color: "#4CAF50", hp: [12, 18], atk: [1, 2], def: [0, 1], lootType: "gold" },
-        { name: "Волк", char: "w", color: "#9E9E9E", hp: [15, 22], atk: [2, 3], def: [0, 1], lootType: "food" },
+        // === УРОВЕНЬ 1-3 ===
+        { name: "Крыса", char: getChar('ENEMY_RAT'), color: "#795548", hp: [8, 12], atk: [1, 1], def: [0, 0], lootType: "food" },
+        { name: "Гоблин", char: getChar('ENEMY_GOBLIN'), color: "#4CAF50", hp: [12, 18], atk: [1, 2], def: [0, 1], lootType: "gold" },
+        { name: "Волк", char: getChar('ENEMY_WOLF'), color: "#9E9E9E", hp: [15, 22], atk: [2, 3], def: [0, 1], lootType: "food" },
         
-        // === УРОВЕНЬ 4-6: Человекоподобные (Оружие/Золото) и Монстры ===
-        { name: "Бандит", char: "b", color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon" },
-        { name: "Скелет", char: "s", color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold" },
-        { name: "Слизень", char: "j", color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [3, 5], lootType: "food" }, // Слизь съедобна? Пусть будет еда :)
-        { name: "Орк-разведчик", char: "O", color: "#8BC34A", hp: [35, 50], atk: [4, 7], def: [2, 3], lootType: "weapon" },
+        // === УРОВЕНЬ 4-6 ===
+        { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon" },
+        { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold" },
+        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [3, 5], lootType: "food" },
+        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [4, 7], def: [2, 3], lootType: "weapon" },
 
-        // === УРОВЕНЬ 7-9: Серьезные противники ===
-        { name: "Зомби", char: "z", color: "#607D8B", hp: [50, 70], atk: [6, 9], def: [2, 4], lootType: "gold" },
-        { name: "Гарпия", char: "h", color: "#E91E63", hp: [40, 60], atk: [8, 12], def: [1, 2], lootType: "weapon" },
-        { name: "Призрак", char: "G", color: "#7C4DFF", hp: [30, 45], atk: [7, 10], def: [0, 1], lootType: "gold" },
-        { name: "Вампир", char: "V", color: "#C62828", hp: [60, 85], atk: [9, 13], def: [3, 5], lootType: "weapon" },
+        // === УРОВЕНЬ 7-9 ===
+        { name: "Зомби", char: getChar('ENEMY_ZOMBIE'), color: "#607D8B", hp: [50, 70], atk: [6, 9], def: [2, 4], lootType: "gold" },
+        { name: "Гарпия", char: getChar('ENEMY_HARPY'), color: "#E91E63", hp: [40, 60], atk: [8, 12], def: [1, 2], lootType: "weapon" },
+        { name: "Призрак", char: getChar('ENEMY_GHOST'), color: "#7C4DFF", hp: [30, 45], atk: [7, 10], def: [0, 1], lootType: "gold" },
+        { name: "Вампир", char: getChar('ENEMY_VAMPIRE'), color: "#C62828", hp: [60, 85], atk: [9, 13], def: [3, 5], lootType: "weapon" },
 
-        // === УРОВЕНЬ 10+: Боссы и элита ===
-        { name: "Тролль", char: "T", color: "#4CAF50", hp: [80, 120], atk: [10, 15], def: [2, 3], lootType: "gold" },
-        { name: "Лич", char: "L", color: "#7B1FA2", hp: [70, 100], atk: [12, 18], def: [2, 4], lootType: "weapon" },
-        { name: "Голем", char: "M", color: "#90A4AE", hp: [120, 180], atk: [12, 16], def: [8, 12], lootType: "gold" },
-        { name: "Дракон", char: "D", color: "#FF5722", hp: [100, 150], atk: [15, 22], def: [5, 8], lootType: "weapon" }
+        // === УРОВЕНЬ 10+ ===
+        { name: "Тролль", char: getChar('ENEMY_TROLL'), color: "#4CAF50", hp: [80, 120], atk: [10, 15], def: [2, 3], lootType: "gold" },
+        { name: "Лич", char: getChar('ENEMY_LICH'), color: "#7B1FA2", hp: [70, 100], atk: [12, 18], def: [2, 4], lootType: "weapon" },
+        { name: "Голем", char: getChar('ENEMY_GOLEM'), color: "#90A4AE", hp: [120, 180], atk: [12, 16], def: [8, 12], lootType: "gold" },
+        { name: "Дракон", char: getChar('ENEMY_DRAGON'), color: "#FF5722", hp: [100, 150], atk: [15, 22], def: [5, 8], lootType: "weapon" }
     ];
-    const ITEM_TYPES = [
-        // === МЕЛЕЕ ОРУЖИЕ (meleeType: true) ===
-        { type: "weapon", char: "/", color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5], gender: "he", plural: false, meleeType: true, range: 1 },
-        { type: "weapon", char: "^", color: "#FFD700", baseName: "Топор", stat: "atk", val: [3, 7], gender: "he", plural: false, meleeType: true, range: 1 },
-        { type: "weapon", char: ")", color: "#FFD700", baseName: "Булава", stat: "atk", val: [2, 6], gender: "she", plural: false, meleeType: true, range: 1 },
-        { type: "weapon", char: "*", color: "#FF9800", baseName: "Кинжал", stat: "atk", val: [1, 3], gender: "he", plural: false, meleeType: true, range: 1 },
-        { type: "weapon", char: "Y", color: "#FFD700", baseName: "Копьё", stat: "atk", val: [4, 8], gender: "it", plural: false, meleeType: true, range: 1 }, // Можно использовать и как метательное, но пока melee
-        
-        // === ДИСТАНЦИОННОЕ ОРУЖИЕ (meleeType: false) ===
-        { type: "weapon", char: "(", color: "#FF9800", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false, meleeType: false, range: 6, maxAmmo: 20 },
-        { type: "weapon", char: "=", color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false, meleeType: false, range: 8, maxAmmo: 15 },
-        { type: "weapon", char: "|", color: "#B39DDB", baseName: "Посох огня", stat: "atk", val: [2, 4], gender: "he", plural: false, meleeType: false, range: 5, maxAmmo: 50 }, // Магическое оружие с большим запасом
-        
-        // === БРОНЯ (stat: "def") ===
-        { type: "armor", char: "]", color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3], gender: "she", plural: false },
-        { type: "armor", char: "[", color: "#9E9E9E", baseName: "Кольчуга", stat: "def", val: [3, 6], gender: "she", plural: false },
-        { type: "armor", char: "}", color: "#795548", baseName: "Щит", stat: "def", val: [2, 4], gender: "he", plural: false },
-        { type: "armor", char: "o", color: "#4CAF50", baseName: "Наголенники", stat: "def", val: [1, 3], gender: "he", plural: true },
-        { type: "armor", char: "{", color: "#8D6E63", baseName: "Плащ теней", stat: "def", val: [2, 3], gender: "he", plural: false },
-        { type: "armor", char: "H", color: "#607D8B", baseName: "Шлем", stat: "def", val: [1, 2], gender: "he", plural: false },
-        { type: "armor", char: "G", color: "#8D6E63", baseName: "Перчатки", stat: "def", val: [1, 2], gender: "she", plural: true },
 
-        // === ЗОЛОТО (Новый тип) ===
-        { type: "gold", char: "$", color: "#FFD700", baseName: "Монеты", val: [5, 15] },
+    const ITEM_TYPES = [
+        // === МЕЛЕЕ ОРУЖИЕ ===
+        { type: "weapon", char: getChar('ITEM_SWORD'), color: "#FFD700", baseName: "Меч", stat: "atk", val: [2, 5], gender: "he", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: getChar('ITEM_AXE'), color: "#FFD700", baseName: "Топор", stat: "atk", val: [3, 7], gender: "he", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: getChar('ITEM_MACE'), color: "#FFD700", baseName: "Булава", stat: "atk", val: [2, 6], gender: "she", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: getChar('ITEM_DAGGER'), color: "#FF9800", baseName: "Кинжал", stat: "atk", val: [1, 3], gender: "he", plural: false, meleeType: true, range: 1 },
+        { type: "weapon", char: getChar('ITEM_SPEAR'), color: "#FFD700", baseName: "Копьё", stat: "atk", val: [4, 8], gender: "it", plural: false, meleeType: true, range: 1 },
         
-        // === ЗЕЛЬЯ И ЕДА (effect: "heal" или "buff_atk") ===
-        { type: "potion_hp", char: "!", color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
-        { type: "potion_hp", char: "+", color: "#f44336", baseName: "Эликсир жизни", effect: "heal", val: [25, 40] },
-        { type: "food", char: "%", color: "#8BC34A", baseName: "Хлеб и сыр", effect: "heal", val: [5, 10] },
-        { type: "food", char: "~", color: "#8BC34A", baseName: "Жареная крыса", effect: "heal", val: [8, 12] },
-        { type: "potion_str", char: "!", color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] },
-        { type: "potion_str", char: "*", color: "#ff9800", baseName: "Настой берсерка", effect: "buff_atk", val: [3, 5] }
+        // === ДИСТАНЦИОННОЕ ОРУЖИЕ ===
+        { type: "weapon", char: getChar('ITEM_BOW'), color: "#FF9800", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false, meleeType: false, range: 6, maxAmmo: 20 },
+        { type: "weapon", char: getChar('ITEM_CROSSBOW'), color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false, meleeType: false, range: 8, maxAmmo: 15 },
+        { type: "weapon", char: getChar('ITEM_STAFF'), color: "#B39DDB", baseName: "Посох огня", stat: "atk", val: [2, 4], gender: "he", plural: false, meleeType: false, range: 5, maxAmmo: 50 },
+        
+        // === БРОНЯ ===
+        { type: "armor", char: getChar('ITEM_ARMOR_LEATHER'), color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3], gender: "she", plural: false },
+        { type: "armor", char: getChar('ITEM_ARMOR_CHAIN'), color: "#9E9E9E", baseName: "Кольчуга", stat: "def", val: [3, 6], gender: "she", plural: false },
+        { type: "armor", char: getChar('ITEM_SHIELD'), color: "#795548", baseName: "Щит", stat: "def", val: [2, 4], gender: "he", plural: false },
+        { type: "armor", char: getChar('ITEM_GREAVES'), color: "#4CAF50", baseName: "Наголенники", stat: "def", val: [1, 3], gender: "he", plural: true },
+        { type: "armor", char: getChar('ITEM_CLOAK'), color: "#8D6E63", baseName: "Плащ теней", stat: "def", val: [2, 3], gender: "he", plural: false },
+        { type: "armor", char: getChar('ITEM_HELMET'), color: "#607D8B", baseName: "Шлем", stat: "def", val: [1, 2], gender: "he", plural: false },
+        { type: "armor", char: getChar('ITEM_GLOVES'), color: "#8D6E63", baseName: "Перчатки", stat: "def", val: [1, 2], gender: "she", plural: true },
+
+        // === ЗОЛОТО ===
+        { type: "gold", char: getChar('ITEM_GOLD'), color: "#FFD700", baseName: "Монеты", val: [5, 15] },
+        
+        // === ЗЕЛЬЯ И ЕДА ===
+        { type: "potion_hp", char: getChar('ITEM_POTION_HP'), color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
+        { type: "potion_hp", char: getChar('ITEM_ELIXIR'), color: "#f44336", baseName: "Эликсир жизни", effect: "heal", val: [25, 40] },
+        { type: "food", char: getChar('ITEM_FOOD_BREAD'), color: "#8BC34A", baseName: "Хлеб и сыр", effect: "heal", val: [5, 10] },
+        { type: "food", char: getChar('ITEM_FOOD_MEAT'), color: "#8BC34A", baseName: "Жареная крыса", effect: "heal", val: [8, 12] },
+        { type: "potion_str", char: getChar('ITEM_POTION_STR'), color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] },
+        { type: "potion_str", char: getChar('ITEM_BERSERK'), color: "#ff9800", baseName: "Настой берсерка", effect: "buff_atk", val: [3, 5] }
     ];
 
     const MAP_WIDTH = 100;
@@ -3244,6 +3513,292 @@ const EffectSystemModule = (function() {
 
 })();
 ```
+# ###sprite_registry.js
+```js
+/**
+ * ЕДИНЫЙ РЕЕСТР СПРАЙТОВ И СИМВОЛОВ (sprite_registry.js)
+ * Подключать ПЕРВЫМ среди пользовательских скриптов.
+ */
+
+const SPRITE_REGISTRY = {
+    // ==========================================
+    // 1. ГЛОБАЛЬНАЯ КАРТА (Ландшафт)
+    // ==========================================
+    'TILE_PLAIN':            { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Равнина' },
+    'TILE_FOREST':           { char: 'T',   tile: { file: 'terrain_sprites', x: 8, y: 2 }, desc: 'Лес' },
+    'TILE_MOUNTAIN':         { char: '^',   tile: { file: 'terrain_sprites', x: 5, y: 2 }, desc: 'Горы' },
+    'TILE_WATER':            { char: '≈',   tile: { file: 'terrain_sprites', x: 7, y: 2 }, desc: 'Вода' },
+    'TILE_CITY':             { char: 'C',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Город' },
+    'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход в подземелье' },
+    'TILE_ROAD':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Дорога' },
+
+    // ==========================================
+    // 2. ПОДЗЕМЕЛЬЕ (Стены и Пол)
+    // ==========================================
+    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Обычный пол' },
+    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Обычная стена' },
+    
+    // Специфичные тайлы (для пещер, городов и т.д.)
+    'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain_sprites', x: 3, y: 2 }, desc: 'Органический пол' },
+    'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain_sprites', x: 4, y: 2 }, desc: 'Органическая стена' },
+    'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол города' }, // Используем тот же спрайт пола или свой
+    'WALL_CITY':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Стена города' },
+
+    // Лестницы
+    'STAIRS_DOWN':           { char: '<',   tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница вниз' },
+    'STAIRS_UP':             { char: '>',   tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница вверх' },
+
+    // ==========================================
+    // 3. СУЩНОСТИ (Игрок и NPC)
+    // ==========================================
+    'PLAYER':                { char: '@',   tile: { file: 'creature_sprites', x: 2, y: 0 }, desc: 'Игрок' },
+    'NPC':                   { char: '☺',   tile: { file: 'creature_sprites', x: 8, y: 3 }, desc: 'NPC' },
+
+    // ==========================================
+    // 4. ВРАГИ (ENEMY_TYPES)
+    // ==========================================
+    'ENEMY_RAT':             { char: 'r',   tile: { file: 'creature_sprites', x: 8, y: 9 }, desc: 'Крыса' },
+    'ENEMY_GOBLIN':          { char: 'g',   tile: { file: 'creature_sprites', x: 12, y: 3 }, desc: 'Гоблин' },
+    'ENEMY_WOLF':            { char: 'w',   tile: { file: 'creature_sprites', x: 1, y: 9 }, desc: 'Волк' },
+    'ENEMY_BANDIT':          { char: 'b',   tile: { file: 'creature_sprites', x: 5, y: 0 }, desc: 'Бандит' },
+    'ENEMY_SKELETON':        { char: 's',   tile: { file: 'creature_sprites', x: 6, y: 0 }, desc: 'Скелет' },
+    'ENEMY_SLIME':           { char: 'j',   tile: { file: 'creature_sprites', x: 3, y: 15 }, desc: 'Слизень' },
+    'ENEMY_ORC':             { char: 'k',   tile: { file: 'creature_sprites', x: 7, y: 0 }, desc: 'Орк' }, // Внимание: символ совпадает с WALL_ORGANIC
+    'ENEMY_ZOMBIE':          { char: 'z',   tile: { file: 'creature_sprites', x: 8, y: 0 }, desc: 'Зомби' },
+    'ENEMY_HARPY':           { char: 'h',   tile: { file: 'creature_sprites', x: 9, y: 0 }, desc: 'Гарпия' },
+    'ENEMY_GHOST':           { char: 'G',   tile: { file: 'creature_sprites', x: 10, y: 0 }, desc: 'Призрак' }, // Совпадает с ITEM_GLOVES
+    'ENEMY_VAMPIRE':         { char: 'V',   tile: { file: 'creature_sprites', x: 11, y: 0 }, desc: 'Вампир' },
+    'ENEMY_TROLL':           { char: 't',   tile: { file: 'creature_sprites', x: 12, y: 0 }, desc: 'Тролль' }, // Совпадает с TILE_FOREST
+    'ENEMY_LICH':            { char: 'L',   tile: { file: 'creature_sprites', x: 13, y: 0 }, desc: 'Лич' },
+    'ENEMY_GOLEM':           { char: 'M',   tile: { file: 'creature_sprites', x: 14, y: 0 }, desc: 'Голем' },
+    'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature_sprites', x: 15, y: 0 }, desc: 'Дракон' },
+
+    // ==========================================
+    // 5. ПРЕДМЕТЫ (ITEM_TYPES)
+    // ==========================================
+    
+    // Оружие ближнего боя
+    'ITEM_SWORD':            { char: '/',   tile: { file: 'item_sprites', x: 0, y: 0 }, desc: 'Меч' },
+    'ITEM_AXE':              { char: 'P',   tile: { file: 'item_sprites', x: 1, y: 0 }, desc: 'Топор' }, // Совпадает с TILE_MOUNTAIN
+    'ITEM_MACE':             { char: ')',   tile: { file: 'item_sprites', x: 2, y: 0 }, desc: 'Булава' },
+    'ITEM_DAGGER':           { char: '*',   tile: { file: 'item_sprites', x: 3, y: 0 }, desc: 'Кинжал' }, // Совпадает с ITEM_BERSERK
+    'ITEM_SPEAR':            { char: 'Y',   tile: { file: 'item_sprites', x: 4, y: 0 }, desc: 'Копье' },
+
+    // Оружие дальнего боя
+    'ITEM_BOW':              { char: '(',   tile: { file: 'item_sprites', x: 5, y: 0 }, desc: 'Лук' },
+    'ITEM_CROSSBOW':         { char: '=',   tile: { file: 'item_sprites', x: 6, y: 0 }, desc: 'Арбалет' },
+    'ITEM_STAFF':            { char: '|',   tile: { file: 'item_sprites', x: 7, y: 0 }, desc: 'Посох' },
+
+    // Броня
+    'ITEM_ARMOR_LEATHER':    { char: ']',   tile: { file: 'item_sprites', x: 8, y: 0 }, desc: 'Кожаная броня' },
+    'ITEM_ARMOR_CHAIN':      { char: '[',   tile: { file: 'item_sprites', x: 9, y: 0 }, desc: 'Кольчуга' },
+    'ITEM_SHIELD':           { char: '}',   tile: { file: 'item_sprites', x: 10, y: 0 }, desc: 'Щит' },
+    'ITEM_GREAVES':          { char: '"',   tile: { file: 'item_sprites', x: 11, y: 0 }, desc: 'Наголенники' }, // Совпадает с FLOOR_ORGANIC
+    'ITEM_CLOAK':            { char: '{',   tile: { file: 'item_sprites', x: 12, y: 0 }, desc: 'Плащ' },
+    'ITEM_HELMET':           { char: 'H',   tile: { file: 'item_sprites', x: 13, y: 0 }, desc: 'Шлем' },
+    'ITEM_GLOVES':           { char: ',',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
+
+    // Ресурсы и прочее
+    'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 18, y: 0 }, desc: 'Золото' },
+    
+    // Зелья и еда
+    'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
+    'ITEM_ELIXIR':           { char: '+',   tile: { file: 'item_sprites', x: 15, y: 0 }, desc: 'Эликсир' },
+    'ITEM_FOOD_BREAD':       { char: '%',   tile: { file: 'item_sprites', x: 16, y: 0 }, desc: 'Еда' },
+    'ITEM_FOOD_MEAT':        { char: '~',   tile: { file: 'item_sprites', x: 17, y: 0 }, desc: 'Мясо' },
+    'ITEM_POTION_STR':       { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье силы' },
+    'ITEM_BERSERK':          { char: '*',   tile: { file: 'item_sprites', x: 3, y: 0 }, desc: 'Настой берсерка' } // Совпадает с ITEM_DAGGER
+};
+
+/**
+ * Получает символ (char) по ID из реестра.
+ * Используется в data.js, dungeon_generator.js и map.js.
+ */
+function getChar(id) {
+    return SPRITE_REGISTRY[id] ? SPRITE_REGISTRY[id].char : '?';
+}
+
+/**
+ * Получает данные тайлсета (file, x, y) по ID.
+ * Используется в спрайтовом рендерере.
+ */
+function getTileData(id) {
+    return SPRITE_REGISTRY[id] ? SPRITE_REGISTRY[id].tile : null;
+}
+```
+# ###tileset_renderer.js
+```js
+
+
+// tileset_renderer.js
+const TilesetRenderer = (function() {
+    const TILE_SIZE = 16;
+    const spriteSheets = {};
+    let isReady = false;
+    let debugMode = false;
+
+    // === МАППИНГ: символ → (файл, колонка, строка) ===
+    // Убедитесь, что координаты x,y соответствуют вашему PNG!
+    const TILE_MAP = {
+        // Terrain
+        '.': { file: 'terrain_sprites', x: 0, y: 1 }, // FLOOR_DEFAULT, TILE_PLAIN
+        '#': { file: 'terrain_sprites', x: 1, y: 2 }, // WALL_DEFAULT
+        '>': { file: 'terrain_sprites', x: 3, y: 0 }, // STAIRS_UP
+        '<': { file: 'terrain_sprites', x: 2, y: 0 }, // STAIRS_DOWN
+        'T': { file: 'terrain_sprites', x: 8, y: 2 }, // TILE_FOREST (и ENEMY_TROLL, но спрайт врага берется из файла creature)
+        '^': { file: 'terrain_sprites', x: 5, y: 2 }, // TILE_MOUNTAIN (и ITEM_AXE)
+        '≈': { file: 'terrain_sprites', x: 7, y: 2 }, // TILE_WATER
+        'C': { file: 'terrain_sprites', x: 9, y: 2 }, // TILE_CITY
+        'D': { file: 'terrain_sprites', x: 6, y: 0 }, // TILE_DUNGEON_ENTRANCE
+        '█': { file: 'terrain_sprites', x: 11, y: 2 }, // TILE_ROAD, WALL_CITY
+        'o': { file: 'terrain_sprites', x: 3, y: 2 }, // FLOOR_ORGANIC (и ITEM_GREAVES)
+        'O': { file: 'terrain_sprites', x: 4, y: 2 }, // WALL_ORGANIC (и ENEMY_ORC - тут нужен отдельный спрайт для Орка в creature!)
+        
+        // Creatures & NPCs
+        '@': { file: 'creature_sprites', x: 2, y: 0 }, // PLAYER
+        'r': { file: 'creature_sprites', x: 8, y: 9 }, // ENEMY_RAT
+        'g': { file: 'creature_sprites', x: 12, y: 3 }, // ENEMY_GOBLIN
+        'w': { file: 'creature_sprites', x: 1, y: 9 }, // ENEMY_WOLF
+        'j': { file: 'creature_sprites', x: 3, y: 15 }, // ENEMY_SLIME
+        'b': { file: 'creature_sprites', x: 5, y: 0 }, // ENEMY_BANDIT
+        's': { file: 'creature_sprites', x: 6, y: 0 }, // ENEMY_SKELETON
+        'O': { file: 'creature_sprites', x: 7, y: 0 }, // ENEMY_ORC (Внимание: тот же ключ 'O', что и у стены! 
+                                                // ВАШ РЕНДЕРЕР ДОЛЖЕН ПРИОРИТЕЗИРОВАТЬ СУЩНОСТИ НАД ТАЙЛАМИ.
+                                                // Если ключи в объекте совпадают, одно перезапишет другое.
+                                                // Решение: В TILE_MAP ключи должны быть уникальными. 
+                                                // Но так как и стена, и орк используют символ 'O', 
+                                                // вам нужно проверять контекст при отрисовке.
+                                                // Обычно спрайтовый рендерер принимает (char, layer).
+                                                // Если у вас один общий TILE_MAP, то 'O' будет последним записанным.
+                                                // Исправьте ключи, если рендерер не поддерживает слои.
+                                                // Например, используйте разные символы для Орка и Стены, если это возможно.
+                                                // Или убедитесь, что при отрисовке врага вы обращаетесь к 'creature' файлу напрямую.
+                                               //),
+        'z': { file: 'creature_sprites', x: 8, y: 0 }, // ENEMY_ZOMBIE
+        'h': { file: 'creature_sprites', x: 9, y: 0 }, // ENEMY_HARPY
+        'G': { file: 'creature_sprites', x: 10, y: 0 }, // ENEMY_GHOST (и ITEM_GLOVES)
+        'V': { file: 'creature_sprites', x: 11, y: 0 }, // ENEMY_VAMPIRE
+        'T': { file: 'creature_sprites', x: 12, y: 0 }, // ENEMY_TROLL (и TILE_FOREST)
+        'L': { file: 'creature_sprites', x: 13, y: 0 }, // ENEMY_LICH
+        'M': { file: 'creature_sprites', x: 14, y: 0 }, // ENEMY_GOLEM
+        'q': { file: 'creature_sprites', x: 15, y: 0 }, // ENEMY_DRAGON
+        '☺': { file: 'creature_sprites', x: 8, y: 3 }, // NPC
+
+        // Items
+        '/': { file: 'item_sprites', x: 0, y: 0 },
+        '^': { file: 'item_sprites', x: 1, y: 0 },
+        ')': { file: 'item_sprites', x: 2, y: 0 },
+        '*': { file: 'item_sprites', x: 3, y: 0 },
+        'Y': { file: 'item_sprites', x: 4, y: 0 },
+        '(': { file: 'item_sprites', x: 5, y: 0 },
+        '=': { file: 'item_sprites', x: 6, y: 0 },
+        '|': { file: 'item_sprites', x: 7, y: 0 },
+        ']': { file: 'item_sprites', x: 8, y: 0 },
+        '[': { file: 'item_sprites', x: 9, y: 0 },
+        '}': { file: 'item_sprites', x: 10, y: 0 },
+        '{': { file: 'item_sprites', x: 11, y: 0 },
+        'H': { file: 'item_sprites', x: 12, y: 0 },
+        '!': { file: 'item_sprites', x: 14, y: 0 },
+        '+': { file: 'item_sprites', x: 15, y: 0 },
+        '%': { file: 'item_sprites', x: 16, y: 0 },
+        '~': { file: 'item_sprites', x: 17, y: 0 },
+        '$': { file: 'item_sprites', x: 18, y: 0 }
+    };
+    async function init() {
+        const files = [
+            { src: 'terrain_sprites.png', key: 'terrain_sprites' },
+            { src: 'creature_sprites.png', key: 'creature_sprites' },
+            { src: 'item_sprites.png', key: 'item_sprites' }
+        ];
+        
+        // Исправленный Promise.all с правильными скобками
+        await Promise.all(files.map(({src, key}) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                spriteSheets[key] = img;
+                console.log(`✅ Загружен тайлсет: ${key} (${img.width}x${img.height})`);
+                resolve();
+            };
+            img.onerror = () => {
+                console.error(`❌ Ошибка загрузки: ${src}`);
+                reject();
+            };
+            img.src = src;
+        })));
+        
+        isReady = true;
+    }
+
+    function draw(ctx, ch, sx, sy, color) {
+        if (!ctx) return;
+
+        const destX = sx * TILE_SIZE;
+        const destY = sy * TILE_SIZE;
+
+        const tile = TILE_MAP[ch];
+        
+        // Fallback на текст, если спрайт не найден
+        if (!tile) {
+            ctx.fillStyle = color || '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ch, destX + TILE_SIZE/2, destY + TILE_SIZE/2);
+            return;
+        }
+
+        const img = spriteSheets[tile.file];
+        
+        if (!img || !isReady) {
+            // Если картинка не загрузилась, рисуем красный квадрат
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            return;
+        }
+
+        const srcX = tile.x * TILE_SIZE;
+        const srcY = tile.y * TILE_SIZE;
+
+        // Проверка границ спрайт-листа
+        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            return;
+        }
+
+        ctx.save();
+
+        // 1. Рисуем базовый белый спрайт
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+
+        // 2. Накладываем цвет
+        const fillColor = color || '#ffffff';
+        
+        // Пропускаем окраску, если цвет черный (чтобы не скрыть спрайт) или если цвет не задан
+        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
+            // source-atop: рисует новое только там, где уже есть контент (спрайт)
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = fillColor;
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        }
+
+        ctx.restore();
+    }
+
+    return { 
+        init, 
+        draw, 
+        TILE_SIZE,
+        setDebug: (v) => debugMode = v,
+        isReady: () => isReady
+    };
+})();
+```
+
+
+
 
 
 
