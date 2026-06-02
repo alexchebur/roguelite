@@ -294,6 +294,7 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует sprite_registry.js) ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует TilesetRenderer) ===
     function drawGlobalMap(centerX, centerY) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -314,44 +315,33 @@ const RenderModule = (function() {
                     tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
                 }
 
-                const typeToId = {
-                    'plain': 'TILE_PLAIN', 'forest': 'TILE_FOREST', 'mountain': 'TILE_MOUNTAIN',
-                    'water': 'TILE_WATER', 'city': 'TILE_CITY', 'dungeon_entrance': 'TILE_DUNGEON_ENTRANCE',
-                    'road': 'TILE_ROAD'
-                };
-                
-                const id = typeToId[tileType] || 'TILE_PLAIN';
-                
-                // 1. Попытка нарисовать спрайт через реестр
-                const drawn = drawSprite(ctx, id, sx, sy);
-                
-                // 2. Fallback на ASCII, если спрайт не загрузился или реестра нет
-                if (!drawn) {
-                    // Проверяем, есть ли функция getChar
-                    const ch = (typeof getChar === 'function') ? getChar(id) : '?';
-                    
-                    const colors = {
-                        'TILE_PLAIN': '#8c8c8c', 'TILE_FOREST': '#2e8b57', 'TILE_MOUNTAIN': '#a0a0a0',
-                        'TILE_WATER': '#4682b4', 'TILE_CITY': '#ffd700', 'TILE_DUNGEON_ENTRANCE': '#cd5c5c', 'TILE_ROAD': '#b8860b'
-                    };
-                    
+                let ch, fg;
+                switch(tileType) {
+                    case 'plain': ch = '.'; fg = '#8c8c8c'; break;
+                    case 'forest': ch = 'T'; fg = '#2e8b57'; break;
+                    case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
+                    case 'water': ch = '≈'; fg = '#4682b4'; break;
+                    case 'city': ch = 'C'; fg = '#ffd700'; break;
+                    case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
+                    case 'road': ch = '█'; fg = '#b8860b'; break;
+                    default: ch = '·'; fg = '#555';
+                }
+
+                // Игрок
+                if (gx === centerX && gy === centerY) {
+                    ch = '@'; fg = '#fff';
+                }
+
+                // Используем TilesetRenderer для глобальной карты
+                if (typeof TilesetRenderer !== 'undefined' && TilesetRenderer.isReady()) {
+                    TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+                } else {
+                    // Fallback на ASCII
                     ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                    ctx.fillStyle = colors[id] || '#555';
+                    ctx.fillStyle = fg;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
-                }
-
-                // 3. Игрок поверх всего
-                if (gx === centerX && gy === centerY) {
-                    const playerDrawn = drawSprite(ctx, 'PLAYER', sx, sy);
-                    if (!playerDrawn) {
-                        ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                        ctx.fillStyle = '#fff';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText('@', sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
-                    }
                 }
             }
         }
