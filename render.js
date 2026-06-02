@@ -5,6 +5,18 @@ const RenderModule = (function() {
     const COLS = 60;
     const ROWS = 40;
     const FONT_SIZE = 16; // Изменено под тайлсет 16x16
+    const TILE_SIZE = 16; // <--- ДОБАВИТЬ ЭТУ КОНСТАНТУ
+
+    // === ЗАГРУЗКА СПРАЙТОВ (Добавлено) ===
+    const spriteImages = {};
+    const TILESET_FILES = ['terrain', 'creature', 'item']; 
+    const TILE_SIZE = 16; // Размер тайла
+
+    TILESET_FILES.forEach(name => {
+        const img = new Image();
+        img.src = `assets/${name}.png`; // Убедитесь, что папка assets существует
+        spriteImages[name] = img;
+    });
     
     // === СИСТЕМА ЭФФЕКТОВ ===
     let activeEffects = []; 
@@ -144,6 +156,26 @@ const RenderModule = (function() {
         }
     }
 
+    // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Добавлено) ===
+    function drawSprite(ctx, id, sx, sy) {
+        if (typeof getTileData !== 'function') return false;
+        
+        const tileData = getTileData(id);
+        if (!tileData || !spriteImages[tileData.file]) return false;
+        
+        const img = spriteImages[tileData.file];
+        if (!img.complete || img.naturalWidth === 0) return false;
+
+        ctx.drawImage(
+            img,
+            tileData.x * TILE_SIZE, tileData.y * TILE_SIZE,
+            TILE_SIZE, TILE_SIZE,
+            sx * TILE_SIZE, sy * TILE_SIZE,
+            TILE_SIZE, TILE_SIZE
+        );
+        return true;
+    }    
+    
     function getCameraOffset(player) {
         const cam = {
             x: player.x - Math.floor(COLS / 2),
