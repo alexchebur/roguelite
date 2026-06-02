@@ -59,8 +59,8 @@ function generateTerrain(rand, width, height) {
     for (let i = 0; i < forestClusterCount; i++) {
         const fx = rand.int(0, width-1);
         const fy = rand.int(0, height-1);
-        // Радиус скопления от 2 до 5 клеток
-        const radius = rand.int(2, 5); 
+        // Радиус скопления от 1 до 3 клеток
+        const radius = rand.int(1, 3); 
 
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
