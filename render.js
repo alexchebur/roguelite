@@ -4,17 +4,16 @@ const RenderModule = (function() {
     let fov = null;
     const COLS = 60;
     const ROWS = 40;
-    const FONT_SIZE = 16; // Изменено под тайлсет 16x16
-    const TILE_SIZE = 16; // <--- ДОБАВИТЬ ЭТУ КОНСТАНТУ
+    const FONT_SIZE = 16; 
+    const TILE_SIZE = 16; 
 
-    // === ЗАГРУЗКА СПРАЙТОВ (Добавлено) ===
+    // === ЗАГРУЗКА СПРАЙТОВ (Для глобальной карты и fallback) ===
     const spriteImages = {};
     const TILESET_FILES = ['terrain_sprites', 'creature_sprites', 'item_sprites']; 
     
-
     TILESET_FILES.forEach(name => {
         const img = new Image();
-        img.src = `${name}.png`; // Убедитесь, что папка assets существует
+        img.src = `${name}.png`; 
         spriteImages[name] = img;
     });
     
@@ -63,7 +62,7 @@ const RenderModule = (function() {
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
 
-        // Инициализация тайлсетов (вызывает внешний модуль)
+        // Инициализация тайлсетов (вызывает внешний модуль TilesetRenderer)
         if (typeof TilesetRenderer !== 'undefined') {
             TilesetRenderer.init();
         } else {
@@ -100,8 +99,8 @@ const RenderModule = (function() {
     // === ОТРИСОВКА ЭФФЕКТОВ (вызывается внутри draw) ===
     function drawEffects(ctx, cam) {
         const now = Date.now();
-        const tileW = 16; // TILE_SIZE
-        const tileH = 16;
+        const tileW = TILE_SIZE; 
+        const tileH = TILE_SIZE;
 
         for (let i = activeEffects.length - 1; i >= 0; i--) {
             const effect = activeEffects[i];
@@ -155,8 +154,9 @@ const RenderModule = (function() {
         }
     }
 
-    // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Добавлено) ===
+    // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Безопасная версия) ===
     function drawSprite(ctx, id, sx, sy) {
+        // Проверяем, подключен ли реестр
         if (typeof getTileData !== 'function') return false;
         
         const tileData = getTileData(id);
@@ -184,7 +184,7 @@ const RenderModule = (function() {
         return cam;
     }
 
-    // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ ===
+    // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ (Использует TilesetRenderer) ===
     function draw(player, enemies, items, npcs = []) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -226,14 +226,16 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
+                // Используем TilesetRenderer для подземелья
                 if (typeof TilesetRenderer !== 'undefined') {
                     TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                 } else {
+                    // Fallback на ASCII, если рендерер сломался
                     ctx.fillStyle = fg;
-                    ctx.font = '16px Consolas, monospace';
+                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(ch, sx * 16 + 8, sy * 16 + 8);
+                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
                 }
             }
         }
@@ -291,13 +293,11 @@ const RenderModule = (function() {
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует sprite_registry.js) ===
     function drawGlobalMap(centerX, centerY) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
-        // Очистка фона
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -322,16 +322,19 @@ const RenderModule = (function() {
                 
                 const id = typeToId[tileType] || 'TILE_PLAIN';
                 
-                // 1. Попытка нарисовать спрайт
+                // 1. Попытка нарисовать спрайт через реестр
                 const drawn = drawSprite(ctx, id, sx, sy);
                 
-                // 2. Fallback на ASCII, если спрайт не загрузился
+                // 2. Fallback на ASCII, если спрайт не загрузился или реестра нет
                 if (!drawn) {
-                    const ch = getChar(id);
+                    // Проверяем, есть ли функция getChar
+                    const ch = (typeof getChar === 'function') ? getChar(id) : '?';
+                    
                     const colors = {
                         'TILE_PLAIN': '#8c8c8c', 'TILE_FOREST': '#2e8b57', 'TILE_MOUNTAIN': '#a0a0a0',
                         'TILE_WATER': '#4682b4', 'TILE_CITY': '#ffd700', 'TILE_DUNGEON_ENTRANCE': '#cd5c5c', 'TILE_ROAD': '#b8860b'
                     };
+                    
                     ctx.font = `${FONT_SIZE}px Consolas, monospace`;
                     ctx.fillStyle = colors[id] || '#555';
                     ctx.textAlign = 'center';
@@ -569,7 +572,7 @@ const RenderModule = (function() {
         addProjectileEffect,
         COLS,
         ROWS,
-        _ctx: null, // Будет заполнено в init
-        TILE_SIZE   // Экспортируем размер
+        _ctx: null, 
+        TILE_SIZE   
     };
 })();
