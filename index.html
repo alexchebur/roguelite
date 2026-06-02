@@ -4,26 +4,28 @@
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ROT.js v2.2.1 -->
+
+
     <script src="rot.min.js"></script>
-    <!-- Seedrandom -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
     
     <script src="sprite_registry.js"></script>
     <script src="name_generator.js"></script>
     <script src="worldCurve.js"></script>
-    <script src="dungeon_generator.js"></script>   <!-- DUNGEON_TYPES здесь -->
+    <script src="dungeon_generator.js"></script>
     <script src="data.js"></script>
     <script src="map.js"></script>
     <script src="entity.js"></script>
     <script src="combat.js"></script>
-    <script src="globalMap.js"></script>   <!-- использует DUNGEON_TYPES -->
-    <script src="tileset_renderer.js"></script>
+    <script src="globalMap.js"></script>
+    
+    <!-- ВАЖНО: TilesetRenderer должен быть загружен ДО render.js -->
+    <script src="tileset_renderer.js"></script> 
+    
     <script src="render.js"></script>
     <script src="npc_generator.js"></script>
+    <script src="effect_system.js"></script> <!-- Если используете эффекты -->
     <script src="game.js"></script>
-
-
 
     
     
