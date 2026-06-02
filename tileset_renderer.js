@@ -93,8 +93,8 @@ const TilesetRenderer = (function() {
         const destY = sy * TILE_SIZE;
         const tile = TILE_MAP[ch];
         
+        // 1. Если символ не найден в маппинге
         if (!tile) {
-            // Fallback
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -104,19 +104,32 @@ const TilesetRenderer = (function() {
         }
 
         const img = spriteSheets[tile.file];
+        
+        // 2. Если картинка не загрузилась (КРАСНЫЙ КВАДРАТ)
         if (!img || !isReady) {
-            // Если картинка не загрузилась, рисуем цветной текст
-            ctx.fillStyle = color || '#fff';
-            ctx.font = '16px Consolas, monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(ch, destX + TILE_SIZE/2, destY + TILE_SIZE/2);
+            ctx.fillStyle = '#ff0000'; // Красный
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Arial';
+            ctx.fillText('NO IMG', destX + 2, destY + 10);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
+        // 3. Если координаты выходят за границы картинки (ЖЕЛТЫЙ КВАДРАТ)
+        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
+            ctx.fillStyle = '#ffff00'; // Желтый
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#000';
+            ctx.font = '10px Arial';
+            ctx.fillText('OOB', destX + 2, destY + 5);
+            ctx.fillText(`${tile.x},${tile.y}`, destX + 2, destY + 12);
+            return;
+        }
+
+        // 4. Если все хорошо — рисуем спрайт
         ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
         
         // Окраска
