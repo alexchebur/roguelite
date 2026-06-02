@@ -95,6 +95,7 @@ const TilesetRenderer = (function() {
         
         // 1. Если символ не найден в маппинге
         if (!tile) {
+            // Это нормально для некоторых символов, просто рисуем текст
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -105,8 +106,9 @@ const TilesetRenderer = (function() {
 
         const img = spriteSheets[tile.file];
         
-        // 2. Если картинка не загрузилась (КРАСНЫЙ КВАДРАТ)
+        // 2. Если картинка не загрузилась
         if (!img || !isReady) {
+            console.warn(`⚠️ Спрайт не готов: ${tile.file} для символа '${ch}'`);
             ctx.fillStyle = '#ff0000'; // Красный
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             ctx.fillStyle = '#fff';
@@ -118,28 +120,34 @@ const TilesetRenderer = (function() {
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // 3. Если координаты выходят за границы картинки (ЖЕЛТЫЙ КВАДРАТ)
+        // 3. Если координаты выходят за границы
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
+            console.error(`❌ OOB Error: Символ '${ch}' (${tile.file}) координаты ${tile.x},${tile.y} вне границ изображения ${img.width}x${img.height}`);
             ctx.fillStyle = '#ffff00'; // Желтый
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             ctx.fillStyle = '#000';
             ctx.font = '10px Arial';
             ctx.fillText('OOB', destX + 2, destY + 5);
-            ctx.fillText(`${tile.x},${tile.y}`, destX + 2, destY + 12);
             return;
         }
 
-        // 4. Если все хорошо — рисуем спрайт
-        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-        
-        // Окраска
-        const fillColor = color || '#ffffff';
-        if (fillColor && fillColor !== '#000') {
-            ctx.save();
-            ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = fillColor;
+        // 4. Попытка отрисовки
+        try {
+            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+            
+            // Окраска
+            const fillColor = color || '#ffffff';
+            if (fillColor && fillColor !== '#000') {
+                ctx.save();
+                ctx.globalCompositeOperation = 'source-atop';
+                ctx.fillStyle = fillColor;
+                ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+                ctx.restore();
+            }
+        } catch (e) {
+            console.error(`💥 Ошибка отрисовки спрайта '${ch}':`, e);
+            ctx.fillStyle = '#purple';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.restore();
         }
     }
 
