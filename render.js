@@ -694,4 +694,4 @@ const TilesetRenderer = (function() {
         setDebug: (v) => debugMode = v,
         isReady: () => isReady
     };
-})();"
+})();
