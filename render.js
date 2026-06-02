@@ -52,7 +52,12 @@ const RenderModule = (function() {
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
 
-        if (typeof TilesetRenderer !== 'undefined') TilesetRenderer.init();
+        // Инициализация тайлсетов (вызывает внешний модуль)
+        if (typeof TilesetRenderer !== 'undefined') {
+            TilesetRenderer.init();
+        } else {
+            console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
+        }
         
         // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
         if (typeof startEffectLoop === 'function') startEffectLoop();
@@ -87,27 +92,22 @@ const RenderModule = (function() {
         const tileW = 16; // TILE_SIZE
         const tileH = 16;
 
-        // Фильтруем и рисуем активные эффекты
         for (let i = activeEffects.length - 1; i >= 0; i--) {
             const effect = activeEffects[i];
             
-            // Удаляем истекшие эффекты
             if (now > effect.endTime) {
                 activeEffects.splice(i, 1);
                 continue;
             }
 
             if (effect.type === 'blink') {
-                // Пульсация прозрачности
                 const progress = (effect.endTime - now) / effect.duration;
                 const alpha = Math.abs(Math.sin(now * 0.015)) * 0.6; 
                 
-                // Парсим цвет и меняем альфа-канал
                 let baseColor = effect.color;
                 if (baseColor.startsWith('rgba')) {
                     baseColor = baseColor.replace(/[\d\.]+\)$/g, `${alpha})`);
                 } else {
-                    // Если hex, конвертируем в rgba (упрощенно)
                     baseColor = `rgba(255, 0, 0, ${alpha})`; 
                 }
                 
@@ -116,7 +116,6 @@ const RenderModule = (function() {
                 const screenX = (effect.x - cam.x) * tileW;
                 const screenY = (effect.y - cam.y) * tileH;
                 
-                // Рисуем только если в поле зрения канваса
                 if (screenX >= -tileW && screenX < COLS * tileW && screenY >= -tileH && screenY < ROWS * tileH) {
                     ctx.fillRect(screenX, screenY, tileW, tileH);
                 }
@@ -126,7 +125,6 @@ const RenderModule = (function() {
                 const elapsed = now - effect.startTime;
                 const t = Math.min(1, elapsed / totalTime);
 
-                // Интерполяция позиции
                 const worldCurX = effect.sx + (effect.tx - effect.sx) * t;
                 const worldCurY = effect.sy + (effect.ty - effect.sy) * t;
 
@@ -160,7 +158,6 @@ const RenderModule = (function() {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
-        // Очищаем канвас черным цветом
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -172,13 +169,12 @@ const RenderModule = (function() {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 1. РИСУЕМ ТАЙЛЫ (ПОЛ И СТЕНЫ)
+        // 1. РИСУЕМ ТАЙЛЫ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
                 const wy = sy + cam.y;
                 
-                // Проверка границ карты
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
                 const isVisible = visible.has(`${wx},${wy}`);
@@ -192,7 +188,6 @@ const RenderModule = (function() {
                     fg = isVisible ? dtype.floorColor : '#111';
                 }
 
-                // Лестницы
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
                     ch = ">"; fg = isVisible ? "#FFF" : "#333";
                 }
@@ -200,11 +195,9 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                // Рисуем спрайт
                 if (typeof TilesetRenderer !== 'undefined') {
                     TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                 } else {
-                    // Fallback на текст, если тайлсет не загружен
                     ctx.fillStyle = fg;
                     ctx.font = '16px Consolas, monospace';
                     ctx.textAlign = 'center';
@@ -214,7 +207,7 @@ const RenderModule = (function() {
             }
         }
 
-        // 2. РИСУЕМ ПРЕДМЕТЫ
+        // 2. ПРЕДМЕТЫ
         if (items) {
             items.forEach(i => {
                 const sx = i.x - cam.x, sy = i.y - cam.y;
@@ -226,7 +219,7 @@ const RenderModule = (function() {
             });
         }
 
-        // 3. РИСУЕМ ВРАГОВ
+        // 3. ВРАГИ
         if (enemies) {
             enemies.forEach(e => {
                 if (e.hp > 0) {
@@ -240,7 +233,7 @@ const RenderModule = (function() {
             });
         }
 
-        // 4. РИСУЕМ NPC
+        // 4. NPC
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x, sy = npc.y - cam.y;
@@ -252,7 +245,7 @@ const RenderModule = (function() {
             });
         }
 
-        // 5. РИСУЕМ ИГРОКА
+        // 5. ИГРОК
         if (player) {
             const px = Math.floor(COLS / 2);
             const py = Math.floor(ROWS / 2);
@@ -261,7 +254,7 @@ const RenderModule = (function() {
             }
         }
 
-        // 6. РИСУЕМ ЭФФЕКТЫ ПОВЕРХ ВСЕГО
+        // 6. ЭФФЕКТЫ
         drawEffects(ctx, cam);
 
         return visible;
@@ -529,169 +522,9 @@ const RenderModule = (function() {
         updateInspector,
         setRedrawCallback,
         requestRedraw,
-        addBlinkEffect,      // Экспорт для использования в combat.js
-        addProjectileEffect, // Экспорт для использования в combat.js
+        addBlinkEffect,
+        addProjectileEffect,
         COLS,
         ROWS
-    };
-})();
-" А вот tileset_renderer.js: "// tileset_renderer.js
-const TilesetRenderer = (function() {
-    const TILE_SIZE = 16;
-    const spriteSheets = {};
-    let isReady = false;
-    let debugMode = false;
-
-    // === МАППИНГ: символ → (файл, колонка, строка) ===
-    // Убедитесь, что координаты x,y соответствуют вашему PNG!
-    const TILE_MAP = {
-        //  Terrain (ПОПРОБУЙТЕ СДВИНУТЬ Y НА 1, ЕСЛИ ПЕРВЫЙ РЯД ПУСТОЙ)
-        '#': { file: 'terrain', x: 1, y: 2 }, 
-        '.': { file: 'terrain', x: 0, y: 1 },
-        '>': { file: 'terrain', x: 3, y: 0 },
-        '<': { file: 'terrain', x: 2, y: 0 },
-        'T': { file: 'terrain', x: 8, y: 2 },
-        '^': { file: 'terrain', x: 5, y: 2 },
-        '≈': { file: 'terrain', x: 7, y: 2 },
-        'C': { file: 'terrain', x: 9, y: 2 },
-        'D': { file: 'terrain', x: 6, y: 0 },
-        '█': { file: 'terrain', x: 11, y: 2 },
-        //'·': { file: 'terrain', x: 0, y: 1 },
-        'o': { file: 'terrain', x: 3, y: 2 },
-        'O': { file: 'terrain', x: 4, y: 2 },
-        // ... остальные без изменений пока что
-
-        //  Creatures & NPCs
-        '@': { file: 'creature', x: 2, y: 0 },
-        'r': { file: 'creature', x: 8, y: 9 },
-        'g': { file: 'creature', x: 12, y: 3 },
-        'w': { file: 'creature', x: 1, y: 9 },
-        'j': { file: 'creature', x: 3, y: 15 },
-        'b': { file: 'creature', x: 5, y: 0 },
-        's': { file: 'creature', x: 6, y: 0 },
-        'O': { file: 'creature', x: 7, y: 0 }, 
-        'z': { file: 'creature', x: 8, y: 0 },
-        'h': { file: 'creature', x: 9, y: 0 },
-        'G': { file: 'creature', x: 10, y: 0 },
-        'V': { file: 'creature', x: 11, y: 0 },
-        'T': { file: 'creature', x: 12, y: 0 },
-        'L': { file: 'creature', x: 13, y: 0 },
-        'M': { file: 'creature', x: 14, y: 0 },
-        'q': { file: 'creature', x: 15, y: 0 },
-        '☺': { file: 'creature', x: 8, y: 3 },
-
-        // 🎒 Items
-        '/': { file: 'item', x: 0, y: 0 },
-        '^': { file: 'item', x: 1, y: 0 },
-        ')': { file: 'item', x: 2, y: 0 },
-        '*': { file: 'item', x: 3, y: 0 },
-        'Y': { file: 'item', x: 4, y: 0 },
-        '(': { file: 'item', x: 5, y: 0 },
-        '=': { file: 'item', x: 6, y: 0 },
-        '|': { file: 'item', x: 7, y: 0 },
-        ']': { file: 'item', x: 8, y: 0 },
-        '[': { file: 'item', x: 9, y: 0 },
-        '}': { file: 'item', x: 10, y: 0 },
-        '{': { file: 'item', x: 11, y: 0 },
-        'H': { file: 'item', x: 12, y: 0 },
-        '!': { file: 'item', x: 14, y: 0 },
-        '+': { file: 'item', x: 15, y: 0 },
-        '%': { file: 'item', x: 16, y: 0 },
-        '~': { file: 'item', x: 17, y: 0 },
-        '$': { file: 'item', x: 18, y: 0 }
-    };
-
-    async function init() {
-        const files = [
-            { src: 'terrain_sprites.png', key: 'terrain' },
-            { src: 'creature_sprites.png', key: 'creature' },
-            { src: 'item_sprites.png', key: 'item' }
-        ];
-        
-        // Исправленный Promise.all с правильными скобками
-        await Promise.all(files.map(({src, key}) => new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                spriteSheets[key] = img;
-                console.log(`✅ Загружен тайлсет: ${key} (${img.width}x${img.height})`);
-                resolve();
-            };
-            img.onerror = () => {
-                console.error(`❌ Ошибка загрузки: ${src}`);
-                reject();
-            };
-            img.src = src;
-        })));
-        
-        isReady = true;
-    }
-
-    function draw(ctx, ch, sx, sy, color) {
-        if (!ctx) return;
-
-        const destX = sx * TILE_SIZE;
-        const destY = sy * TILE_SIZE;
-
-        const tile = TILE_MAP[ch];
-        
-        if (!tile) {
-            // Fallback: рисуем текст
-            ctx.fillStyle = color || '#fff';
-            ctx.font = '16px Consolas, monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(ch, destX + TILE_SIZE/2, destY + TILE_SIZE/2);
-            return;
-        }
-
-        const img = spriteSheets[tile.file];
-        
-        if (!img || !isReady) {
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            return;
-        }
-
-        const srcX = tile.x * TILE_SIZE;
-        const srcY = tile.y * TILE_SIZE;
-
-        // Проверка границ
-        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.fillStyle = '#000';
-            ctx.font = '10px Arial';
-            ctx.fillText('OOB', destX + 2, destY + 5);
-            return;
-        }
-
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1.0;
-
-        // Рисуем спрайт КАК ЕСТЬ (без окраски)
-        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-
-        // === ВРЕМЕННО ОТКЛЮЧАЕМ ОКРАСКУ ДЛЯ ПРОВЕРКИ ===
-        // Раскомментируйте блок ниже, когда сделаете спрайты белыми
-        
-        /*
-        const fillColor = color || '#ffffff';
-        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
-            ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = fillColor;
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-        }
-        */
-
-        ctx.restore();
-    }
-
-    return { 
-        init, 
-        draw, 
-        TILE_SIZE,
-        setDebug: (v) => debugMode = v,
-        isReady: () => isReady
     };
 })();
