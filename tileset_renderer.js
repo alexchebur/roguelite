@@ -90,55 +90,49 @@ const TilesetRenderer = (function() {
 
         const destX = sx * TILE_SIZE;
         const destY = sy * TILE_SIZE;
+        const w = TILE_SIZE;
+        const h = TILE_SIZE;
 
         const tile = TILE_MAP[ch];
-        
         if (!tile) {
-            // Fallback на текст, если спрайт не найден
+            // fallback текст
             ctx.fillStyle = color || '#fff';
             ctx.font = `${TILE_SIZE}px Consolas, monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(ch, destX + TILE_SIZE / 2, destY + TILE_SIZE / 2);
+            ctx.fillText(ch, destX + w / 2, destY + h / 2);
             return;
         }
 
         const img = spriteSheets[tile.file];
-        
         if (!img || !isReady) {
-            // Если картинка не загрузилась, рисуем красный квадрат
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#f00';
+            ctx.fillRect(destX, destY, w, h);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
-
-        // Проверка границ спрайт-листа
-        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        if (srcX + w > img.width || srcY + h > img.height) {
+            ctx.fillStyle = '#ff0';
+            ctx.fillRect(destX, destY, w, h);
             return;
         }
 
-        ctx.save();
+        // --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: очищаем область перед рисованием ---
+        ctx.clearRect(destX, destY, w, h);
 
-        // 1. Рисуем базовый спрайт
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+        // Рисуем белый спрайт
+        ctx.drawImage(img, srcX, srcY, w, h, destX, destY, w, h);
 
-        // 2. Накладываем цвет только на непрозрачные пиксели спрайта
-        const fillColor = color || '#ffffff';
-        
-        // Пропускаем окраску, если цвет чёрный (чтобы не скрыть спрайт)
-        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
-            ctx.globalCompositeOperation = 'source-in';
-            ctx.fillStyle = fillColor;
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        // Применяем цвет только к нарисованным пикселям (source-atop)
+        if (color && color !== '#fff' && color !== '#ffffff') {
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = color;
+            ctx.fillRect(destX, destY, w, h);
+            // Сбрасываем режим
+            ctx.globalCompositeOperation = 'source-over';
         }
-
-        ctx.restore();
     }
     
     return { init, draw, TILE_SIZE, isReady: () => isReady };
