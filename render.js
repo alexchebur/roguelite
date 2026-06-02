@@ -360,8 +360,8 @@ const RenderModule = (function() {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         
-        // ✅ ИСПРАВЛЕНИЕ: Увеличиваем размер до 100x100, чтобы масштаб совпадал с мини-картой подземелья
-        const MINIMAP_SIZE = 100; 
+        // ✅ ИСПРАВЛЕНИЕ: Увеличиваем размер до 50 на 50, чтобы масштаб совпадал с мини-картой подземелья
+        const MINIMAP_SIZE = 50; 
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
