@@ -14,7 +14,7 @@ const RenderModule = (function() {
 
     TILESET_FILES.forEach(name => {
         const img = new Image();
-        img.src = `assets/${name}.png`; // Убедитесь, что папка assets существует
+        img.src = `${name}.png`; // Убедитесь, что папка assets существует
         spriteImages[name] = img;
     });
     
