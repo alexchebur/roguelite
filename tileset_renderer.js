@@ -1,4 +1,4 @@
-// tileset_renderer.js
+
 const TilesetRenderer = (function() {
     const TILE_SIZE = 16;
     const spriteSheets = {};
@@ -56,15 +56,15 @@ const TilesetRenderer = (function() {
         ']': { file: 'item_sprites', x: 8, y: 0 }, // Кожа
         '[': { file: 'item_sprites', x: 9, y: 0 }, // Кольчуга
         '}': { file: 'item_sprites', x: 10, y: 0 }, // Щит
-        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники (был o, стал ")
+        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
         '{': { file: 'item_sprites', x: 12, y: 0 }, // Плащ
         'H': { file: 'item_sprites', x: 13, y: 0 }, // Шлем
-        'v': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки (исправлено с ''' на 'v')
-        '!': { file: 'item_sprites', x: 14, y: 0 }, // Зелье (координаты те же, что у перчаток? Проверьте PNG)
-        '+': { file: 'item_sprites', x: 15, y: 0 }, // Эликсир
-        '%': { file: 'item_sprites', x: 16, y: 0 }, // Еда
-        '~': { file: 'item_sprites', x: 17, y: 0 }, // Мясо
-        '$': { file: 'item_sprites', x: 18, y: 0 }  // Золото
+        'v': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
+        '!': { file: 'item_sprites', x: 15, y: 0 }, // Зелье
+        '+': { file: 'item_sprites', x: 16, y: 0 }, // Эликсир
+        '%': { file: 'item_sprites', x: 17, y: 0 }, // Еда
+        '~': { file: 'item_sprites', x: 18, y: 0 }, // Мясо
+        '$': { file: 'item_sprites', x: 19, y: 0 }  // Золото
     };
 
     async function init() {
@@ -78,13 +78,20 @@ const TilesetRenderer = (function() {
             const img = new Image();
             img.onload = () => {
                 spriteSheets[key] = img;
+                console.log(`✅ Загружен: ${key}`);
                 resolve();
             };
-            img.onerror = () => reject();
+            img.onerror = () => {
+                console.error(`❌ Ошибка загрузки: ${src}`);
+                reject();
+            };
             img.src = src;
         })));
         
         isReady = true;
+        console.log("✅ TilesetRenderer готов");
+    }
+
     function draw(ctx, ch, sx, sy, color) {
         if (!ctx) return;
 
@@ -119,10 +126,10 @@ const TilesetRenderer = (function() {
             return;
         }
 
-        // --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: очищаем область перед рисованием ---
+        // Очищаем область перед рисованием
         ctx.clearRect(destX, destY, w, h);
 
-        // Рисуем белый спрайт
+        // Рисуем спрайт
         ctx.drawImage(img, srcX, srcY, w, h, destX, destY, w, h);
 
         // Применяем цвет только к нарисованным пикселям (source-atop)
@@ -135,5 +142,10 @@ const TilesetRenderer = (function() {
         }
     }
     
-    return { init, draw, TILE_SIZE, isReady: () => isReady };
+    return { 
+        init, 
+        draw, 
+        TILE_SIZE, 
+        isReady: () => isReady 
+    };
 })();
