@@ -93,7 +93,7 @@ const TilesetRenderer = (function() {
         const destY = sy * TILE_SIZE;
         const tile = TILE_MAP[ch];
         
-        // 1. Если символ не найден -> ASCII
+        // 1. Fallback на текст, если спрайт не найден
         if (!tile) {
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
@@ -104,8 +104,6 @@ const TilesetRenderer = (function() {
         }
 
         const img = spriteSheets[tile.file];
-        
-        // 2. Если картинка не готова -> Красный квадрат
         if (!img || !isReady) {
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
@@ -115,7 +113,7 @@ const TilesetRenderer = (function() {
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // 3. Если координаты битые -> Желтый квадрат
+        // Проверка границ
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
             ctx.fillStyle = '#ffff00';
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
@@ -124,27 +122,24 @@ const TilesetRenderer = (function() {
 
         const fillColor = color || '#ffffff';
 
-        // 4. ОТРИСОВКА С ИСПОЛЬЗОВАНИЕМ ФИЛЬТРОВ
-        ctx.save();
-        
-        // Если цвет белый или не задан, рисуем как есть (быстрее)
-        if (fillColor === '#ffffff' || fillColor === '#fff') {
+        // Если цвет белый/чёрный — рисуем как есть (экономим ресурсы)
+        if (fillColor === '#ffffff' || fillColor === '#fff' || fillColor === '#000000' || fillColor === '#000') {
             ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-        } else {
-            // Преобразуем HEX цвет в HSL для фильтра
-            // Это сложный путь, поэтому используем более простой хак:
-            // Рисуем белый спрайт -> Применяем фильтр -> Рисуем поверх цвет с режимом source-atop
-            
-            // Шаг А: Рисуем белый спрайт
-            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-            
-            // Шаг Б: Закрашиваем его цветом
-            ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = fillColor;
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            return;
         }
-        
-        ctx.restore();
+
+        // === НАДЁЖНАЯ ОКРАСКА ЧЕРЕЗ destination-in ===
+        ctx.save();
+
+        // 1. Рисуем целевой цвет
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+
+        // 2. Оставляем цвет ТОЛЬКО там, где непрозрачные пиксели спрайта
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+
+        ctx.restore(); // Сбрасываем globalCompositeOperation, чтобы не сломать следующие тайлы
     }
     
     return { init, draw, TILE_SIZE, isReady: () => isReady };
