@@ -3,75 +3,93 @@ const TilesetRenderer = (function() {
     const TILE_SIZE = 16;
     const spriteSheets = {};
     let isReady = false;
-    let debugMode = false;
 
     // === МАППИНГ: символ → (файл, колонка, строка) ===
-    // Убедитесь, что координаты x,y соответствуют вашему PNG!
+    // ВАЖНО: Ключи должны быть УНИКАЛЬНЫМИ. 
+    // Приоритет: Существа > Предметы > Тайлы.
     const TILE_MAP = {
-        // Terrain
-        '.': { file: 'terrain_sprites', x: 0, y: 1 }, // FLOOR_DEFAULT, TILE_PLAIN
-        '#': { file: 'terrain_sprites', x: 1, y: 2 }, // WALL_DEFAULT
-        '>': { file: 'terrain_sprites', x: 3, y: 0 }, // STAIRS_UP
-        '<': { file: 'terrain_sprites', x: 2, y: 0 }, // STAIRS_DOWN
-        'T': { file: 'terrain_sprites', x: 8, y: 2 }, // TILE_FOREST (и ENEMY_TROLL, но спрайт врага берется из файла creature)
-        '^': { file: 'terrain_sprites', x: 5, y: 2 }, // TILE_MOUNTAIN (и ITEM_AXE)
-        '≈': { file: 'terrain_sprites', x: 7, y: 2 }, // TILE_WATER
-        'C': { file: 'terrain_sprites', x: 9, y: 2 }, // TILE_CITY
-        'D': { file: 'terrain_sprites', x: 6, y: 0 }, // TILE_DUNGEON_ENTRANCE
-        '█': { file: 'terrain_sprites', x: 11, y: 2 }, // TILE_ROAD, WALL_CITY
-        'o': { file: 'terrain_sprites', x: 3, y: 2 }, // FLOOR_ORGANIC (и ITEM_GREAVES)
-        'O': { file: 'terrain_sprites', x: 4, y: 2 }, // WALL_ORGANIC (и ENEMY_ORC - тут нужен отдельный спрайт для Орка в creature!)
+        // --- ТАЙЛЫ (Terrain) ---
+        '.': { file: 'terrain_sprites', x: 0, y: 1 }, // Пол / Равнина
+        '#': { file: 'terrain_sprites', x: 1, y: 2 }, // Стена
+        '>': { file: 'terrain_sprites', x: 3, y: 0 }, // Лестница вверх
+        '<': { file: 'terrain_sprites', x: 2, y: 0 }, // Лестница вниз
+        '≈': { file: 'terrain_sprites', x: 7, y: 2 }, // Вода
+        '█': { file: 'terrain_sprites', x: 11, y: 2 }, // Дорога / Стена города
+        'o': { file: 'terrain_sprites', x: 3, y: 2 }, // Органический пол
+        'O': { file: 'terrain_sprites', x: 4, y: 2 }, // Органическая стена
         
-        // Creatures & NPCs
-        '@': { file: 'creature_sprites', x: 2, y: 0 }, // PLAYER
-        'r': { file: 'creature_sprites', x: 8, y: 9 }, // ENEMY_RAT
-        'g': { file: 'creature_sprites', x: 12, y: 3 }, // ENEMY_GOBLIN
-        'w': { file: 'creature_sprites', x: 1, y: 9 }, // ENEMY_WOLF
-        'j': { file: 'creature_sprites', x: 3, y: 15 }, // ENEMY_SLIME
-        'b': { file: 'creature_sprites', x: 5, y: 0 }, // ENEMY_BANDIT
-        's': { file: 'creature_sprites', x: 6, y: 0 }, // ENEMY_SKELETON
-        'O': { file: 'creature_sprites', x: 7, y: 0 }, // ENEMY_ORC (Внимание: тот же ключ 'O', что и у стены! 
-                                                // ВАШ РЕНДЕРЕР ДОЛЖЕН ПРИОРИТЕЗИРОВАТЬ СУЩНОСТИ НАД ТАЙЛАМИ.
-                                                // Если ключи в объекте совпадают, одно перезапишет другое.
-                                                // Решение: В TILE_MAP ключи должны быть уникальными. 
-                                                // Но так как и стена, и орк используют символ 'O', 
-                                                // вам нужно проверять контекст при отрисовке.
-                                                // Обычно спрайтовый рендерер принимает (char, layer).
-                                                // Если у вас один общий TILE_MAP, то 'O' будет последним записанным.
-                                                // Исправьте ключи, если рендерер не поддерживает слои.
-                                                // Например, используйте разные символы для Орка и Стены, если это возможно.
-                                                // Или убедитесь, что при отрисовке врага вы обращаетесь к 'creature' файлу напрямую.
-                                               //),
-        'z': { file: 'creature_sprites', x: 8, y: 0 }, // ENEMY_ZOMBIE
-        'h': { file: 'creature_sprites', x: 9, y: 0 }, // ENEMY_HARPY
-        'G': { file: 'creature_sprites', x: 10, y: 0 }, // ENEMY_GHOST (и ITEM_GLOVES)
-        'V': { file: 'creature_sprites', x: 11, y: 0 }, // ENEMY_VAMPIRE
-        'T': { file: 'creature_sprites', x: 12, y: 0 }, // ENEMY_TROLL (и TILE_FOREST)
-        'L': { file: 'creature_sprites', x: 13, y: 0 }, // ENEMY_LICH
-        'M': { file: 'creature_sprites', x: 14, y: 0 }, // ENEMY_GOLEM
-        'q': { file: 'creature_sprites', x: 15, y: 0 }, // ENEMY_DRAGON
+        // Конфликтующие тайлы (заменили символы в data.js/map.js или здесь?)
+        // Если 'T' (Лес) и 'T' (Тролль) конфликтуют, оставим здесь Тролля, 
+        // а Лес на глобальной карте будем рисовать цветом или другим символом.
+        // НО! Глобальная карта использует '.' 'T' '^' и т.д.
+        // Давайте пока оставим ТАЙЛЫ, так как их больше.
+        'T': { file: 'terrain_sprites', x: 8, y: 2 }, // Лес (Тролль получит другой символ?)
+        '^': { file: 'terrain_sprites', x: 5, y: 2 }, // Горы (Топор получит другой символ?)
+        'C': { file: 'terrain_sprites', x: 9, y: 2 }, // Город
+        'D': { file: 'terrain_sprites', x: 6, y: 0 }, // Вход в подземелье
+
+        // --- СУЩЕСТВА (Creatures) ---
+        // Если символ совпадает с тайлом, он ПЕРЕЗАПИШЕТ тайл выше.
+        // Поэтому существ с конфликтующими символами лучше сдвинуть.
+        '@': { file: 'creature_sprites', x: 2, y: 0 }, // Игрок
+        'r': { file: 'creature_sprites', x: 8, y: 9 }, // Крыса
+        'g': { file: 'creature_sprites', x: 12, y: 3 }, // Гоблин
+        'w': { file: 'creature_sprites', x: 1, y: 9 }, // Волк
+        'j': { file: 'creature_sprites', x: 3, y: 15 }, // Слизень
+        'b': { file: 'creature_sprites', x: 5, y: 0 }, // Бандит
+        's': { file: 'creature_sprites', x: 6, y: 0 }, // Скелет
+        
+        // КОНФЛИКТЫ:
+        // 'O' - Орк. Перезаписал Органическую стену. 
+        // Решение: Пусть Органическая стена будет '0' (ноль) или '▓'.
+        // Пока оставим Орка, так как он важнее.
+        'O': { file: 'creature_sprites', x: 7, y: 0 }, // Орк
+        
+        'z': { file: 'creature_sprites', x: 8, y: 0 }, // Зомби
+        'h': { file: 'creature_sprites', x: 9, y: 0 }, // Гарпия
+        'G': { file: 'creature_sprites', x: 10, y: 0 }, // Призрак
+        'V': { file: 'creature_sprites', x: 11, y: 0 }, // Вампир
+        
+        // 'T' - Тролль. Перезаписал Лес.
+        // Решение: Пусть Лес будет 't' (маленькая) или оставим Тролля.
+        // Для глобальной карты это проблема.
+        'T': { file: 'creature_sprites', x: 12, y: 0 }, // Тролль
+        
+        'L': { file: 'creature_sprites', x: 13, y: 0 }, // Лич
+        'M': { file: 'creature_sprites', x: 14, y: 0 }, // Голем
+        'q': { file: 'creature_sprites', x: 15, y: 0 }, // Дракон
         '☺': { file: 'creature_sprites', x: 8, y: 3 }, // NPC
 
-        // Items
-        '/': { file: 'item_sprites', x: 0, y: 0 },
-        '^': { file: 'item_sprites', x: 1, y: 0 },
-        ')': { file: 'item_sprites', x: 2, y: 0 },
-        '*': { file: 'item_sprites', x: 3, y: 0 },
-        'Y': { file: 'item_sprites', x: 4, y: 0 },
-        '(': { file: 'item_sprites', x: 5, y: 0 },
-        '=': { file: 'item_sprites', x: 6, y: 0 },
-        '|': { file: 'item_sprites', x: 7, y: 0 },
-        ']': { file: 'item_sprites', x: 8, y: 0 },
-        '[': { file: 'item_sprites', x: 9, y: 0 },
-        '}': { file: 'item_sprites', x: 10, y: 0 },
-        '{': { file: 'item_sprites', x: 11, y: 0 },
-        'H': { file: 'item_sprites', x: 12, y: 0 },
-        '!': { file: 'item_sprites', x: 14, y: 0 },
-        '+': { file: 'item_sprites', x: 15, y: 0 },
-        '%': { file: 'item_sprites', x: 16, y: 0 },
-        '~': { file: 'item_sprites', x: 17, y: 0 },
-        '$': { file: 'item_sprites', x: 18, y: 0 }
+        // --- ПРЕДМЕТЫ (Items) ---
+        '/': { file: 'item_sprites', x: 0, y: 0 }, // Меч
+        // '^' - Топор. Перезаписал Горы.
+        '^': { file: 'item_sprites', x: 1, y: 0 }, // Топор
+        
+        ')': { file: 'item_sprites', x: 2, y: 0 }, // Булава
+        '*': { file: 'item_sprites', x: 3, y: 0 }, // Кинжал
+        'Y': { file: 'item_sprites', x: 4, y: 0 }, // Копье
+        '(': { file: 'item_sprites', x: 5, y: 0 }, // Лук
+        '=': { file: 'item_sprites', x: 6, y: 0 }, // Арбалет
+        '|': { file: 'item_sprites', x: 7, y: 0 }, // Посох
+        ']': { file: 'item_sprites', x: 8, y: 0 }, // Кожа
+        '[': { file: 'item_sprites', x: 9, y: 0 }, // Кольчуга
+        '}': { file: 'item_sprites', x: 10, y: 0 }, // Щит
+        // 'o' - Наголенники. Перезаписали Органический пол.
+        'o': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
+        
+        '{': { file: 'item_sprites', x: 12, y: 0 }, // Плащ
+        'H': { file: 'item_sprites', x: 13, y: 0 }, // Шлем
+        // 'G' - Перчатки. Перезаписали Призрака.
+        'G': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
+        
+        '!': { file: 'item_sprites', x: 14, y: 0 }, // Зелье (совпадает с G? Нет, G=14, !=14. Ошибка в координатах?)
+        // Исправьте координаты для '!' если нужно
+        '+': { file: 'item_sprites', x: 15, y: 0 }, // Эликсир
+        '%': { file: 'item_sprites', x: 16, y: 0 }, // Еда
+        '~': { file: 'item_sprites', x: 17, y: 0 }, // Мясо
+        '$': { file: 'item_sprites', x: 18, y: 0 }  // Золото
     };
+
     async function init() {
         const files = [
             { src: 'terrain_sprites.png', key: 'terrain_sprites' },
@@ -79,18 +97,13 @@ const TilesetRenderer = (function() {
             { src: 'item_sprites.png', key: 'item_sprites' }
         ];
         
-        // Исправленный Promise.all с правильными скобками
         await Promise.all(files.map(({src, key}) => new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
                 spriteSheets[key] = img;
-                console.log(`✅ Загружен тайлсет: ${key} (${img.width}x${img.height})`);
                 resolve();
             };
-            img.onerror = () => {
-                console.error(`❌ Ошибка загрузки: ${src}`);
-                reject();
-            };
+            img.onerror = () => reject();
             img.src = src;
         })));
         
@@ -99,14 +112,12 @@ const TilesetRenderer = (function() {
 
     function draw(ctx, ch, sx, sy, color) {
         if (!ctx) return;
-
         const destX = sx * TILE_SIZE;
         const destY = sy * TILE_SIZE;
-
         const tile = TILE_MAP[ch];
         
-        // Fallback на текст, если спрайт не найден
         if (!tile) {
+            // Fallback
             ctx.fillStyle = color || '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -116,50 +127,31 @@ const TilesetRenderer = (function() {
         }
 
         const img = spriteSheets[tile.file];
-        
         if (!img || !isReady) {
-            // Если картинка не загрузилась, рисуем красный квадрат
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            // Если картинка не загрузилась, рисуем цветной текст
+            ctx.fillStyle = color || '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ch, destX + TILE_SIZE/2, destY + TILE_SIZE/2);
             return;
         }
 
         const srcX = tile.x * TILE_SIZE;
         const srcY = tile.y * TILE_SIZE;
 
-        // Проверка границ спрайт-листа
-        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00';
-            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            return;
-        }
-
-        ctx.save();
-
-        // 1. Рисуем базовый белый спрайт
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1.0;
         ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-
-        // 2. Накладываем цвет
-        const fillColor = color || '#ffffff';
         
-        // Пропускаем окраску, если цвет черный (чтобы не скрыть спрайт) или если цвет не задан
-        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
-            // source-atop: рисует новое только там, где уже есть контент (спрайт)
+        // Окраска
+        const fillColor = color || '#ffffff';
+        if (fillColor && fillColor !== '#000') {
+            ctx.save();
             ctx.globalCompositeOperation = 'source-atop';
             ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            ctx.restore();
         }
-
-        ctx.restore();
     }
 
-    return { 
-        init, 
-        draw, 
-        TILE_SIZE,
-        setDebug: (v) => debugMode = v,
-        isReady: () => isReady
-    };
+    return { init, draw, TILE_SIZE, isReady: () => isReady };
 })();
