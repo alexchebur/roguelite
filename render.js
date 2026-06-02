@@ -2,10 +2,10 @@
 const RenderModule = (function() {
     let display = null;
     let fov = null;
-    const COLS = 60;
-    const ROWS = 40;
+    const COLS = 30;
+    const ROWS = 20;
     const FONT_SIZE = 16; 
-    const TILE_SIZE = 16; 
+    const TILE_SIZE = 32; 
 
     // === СИСТЕМА ЭФФЕКТОВ ===
     let activeEffects = []; 
