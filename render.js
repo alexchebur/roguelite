@@ -261,52 +261,61 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     function drawGlobalMap(centerX, centerY) {
-        const ctx = RenderModule._ctx;
-        if (!ctx) return;
-
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
+        display.clear(); // Используем ROT display
+    
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
-
-        const typeMap = {
-            'plain':           ['.', '#8c8c8c'],
-            'forest':          ['T', '#2e8b57'],
-            'mountain':        ['^', '#a0a0a0'],
-            'water':           ['≈', '#4682b4'],
-            'city':            ['C', '#ffd700'],
-            'dungeon_entrance':['D', '#cd5c5c'],
-            'road':            ['█', '#b8860b']
-        };
-
+    
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
                 const gy = centerY + sy - halfH;
-
+            
+                let ch, fg;
                 let tileType = 'plain';
+            
+                // Получаем тип тайла
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     tileType = GlobalMapModule.getDisplayTileType(gx, gy);
                 } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
                     tileType = GlobalMapModule.getTileType(gx, gy);
                 }
-
-                const [ch, fg] = typeMap[tileType] || ['·', '#555'];
-                const isPlayer = (gx === centerX && gy === centerY);
-                const finalCh = isPlayer ? '@' : ch;
-                const finalFg = isPlayer ? '#ffffff' : fg;
-
-                if (typeof TilesetRenderer !== 'undefined') {
-                    TilesetRenderer.draw(ctx, finalCh, sx, sy, finalFg);
-                } else {
-                    ctx.fillStyle = finalFg;
-                    ctx.font = '16px Consolas, monospace';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(finalCh, sx * 16 + 8, sy * 16 + 8);
+            
+                // Маппинг через реестр
+                switch(tileType) {
+                     case 'plain':
+                        ch = getChar('TILE_PLAIN'); fg = '#8c8c8c';
+                        break;
+                    case 'forest':
+                        ch = getChar('TILE_FOREST'); fg = '#2e8b57';
+                        break;
+                    case 'mountain':
+                        ch = getChar('TILE_MOUNTAIN'); fg = '#a0a0a0';
+                        break;
+                    case 'water':
+                        ch = getChar('TILE_WATER'); fg = '#4682b4';
+                        break;
+                    case 'city':
+                        ch = getChar('TILE_CITY'); fg = '#ffd700';
+                        break;
+                    case 'dungeon_entrance':
+                        ch = getChar('TILE_DUNGEON_ENTRANCE'); fg = '#cd5c5c';
+                        break;
+                    case 'road':
+                        ch = getChar('TILE_ROAD'); fg = '#b8860b';
+                        break;
+                    default:
+                        ch = getChar('TILE_PLAIN'); fg = '#555';
                 }
+             
+                // Игрок в центре
+                if (gx === centerX && gy === centerY) {
+                    ch = getChar('PLAYER'); fg = '#fff';
+                }
+            
+                display.draw(sx, sy, ch, fg, '#000');
             }
         }
     }
