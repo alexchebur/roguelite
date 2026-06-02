@@ -214,28 +214,27 @@ function generateCityLayout(rand, width, height, density = 0.7) {
     return { grid, interiorCoords };
 }
 
-function generateCity(gx, gy, depth) {
-    const seedVal = createSeed(gx, gy, depth);
-    const rand = new SeededRandom(seedVal);
+    function generateCity(gx, gy, depth) {
+        const seedVal = createSeed(gx, gy, depth);
+        const rand = new SeededRandom(seedVal);
+        
+        // 1. Определяем тип города (плотность застройки)
+        const density = rand.next() * 0.3 + 0.3; 
+        
+        // Генерируем планировку
+        const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
+        currentMapData = layoutResult.grid; // Предположим, что generateCityLayout возвращает grid
+        
+        currentDungeonType = { 
+             name: 'city',
+            wallChar: getChar('WALL_CITY'),   // '█'
+            floorChar: getChar('FLOOR_CITY'), // '·'
+            wallColor: '#6b7280', 
+            floorColor: '#374151' 
+        };
+        
+        // ... остальной код генерации лестниц и возврата startPos ...
     
-    // 1. Определяем тип города (плотность застройки)
-    const density = rand.next() * 0.3 + 0.3; 
-    
-    // Генерируем планировку
-    const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
-    currentMapData = layoutResult.grid;
-    
-    // Сохраняем внутренние координаты в текущем контексте модуля MapModule
-    // Добавим новое свойство в возвращаемый объект модуля ниже
-    currentMapInteriorCoords = layoutResult.interiorCoords; 
-    
-    currentDungeonType = { 
-         name: 'city',
-        wallChar: '█',  
-        floorChar: '·', 
-        wallColor: '#6b7280', 
-        floorColor: '#374151' 
-    };
     
     // === ЛЕСТНИЦА ">" СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
     const upSeed = `up_city_${gx}_${gy}_${depth}`;
