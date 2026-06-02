@@ -128,26 +128,25 @@ const TilesetRenderer = (function() {
             return;
         }
 
-        // 4. ПОПЫТКА ОТРИСОВКИ
-        // Сначала рисуем сам спрайт
+        // 4. ОТРИСОВКА СПРАЙТА
+        ctx.save();
+        
+        // Рисуем сам спрайт
         ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
         
-        // === ДИАГНОСТИКА: Рисуем зеленую рамку, если спрайт отобразился ===
-        //ctx.strokeStyle = '#00ff00'; // Зеленая рамка
-        //ctx.lineWidth = 1;
-        //ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
-
-        // Теперь применяем цвет
-        /*
+        // 5. ОКРАСКА (ИСПРАВЛЕННАЯ)
         const fillColor = color || '#ffffff';
-        if (fillColor && fillColor !== '#000') {
-            ctx.save();
+        
+        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
+            // Включаем режим наложения "только поверх существующих пикселей"
             ctx.globalCompositeOperation = 'source-atop';
+            
+            // Рисуем цветной прямоугольник поверх спрайта
             ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
-            ctx.restore();
         }
-        */
+        
+        ctx.restore();
     }
     
     return { init, draw, TILE_SIZE, isReady: () => isReady };
