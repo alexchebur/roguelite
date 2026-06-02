@@ -692,4 +692,6 @@ const GameModule = (function() {
     };
 })();
 
-window.onload = () => GameModule.init();
+window.onload = async () => {
+    await GameModule.init();
+};
