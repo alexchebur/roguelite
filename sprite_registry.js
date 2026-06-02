@@ -1,85 +1,110 @@
 /**
- * ЕДИНЫЙ РЕЕСТР СПРАЙТОВ И СИМВОЛОВ
- * Централизованное хранилище всех визуальных обозначений игры.
- * Формат: 'ID': { char: 'символ', desc: 'описание' }
+ * ЕДИНЫЙ РЕЕСТР СПРАЙТОВ И СИМВОЛОВ (sprite_registry.js)
+ * Подключать ПЕРВЫМ среди пользовательских скриптов.
  */
 
 const SPRITE_REGISTRY = {
-    // --- ГЛОБАЛЬНАЯ КАРТА (Ландшафт) ---
-    'TILE_PLAIN':           { char: '.', desc: 'Равнина' },
-    'TILE_FOREST':          { char: 'T', desc: 'Лес' },
-    'TILE_MOUNTAIN':        { char: '^', desc: 'Горы' },
-    'TILE_WATER':           { char: '≈', desc: 'Вода' },
-    'TILE_CITY':            { char: 'C', desc: 'Город (вход)' },
-    'TILE_DUNGEON_ENTRANCE':{ char: 'D', desc: 'Вход в подземелье' },
-    'TILE_ROAD':            { char: '█', desc: 'Дорога' },
+    // ==========================================
+    // 1. ГЛОБАЛЬНАЯ КАРТА (Ландшафт)
+    // ==========================================
+    'TILE_PLAIN':            { char: '.',   tile: { file: 'terrain', x: 0, y: 1 }, desc: 'Равнина' },
+    'TILE_FOREST':           { char: 'T',   tile: { file: 'terrain', x: 8, y: 2 }, desc: 'Лес' },
+    'TILE_MOUNTAIN':         { char: '^',   tile: { file: 'terrain', x: 5, y: 2 }, desc: 'Горы' },
+    'TILE_WATER':            { char: '≈',   tile: { file: 'terrain', x: 7, y: 2 }, desc: 'Вода' },
+    'TILE_CITY':             { char: 'C',   tile: { file: 'terrain', x: 9, y: 2 }, desc: 'Город' },
+    'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain', x: 6, y: 0 }, desc: 'Вход в подземелье' },
+    'TILE_ROAD':             { char: '█',   tile: { file: 'terrain', x: 11, y: 2 }, desc: 'Дорога' },
 
-    // --- ПОДЗЕМЕЛЬЕ (Стены и Пол) ---
-    'FLOOR_DEFAULT':        { char: '.', desc: 'Обычный пол' },
-    'WALL_DEFAULT':         { char: '#', desc: 'Обычная стена' },
+    // ==========================================
+    // 2. ПОДЗЕМЕЛЬЕ (Стены и Пол)
+    // ==========================================
+    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain', x: 0, y: 1 }, desc: 'Обычный пол' },
+    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain', x: 1, y: 2 }, desc: 'Обычная стена' },
     
-    // Специфичные тайлы (используются в cellular/rogue типах)
-    'FLOOR_ORGANIC':        { char: 'o', desc: 'Органический пол/гриб' },
-    'WALL_ORGANIC':         { char: 'O', desc: 'Органическая стена' },
-    'FLOOR_CITY':           { char: '·', desc: 'Пол города (мощеная)' },
-    'WALL_CITY':            { char: '█', desc: 'Стена города' },
+    // Специфичные тайлы (для пещер, городов и т.д.)
+    'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain', x: 3, y: 2 }, desc: 'Органический пол' },
+    'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain', x: 4, y: 2 }, desc: 'Органическая стена' },
+    'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain', x: 0, y: 1 }, desc: 'Пол города' }, // Используем тот же спрайт пола или свой
+    'WALL_CITY':             { char: '█',   tile: { file: 'terrain', x: 11, y: 2 }, desc: 'Стена города' },
 
-    // --- ЛЕСТНИЦЫ ---
-    'STAIRS_DOWN':          { char: '<', desc: 'Лестница вниз' },
-    'STAIRS_UP':            { char: '>', desc: 'Лестница вверх' },
+    // Лестницы
+    'STAIRS_DOWN':           { char: '<',   tile: { file: 'terrain', x: 2, y: 0 }, desc: 'Лестница вниз' },
+    'STAIRS_UP':             { char: '>',   tile: { file: 'terrain', x: 3, y: 0 }, desc: 'Лестница вверх' },
 
-    // --- СУЩНОСТИ (Игрок и NPC) ---
-    'PLAYER':               { char: '@', desc: 'Игрок' },
-    'NPC':                  { char: '☺', desc: 'NPC (житель города)' },
+    // ==========================================
+    // 3. СУЩНОСТИ (Игрок и NPC)
+    // ==========================================
+    'PLAYER':                { char: '@',   tile: { file: 'creature', x: 2, y: 0 }, desc: 'Игрок' },
+    'NPC':                   { char: '☺',   tile: { file: 'creature', x: 8, y: 3 }, desc: 'NPC' },
 
-    // --- ВРАГИ (ENEMY_TYPES в data.js используют эти char) ---
-    'ENEMY_RAT':            { char: 'r', desc: 'Крыса' },
-    'ENEMY_GOBLIN':         { char: 'g', desc: 'Гоблин' },
-    'ENEMY_WOLF':           { char: 'w', desc: 'Волк' },
-    'ENEMY_BANDIT':         { char: 'b', desc: 'Бандит' },
-    'ENEMY_SKELETON':       { char: 's', desc: 'Скелет' },
-    'ENEMY_SLIME':          { char: 'j', desc: 'Слизень' },
-    'ENEMY_ORC':            { char: 'O', desc: 'Орк' }, // Внимание: конфликт с Organic Wall? Нет, O - стена, o - пол. Но Orc тоже 'O'. Лучше заменить Орка на 'k' или стену на другой символ. 
-                                                        // В текущем коде Orc='O', Organic Wall='O'. Это КОНФЛИКТ. 
-                                                        // Исправление: Пусть Органическая стена будет '0' (ноль) или оставим 'O' для Орка, а стену сделаем '▓'.
-                                                        // Для совместимости с вашим tileset_renderer, где O=creature, а O=terrain... 
-                                                        // Давайте изменим Organic Wall на '▓' в registry, но в tileset это может быть сложно.
-                                                        // Оставим как есть, но учтите: в render.js приоритет сущности выше тайла.
-    'ENEMY_ZOMBIE':         { char: 'z', desc: 'Зомби' },
-    'ENEMY_HARPY':          { char: 'h', desc: 'Гарпия' },
-    'ENEMY_GHOST':          { char: 'G', desc: 'Призрак' },
-    'ENEMY_VAMPIRE':        { char: 'V', desc: 'Вампир' },
-    'ENEMY_TROLL':          { char: 'T', desc: 'Тролль' }, // Конфликт с Forest 'T'. Приоритет сущности выше.
-    'ENEMY_LICH':           { char: 'L', desc: 'Лич' },
-    'ENEMY_GOLEM':          { char: 'M', desc: 'Голем' },
-    'ENEMY_DRAGON':         { char: 'q', desc: 'Дракон' },
+    // ==========================================
+    // 4. ВРАГИ (ENEMY_TYPES)
+    // ==========================================
+    'ENEMY_RAT':             { char: 'r',   tile: { file: 'creature', x: 8, y: 9 }, desc: 'Крыса' },
+    'ENEMY_GOBLIN':          { char: 'g',   tile: { file: 'creature', x: 12, y: 3 }, desc: 'Гоблин' },
+    'ENEMY_WOLF':            { char: 'w',   tile: { file: 'creature', x: 1, y: 9 }, desc: 'Волк' },
+    'ENEMY_BANDIT':          { char: 'b',   tile: { file: 'creature', x: 5, y: 0 }, desc: 'Бандит' },
+    'ENEMY_SKELETON':        { char: 's',   tile: { file: 'creature', x: 6, y: 0 }, desc: 'Скелет' },
+    'ENEMY_SLIME':           { char: 'j',   tile: { file: 'creature', x: 3, y: 15 }, desc: 'Слизень' },
+    'ENEMY_ORC':             { char: 'O',   tile: { file: 'creature', x: 7, y: 0 }, desc: 'Орк' }, // Внимание: символ совпадает с WALL_ORGANIC
+    'ENEMY_ZOMBIE':          { char: 'z',   tile: { file: 'creature', x: 8, y: 0 }, desc: 'Зомби' },
+    'ENEMY_HARPY':           { char: 'h',   tile: { file: 'creature', x: 9, y: 0 }, desc: 'Гарпия' },
+    'ENEMY_GHOST':           { char: 'G',   tile: { file: 'creature', x: 10, y: 0 }, desc: 'Призрак' }, // Совпадает с ITEM_GLOVES
+    'ENEMY_VAMPIRE':         { char: 'V',   tile: { file: 'creature', x: 11, y: 0 }, desc: 'Вампир' },
+    'ENEMY_TROLL':           { char: 'T',   tile: { file: 'creature', x: 12, y: 0 }, desc: 'Тролль' }, // Совпадает с TILE_FOREST
+    'ENEMY_LICH':            { char: 'L',   tile: { file: 'creature', x: 13, y: 0 }, desc: 'Лич' },
+    'ENEMY_GOLEM':           { char: 'M',   tile: { file: 'creature', x: 14, y: 0 }, desc: 'Голем' },
+    'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature', x: 15, y: 0 }, desc: 'Дракон' },
 
-    // --- ПРЕДМЕТЫ (ITEM_TYPES в data.js используют эти char) ---
-    'ITEM_SWORD':           { char: '/', desc: 'Меч' },
-    'ITEM_AXE':             { char: '^', desc: 'Топор' }, // Конфликт с Mountain '^'. Приоритет предмета выше.
-    'ITEM_MACE':            { char: ')', desc: 'Булава' },
-    'ITEM_DAGGER':          { char: '*', desc: 'Кинжал' },
-    'ITEM_SPEAR':           { char: 'Y', desc: 'Копье' },
-    'ITEM_BOW':             { char: '(', desc: 'Лук' },
-    'ITEM_CROSSBOW':        { char: '=', desc: 'Арбалет' },
-    'ITEM_STAFF':           { char: '|', desc: 'Посох' },
-    'ITEM_ARMOR_LEATHER':   { char: ']', desc: 'Кожа' },
-    'ITEM_ARMOR_CHAIN':     { char: '[', desc: 'Кольчуга' },
-    'ITEM_SHIELD':          { char: '}', desc: 'Щит' },
-    'ITEM_GREAVES':         { char: 'o', desc: 'Наголенники' }, // Конфликт с Organic Floor 'o'.
-    'ITEM_CLOAK':           { char: '{', desc: 'Плащ' },
-    'ITEM_HELMET':          { char: 'H', desc: 'Шлем' },
-    'ITEM_GLOVES':          { char: 'G', desc: 'Перчатки' }, // Конфликт с Ghost 'G'.
-    'ITEM_GOLD':            { char: '$', desc: 'Золото' },
-    'ITEM_POTION_HP':       { char: '!', desc: 'Зелье HP' },
-    'ITEM_ELIXIR':          { char: '+', desc: 'Эликсир' },
-    'ITEM_FOOD_BREAD':      { char: '%', desc: 'Еда' },
-    'ITEM_FOOD_MEAT':       { char: '~', desc: 'Мясо' },
-    'ITEM_POTION_STR':      { char: '!', desc: 'Зелье Силы' }, // Дубликат char с HP зельем. Визуально одинаковы, различаются по цвету/имени.
-    'ITEM_BERSERK':         { char: '*', desc: 'Настой' }      // Дубликат char с Кинжалом.
+    // ==========================================
+    // 5. ПРЕДМЕТЫ (ITEM_TYPES)
+    // ==========================================
+    
+    // Оружие ближнего боя
+    'ITEM_SWORD':            { char: '/',   tile: { file: 'item', x: 0, y: 0 }, desc: 'Меч' },
+    'ITEM_AXE':              { char: '^',   tile: { file: 'item', x: 1, y: 0 }, desc: 'Топор' }, // Совпадает с TILE_MOUNTAIN
+    'ITEM_MACE':             { char: ')',   tile: { file: 'item', x: 2, y: 0 }, desc: 'Булава' },
+    'ITEM_DAGGER':           { char: '*',   tile: { file: 'item', x: 3, y: 0 }, desc: 'Кинжал' }, // Совпадает с ITEM_BERSERK
+    'ITEM_SPEAR':            { char: 'Y',   tile: { file: 'item', x: 4, y: 0 }, desc: 'Копье' },
+
+    // Оружие дальнего боя
+    'ITEM_BOW':              { char: '(',   tile: { file: 'item', x: 5, y: 0 }, desc: 'Лук' },
+    'ITEM_CROSSBOW':         { char: '=',   tile: { file: 'item', x: 6, y: 0 }, desc: 'Арбалет' },
+    'ITEM_STAFF':            { char: '|',   tile: { file: 'item', x: 7, y: 0 }, desc: 'Посох' },
+
+    // Броня
+    'ITEM_ARMOR_LEATHER':    { char: ']',   tile: { file: 'item', x: 8, y: 0 }, desc: 'Кожаная броня' },
+    'ITEM_ARMOR_CHAIN':      { char: '[',   tile: { file: 'item', x: 9, y: 0 }, desc: 'Кольчуга' },
+    'ITEM_SHIELD':           { char: '}',   tile: { file: 'item', x: 10, y: 0 }, desc: 'Щит' },
+    'ITEM_GREAVES':          { char: 'o',   tile: { file: 'item', x: 11, y: 0 }, desc: 'Наголенники' }, // Совпадает с FLOOR_ORGANIC
+    'ITEM_CLOAK':            { char: '{',   tile: { file: 'item', x: 12, y: 0 }, desc: 'Плащ' },
+    'ITEM_HELMET':           { char: 'H',   tile: { file: 'item', x: 13, y: 0 }, desc: 'Шлем' },
+    'ITEM_GLOVES':           { char: 'G',   tile: { file: 'item', x: 14, y: 0 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
+
+    // Ресурсы и прочее
+    'ITEM_GOLD':             { char: '$',   tile: { file: 'item', x: 18, y: 0 }, desc: 'Золото' },
+    
+    // Зелья и еда
+    'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
+    'ITEM_ELIXIR':           { char: '+',   tile: { file: 'item', x: 15, y: 0 }, desc: 'Эликсир' },
+    'ITEM_FOOD_BREAD':       { char: '%',   tile: { file: 'item', x: 16, y: 0 }, desc: 'Еда' },
+    'ITEM_FOOD_MEAT':        { char: '~',   tile: { file: 'item', x: 17, y: 0 }, desc: 'Мясо' },
+    'ITEM_POTION_STR':       { char: '!',   tile: { file: 'item', x: 14, y: 0 }, desc: 'Зелье силы' },
+    'ITEM_BERSERK':          { char: '*',   tile: { file: 'item', x: 3, y: 0 }, desc: 'Настой берсерка' } // Совпадает с ITEM_DAGGER
 };
 
-// Хелпер для быстрого доступа к символу по ID
+/**
+ * Получает символ (char) по ID из реестра.
+ * Используется в data.js, dungeon_generator.js и map.js.
+ */
 function getChar(id) {
     return SPRITE_REGISTRY[id] ? SPRITE_REGISTRY[id].char : '?';
+}
+
+/**
+ * Получает данные тайлсета (file, x, y) по ID.
+ * Используется в спрайтовом рендерере.
+ */
+function getTileData(id) {
+    return SPRITE_REGISTRY[id] ? SPRITE_REGISTRY[id].tile : null;
 }
