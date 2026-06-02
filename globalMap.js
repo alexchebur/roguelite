@@ -29,10 +29,12 @@ function getChunkRandom(cx, cy) {
 }
 
 // Генерация ландшафта (типы клеток) для чанка
+// В файле globalMap.js замените функцию generateTerrain на эту:
+
 function generateTerrain(rand, width, height) {
     const tiles = Array(height).fill().map(() => Array(width).fill('plain'));
     
-    // Горы: случайные области
+    // 1. Горы: случайные области (оставляем как было)
     const mountainCount = rand.int(5, 15);
     for (let i = 0; i < mountainCount; i++) {
         const mx = rand.int(0, width-1);
@@ -41,7 +43,7 @@ function generateTerrain(rand, width, height) {
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = mx+dx, y = my+dy;
-                if (x>=0 && x<width && y>=0 && y<height && Math.abs(dx)+Math.abs(dy) <= radius) {
+                if (x >= 0 && x < width && y >= 0 && y < height && Math.abs(dx)+Math.abs(dy) <= radius) {
                     if (tiles[y][x] !== 'city' && tiles[y][x] !== 'dungeon_entrance') {
                         tiles[y][x] = 'mountain';
                     }
@@ -50,21 +52,45 @@ function generateTerrain(rand, width, height) {
         }
     }
     
-    // Леса: случайные точки
-    const forestCount = rand.int(10, 30);
-    for (let i = 0; i < forestCount; i++) {
+    // === ИЗМЕНЕНИЕ: Леса теперь генерируются скоплениями (кластерами) ===
+    // Увеличиваем количество центров лесов и их радиус
+    const forestClusterCount = rand.int(20, 40); 
+    
+    for (let i = 0; i < forestClusterCount; i++) {
         const fx = rand.int(0, width-1);
         const fy = rand.int(0, height-1);
-        if (tiles[fy][fx] === 'plain') tiles[fy][fx] = 'forest';
+        // Радиус скопления от 2 до 5 клеток
+        const radius = rand.int(2, 5); 
+
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const x = fx + dx;
+                const y = fy + dy;
+                
+                // Проверяем границы карты и форму круга (для более естественных пятен)
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    // Если клетка еще не занята городом, входом или горой
+                    if (tiles[y][x] !== 'city' && 
+                        tiles[y][x] !== 'dungeon_entrance' && 
+                        tiles[y][x] !== 'mountain') {
+                        
+                        // Добавляем немного шума: не каждое место в круге станет лесом (80% шанс)
+                        if (rand.next() < 0.8) {
+                            tiles[y][x] = 'forest';
+                        }
+                    }
+                }
+            }
+        }
     }
-    
-    // Реки (линии)
+     
+    // 2. Реки (линии) - оставляем без изменений
     const riverCount = rand.int(1, 3);
     for (let r = 0; r < riverCount; r++) {
         let x = rand.int(0, width-1);
         let y = rand.int(0, height-1);
         for (let step = 0; step < 30; step++) {
-            if (x>=0 && x<width && y>=0 && y<height && 
+            if (x >= 0 && x < width && y >= 0 && y < height && 
                 tiles[y][x] !== 'mountain' && 
                 tiles[y][x] !== 'city' && 
                 tiles[y][x] !== 'dungeon_entrance') {
