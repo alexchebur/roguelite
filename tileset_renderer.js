@@ -133,9 +133,9 @@ const TilesetRenderer = (function() {
         ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
         
         // === ДИАГНОСТИКА: Рисуем зеленую рамку, если спрайт отобразился ===
-        ctx.strokeStyle = '#00ff00'; // Зеленая рамка
-        ctx.lineWidth = 1;
-        ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        //ctx.strokeStyle = '#00ff00'; // Зеленая рамка
+        //ctx.lineWidth = 1;
+        //ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
 
         // Теперь применяем цвет
         /*
