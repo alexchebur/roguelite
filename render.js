@@ -9,7 +9,7 @@ const RenderModule = (function() {
 
     // === ЗАГРУЗКА СПРАЙТОВ (Добавлено) ===
     const spriteImages = {};
-    const TILESET_FILES = ['terrain', 'creature', 'item']; 
+    const TILESET_FILES = ['terrain_sprites.png', 'creature_sprites.png', 'item_sprites.png']; 
     
 
     TILESET_FILES.forEach(name => {
