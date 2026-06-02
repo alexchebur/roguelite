@@ -128,24 +128,27 @@ const TilesetRenderer = (function() {
             return;
         }
 
-        // 4. ОТРИСОВКА СПРАЙТА
         ctx.save();
-        
-        // Рисуем сам спрайт
-        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
-        
-        // 5. ОКРАСКА (ИСПРАВЛЕННАЯ)
+
         const fillColor = color || '#ffffff';
-        
-        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
-            // Включаем режим наложения "только поверх существующих пикселей"
-            ctx.globalCompositeOperation = 'source-atop';
-            
-            // Рисуем цветной прямоугольник поверх спрайта
+
+        // 4. ОКРАСКА ЧЕРЕЗ source-in (НАДЕЖНЫЙ СПОСОБ)
+        if (fillColor && fillColor !== '#000') {
+            // Шаг А: Рисуем цветной квадрат
             ctx.fillStyle = fillColor;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+
+            // Шаг Б: Включаем режим "оставить цвет только там, где будет новый рисунок"
+            ctx.globalCompositeOperation = 'source-in';
+
+            // Шаг В: Рисуем белый спрайт. 
+            // Так как спрайт белый, он просто "проявит" цвет underneath в своей форме.
+            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+        } else {
+            // Если цвет черный или не задан, рисуем как есть (черно-белый)
+            ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
         }
-        
+
         ctx.restore();
     }
     
