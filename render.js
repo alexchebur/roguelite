@@ -7,21 +7,12 @@ const RenderModule = (function() {
     const FONT_SIZE = 16; 
     const TILE_SIZE = 16; 
 
-    // === ЗАГРУЗКА СПРАЙТОВ (Для глобальной карты и fallback) ===
-    const spriteImages = {};
-    const TILESET_FILES = ['terrain_sprites', 'creature_sprites', 'item_sprites']; 
-    
-    TILESET_FILES.forEach(name => {
-        const img = new Image();
-        img.src = `${name}.png`; 
-        spriteImages[name] = img;
-    });
-    
     // === СИСТЕМА ЭФФЕКТОВ ===
     let activeEffects = []; 
     let currentCameraOffset = { x: 0, y: 0 };
     let redrawCallback = null;
 
+    // === АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ ===
     async function init() {
         if (typeof ROT === 'undefined') {
             alert("Ошибка: Библиотека ROT.js не загрузилась.");
@@ -62,17 +53,26 @@ const RenderModule = (function() {
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
 
-        // === ВАЖНО: Ждем загрузки тайлсетов ===
-        if (typeof TilesetRenderer !== 'undefined') {
-            console.log("🔄 Загрузка тайлсетов...");
-            await TilesetRenderer.init(); // <--- ЖДЕМ ЗАГРУЗКУ КАРТИНОК
-            console.log("✅ Тайлсеты загружены!");
-        } else {
-            console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
-        }
+        console.log("🔄 Загрузка тайлсетов...");
         
+        // 1. Ждем загрузки TilesetRenderer (подземелье)
+        if (typeof TilesetRenderer !== 'undefined') {
+            await TilesetRenderer.init();
+            console.log("✅ TilesetRenderer готов!");
+        } else {
+            console.warn("TilesetRenderer не найден.");
+        }
+
+        // 2. Ждем загрузки спрайтов для глобальной карты (если они отличаются)
+        // Если вы используете те же файлы, что и в TilesetRenderer, этот шаг можно пропустить,
+        // так как TilesetRenderer уже загрузил их в свои spriteSheets.
+        // Но если у вас есть отдельная логика drawSprite в render.js, убедитесь, что картинки загружены.
+        // Для простоты, давайте полагаться на TilesetRenderer для всего.
+
         // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
         if (typeof startEffectLoop === 'function') startEffectLoop();
+        
+        console.log("🚀 RenderModule полностью инициализирован.");
     }
 
     // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
@@ -157,24 +157,29 @@ const RenderModule = (function() {
     }
 
     // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Безопасная версия) ===
+    // Теперь она может использовать данные из TilesetRenderer, если нужно,
+    // или оставаться отдельной, если вы хотите использовать sprite_registry.js напрямую.
+    // Но чтобы избежать дублирования, лучше использовать TilesetRenderer.draw() везде.
     function drawSprite(ctx, id, sx, sy) {
         // Проверяем, подключен ли реестр
         if (typeof getTileData !== 'function') return false;
         
         const tileData = getTileData(id);
-        if (!tileData || !spriteImages[tileData.file]) return false;
-        
-        const img = spriteImages[tileData.file];
-        if (!img.complete || img.naturalWidth === 0) return false;
+        if (!tileData) return false;
 
-        ctx.drawImage(
-            img,
-            tileData.x * TILE_SIZE, tileData.y * TILE_SIZE,
-            TILE_SIZE, TILE_SIZE,
-            sx * TILE_SIZE, sy * TILE_SIZE,
-            TILE_SIZE, TILE_SIZE
-        );
-        return true;
+        // ВАЖНО: Мы должны получить картинку из TilesetRenderer.spriteSheets, 
+        // так как он уже загрузил их.
+        // Но spriteSheets приватный. Поэтому мы полагаемся на TilesetRenderer.draw()
+        // Или можем попытаться достать картинку, если сделаем spriteSheets публичным.
+        // Для простоты, давайте оставим эту функцию как fallback на ASCII, 
+        // а основную отрисовку делегируем TilesetRenderer.draw() в функциях draw и drawGlobalMap.
+        
+        // Если вы все же хотите использовать drawSprite, вам нужно убедиться, 
+        // что картинки загружены. Так как мы ждем TilesetRenderer.init(), 
+        // мы можем предположить, что картинки есть.
+        
+        // Но проще всего удалить drawSprite и использовать везде TilesetRenderer.draw().
+        return false; 
     }    
     
     function getCameraOffset(player) {
@@ -193,6 +198,17 @@ const RenderModule = (function() {
 
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Проверка готовности рендерера
+        if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
+            // Если не готов, рисуем ASCII заглушку
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("Loading...", ctx.canvas.width/2, ctx.canvas.height/2);
+            return;
+        }
 
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = getCameraOffset(player);
@@ -229,16 +245,7 @@ const RenderModule = (function() {
                 }
 
                 // Используем TilesetRenderer для подземелья
-                if (typeof TilesetRenderer !== 'undefined') {
-                    TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-                } else {
-                    // Fallback на ASCII, если рендерер сломался
-                    ctx.fillStyle = fg;
-                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
-                }
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
 
@@ -247,9 +254,7 @@ const RenderModule = (function() {
             items.forEach(i => {
                 const sx = i.x - cam.x, sy = i.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
-                    if (typeof TilesetRenderer !== 'undefined') {
-                        TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
-                    }
+                    TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
                 }
             });
         }
@@ -260,9 +265,7 @@ const RenderModule = (function() {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
                     if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                        if (typeof TilesetRenderer !== 'undefined') {
-                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
-                        }
+                        TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
                     }
                 }
             });
@@ -273,9 +276,7 @@ const RenderModule = (function() {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x, sy = npc.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    if (typeof TilesetRenderer !== 'undefined') {
-                        TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
-                    }
+                    TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
                 }
             });
         }
@@ -284,9 +285,7 @@ const RenderModule = (function() {
         if (player) {
             const px = Math.floor(COLS / 2);
             const py = Math.floor(ROWS / 2);
-            if (typeof TilesetRenderer !== 'undefined') {
-                TilesetRenderer.draw(ctx, player.char, px, py, player.color);
-            }
+            TilesetRenderer.draw(ctx, player.char, px, py, player.color);
         }
 
         // 6. ЭФФЕКТЫ
@@ -295,7 +294,6 @@ const RenderModule = (function() {
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует sprite_registry.js) ===
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует TilesetRenderer) ===
     function drawGlobalMap(centerX, centerY) {
         const ctx = RenderModule._ctx;
@@ -303,6 +301,16 @@ const RenderModule = (function() {
 
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Проверка готовности
+        if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("Loading World...", ctx.canvas.width/2, ctx.canvas.height/2);
+            return;
+        }
 
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
@@ -335,16 +343,7 @@ const RenderModule = (function() {
                 }
 
                 // Используем TilesetRenderer для глобальной карты
-                if (typeof TilesetRenderer !== 'undefined' && TilesetRenderer.isReady()) {
-                    TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-                } else {
-                    // Fallback на ASCII
-                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                    ctx.fillStyle = fg;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
-                }
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
     }
