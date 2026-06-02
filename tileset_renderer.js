@@ -8,42 +8,51 @@ const TilesetRenderer = (function() {
     // === МАППИНГ: символ → (файл, колонка, строка) ===
     // Убедитесь, что координаты x,y соответствуют вашему PNG!
     const TILE_MAP = {
-        //  Terrain (ПОПРОБУЙТЕ СДВИНУТЬ Y НА 1, ЕСЛИ ПЕРВЫЙ РЯД ПУСТОЙ)
-        '#': { file: 'terrain', x: 1, y: 2 }, 
-        '.': { file: 'terrain', x: 0, y: 1 },
-        '>': { file: 'terrain', x: 3, y: 0 },
-        '<': { file: 'terrain', x: 2, y: 0 },
-        'T': { file: 'terrain', x: 8, y: 2 },
-        '^': { file: 'terrain', x: 5, y: 2 },
-        '≈': { file: 'terrain', x: 7, y: 2 },
-        'C': { file: 'terrain', x: 9, y: 2 },
-        'D': { file: 'terrain', x: 6, y: 0 },
-        '█': { file: 'terrain', x: 11, y: 2 },
-        //'·': { file: 'terrain', x: 0, y: 1 },
-        'o': { file: 'terrain', x: 3, y: 2 },
-        'O': { file: 'terrain', x: 4, y: 2 },
-        // ... остальные без изменений пока что
+        // Terrain
+        '.': { file: 'terrain', x: 0, y: 1 }, // FLOOR_DEFAULT, TILE_PLAIN
+        '#': { file: 'terrain', x: 1, y: 2 }, // WALL_DEFAULT
+        '>': { file: 'terrain', x: 3, y: 0 }, // STAIRS_UP
+        '<': { file: 'terrain', x: 2, y: 0 }, // STAIRS_DOWN
+        'T': { file: 'terrain', x: 8, y: 2 }, // TILE_FOREST (и ENEMY_TROLL, но спрайт врага берется из файла creature)
+        '^': { file: 'terrain', x: 5, y: 2 }, // TILE_MOUNTAIN (и ITEM_AXE)
+        '≈': { file: 'terrain', x: 7, y: 2 }, // TILE_WATER
+        'C': { file: 'terrain', x: 9, y: 2 }, // TILE_CITY
+        'D': { file: 'terrain', x: 6, y: 0 }, // TILE_DUNGEON_ENTRANCE
+        '█': { file: 'terrain', x: 11, y: 2 }, // TILE_ROAD, WALL_CITY
+        'o': { file: 'terrain', x: 3, y: 2 }, // FLOOR_ORGANIC (и ITEM_GREAVES)
+        'O': { file: 'terrain', x: 4, y: 2 }, // WALL_ORGANIC (и ENEMY_ORC - тут нужен отдельный спрайт для Орка в creature!)
+        
+        // Creatures & NPCs
+        '@': { file: 'creature', x: 2, y: 0 }, // PLAYER
+        'r': { file: 'creature', x: 8, y: 9 }, // ENEMY_RAT
+        'g': { file: 'creature', x: 12, y: 3 }, // ENEMY_GOBLIN
+        'w': { file: 'creature', x: 1, y: 9 }, // ENEMY_WOLF
+        'j': { file: 'creature', x: 3, y: 15 }, // ENEMY_SLIME
+        'b': { file: 'creature', x: 5, y: 0 }, // ENEMY_BANDIT
+        's': { file: 'creature', x: 6, y: 0 }, // ENEMY_SKELETON
+        'O': { file: 'creature', x: 7, y: 0 }, // ENEMY_ORC (Внимание: тот же ключ 'O', что и у стены! 
+                                                // ВАШ РЕНДЕРЕР ДОЛЖЕН ПРИОРИТЕЗИРОВАТЬ СУЩНОСТИ НАД ТАЙЛАМИ.
+                                                // Если ключи в объекте совпадают, одно перезапишет другое.
+                                                // Решение: В TILE_MAP ключи должны быть уникальными. 
+                                                // Но так как и стена, и орк используют символ 'O', 
+                                                // вам нужно проверять контекст при отрисовке.
+                                                // Обычно спрайтовый рендерер принимает (char, layer).
+                                                // Если у вас один общий TILE_MAP, то 'O' будет последним записанным.
+                                                // Исправьте ключи, если рендерер не поддерживает слои.
+                                                // Например, используйте разные символы для Орка и Стены, если это возможно.
+                                                // Или убедитесь, что при отрисовке врага вы обращаетесь к 'creature' файлу напрямую.
+                                               ),
+        'z': { file: 'creature', x: 8, y: 0 }, // ENEMY_ZOMBIE
+        'h': { file: 'creature', x: 9, y: 0 }, // ENEMY_HARPY
+        'G': { file: 'creature', x: 10, y: 0 }, // ENEMY_GHOST (и ITEM_GLOVES)
+        'V': { file: 'creature', x: 11, y: 0 }, // ENEMY_VAMPIRE
+        'T': { file: 'creature', x: 12, y: 0 }, // ENEMY_TROLL (и TILE_FOREST)
+        'L': { file: 'creature', x: 13, y: 0 }, // ENEMY_LICH
+        'M': { file: 'creature', x: 14, y: 0 }, // ENEMY_GOLEM
+        'q': { file: 'creature', x: 15, y: 0 }, // ENEMY_DRAGON
+        '☺': { file: 'creature', x: 8, y: 3 }, // NPC
 
-        //  Creatures & NPCs
-        '@': { file: 'creature', x: 2, y: 0 },
-        'r': { file: 'creature', x: 8, y: 9 },
-        'g': { file: 'creature', x: 12, y: 3 },
-        'w': { file: 'creature', x: 1, y: 9 },
-        'j': { file: 'creature', x: 3, y: 15 },
-        'b': { file: 'creature', x: 5, y: 0 },
-        's': { file: 'creature', x: 6, y: 0 },
-        'O': { file: 'creature', x: 7, y: 0 }, 
-        'z': { file: 'creature', x: 8, y: 0 },
-        'h': { file: 'creature', x: 9, y: 0 },
-        'G': { file: 'creature', x: 10, y: 0 },
-        'V': { file: 'creature', x: 11, y: 0 },
-        'T': { file: 'creature', x: 12, y: 0 },
-        'L': { file: 'creature', x: 13, y: 0 },
-        'M': { file: 'creature', x: 14, y: 0 },
-        'q': { file: 'creature', x: 15, y: 0 },
-        '☺': { file: 'creature', x: 8, y: 3 },
-
-        // 🎒 Items
+        // Items
         '/': { file: 'item', x: 0, y: 0 },
         '^': { file: 'item', x: 1, y: 0 },
         ')': { file: 'item', x: 2, y: 0 },
@@ -63,7 +72,6 @@ const TilesetRenderer = (function() {
         '~': { file: 'item', x: 17, y: 0 },
         '$': { file: 'item', x: 18, y: 0 }
     };
-
     async function init() {
         const files = [
             { src: 'terrain_sprites.png', key: 'terrain' },
