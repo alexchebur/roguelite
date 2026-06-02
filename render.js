@@ -44,9 +44,8 @@ const RenderModule = (function() {
         const canvas = display.getContainer();
         container.appendChild(canvas);
 
-        // ✅ КЭШИРУЕМ КОНТЕКСТ ОДИН РАЗ
-        const ctx = canvas.getContext('2d');
-        RenderModule._ctx = ctx; 
+        // ✅ СОХРАНЯЕМ КОНТЕКСТ ДЛЯ РУЧНОЙ ОТРИСОВКИ
+        RenderModule._ctx = canvas.getContext('2d'); 
 
         fov = new ROT.FOV.PreciseShadowcasting((x, y) => !MapModule.isWall(x, y));
 
