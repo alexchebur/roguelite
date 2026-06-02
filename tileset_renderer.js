@@ -18,19 +18,13 @@ const TilesetRenderer = (function() {
         'o': { file: 'terrain_sprites', x: 3, y: 2 }, // Органический пол
         'O': { file: 'terrain_sprites', x: 4, y: 2 }, // Органическая стена
         
-        // Конфликтующие тайлы (заменили символы в data.js/map.js или здесь?)
-        // Если 'T' (Лес) и 'T' (Тролль) конфликтуют, оставим здесь Тролля, 
-        // а Лес на глобальной карте будем рисовать цветом или другим символом.
-        // НО! Глобальная карта использует '.' 'T' '^' и т.д.
-        // Давайте пока оставим ТАЙЛЫ, так как их больше.
-        'T': { file: 'terrain_sprites', x: 8, y: 2 }, // Лес (Тролль получит другой символ?)
-        '^': { file: 'terrain_sprites', x: 5, y: 2 }, // Горы (Топор получит другой символ?)
+        // Глобальная карта (уникальные символы)
+        'T': { file: 'terrain_sprites', x: 8, y: 2 }, // Лес
+        '^': { file: 'terrain_sprites', x: 5, y: 2 }, // Горы
         'C': { file: 'terrain_sprites', x: 9, y: 2 }, // Город
         'D': { file: 'terrain_sprites', x: 6, y: 0 }, // Вход в подземелье
 
         // --- СУЩЕСТВА (Creatures) ---
-        // Если символ совпадает с тайлом, он ПЕРЕЗАПИШЕТ тайл выше.
-        // Поэтому существ с конфликтующими символами лучше сдвинуть.
         '@': { file: 'creature_sprites', x: 2, y: 0 }, // Игрок
         'r': { file: 'creature_sprites', x: 8, y: 9 }, // Крыса
         'g': { file: 'creature_sprites', x: 12, y: 3 }, // Гоблин
@@ -39,22 +33,12 @@ const TilesetRenderer = (function() {
         'b': { file: 'creature_sprites', x: 5, y: 0 }, // Бандит
         's': { file: 'creature_sprites', x: 6, y: 0 }, // Скелет
         
-        // КОНФЛИКТЫ:
-        // 'O' - Орк. Перезаписал Органическую стену. 
-        // Решение: Пусть Органическая стена будет '0' (ноль) или '▓'.
-        // Пока оставим Орка, так как он важнее.
-        'k': { file: 'creature_sprites', x: 7, y: 0 }, // Орк
-        
+        'k': { file: 'creature_sprites', x: 7, y: 0 }, // Орк (был O, стал k)
         'z': { file: 'creature_sprites', x: 8, y: 0 }, // Зомби
         'h': { file: 'creature_sprites', x: 9, y: 0 }, // Гарпия
         'G': { file: 'creature_sprites', x: 10, y: 0 }, // Призрак
         'V': { file: 'creature_sprites', x: 11, y: 0 }, // Вампир
-        
-        // 'T' - Тролль. Перезаписал Лес.
-        // Решение: Пусть Лес будет 't' (маленькая) или оставим Тролля.
-        // Для глобальной карты это проблема.
-        't': { file: 'creature_sprites', x: 12, y: 0 }, // Тролль
-        
+        't': { file: 'creature_sprites', x: 12, y: 0 }, // Тролль (был T, стал t)
         'L': { file: 'creature_sprites', x: 13, y: 0 }, // Лич
         'M': { file: 'creature_sprites', x: 14, y: 0 }, // Голем
         'q': { file: 'creature_sprites', x: 15, y: 0 }, // Дракон
@@ -62,9 +46,7 @@ const TilesetRenderer = (function() {
 
         // --- ПРЕДМЕТЫ (Items) ---
         '/': { file: 'item_sprites', x: 0, y: 0 }, // Меч
-        // '^' - Топор. Перезаписал Горы.
-        'P': { file: 'item_sprites', x: 1, y: 0 }, // Топор
-        
+        'P': { file: 'item_sprites', x: 1, y: 0 }, // Топор (был ^, стал P)
         ')': { file: 'item_sprites', x: 2, y: 0 }, // Булава
         '*': { file: 'item_sprites', x: 3, y: 0 }, // Кинжал
         'Y': { file: 'item_sprites', x: 4, y: 0 }, // Копье
@@ -74,16 +56,11 @@ const TilesetRenderer = (function() {
         ']': { file: 'item_sprites', x: 8, y: 0 }, // Кожа
         '[': { file: 'item_sprites', x: 9, y: 0 }, // Кольчуга
         '}': { file: 'item_sprites', x: 10, y: 0 }, // Щит
-        // 'o' - Наголенники. Перезаписали Органический пол.
-        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
-        
+        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники (был o, стал ")
         '{': { file: 'item_sprites', x: 12, y: 0 }, // Плащ
         'H': { file: 'item_sprites', x: 13, y: 0 }, // Шлем
-        // 'G' - Перчатки. Перезаписали Призрака.
-        ''': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
-        
-        '!': { file: 'item_sprites', x: 14, y: 0 }, // Зелье (совпадает с G? Нет, G=14, !=14. Ошибка в координатах?)
-        // Исправьте координаты для '!' если нужно
+        'v': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки (исправлено с ''' на 'v')
+        '!': { file: 'item_sprites', x: 14, y: 0 }, // Зелье (координаты те же, что у перчаток? Проверьте PNG)
         '+': { file: 'item_sprites', x: 15, y: 0 }, // Эликсир
         '%': { file: 'item_sprites', x: 16, y: 0 }, // Еда
         '~': { file: 'item_sprites', x: 17, y: 0 }, // Мясо
