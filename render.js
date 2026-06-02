@@ -294,11 +294,12 @@ const RenderModule = (function() {
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ ===
     function drawGlobalMap(centerX, centerY) {
-        // Получаем Canvas из ROT.Display
-        const canvas = display.getContainer();
-        const ctx = canvas.getContext('2d');
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        // Очистка фона
         ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
@@ -313,7 +314,6 @@ const RenderModule = (function() {
                     tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
                 }
 
-                // Маппинг типа тайла → ID из реестра
                 const typeToId = {
                     'plain': 'TILE_PLAIN', 'forest': 'TILE_FOREST', 'mountain': 'TILE_MOUNTAIN',
                     'water': 'TILE_WATER', 'city': 'TILE_CITY', 'dungeon_entrance': 'TILE_DUNGEON_ENTRANCE',
@@ -322,10 +322,10 @@ const RenderModule = (function() {
                 
                 const id = typeToId[tileType] || 'TILE_PLAIN';
                 
-                // Попытка нарисовать спрайт
+                // 1. Попытка нарисовать спрайт
                 const drawn = drawSprite(ctx, id, sx, sy);
                 
-                // Если спрайта нет или картинка не загрузилась → ASCII fallback
+                // 2. Fallback на ASCII, если спрайт не загрузился
                 if (!drawn) {
                     const ch = getChar(id);
                     const colors = {
@@ -339,7 +339,7 @@ const RenderModule = (function() {
                     ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
                 }
 
-                // Игрок поверх всего
+                // 3. Игрок поверх всего
                 if (gx === centerX && gy === centerY) {
                     const playerDrawn = drawSprite(ctx, 'PLAYER', sx, sy);
                     if (!playerDrawn) {
