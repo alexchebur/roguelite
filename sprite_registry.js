@@ -7,7 +7,7 @@ const SPRITE_REGISTRY = {
     // ==========================================
     // 1. ГЛОБАЛЬНАЯ КАРТА (Ландшафт)
     // ==========================================
-    'TILE_PLAIN':            { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Равнина' },
+    'TILE_PLAIN':            { char: '.',   tile: { file: 'terrain_sprites', x: 10, y: 2 }, desc: 'Равнина' },
     'TILE_FOREST':           { char: 'T',   tile: { file: 'terrain_sprites', x: 8, y: 2 }, desc: 'Лес' },
     'TILE_MOUNTAIN':         { char: '^',   tile: { file: 'terrain_sprites', x: 5, y: 2 }, desc: 'Горы' },
     'TILE_WATER':            { char: '≈',   tile: { file: 'terrain_sprites', x: 7, y: 2 }, desc: 'Вода' },
