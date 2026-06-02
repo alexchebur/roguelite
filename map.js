@@ -165,6 +165,12 @@ const MapModule = (function() {
         // 3. Размещаем здания по упорядоченной сетке
         while (y < height - 6) {
             const bh = rand.int(4, 8); 
+            
+            // === ИСПРАВЛЕНИЕ: Проверяем, влезает ли здание по высоте ===
+            if (y + bh > height) {
+                break; // Если не влезает, прекращаем строить здания в этом ряду
+            }
+
             let x = 2; 
 
             while (x < width - 6) {
@@ -183,6 +189,8 @@ const MapModule = (function() {
                     for (let dx = 0; dx < bw; dx++) {
                         const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
                         const val = isPerimeter ? 1 : 0;
+                        
+                        // Теперь эта строка безопасна, так как мы проверили y + bh выше
                         grid[y + dy][x + dx] = val;
                         
                         // Если это пол внутри здания, сохраняем координаты для спавна предметов
