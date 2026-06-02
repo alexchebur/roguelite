@@ -43,7 +43,7 @@ const TilesetRenderer = (function() {
         // 'O' - Орк. Перезаписал Органическую стену. 
         // Решение: Пусть Органическая стена будет '0' (ноль) или '▓'.
         // Пока оставим Орка, так как он важнее.
-        'O': { file: 'creature_sprites', x: 7, y: 0 }, // Орк
+        'k': { file: 'creature_sprites', x: 7, y: 0 }, // Орк
         
         'z': { file: 'creature_sprites', x: 8, y: 0 }, // Зомби
         'h': { file: 'creature_sprites', x: 9, y: 0 }, // Гарпия
@@ -53,7 +53,7 @@ const TilesetRenderer = (function() {
         // 'T' - Тролль. Перезаписал Лес.
         // Решение: Пусть Лес будет 't' (маленькая) или оставим Тролля.
         // Для глобальной карты это проблема.
-        'T': { file: 'creature_sprites', x: 12, y: 0 }, // Тролль
+        't': { file: 'creature_sprites', x: 12, y: 0 }, // Тролль
         
         'L': { file: 'creature_sprites', x: 13, y: 0 }, // Лич
         'M': { file: 'creature_sprites', x: 14, y: 0 }, // Голем
@@ -63,7 +63,7 @@ const TilesetRenderer = (function() {
         // --- ПРЕДМЕТЫ (Items) ---
         '/': { file: 'item_sprites', x: 0, y: 0 }, // Меч
         // '^' - Топор. Перезаписал Горы.
-        '^': { file: 'item_sprites', x: 1, y: 0 }, // Топор
+        'P': { file: 'item_sprites', x: 1, y: 0 }, // Топор
         
         ')': { file: 'item_sprites', x: 2, y: 0 }, // Булава
         '*': { file: 'item_sprites', x: 3, y: 0 }, // Кинжал
@@ -75,12 +75,12 @@ const TilesetRenderer = (function() {
         '[': { file: 'item_sprites', x: 9, y: 0 }, // Кольчуга
         '}': { file: 'item_sprites', x: 10, y: 0 }, // Щит
         // 'o' - Наголенники. Перезаписали Органический пол.
-        'o': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
+        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
         
         '{': { file: 'item_sprites', x: 12, y: 0 }, // Плащ
         'H': { file: 'item_sprites', x: 13, y: 0 }, // Шлем
         // 'G' - Перчатки. Перезаписали Призрака.
-        'G': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
+        ''': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
         
         '!': { file: 'item_sprites', x: 14, y: 0 }, // Зелье (совпадает с G? Нет, G=14, !=14. Ошибка в координатах?)
         // Исправьте координаты для '!' если нужно
