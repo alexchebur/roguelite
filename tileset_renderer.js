@@ -138,6 +138,7 @@ const TilesetRenderer = (function() {
         ctx.strokeRect(destX, destY, TILE_SIZE, TILE_SIZE);
 
         // Теперь применяем цвет
+        /*
         const fillColor = color || '#ffffff';
         if (fillColor && fillColor !== '#000') {
             ctx.save();
@@ -146,6 +147,8 @@ const TilesetRenderer = (function() {
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             ctx.restore();
         }
+        */
     }
+    
     return { init, draw, TILE_SIZE, isReady: () => isReady };
 })();
