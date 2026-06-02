@@ -141,78 +141,76 @@ const MapModule = (function() {
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
 // В файле map.js
 
-// ... существующий код ...
+    // ... (начало MapModule) ...
 
-// === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
-function generateCityLayout(rand, width, height, density = 0.7) {
-    // 1. Стартуем с полной сетки стен
-    const grid = Array(height).fill().map(() => Array(width).fill(1));
-    const interiorCoords = []; // <--- ДОБАВИТЬ: список координат внутри зданий
+    // Переменная для хранения внутренних координат текущего уровня (для спавна лута в городах)
+    let currentMapInteriorCoords = [];
 
-    // 2. Вырезаем внутреннее пространство (улицы по всей карте)
-    for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-            grid[y][x] = 0;
-        }
-    }
+    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
+    function generateCityLayout(rand, width, height, density = 0.7) {
+        // 1. Стартуем с полной сетки стен
+        const grid = Array(height).fill().map(() => Array(width).fill(1));
+        const interiorCoords = []; 
 
-    const STREET_W = 2; // Ширина улиц
-    let y = 2; 
-
-    // 3. Размещаем здания по упорядоченной сетке
-    while (y < height - 6) {
-        const bh = rand.int(4, 8); 
-        let x = 2; 
-
-        while (x < width - 6) {
-            const bw = rand.int(5, 9); 
-            
-            // Проверка плотности
-            if (rand.next() > density) {
-                x += bw + STREET_W;
-                continue;
+        // 2. Вырезаем внутреннее пространство (улицы по всей карте)
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                grid[y][x] = 0;
             }
+        }
 
-            if (x + bw + STREET_W >= width - 1) break;
+        const STREET_W = 2; // Ширина улиц
+        let y = 2; 
 
-            // Рисуем здание: стены по периметру, пол внутри
-            for (let dy = 0; dy < bh; dy++) {
-                for (let dx = 0; dx < bw; dx++) {
-                    const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
-                    const val = isPerimeter ? 1 : 0;
-                    grid[y + dy][x + dx] = val;
-                    
-                    // Если это пол внутри здания, сохраняем координаты
-                    if (val === 0) {
-                        interiorCoords.push({ x: x + dx, y: y + dy });
+        // 3. Размещаем здания по упорядоченной сетке
+        while (y < height - 6) {
+            const bh = rand.int(4, 8); 
+            let x = 2; 
+
+            while (x < width - 6) {
+                const bw = rand.int(5, 9); 
+                
+                // Проверка плотности (пропускаем некоторые здания)
+                if (rand.next() > density) {
+                    x += bw + STREET_W;
+                    continue;
+                }
+
+                if (x + bw + STREET_W >= width - 1) break;
+
+                // Рисуем здание: стены по периметру, пол внутри
+                for (let dy = 0; dy < bh; dy++) {
+                    for (let dx = 0; dx < bw; dx++) {
+                        const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
+                        const val = isPerimeter ? 1 : 0;
+                        grid[y + dy][x + dx] = val;
+                        
+                        // Если это пол внутри здания, сохраняем координаты для спавна предметов
+                        if (val === 0) {
+                            interiorCoords.push({ x: x + dx, y: y + dy });
+                        }
                     }
                 }
+
+                // 4. Вырезаем дверь (чтобы можно было войти с улицы)
+                const side = rand.int(0, 3); 
+                let doorX = 0, doorY = 0;
+                 
+                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }       // Верх
+                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } // Право
+                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; } // Низ
+                else { doorX = x; doorY = y + rand.int(1, bh - 2); }                  // Лево
+                 
+                grid[doorY][doorX] = 0; 
+
+                x += bw + STREET_W;
             }
-
-            // 4. Вырезаем дверь
-            const side = rand.int(0, 3); 
-            let doorX = 0, doorY = 0;
-             
-            if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
-            else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } 
-            else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
-            else { doorX = x; doorY = y + rand.int(1, bh - 2); }
-             
-            grid[doorY][doorX] = 0; 
-            // Дверь тоже считается частью интерьера для спавна? 
-            // Обычно лут лежит внутри, а не на пороге. Но пусть будет внутри.
-            // Дверь уже была помечена как 0 выше, если она внутри периметра, 
-            // но если дверь вырезается в стене (периметре), то добавим её вручную, если хотим.
-            // Для простоты оставим только то, что попало в цикл выше (пол внутри).
-
-            x += bw + STREET_W;
+            y += bh + STREET_W;
         }
-        y += bh + STREET_W;
+        
+        // Возвращаем объект с сеткой и списком внутренних точек
+        return { grid, interiorCoords };
     }
-    
-    // Возвращаем объект с сеткой и списком внутренних точек
-    return { grid, interiorCoords };
-}
 
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
@@ -223,7 +221,10 @@ function generateCityLayout(rand, width, height, density = 0.7) {
         
         // Генерируем планировку
         const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
-        currentMapData = layoutResult.grid; // Предположим, что generateCityLayout возвращает grid
+        
+        // === ИСПРАВЛЕНИЕ: Сохраняем данные в переменные модуля ===
+        currentMapData = layoutResult.grid;
+        currentMapInteriorCoords = layoutResult.interiorCoords || [];
         
         currentDungeonType = { 
              name: 'city',
@@ -232,40 +233,38 @@ function generateCityLayout(rand, width, height, density = 0.7) {
             wallColor: '#6b7280', 
             floorColor: '#374151' 
         };
+    
+        // === ЛЕСТНИЦА " > " СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
+        const upSeed = `up_city_${gx}_${gy}_${depth}`;
+        const rng = new Math.seedrandom(upSeed);
+        const w = DataModule.MAP_WIDTH;
+        const h = DataModule.MAP_HEIGHT;
         
-        // ... остальной код генерации лестниц и возврата startPos ...
-    
-    
-    // === ЛЕСТНИЦА ">" СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
-    const upSeed = `up_city_${gx}_${gy}_${depth}`;
-    const rng = new Math.seedrandom(upSeed);
-    const w = DataModule.MAP_WIDTH;
-     const h = DataModule.MAP_HEIGHT;
-    
-    const edgeTiles = [];
-    for (let y = 1; y < h - 1; y++) {
-        if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
-        if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
+        const edgeTiles = [];
+        // Проверяем края карты на наличие пола (улиц)
+        for (let y = 1; y < h - 1; y++) {
+            if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
+            if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
+        }
+        for (let x = 1; x < w - 1; x++) {
+            if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
+            if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
+        }
+        
+        if (edgeTiles.length > 0) {
+            stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
+        } else {
+            // Fallback, если вдруг все края оказались стенами (маловероятно)
+            stairsUp = { x: 2, y: 2 };
+        }
+        
+        stairsDown = null; 
+        return { x: stairsUp.x, y: stairsUp.y };
     }
-     for (let x = 1; x < w - 1; x++) {
-        if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
-        if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
-    }
-     
-    if (edgeTiles.length > 0) {
-        stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
-    } else {
-        stairsUp = { x: 2, y: 2 };
-    }
-    
-    stairsDown = null; 
-    return { x: stairsUp.x, y: stairsUp.y };
-}
 
-
-    
     function clearCache() {
         stairsCache.clear();
+        currentMapInteriorCoords = []; // Очищаем и координаты интерьера при сбросе
         console.log("🗑️ Кеш лестниц очищен");
     }
 
@@ -286,11 +285,6 @@ function generateCityLayout(rand, width, height, density = 0.7) {
             console.log(`${key}: up=(${value.stairsUp?.x},${value.stairsUp?.y}), down=(${value.stairsDown?.x},${value.stairsDown?.y})`);
         }
     }
-
-
-
-    // Добавляем переменную для хранения внутренних координат текущего уровня
-    let currentMapInteriorCoords = [];
 
     return {
         get currentMapData() { return currentMapData; },
