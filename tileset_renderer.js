@@ -32,7 +32,7 @@ const TilesetRenderer = (function() {
 
         // === ГЛОБАЛЬНАЯ КАРТА (новые уникальные символы) ===
         '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // TILE_PLAIN
-        '─':  { file: 'terrain_sprites', x: 11, y: 2 }, // TILE_ROAD
+        '─':  { file: 'terrain_sprites', x: 1, y: 2 }, // TILE_ROAD
         'T':  { file: 'terrain_sprites', x: 8, y: 2 },  // TILE_FOREST
         '^':  { file: 'terrain_sprites', x: 5, y: 2 },  // TILE_MOUNTAIN
         '≈':  { file: 'terrain_sprites', x: 7, y: 2 },  // TILE_WATER
