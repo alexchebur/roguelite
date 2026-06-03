@@ -471,8 +471,8 @@ const GameModule = (function() {
             RenderModule.updateUI(player, globalLocData, null);
         } else {
             document.getElementById("ui-loc-name").textContent = "Глобальная карта";
-            document.getElementById("ui-loc-desc").textContent = "Исследуйте мир...";
-            document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА`;
+            //document.getElementById("ui-loc-desc").textContent = "Исследуйте мир...";
+            //document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА`;
             document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
             document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
             const invDiv = document.getElementById("inventory-list");
