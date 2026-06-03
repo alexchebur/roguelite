@@ -69,7 +69,8 @@ const DataModule = (function() {
             color: "#A67C52", // Цвет старой бумаги/кожи
             baseName: "Старая книга", 
             gender: "she", 
-            plural: false 
+            plural: false,
+            val: [0, 0] 
         },
 
    
