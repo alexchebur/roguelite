@@ -401,7 +401,7 @@ const RenderModule = (function() {
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
-            document.getElementById("ui-loc-desc").textContent = locData.description;
+            //document.getElementById("ui-loc-desc").textContent = locData.description;
             
             let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
