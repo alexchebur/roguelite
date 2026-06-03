@@ -634,7 +634,19 @@ const GameModule = (function() {
             if (item.type === 'gold') {
                 player.gold += item.val;
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
-            } else {
+            } 
+            else if (item.type === 'book') {
+                // === ЛОГИКА ЧТЕНИЯ КНИГИ ===
+                if (typeof LoreModule !== 'undefined') {
+                    const fragment = LoreModule.getNextFragment();
+                    RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
+                    RenderModule.log(fragment, "event"); // Используем тип 'event' или создай новый стиль для лора
+                } else {
+                    RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
+                }
+            } 
+            else {
+                // Обычные предметы идут в инвентарь
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
             }
