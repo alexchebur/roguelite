@@ -401,6 +401,23 @@ const RenderModule = (function() {
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
+            // Строка с ui-loc-desc удалена
+    
+            // Логика цвета остается, но без вывода текста типа
+            if (worldTrend && worldTrend.name !== "Обычный уровень") {
+                document.getElementById("ui-loc-name").style.color = worldTrend.color;
+            } else {
+                document.getElementById("ui-loc-name").style.color = "var(--accent)";
+            }
+            // Строка с ui-loc-type.textContent удалена
+        }
+
+
+
+
+        /*
+        if (locData) {
+            document.getElementById("ui-loc-name").textContent = locData.fullName;
             //document.getElementById("ui-loc-desc").textContent = locData.description;
             
             let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
@@ -412,6 +429,7 @@ const RenderModule = (function() {
             }
             document.getElementById("ui-loc-type").textContent = typeText;
         }
+        */
 
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
