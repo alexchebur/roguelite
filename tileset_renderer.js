@@ -21,8 +21,8 @@ const TilesetRenderer = (function() {
     // Формат: 'символ': { file: 'ключ_картинки', x: колонка, y: ряд }
     const TILE_MAP = {
         // === ПОДЗЕМЕЛЬЕ (стандартные, без изменений) ===
-        '.':  { file: 'terrain_sprites', x: 0, y: 1 },  // FLOOR_DEFAULT
-        '#':  { file: 'terrain_sprites', x: 1, y: 2 },  // WALL_DEFAULT
+        '.':  { file: 'terrain_sprites', x: 0, y: 0 },  // FLOOR_DEFAULT
+        '#':  { file: 'terrain_sprites', x: 12, y: 2 },  // WALL_DEFAULT
         'o':  { file: 'terrain_sprites', x: 3, y: 2 },  // FLOOR_ORGANIC
         'O':  { file: 'terrain_sprites', x: 4, y: 2 },  // WALL_ORGANIC
         '·':  { file: 'terrain_sprites', x: 0, y: 1 },  // FLOOR_CITY
