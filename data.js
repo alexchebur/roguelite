@@ -59,7 +59,20 @@ const DataModule = (function() {
         { type: "armor", char: getChar('ITEM_CLOAK'), color: "#8D6E63", baseName: "Плащ теней", stat: "def", val: [2, 3], gender: "he", plural: false },
         { type: "armor", char: getChar('ITEM_HELMET'), color: "#607D8B", baseName: "Шлем", stat: "def", val: [1, 2], gender: "he", plural: false },
         { type: "armor", char: getChar('ITEM_GLOVES'), color: "#8D6E63", baseName: "Перчатки", stat: "def", val: [1, 2], gender: "she", plural: true },
+    
 
+        // === КНИГИ (ЛОР) ===
+        // type: 'book' - специальный тип, который не кладется в инвентарь, а читается сразу
+        { 
+            type: "book", 
+            char: getChar('ITEM_BOOK'), 
+            color: "#A67C52", // Цвет старой бумаги/кожи
+            baseName: "Старая книга", 
+            gender: "she", 
+            plural: false 
+        },
+
+   
         // === ЗОЛОТО ===
         { type: "gold", char: getChar('ITEM_GOLD'), color: "#FFD700", baseName: "Монеты", val: [5, 15] },
         
