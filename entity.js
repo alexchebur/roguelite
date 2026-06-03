@@ -48,9 +48,16 @@ const EntityModule = (function() {
         } 
         // 2. Логика для ОБЫЧНЫХ ПРЕДМЕТОВ
         else {
-            const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-            const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
-            name = `${adj} ${template.baseName}`;
+            // === ИЗМЕНЕНИЕ: Если это книга, прилагательное не добавляем ===
+            if (template.type !== 'book') {
+                const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
+                const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
+                name = `${adj} ${template.baseName}`;
+            } else {
+                // Для книг имя остается как baseName (например, "Старая книга")
+                name = template.baseName;
+            }
+
             const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
             finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
         }
