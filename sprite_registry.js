@@ -4,32 +4,25 @@
  */
 
 const SPRITE_REGISTRY = {
-    // ==========================================
-    // 1. ГЛОБАЛЬНАЯ КАРТА (Ландшафт)
-    // ==========================================
-    'TILE_PLAIN':            { char: '.',   tile: { file: 'terrain_sprites', x: 10, y: 2 }, desc: 'Равнина' },
+    // === 1. ГЛОБАЛЬНАЯ КАРТА (уникальные символы) ===
+    'TILE_PLAIN':            { char: '░',   tile: { file: 'terrain_sprites', x: 10, y: 2 }, desc: 'Равнина' }, // Было: '.'
     'TILE_FOREST':           { char: 'T',   tile: { file: 'terrain_sprites', x: 8, y: 2 }, desc: 'Лес' },
     'TILE_MOUNTAIN':         { char: '^',   tile: { file: 'terrain_sprites', x: 5, y: 2 }, desc: 'Горы' },
     'TILE_WATER':            { char: '≈',   tile: { file: 'terrain_sprites', x: 7, y: 2 }, desc: 'Вода' },
     'TILE_CITY':             { char: 'C',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Город' },
-    'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход в подземелье' },
-    'TILE_ROAD':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Дорога' },
+    'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход' },
+    'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Дорога' }, // Было: '█'
 
-    // ==========================================
-    // 2. ПОДЗЕМЕЛЬЕ (Стены и Пол)
-    // ==========================================
-    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Обычный пол' },
-    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Обычная стена' },
-    
-    // Специфичные тайлы (для пещер, городов и т.д.)
-    'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain_sprites', x: 3, y: 2 }, desc: 'Органический пол' },
-    'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain_sprites', x: 4, y: 2 }, desc: 'Органическая стена' },
-    'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол города' }, // Используем тот же спрайт пола или свой
+    // === 2. ПОДЗЕМЕЛЬЕ (стандартные символы, без изменений) ===
+    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол' },
+    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Стена' },
+    'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain_sprites', x: 3, y: 2 }, desc: 'Орг. пол' },
+    'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain_sprites', x: 4, y: 2 }, desc: 'Орг. стена' },
+    'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол города' },
     'WALL_CITY':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Стена города' },
-
-    // Лестницы
-    'STAIRS_DOWN':           { char: '<',   tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница вниз' },
-    'STAIRS_UP':             { char: '>',   tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница вверх' },
+    'STAIRS_UP':             { char: ' >',  tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница ↑' },
+    'STAIRS_DOWN':           { char: ' <',  tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница ↓' },
+    
 
     // ==========================================
     // 3. СУЩНОСТИ (Игрок и NPC)
