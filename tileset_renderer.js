@@ -25,7 +25,7 @@ const TilesetRenderer = (function() {
         '#':  { file: 'terrain_sprites', x: 12, y: 2 },  // WALL_DEFAULT
         'o':  { file: 'terrain_sprites', x: 3, y: 2 },  // FLOOR_ORGANIC
         'O':  { file: 'terrain_sprites', x: 4, y: 2 },  // WALL_ORGANIC
-        '·':  { file: 'terrain_sprites', x: 0, y: 1 },  // FLOOR_CITY
+        '·':  { file: 'terrain_sprites', x: 0, y: 0 },  // FLOOR_CITY
         '█':  { file: 'terrain_sprites', x: 11, y: 2 }, // WALL_CITY
         ' >': { file: 'terrain_sprites', x: 3, y: 0 },  // STAIRS_UP
         ' <': { file: 'terrain_sprites', x: 2, y: 0 },  // STAIRS_DOWN
