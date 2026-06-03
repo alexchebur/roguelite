@@ -20,19 +20,25 @@ const TilesetRenderer = (function() {
     // === МАППИНГ СИМВОЛОВ
     // Формат: 'символ': { file: 'ключ_картинки', x: колонка, y: ряд }
     const TILE_MAP = {
-        // --- ЛАНДШАФТ И ТАЙЛЫ ---
-        '.': { file: 'terrain_sprites', x: 0,  y: 1 }, // Пол / Равнина
-        '#': { file: 'terrain_sprites', x: 1,  y: 2 }, // Стена
-        '>': { file: 'terrain_sprites', x: 3,  y: 0 }, // Лестница вверх
-        '<': { file: 'terrain_sprites', x: 2,  y: 0 }, // Лестница вниз
-        '≈': { file: 'terrain_sprites', x: 7,  y: 2 }, // Вода
-        '█': { file: 'terrain_sprites', x: 11, y: 2 }, // Дорога / Стена города
-        'o': { file: 'terrain_sprites', x: 3,  y: 2 }, // Органический пол
-        'O': { file: 'terrain_sprites', x: 4,  y: 2 }, // Органическая стена
-        'T': { file: 'terrain_sprites', x: 8,  y: 2 }, // Лес (Глобальная карта)
-        '^': { file: 'terrain_sprites', x: 5,  y: 2 }, // Горы (Глобальная карта)
-        'C': { file: 'terrain_sprites', x: 9,  y: 2 }, // Город
-        'D': { file: 'terrain_sprites', x: 6,  y: 0 }, // Вход в подземелье
+        // === ПОДЗЕМЕЛЬЕ (стандартные, без изменений) ===
+        '.':  { file: 'terrain_sprites', x: 0, y: 1 },  // FLOOR_DEFAULT
+        '#':  { file: 'terrain_sprites', x: 1, y: 2 },  // WALL_DEFAULT
+        'o':  { file: 'terrain_sprites', x: 3, y: 2 },  // FLOOR_ORGANIC
+        'O':  { file: 'terrain_sprites', x: 4, y: 2 },  // WALL_ORGANIC
+        '·':  { file: 'terrain_sprites', x: 0, y: 1 },  // FLOOR_CITY
+        '█':  { file: 'terrain_sprites', x: 11, y: 2 }, // WALL_CITY
+        ' >': { file: 'terrain_sprites', x: 3, y: 0 },  // STAIRS_UP
+        ' <': { file: 'terrain_sprites', x: 2, y: 0 },  // STAIRS_DOWN
+
+        // === ГЛОБАЛЬНАЯ КАРТА (новые уникальные символы) ===
+        '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // TILE_PLAIN
+        '─':  { file: 'terrain_sprites', x: 11, y: 2 }, // TILE_ROAD
+        'T':  { file: 'terrain_sprites', x: 8, y: 2 },  // TILE_FOREST
+        '^':  { file: 'terrain_sprites', x: 5, y: 2 },  // TILE_MOUNTAIN
+        '≈':  { file: 'terrain_sprites', x: 7, y: 2 },  // TILE_WATER
+        'C':  { file: 'terrain_sprites', x: 9, y: 2 },  // TILE_CITY
+        'D':  { file: 'terrain_sprites', x: 6, y: 0 },  // TILE_DUNGEON_ENTRANCE
+
 
         // --- СУЩЕСТВА ---
         '@': { file: 'creature_sprites', x: 2,  y: 0 },  // Игрок
