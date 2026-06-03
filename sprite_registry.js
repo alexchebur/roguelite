@@ -64,6 +64,7 @@ const SPRITE_REGISTRY = {
     'ITEM_BOW':              { char: '(',   tile: { file: 'item_sprites', x: 5, y: 0 }, desc: 'Лук' },
     'ITEM_CROSSBOW':         { char: '=',   tile: { file: 'item_sprites', x: 6, y: 0 }, desc: 'Арбалет' },
     'ITEM_STAFF':            { char: '|',   tile: { file: 'item_sprites', x: 7, y: 0 }, desc: 'Посох' },
+    
 
     // Броня
     'ITEM_ARMOR_LEATHER':    { char: ']',   tile: { file: 'item_sprites', x: 8, y: 0 }, desc: 'Кожаная броня' },
@@ -76,6 +77,7 @@ const SPRITE_REGISTRY = {
 
     // Ресурсы и прочее
     'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
+    'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 19, y: 0 }, desc: 'Книга' }, 
     
     // Зелья и еда
     'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
