@@ -11,11 +11,11 @@ const SPRITE_REGISTRY = {
     'TILE_WATER':            { char: '≈',   tile: { file: 'terrain_sprites', x: 7, y: 2 }, desc: 'Вода' },
     'TILE_CITY':             { char: 'C',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Город' },
     'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход' },
-    'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Дорога' }, // Было: '█'
+    'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Дорога' }, // Было: '█'
 
     // === 2. ПОДЗЕМЕЛЬЕ (стандартные символы, без изменений) ===
-    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол' },
-    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Стена' },
+    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 0 }, desc: 'Пол' },
+    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 12, y: 2 }, desc: 'Стена' },
     'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain_sprites', x: 3, y: 2 }, desc: 'Орг. пол' },
     'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain_sprites', x: 4, y: 2 }, desc: 'Орг. стена' },
     'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол города' },
