@@ -327,7 +327,7 @@ const RenderModule = (function() {
 
                 let ch, fg;
                 switch(tileType) {
-                    case 'plain': ch = '░'; fg = '#8c8c8c'; break;
+                    case 'plain': ch = '░'; fg = '#336649'; break;
                     case 'forest': ch = 'T'; fg = '#2e8b57'; break;
                     case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
                     case 'water': ch = '≈'; fg = '#4682b4'; break;
