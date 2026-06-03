@@ -77,7 +77,7 @@ const SPRITE_REGISTRY = {
 
     // Ресурсы и прочее
     'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
-    'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 19, y: 0 }, desc: 'Книга' }, 
+    'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' }, 
     
     // Зелья и еда
     'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
