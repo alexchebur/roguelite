@@ -27,8 +27,8 @@ const TilesetRenderer = (function() {
         'O':  { file: 'terrain_sprites', x: 4, y: 2 },  // WALL_ORGANIC
         '·':  { file: 'terrain_sprites', x: 0, y: 0 },  // FLOOR_CITY
         '█':  { file: 'terrain_sprites', x: 11, y: 2 }, // WALL_CITY
-        ' >': { file: 'terrain_sprites', x: 3, y: 0 },  // STAIRS_UP
-        ' <': { file: 'terrain_sprites', x: 2, y: 0 },  // STAIRS_DOWN
+        '>': { file: 'terrain_sprites', x: 3, y: 0 },  // STAIRS_UP
+        '<': { file: 'terrain_sprites', x: 2, y: 0 },  // STAIRS_DOWN
 
         // === ГЛОБАЛЬНАЯ КАРТА (новые уникальные символы) ===
         '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // TILE_PLAIN
