@@ -174,7 +174,7 @@ const GameModule = (function() {
                 RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
             }
             
-            updateQuestCompass(); // Обновляем компас сразу после взятия
+            updateQuestCompass(); // Обновляем стрелку
             return true;
         } else if (alreadyActive) {
              RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
@@ -198,72 +198,62 @@ const GameModule = (function() {
         completedQuestIds.add(quest.id);
         
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-        updateQuestCompass(); // Обновляем компас (может исчезнуть или смениться)
+        updateQuestCompass(); // Обновляем стрелку
     }
 
-    // === ЛОГИКА КОМПАСА КВЕСТОВ ===
-    function getQuestCompassDirection() {
-        if (!player || activeQuests.length === 0) return null;
+    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
+    function getQuestArrow(targetX, targetY, currentX, currentY) {
+        const dx = targetX - currentX;
+        const dy = targetY - currentY;
+        
+        if (dx === 0 && dy === 0) return '📍'; // Цель достигнута
 
-        const activeQuest = activeQuests.find(q => !q.isCompleted);
-        if (!activeQuest) return null;
-
-        let targetX, targetY;
-        targetX = activeQuest.target.targetX;
-        targetY = activeQuest.target.targetY;
-
-        if (targetX === undefined || targetY === undefined) return null;
-
-        const playerPos = GlobalMapModule.getPlayerPosition();
-        const dx = targetX - playerPos.x;
-        const dy = targetY - playerPos.y;
-
-        const angle = Math.atan2(dy, dx);
-        let degrees = angle * (180 / Math.PI);
-        if (degrees < 0) degrees += 360;
-
-        return degrees;
+        let arrow = '';
+        if (dy < 0) arrow += '↑'; 
+        else if (dy > 0) arrow += '↓';
+        
+        if (dx > 0) arrow += '→'; 
+        else if (dx < 0) arrow += '←';
+        
+        // Комбинируем диагонали
+        if (arrow === '↑←') arrow = '↖';
+        if (arrow === '↑→') arrow = '↗';
+        if (arrow === '↓←') arrow = '↙';
+        if (arrow === '↓→') arrow = '↘';
+        
+        return arrow;
     }
 
     function updateQuestCompass() {
-        const compassEl = document.getElementById("ui-loc-coords");
-        if (!compassEl) return;
+        const coordsEl = document.getElementById("ui-loc-coords");
+        if (!coordsEl) return;
 
-        // Показываем компас только на глобальной карте
+        // Работаем только на глобальной карте
         if (gameMode !== 'global') {
-            // В подземелье можно вернуть стандартный текст или скрыть
-            // Но так как мы заменяем элемент, лучше просто скрыть или показать координаты
-            // Для простоты, если мы не на глобальной карте, компас не обновляем здесь, 
-            // он обновится при выходе на карту.
+            // В подземелье показываем стандартный выход (логика из render.js или здесь, если нужно)
+            // Но так как мы перехватили элемент, вернем стандартное поведение для подземелья
+            // (В данном коде render.js сам обновляет этот элемент, но только если мы ему не мешаем. 
+            // Здесь мы просто ничего не делаем, а render.js отработает в renderFrame/updateUI)
             return;
         }
 
-        const direction = getQuestCompassDirection();
+        const activeQuest = activeQuests.find(q => !q.isCompleted);
         
-        if (direction !== null) {
-            compassEl.style.display = "block";
-            compassEl.style.transform = `rotate(${direction}deg)`;
-            
-            const q = activeQuests.find(q => !q.isCompleted);
-            if (q) {
-                if (q.type === 'HUNT') {
-                    compassEl.style.color = "#ff5555";
-                    compassEl.innerHTML = "➤ Охота";
-                } else if (q.type === 'FETCH') {
-                    compassEl.style.color = "#ffd700";
-                    compassEl.innerHTML = "➤ Поиск";
-                } else {
-                    compassEl.style.color = "#58a6ff";
-                    compassEl.innerHTML = "➤ Путь";
-                }
-            }
-        } else {
-            // Если активных квестов нет, показываем координаты
-            compassEl.style.display = "block";
-            compassEl.style.transform = "none";
-            compassEl.style.color = "var(--text-dim)";
+        if (activeQuest && activeQuest.target) {
             const playerPos = GlobalMapModule.getPlayerPosition();
-            compassEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+            const arrow = getQuestArrow(activeQuest.target.targetX, activeQuest.target.targetY, playerPos.x, playerPos.y);
+            
+            // Красим стрелку в зависимости от типа квеста
+            let color = "#fff";
+            if (activeQuest.type === 'HUNT') color = "#ff5555";
+            else if (activeQuest.type === 'FETCH') color = "#ffd700";
+            else color = "#58a6ff";
+
+            coordsEl.innerHTML = `<span style="color:${color}">Квест: ${arrow}</span>`;
+        } else {
+            // Если квестов нет, показываем обычные координаты
+            const playerPos = GlobalMapModule.getPlayerPosition();
+            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         }
     }
 
