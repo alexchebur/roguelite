@@ -114,12 +114,11 @@ const GameModule = (function() {
 
         // 2. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+        // В handleMapClick, блок NPC:
         if (npc) {
-            // Пытаемся выдать квест
             const questGiven = tryGiveQuest(npc);
-            
             if (!questGiven) {
-                // Если квеста нет или он уже взят, просто говорим
+                // Обычный диалог
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
                 }
