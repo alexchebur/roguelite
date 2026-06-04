@@ -88,20 +88,28 @@ const CombatModule = (function() {
 
     // === ВЫПАДЕНИЕ ЛУТА ===
     // Исправленная сигнатура: (enemy, player, depth, itemsArray, logFn)
+    // === ВЫПАДЕНИЕ ЛУТА ===
+    // Сигнатура: (enemy, depth, itemsArray, logFn)
     function dropLoot(enemy, depth, itemsArray, logFn) {
         if (!enemy.lootType) return;
 
-        // Шанс выпадения 40% (если random > 0.4, то выходим)
+        // Шанс выпадения 40%
         if (Math.random() > 0.4) return;
 
         let droppedItem = null;
-        // Используем seedrandom для разнообразия, но можно и Math.random
+        
+        // Инициализируем генератор
         const rng = new Math.seedrandom(`loot_${enemy.x}_${enemy.y}_${Date.now()}`);
+        
+        // ✅ ИСПРАВЛЕНИЕ: создаем свою функцию выбора из массива, 
+        // так как seedrandom не имеет встроенного .choice()
+        const choice = (array) => array[Math.floor(rng() * array.length)];
 
         if (enemy.lootType === 'gold') {
             // Золото: количество растет с глубиной
             const baseGold = 5 + Math.floor(depth * 2.5);
-            const amount = Math.floor(baseGold * (0.8 + Math.random() * 0.4)); 
+            // Используем rng() вместо Math.random() для консистентности
+            const amount = Math.floor(baseGold * (0.8 + rng() * 0.4)); 
             
             droppedItem = {
                 x: enemy.x, y: enemy.y,
@@ -116,8 +124,7 @@ const CombatModule = (function() {
             // Еда
             const foods = DataModule.ITEM_TYPES.filter(i => i.type === 'food');
             if (foods.length > 0) {
-                const template = rng.choice(foods);
-                // createItem принимает: (template, x, y, itemPowerMult)
+                const template = choice(foods); // ✅ Теперь работает корректно
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, 1.0);
             }
         } 
@@ -125,7 +132,7 @@ const CombatModule = (function() {
             // Оружие/Броня
             const equips = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
             if (equips.length > 0) {
-                const template = rng.choice(equips);
+                const template = choice(equips); // ✅ Теперь работает корректно
                 // Множитель силы зависит от глубины
                 const powerMult = 1.0 + (depth * 0.15); 
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, powerMult);
