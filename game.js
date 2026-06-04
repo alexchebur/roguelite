@@ -202,11 +202,12 @@ const GameModule = (function() {
     }
 
     // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
+    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
     function getQuestArrow(targetX, targetY, currentX, currentY) {
         const dx = targetX - currentX;
         const dy = targetY - currentY;
         
-        if (dx === 0 && dy === 0) return '📍'; // Цель достигнута
+        if (dx === 0 && dy === 0) return '📍'; 
 
         let arrow = '';
         if (dy < 0) arrow += '↑'; 
@@ -215,7 +216,6 @@ const GameModule = (function() {
         if (dx > 0) arrow += '→'; 
         else if (dx < 0) arrow += '←';
         
-        // Комбинируем диагонали
         if (arrow === '↑←') arrow = '↖';
         if (arrow === '↑→') arrow = '↗';
         if (arrow === '↓←') arrow = '↙';
@@ -230,10 +230,8 @@ const GameModule = (function() {
 
         // Работаем только на глобальной карте
         if (gameMode !== 'global') {
-            // В подземелье показываем стандартный выход (логика из render.js или здесь, если нужно)
-            // Но так как мы перехватили элемент, вернем стандартное поведение для подземелья
-            // (В данном коде render.js сам обновляет этот элемент, но только если мы ему не мешаем. 
-            // Здесь мы просто ничего не делаем, а render.js отработает в renderFrame/updateUI)
+            // В подземелье пусть работает старая логика из render.js (Выход: стрелка)
+            // Мы просто выходим, чтобы не мешать render.js
             return;
         }
 
@@ -249,6 +247,7 @@ const GameModule = (function() {
             else if (activeQuest.type === 'FETCH') color = "#ffd700";
             else color = "#58a6ff";
 
+            // ЗАПИСЫВАЕМ НАПРЯМУЮ В ЭЛЕМЕНТ
             coordsEl.innerHTML = `<span style="color:${color}">Квест: ${arrow}</span>`;
         } else {
             // Если квестов нет, показываем обычные координаты
