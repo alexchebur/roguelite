@@ -254,6 +254,12 @@ const GameModule = (function() {
                 enterPOI(poi);
                 return;
             }
+            activeQuests.forEach(q => {
+                if (QuestSystemModule.checkProgress(q, { type: 'move', x: pos.x, y: pos.y })) {
+                     RenderModule.log(`Квест выполнен: Вы достигли ${q.target.locationName}!`, "event");
+                     grantReward(q);
+                }
+            });
             renderGlobalMap();
         } else {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
