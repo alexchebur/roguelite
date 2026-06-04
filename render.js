@@ -63,12 +63,6 @@ const RenderModule = (function() {
             console.warn("TilesetRenderer не найден.");
         }
 
-        // 2. Ждем загрузки спрайтов для глобальной карты (если они отличаются)
-        // Если вы используете те же файлы, что и в TilesetRenderer, этот шаг можно пропустить,
-        // так как TilesetRenderer уже загрузил их в свои spriteSheets.
-        // Но если у вас есть отдельная логика drawSprite в render.js, убедитесь, что картинки загружены.
-        // Для простоты, давайте полагаться на TilesetRenderer для всего.
-
         // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
         if (typeof startEffectLoop === 'function') startEffectLoop();
         
@@ -156,32 +150,6 @@ const RenderModule = (function() {
         }
     }
 
-    // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Безопасная версия) ===
-    // Теперь она может использовать данные из TilesetRenderer, если нужно,
-    // или оставаться отдельной, если вы хотите использовать sprite_registry.js напрямую.
-    // Но чтобы избежать дублирования, лучше использовать TilesetRenderer.draw() везде.
-    function drawSprite(ctx, id, sx, sy) {
-        // Проверяем, подключен ли реестр
-        if (typeof getTileData !== 'function') return false;
-        
-        const tileData = getTileData(id);
-        if (!tileData) return false;
-
-        // ВАЖНО: Мы должны получить картинку из TilesetRenderer.spriteSheets, 
-        // так как он уже загрузил их.
-        // Но spriteSheets приватный. Поэтому мы полагаемся на TilesetRenderer.draw()
-        // Или можем попытаться достать картинку, если сделаем spriteSheets публичным.
-        // Для простоты, давайте оставим эту функцию как fallback на ASCII, 
-        // а основную отрисовку делегируем TilesetRenderer.draw() в функциях draw и drawGlobalMap.
-        
-        // Если вы все же хотите использовать drawSprite, вам нужно убедиться, 
-        // что картинки загружены. Так как мы ждем TilesetRenderer.init(), 
-        // мы можем предположить, что картинки есть.
-        
-        // Но проще всего удалить drawSprite и использовать везде TilesetRenderer.draw().
-        return false; 
-    }    
-    
     function getCameraOffset(player) {
         const cam = {
             x: player.x - Math.floor(COLS / 2),
@@ -201,7 +169,6 @@ const RenderModule = (function() {
 
         // Проверка готовности рендерера
         if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
-            // Если не готов, рисуем ASCII заглушку
             ctx.fillStyle = '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -360,7 +327,6 @@ const RenderModule = (function() {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         
-        // ✅ ИСПРАВЛЕНИЕ: Увеличиваем размер до 50 на 50, чтобы масштаб совпадал с мини-картой подземелья
         const MINIMAP_SIZE = 50; 
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
@@ -392,50 +358,31 @@ const RenderModule = (function() {
                 if (gx === centerX && gy === centerY) color = '#0f0'; // Игрок
                 
                 ctx.fillStyle = color;
-                // ✅ ИСПРАВЛЕНИЕ: +0.5 предотвращает появление тонких черных линий между пикселями при маленьком масштабе
                 ctx.fillRect(dx * cellW, dy * cellH, cellW + 0.5, cellH + 0.5);
             }
         }
     }
 
+    // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
-            // Строка с ui-loc-desc удалена
-    
-            // Логика цвета остается, но без вывода текста типа
-            if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                document.getElementById("ui-loc-name").style.color = worldTrend.color;
-            } else {
-                document.getElementById("ui-loc-name").style.color = "var(--accent)";
-            }
-            // Строка с ui-loc-type.textContent удалена
-        }
-
-
-
-
-        /*
-        if (locData) {
-            document.getElementById("ui-loc-name").textContent = locData.fullName;
-            //document.getElementById("ui-loc-desc").textContent = locData.description;
             
-            let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                typeText += ` | ${worldTrend.name}`;
                 document.getElementById("ui-loc-name").style.color = worldTrend.color;
             } else {
                 document.getElementById("ui-loc-name").style.color = "var(--accent)";
             }
-            document.getElementById("ui-loc-type").textContent = typeText;
         }
-        */
 
+        // === ЛОГИКА КОМПАСА / ВЫХОДА ===
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
-            if (!player || locData?.themeName === "Поверхность" || !MapModule.stairsUp) {
-                exitEl.textContent = "Выход: —";
-            } else {
+            // Проверяем, находимся ли мы в подземелье (не на поверхности)
+            const isDungeon = locData && locData.themeName !== "Поверхность";
+            
+            if (isDungeon && MapModule.stairsUp) {
+                // МЫ В ПОДЗЕМЕЛЬЕ: Показываем стрелку к выходу (стандартная логика)
                 const sx = MapModule.stairsUp.x, sy = MapModule.stairsUp.y;
                 const dx = sx - player.x, dy = sy - player.y;
                 
@@ -452,9 +399,13 @@ const RenderModule = (function() {
                     if (arrow === '↓→') arrow = '↘';
                 }
                 exitEl.textContent = `Выход: ${arrow}`;
-            }
+            } 
+            // ЕСЛИ МЫ НА ПОВЕРХНОСТИ (ГЛОБАЛЬНАЯ КАРТА):
+            // Мы НИЧЕГО не пишем сюда. 
+            // Элемент остается как есть, а GameModule.updateQuestCompass() заполнит его стрелкой квеста или координатами.
         }
         
+        // === СТАТИСТИКА И ИНВЕНТАРЬ ===
         if (player && player.hp !== undefined) {
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
