@@ -7,6 +7,8 @@ const GameModule = (function() {
     let npcs = []; 
     let explored = new Set();
     let busy = false;
+    let activeQuests = []; // Массив активных объектов квестов
+    let completedQuestIds = new Set(); // Чтобы не давать один и тот же квест дважды
     
     // === Режимы: 'global' (глобальная карта) или 'dungeon' (подземелье) ===
     let gameMode = 'global';
