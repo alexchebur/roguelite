@@ -27,15 +27,16 @@ const GameModule = (function() {
     let currentLocData = null;
     let currentWorldTrend = null;
 
-    function init() {
+    async function init() {
         try {
             if (typeof RenderModule === 'undefined') {
-                throw new Error("RenderModule не загружен");
+                throw new Error("RenderModule не загружен ");
             }
-            RenderModule.init();
+            // Ждем завершения инициализации рендерера (и загрузки спрайтов)
+            await RenderModule.init();
             RenderModule.setRedrawCallback(renderFrame);
         } catch (e) {
-            console.error("Критическая ошибка при инициализации:", e);
+            console.error("Критическая ошибка при инициализации: ", e);
             document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
             return;
         }
@@ -474,8 +475,8 @@ const GameModule = (function() {
             RenderModule.updateUI(player, globalLocData, null);
         } else {
             document.getElementById("ui-loc-name").textContent = "Глобальная карта";
-            document.getElementById("ui-loc-desc").textContent = "Исследуйте мир...";
-            document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА`;
+            //document.getElementById("ui-loc-desc").textContent = "Исследуйте мир...";
+            //document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА`;
             document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
             document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
             const invDiv = document.getElementById("inventory-list");
@@ -637,7 +638,19 @@ const GameModule = (function() {
             if (item.type === 'gold') {
                 player.gold += item.val;
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
-            } else {
+            } 
+            else if (item.type === 'book') {
+                // === ЛОГИКА ЧТЕНИЯ КНИГИ ===
+                if (typeof LoreModule !== 'undefined') {
+                    const fragment = LoreModule.getNextFragment();
+                    RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
+                    RenderModule.log(fragment, "event"); // Используем тип 'event' или создай новый стиль для лора
+                } else {
+                    RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
+                }
+            } 
+            else {
+                // Обычные предметы идут в инвентарь
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
             }
@@ -695,11 +708,12 @@ const GameModule = (function() {
     };
 })();
 
-window.onload = () => GameModule.init();
+window.onload = async () => {
+    await GameModule.init();
+};
 ```
 # dungeon_generator.js
 ```js
-
 
 /**
  * МОДУЛЬ ГЕНЕРАЦИИ ПОДЗЕМЕЛИЙ (dungeon_generator.js)
@@ -715,9 +729,9 @@ const DUNGEON_TYPES = [
     { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#333', wallColor: '#555' }, 
     { name: 'cave', weight: 25, emoji: '🕸️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
     { name: 'icy', weight: 20, emoji: '❄️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#aaddff', wallColor: '#ffffff' },
-    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#1a1a1a', wallColor: '#2a2a2a' },
-    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: getChar('FLOOR_ORGANIC'), wallChar: getChar('WALL_ORGANIC'), floorColor: '#4caf50', wallColor: '#2e7d32' },
-    { name: 'arena', weight: 3, emoji: '🦴', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#5d4037', wallColor: '#3e2723' },
+    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#781a6f', wallColor: '#995792' },
+    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: getChar('FLOOR_ORGANIC'), wallChar: getChar('WALL_ORGANIC'), floorColor: '#2e7d32', wallColor: '#4caf50' },
+    { name: 'arena', weight: 3, emoji: '🦴', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#962e1b', wallColor: '#cf2f13' },
     { name: 'boss', weight: 2, emoji: '👑', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#b71c1c', wallColor: '#880e4f' }
 ];
 
@@ -970,9 +984,16 @@ const EntityModule = (function() {
         } 
         // 2. Логика для ОБЫЧНЫХ ПРЕДМЕТОВ
         else {
-            const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-            const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
-            name = `${adj} ${template.baseName}`;
+            // === ИЗМЕНЕНИЕ: Если это книга, прилагательное не добавляем ===
+            if (template.type !== 'book') {
+                const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
+                const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
+                name = `${adj} ${template.baseName}`;
+            } else {
+                // Для книг имя остается как baseName (например, "Старая книга")
+                name = template.baseName;
+            }
+
             const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
             finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
         }
@@ -1227,10 +1248,12 @@ function getChunkRandom(cx, cy) {
 }
 
 // Генерация ландшафта (типы клеток) для чанка
+// В файле globalMap.js замените функцию generateTerrain на эту:
+
 function generateTerrain(rand, width, height) {
     const tiles = Array(height).fill().map(() => Array(width).fill('plain'));
     
-    // Горы: случайные области
+    // 1. Горы: случайные области (оставляем как было)
     const mountainCount = rand.int(5, 15);
     for (let i = 0; i < mountainCount; i++) {
         const mx = rand.int(0, width-1);
@@ -1239,7 +1262,7 @@ function generateTerrain(rand, width, height) {
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = mx+dx, y = my+dy;
-                if (x>=0 && x<width && y>=0 && y<height && Math.abs(dx)+Math.abs(dy) <= radius) {
+                if (x >= 0 && x < width && y >= 0 && y < height && Math.abs(dx)+Math.abs(dy) <= radius) {
                     if (tiles[y][x] !== 'city' && tiles[y][x] !== 'dungeon_entrance') {
                         tiles[y][x] = 'mountain';
                     }
@@ -1248,21 +1271,45 @@ function generateTerrain(rand, width, height) {
         }
     }
     
-    // Леса: случайные точки
-    const forestCount = rand.int(10, 30);
-    for (let i = 0; i < forestCount; i++) {
+    // === ИЗМЕНЕНИЕ: Леса теперь генерируются скоплениями (кластерами) ===
+    // Увеличиваем количество центров лесов и их радиус
+    const forestClusterCount = rand.int(20, 40); 
+    
+    for (let i = 0; i < forestClusterCount; i++) {
         const fx = rand.int(0, width-1);
         const fy = rand.int(0, height-1);
-        if (tiles[fy][fx] === 'plain') tiles[fy][fx] = 'forest';
+        // Радиус скопления от 1 до 3 клеток
+        const radius = rand.int(1, 3); 
+
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const x = fx + dx;
+                const y = fy + dy;
+                
+                // Проверяем границы карты и форму круга (для более естественных пятен)
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    // Если клетка еще не занята городом, входом или горой
+                    if (tiles[y][x] !== 'city' && 
+                        tiles[y][x] !== 'dungeon_entrance' && 
+                        tiles[y][x] !== 'mountain') {
+                        
+                        // Добавляем немного шума: не каждое место в круге станет лесом (80% шанс)
+                        if (rand.next() < 0.8) {
+                            tiles[y][x] = 'forest';
+                        }
+                    }
+                }
+            }
+        }
     }
-    
-    // Реки (линии)
+     
+    // 2. Реки (линии) - оставляем без изменений
     const riverCount = rand.int(1, 3);
     for (let r = 0; r < riverCount; r++) {
         let x = rand.int(0, width-1);
         let y = rand.int(0, height-1);
         for (let step = 0; step < 30; step++) {
-            if (x>=0 && x<width && y>=0 && y<height && 
+            if (x >= 0 && x < width && y >= 0 && y < height && 
                 tiles[y][x] !== 'mountain' && 
                 tiles[y][x] !== 'city' && 
                 tiles[y][x] !== 'dungeon_entrance') {
@@ -1660,78 +1707,84 @@ const MapModule = (function() {
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
 // В файле map.js
 
-// ... существующий код ...
+    // ... (начало MapModule) ...
 
-// === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
-function generateCityLayout(rand, width, height, density = 0.7) {
-    // 1. Стартуем с полной сетки стен
-    const grid = Array(height).fill().map(() => Array(width).fill(1));
-    const interiorCoords = []; // <--- ДОБАВИТЬ: список координат внутри зданий
+    // Переменная для хранения внутренних координат текущего уровня (для спавна лута в городах)
+    let currentMapInteriorCoords = [];
 
-    // 2. Вырезаем внутреннее пространство (улицы по всей карте)
-    for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-            grid[y][x] = 0;
+    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
+    function generateCityLayout(rand, width, height, density = 0.7) {
+        // 1. Стартуем с полной сетки стен
+        const grid = Array(height).fill().map(() => Array(width).fill(1));
+        const interiorCoords = []; 
+
+        // 2. Вырезаем внутреннее пространство (улицы по всей карте)
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                grid[y][x] = 0;
+            }
         }
-    }
 
-    const STREET_W = 2; // Ширина улиц
-    let y = 2; 
+        const STREET_W = 2; // Ширина улиц
+        let y = 2; 
 
-    // 3. Размещаем здания по упорядоченной сетке
-    while (y < height - 6) {
-        const bh = rand.int(4, 8); 
-        let x = 2; 
-
-        while (x < width - 6) {
-            const bw = rand.int(5, 9); 
+        // 3. Размещаем здания по упорядоченной сетке
+        while (y < height - 6) {
+            const bh = rand.int(4, 8); 
             
-            // Проверка плотности
-            if (rand.next() > density) {
-                x += bw + STREET_W;
-                continue;
+            // === ИСПРАВЛЕНИЕ: Проверяем, влезает ли здание по высоте ===
+            if (y + bh > height) {
+                break; // Если не влезает, прекращаем строить здания в этом ряду
             }
 
-            if (x + bw + STREET_W >= width - 1) break;
+            let x = 2; 
 
-            // Рисуем здание: стены по периметру, пол внутри
-            for (let dy = 0; dy < bh; dy++) {
-                for (let dx = 0; dx < bw; dx++) {
-                    const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
-                    const val = isPerimeter ? 1 : 0;
-                    grid[y + dy][x + dx] = val;
-                    
-                    // Если это пол внутри здания, сохраняем координаты
-                    if (val === 0) {
-                        interiorCoords.push({ x: x + dx, y: y + dy });
+            while (x < width - 6) {
+                const bw = rand.int(5, 9); 
+                
+                // Проверка плотности (пропускаем некоторые здания)
+                if (rand.next() > density) {
+                    x += bw + STREET_W;
+                    continue;
+                }
+
+                if (x + bw + STREET_W >= width - 1) break;
+
+                // Рисуем здание: стены по периметру, пол внутри
+                for (let dy = 0; dy < bh; dy++) {
+                    for (let dx = 0; dx < bw; dx++) {
+                        const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
+                        const val = isPerimeter ? 1 : 0;
+                        
+                        // Теперь эта строка безопасна, так как мы проверили y + bh выше
+                        grid[y + dy][x + dx] = val;
+                        
+                        // Если это пол внутри здания, сохраняем координаты для спавна предметов
+                        if (val === 0) {
+                            interiorCoords.push({ x: x + dx, y: y + dy });
+                        }
                     }
                 }
+
+                // 4. Вырезаем дверь (чтобы можно было войти с улицы)
+                const side = rand.int(0, 3); 
+                let doorX = 0, doorY = 0;
+                 
+                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }       // Верх
+                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } // Право
+                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; } // Низ
+                else { doorX = x; doorY = y + rand.int(1, bh - 2); }                  // Лево
+                 
+                grid[doorY][doorX] = 0; 
+
+                x += bw + STREET_W;
             }
-
-            // 4. Вырезаем дверь
-            const side = rand.int(0, 3); 
-            let doorX = 0, doorY = 0;
-             
-            if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
-            else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } 
-            else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
-            else { doorX = x; doorY = y + rand.int(1, bh - 2); }
-             
-            grid[doorY][doorX] = 0; 
-            // Дверь тоже считается частью интерьера для спавна? 
-            // Обычно лут лежит внутри, а не на пороге. Но пусть будет внутри.
-            // Дверь уже была помечена как 0 выше, если она внутри периметра, 
-            // но если дверь вырезается в стене (периметре), то добавим её вручную, если хотим.
-            // Для простоты оставим только то, что попало в цикл выше (пол внутри).
-
-            x += bw + STREET_W;
+            y += bh + STREET_W;
         }
-        y += bh + STREET_W;
+        
+        // Возвращаем объект с сеткой и списком внутренних точек
+        return { grid, interiorCoords };
     }
-    
-    // Возвращаем объект с сеткой и списком внутренних точек
-    return { grid, interiorCoords };
-}
 
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
@@ -1742,7 +1795,10 @@ function generateCityLayout(rand, width, height, density = 0.7) {
         
         // Генерируем планировку
         const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
-        currentMapData = layoutResult.grid; // Предположим, что generateCityLayout возвращает grid
+        
+        // === ИСПРАВЛЕНИЕ: Сохраняем данные в переменные модуля ===
+        currentMapData = layoutResult.grid;
+        currentMapInteriorCoords = layoutResult.interiorCoords || [];
         
         currentDungeonType = { 
              name: 'city',
@@ -1751,40 +1807,38 @@ function generateCityLayout(rand, width, height, density = 0.7) {
             wallColor: '#6b7280', 
             floorColor: '#374151' 
         };
+    
+        // === ЛЕСТНИЦА " > " СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
+        const upSeed = `up_city_${gx}_${gy}_${depth}`;
+        const rng = new Math.seedrandom(upSeed);
+        const w = DataModule.MAP_WIDTH;
+        const h = DataModule.MAP_HEIGHT;
         
-        // ... остальной код генерации лестниц и возврата startPos ...
-    
-    
-    // === ЛЕСТНИЦА ">" СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
-    const upSeed = `up_city_${gx}_${gy}_${depth}`;
-    const rng = new Math.seedrandom(upSeed);
-    const w = DataModule.MAP_WIDTH;
-     const h = DataModule.MAP_HEIGHT;
-    
-    const edgeTiles = [];
-    for (let y = 1; y < h - 1; y++) {
-        if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
-        if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
+        const edgeTiles = [];
+        // Проверяем края карты на наличие пола (улиц)
+        for (let y = 1; y < h - 1; y++) {
+            if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
+            if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
+        }
+        for (let x = 1; x < w - 1; x++) {
+            if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
+            if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
+        }
+        
+        if (edgeTiles.length > 0) {
+            stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
+        } else {
+            // Fallback, если вдруг все края оказались стенами (маловероятно)
+            stairsUp = { x: 2, y: 2 };
+        }
+        
+        stairsDown = null; 
+        return { x: stairsUp.x, y: stairsUp.y };
     }
-     for (let x = 1; x < w - 1; x++) {
-        if (currentMapData[1][x] === 0) edgeTiles.push({x, y: 1});
-        if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
-    }
-     
-    if (edgeTiles.length > 0) {
-        stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
-    } else {
-        stairsUp = { x: 2, y: 2 };
-    }
-    
-    stairsDown = null; 
-    return { x: stairsUp.x, y: stairsUp.y };
-}
 
-
-    
     function clearCache() {
         stairsCache.clear();
+        currentMapInteriorCoords = []; // Очищаем и координаты интерьера при сбросе
         console.log("🗑️ Кеш лестниц очищен");
     }
 
@@ -1805,11 +1859,6 @@ function generateCityLayout(rand, width, height, density = 0.7) {
             console.log(`${key}: up=(${value.stairsUp?.x},${value.stairsUp?.y}), down=(${value.stairsDown?.x},${value.stairsDown?.y})`);
         }
     }
-
-
-
-    // Добавляем переменную для хранения внутренних координат текущего уровня
-    let currentMapInteriorCoords = [];
 
     return {
         get currentMapData() { return currentMapData; },
@@ -2129,27 +2178,18 @@ const NpcGeneratorModule = (function() {
 const RenderModule = (function() {
     let display = null;
     let fov = null;
-    const COLS = 60;
-    const ROWS = 40;
+    const COLS = 30;
+    const ROWS = 20;
     const FONT_SIZE = 16; 
-    const TILE_SIZE = 16; 
+    const TILE_SIZE = 32; 
 
-    // === ЗАГРУЗКА СПРАЙТОВ (Для глобальной карты и fallback) ===
-    const spriteImages = {};
-    const TILESET_FILES = ['terrain_sprites', 'creature_sprites', 'item_sprites']; 
-    
-    TILESET_FILES.forEach(name => {
-        const img = new Image();
-        img.src = `${name}.png`; 
-        spriteImages[name] = img;
-    });
-    
     // === СИСТЕМА ЭФФЕКТОВ ===
     let activeEffects = []; 
     let currentCameraOffset = { x: 0, y: 0 };
     let redrawCallback = null;
 
-    function init() {
+    // === АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ ===
+    async function init() {
         if (typeof ROT === 'undefined') {
             alert("Ошибка: Библиотека ROT.js не загрузилась.");
             throw new Error("ROT missing");
@@ -2189,15 +2229,26 @@ const RenderModule = (function() {
         window.addEventListener("resize", resizeGame);
         setTimeout(resizeGame, 50);
 
-        // Инициализация тайлсетов (вызывает внешний модуль TilesetRenderer)
-        if (typeof TilesetRenderer !== 'undefined') {
-            TilesetRenderer.init();
-        } else {
-            console.warn("TilesetRenderer не найден. Проверьте подключение tileset_renderer.js");
-        }
+        console.log("🔄 Загрузка тайлсетов...");
         
+        // 1. Ждем загрузки TilesetRenderer (подземелье)
+        if (typeof TilesetRenderer !== 'undefined') {
+            await TilesetRenderer.init();
+            console.log("✅ TilesetRenderer готов!");
+        } else {
+            console.warn("TilesetRenderer не найден.");
+        }
+
+        // 2. Ждем загрузки спрайтов для глобальной карты (если они отличаются)
+        // Если вы используете те же файлы, что и в TilesetRenderer, этот шаг можно пропустить,
+        // так как TilesetRenderer уже загрузил их в свои spriteSheets.
+        // Но если у вас есть отдельная логика drawSprite в render.js, убедитесь, что картинки загружены.
+        // Для простоты, давайте полагаться на TilesetRenderer для всего.
+
         // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
         if (typeof startEffectLoop === 'function') startEffectLoop();
+        
+        console.log("🚀 RenderModule полностью инициализирован.");
     }
 
     // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
@@ -2282,24 +2333,29 @@ const RenderModule = (function() {
     }
 
     // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Безопасная версия) ===
+    // Теперь она может использовать данные из TilesetRenderer, если нужно,
+    // или оставаться отдельной, если вы хотите использовать sprite_registry.js напрямую.
+    // Но чтобы избежать дублирования, лучше использовать TilesetRenderer.draw() везде.
     function drawSprite(ctx, id, sx, sy) {
         // Проверяем, подключен ли реестр
         if (typeof getTileData !== 'function') return false;
         
         const tileData = getTileData(id);
-        if (!tileData || !spriteImages[tileData.file]) return false;
-        
-        const img = spriteImages[tileData.file];
-        if (!img.complete || img.naturalWidth === 0) return false;
+        if (!tileData) return false;
 
-        ctx.drawImage(
-            img,
-            tileData.x * TILE_SIZE, tileData.y * TILE_SIZE,
-            TILE_SIZE, TILE_SIZE,
-            sx * TILE_SIZE, sy * TILE_SIZE,
-            TILE_SIZE, TILE_SIZE
-        );
-        return true;
+        // ВАЖНО: Мы должны получить картинку из TilesetRenderer.spriteSheets, 
+        // так как он уже загрузил их.
+        // Но spriteSheets приватный. Поэтому мы полагаемся на TilesetRenderer.draw()
+        // Или можем попытаться достать картинку, если сделаем spriteSheets публичным.
+        // Для простоты, давайте оставим эту функцию как fallback на ASCII, 
+        // а основную отрисовку делегируем TilesetRenderer.draw() в функциях draw и drawGlobalMap.
+        
+        // Если вы все же хотите использовать drawSprite, вам нужно убедиться, 
+        // что картинки загружены. Так как мы ждем TilesetRenderer.init(), 
+        // мы можем предположить, что картинки есть.
+        
+        // Но проще всего удалить drawSprite и использовать везде TilesetRenderer.draw().
+        return false; 
     }    
     
     function getCameraOffset(player) {
@@ -2318,6 +2374,17 @@ const RenderModule = (function() {
 
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Проверка готовности рендерера
+        if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
+            // Если не готов, рисуем ASCII заглушку
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("Loading...", ctx.canvas.width/2, ctx.canvas.height/2);
+            return;
+        }
 
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = getCameraOffset(player);
@@ -2354,16 +2421,7 @@ const RenderModule = (function() {
                 }
 
                 // Используем TilesetRenderer для подземелья
-                if (typeof TilesetRenderer !== 'undefined') {
-                    TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-                } else {
-                    // Fallback на ASCII, если рендерер сломался
-                    ctx.fillStyle = fg;
-                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
-                }
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
 
@@ -2372,9 +2430,7 @@ const RenderModule = (function() {
             items.forEach(i => {
                 const sx = i.x - cam.x, sy = i.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
-                    if (typeof TilesetRenderer !== 'undefined') {
-                        TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
-                    }
+                    TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
                 }
             });
         }
@@ -2385,9 +2441,7 @@ const RenderModule = (function() {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
                     if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                        if (typeof TilesetRenderer !== 'undefined') {
-                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
-                        }
+                        TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
                     }
                 }
             });
@@ -2398,9 +2452,7 @@ const RenderModule = (function() {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x, sy = npc.y - cam.y;
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    if (typeof TilesetRenderer !== 'undefined') {
-                        TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
-                    }
+                    TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
                 }
             });
         }
@@ -2409,9 +2461,7 @@ const RenderModule = (function() {
         if (player) {
             const px = Math.floor(COLS / 2);
             const py = Math.floor(ROWS / 2);
-            if (typeof TilesetRenderer !== 'undefined') {
-                TilesetRenderer.draw(ctx, player.char, px, py, player.color);
-            }
+            TilesetRenderer.draw(ctx, player.char, px, py, player.color);
         }
 
         // 6. ЭФФЕКТЫ
@@ -2420,13 +2470,23 @@ const RenderModule = (function() {
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует sprite_registry.js) ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует TilesetRenderer) ===
     function drawGlobalMap(centerX, centerY) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Проверка готовности
+        if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("Loading World...", ctx.canvas.width/2, ctx.canvas.height/2);
+            return;
+        }
 
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
@@ -2441,45 +2501,25 @@ const RenderModule = (function() {
                     tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
                 }
 
-                const typeToId = {
-                    'plain': 'TILE_PLAIN', 'forest': 'TILE_FOREST', 'mountain': 'TILE_MOUNTAIN',
-                    'water': 'TILE_WATER', 'city': 'TILE_CITY', 'dungeon_entrance': 'TILE_DUNGEON_ENTRANCE',
-                    'road': 'TILE_ROAD'
-                };
-                
-                const id = typeToId[tileType] || 'TILE_PLAIN';
-                
-                // 1. Попытка нарисовать спрайт через реестр
-                const drawn = drawSprite(ctx, id, sx, sy);
-                
-                // 2. Fallback на ASCII, если спрайт не загрузился или реестра нет
-                if (!drawn) {
-                    // Проверяем, есть ли функция getChar
-                    const ch = (typeof getChar === 'function') ? getChar(id) : '?';
-                    
-                    const colors = {
-                        'TILE_PLAIN': '#8c8c8c', 'TILE_FOREST': '#2e8b57', 'TILE_MOUNTAIN': '#a0a0a0',
-                        'TILE_WATER': '#4682b4', 'TILE_CITY': '#ffd700', 'TILE_DUNGEON_ENTRANCE': '#cd5c5c', 'TILE_ROAD': '#b8860b'
-                    };
-                    
-                    ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                    ctx.fillStyle = colors[id] || '#555';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(ch, sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
+                let ch, fg;
+                switch(tileType) {
+                    case 'plain': ch = '░'; fg = '#2e8b57'; break;
+                    case 'forest': ch = 'T'; fg = '#336649'; break;
+                    case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
+                    case 'water': ch = '≈'; fg = '#4682b4'; break;
+                    case 'city': ch = 'C'; fg = '#ffd700'; break;
+                    case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
+                    case 'road': ch = '─'; fg = '#b8860b'; break;
+                    default: ch = '·'; fg = '#555';
                 }
 
-                // 3. Игрок поверх всего
+                // Игрок
                 if (gx === centerX && gy === centerY) {
-                    const playerDrawn = drawSprite(ctx, 'PLAYER', sx, sy);
-                    if (!playerDrawn) {
-                        ctx.font = `${FONT_SIZE}px Consolas, monospace`;
-                        ctx.fillStyle = '#fff';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText('@', sx * TILE_SIZE + TILE_SIZE/2, sy * TILE_SIZE + TILE_SIZE/2);
-                    }
+                    ch = '@'; fg = '#fff';
                 }
+
+                // Используем TilesetRenderer для глобальной карты
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
     }
@@ -2487,13 +2527,17 @@ const RenderModule = (function() {
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
+        
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
         const ctx = cvs.getContext("2d");
+        
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
-        const MINIMAP_SIZE = 20;
+        
+        // ✅ ИСПРАВЛЕНИЕ: Увеличиваем размер до 50 на 50, чтобы масштаб совпадал с мини-картой подземелья
+        const MINIMAP_SIZE = 50; 
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
@@ -2503,12 +2547,12 @@ const RenderModule = (function() {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
                 const gy = startY + dy;
+                
                 let displayType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getDisplayTileType) {
                     displayType = GlobalMapModule.getDisplayTileType(gx, gy);
-                } else if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getTileType) {
-                    displayType = GlobalMapModule.getTileType(gx, gy);
                 }
+                
                 let color;
                 switch(displayType) {
                     case 'plain': color = '#555'; break;
@@ -2520,9 +2564,12 @@ const RenderModule = (function() {
                     case 'road': color = '#b8860b'; break;
                     default: color = '#333';
                 }
-                if (gx === centerX && gy === centerY) color = '#0f0';
+                
+                if (gx === centerX && gy === centerY) color = '#0f0'; // Игрок
+                
                 ctx.fillStyle = color;
-                ctx.fillRect(dx * cellW, dy * cellH, cellW, cellH);
+                // ✅ ИСПРАВЛЕНИЕ: +0.5 предотвращает появление тонких черных линий между пикселями при маленьком масштабе
+                ctx.fillRect(dx * cellW, dy * cellH, cellW + 0.5, cellH + 0.5);
             }
         }
     }
@@ -2530,7 +2577,24 @@ const RenderModule = (function() {
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
-            document.getElementById("ui-loc-desc").textContent = locData.description;
+            // Строка с ui-loc-desc удалена
+    
+            // Логика цвета остается, но без вывода текста типа
+            if (worldTrend && worldTrend.name !== "Обычный уровень") {
+                document.getElementById("ui-loc-name").style.color = worldTrend.color;
+            } else {
+                document.getElementById("ui-loc-name").style.color = "var(--accent)";
+            }
+            // Строка с ui-loc-type.textContent удалена
+        }
+
+
+
+
+        /*
+        if (locData) {
+            document.getElementById("ui-loc-name").textContent = locData.fullName;
+            //document.getElementById("ui-loc-desc").textContent = locData.description;
             
             let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
@@ -2541,6 +2605,7 @@ const RenderModule = (function() {
             }
             document.getElementById("ui-loc-type").textContent = typeText;
         }
+        */
 
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
@@ -2853,26 +2918,29 @@ const WorldCurveModule = (function() {
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ROT.js v2.2.1 -->
+
+
     <script src="rot.min.js"></script>
-    <!-- Seedrandom -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
+    <script src="seedrandom.min.js"></script>
     
     <script src="sprite_registry.js"></script>
     <script src="name_generator.js"></script>
     <script src="worldCurve.js"></script>
-    <script src="dungeon_generator.js"></script>   <!-- DUNGEON_TYPES здесь -->
+    <script src="dungeon_generator.js"></script>
     <script src="data.js"></script>
     <script src="map.js"></script>
     <script src="entity.js"></script>
     <script src="combat.js"></script>
-    <script src="globalMap.js"></script>   <!-- использует DUNGEON_TYPES -->
-    <script src="tileset_renderer.js"></script>
+    <script src="globalMap.js"></script>
+    
+    <!-- ВАЖНО: TilesetRenderer должен быть загружен ДО render.js -->
+    <script src="tileset_renderer.js"></script> 
+    
     <script src="render.js"></script>
     <script src="npc_generator.js"></script>
+    <script src="effect_system.js"></script> <!-- Если используете эффекты -->
+    <script src="lore.js"></script>
     <script src="game.js"></script>
-
-
 
     
     
@@ -2999,6 +3067,22 @@ const WorldCurveModule = (function() {
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
 
+
+        
+        /* === НОВЫЙ СТИЛЬ ДЛЯ КНИГ И ЛОРА === */
+        .log-lore { 
+            color: #d2b48c; /* Цвет старого пергамента/песочный */
+            font-style: italic; /* Курсив для художественного текста */
+            border-left: 3px solid #8b7355; /* Декоративная линия слева */
+            padding-left: 8px; /* Отступ от линии */
+            background: rgba(139, 115, 85, 0.1); /* Легкий фон */
+            margin-top: 4px;
+            margin-bottom: 4px;
+            font-family: 'Georgia', serif; /* Шрифт с засечками для контраста с моноширинным интерфейсом */
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         #minimap-panel {
             grid-column: 1;
             grid-row: 3;
@@ -3033,8 +3117,8 @@ const WorldCurveModule = (function() {
         <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
         <div class="loc-info">
             <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <div id="ui-loc-type" class="loc-type"></div>
-            <div id="ui-loc-desc" class="loc-desc"></div>
+            <!--<div id="ui-loc-type" class="loc-type"></div>-->
+            <!--<div id="ui-loc-desc" class="loc-desc"></div>-->
             <div id="ui-loc-coords" class="loc-coords">Выход: —</div>
         </div>
     </header>
@@ -3340,7 +3424,21 @@ const DataModule = (function() {
         { type: "armor", char: getChar('ITEM_CLOAK'), color: "#8D6E63", baseName: "Плащ теней", stat: "def", val: [2, 3], gender: "he", plural: false },
         { type: "armor", char: getChar('ITEM_HELMET'), color: "#607D8B", baseName: "Шлем", stat: "def", val: [1, 2], gender: "he", plural: false },
         { type: "armor", char: getChar('ITEM_GLOVES'), color: "#8D6E63", baseName: "Перчатки", stat: "def", val: [1, 2], gender: "she", plural: true },
+    
 
+        // === КНИГИ (ЛОР) ===
+        // type: 'book' - специальный тип, который не кладется в инвентарь, а читается сразу
+        { 
+            type: "book", 
+            char: getChar('ITEM_BOOK'), 
+            color: "#A67C52", // Цвет старой бумаги/кожи
+            baseName: "Старая книга", 
+            gender: "she", 
+            plural: false,
+            val: [0, 0] 
+        },
+
+   
         // === ЗОЛОТО ===
         { type: "gold", char: getChar('ITEM_GOLD'), color: "#FFD700", baseName: "Монеты", val: [5, 15] },
         
@@ -3521,32 +3619,25 @@ const EffectSystemModule = (function() {
  */
 
 const SPRITE_REGISTRY = {
-    // ==========================================
-    // 1. ГЛОБАЛЬНАЯ КАРТА (Ландшафт)
-    // ==========================================
-    'TILE_PLAIN':            { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Равнина' },
+    // === 1. ГЛОБАЛЬНАЯ КАРТА (уникальные символы) ===
+    'TILE_PLAIN':            { char: '░',   tile: { file: 'terrain_sprites', x: 10, y: 2 }, desc: 'Равнина' }, // Было: '.'
     'TILE_FOREST':           { char: 'T',   tile: { file: 'terrain_sprites', x: 8, y: 2 }, desc: 'Лес' },
     'TILE_MOUNTAIN':         { char: '^',   tile: { file: 'terrain_sprites', x: 5, y: 2 }, desc: 'Горы' },
     'TILE_WATER':            { char: '≈',   tile: { file: 'terrain_sprites', x: 7, y: 2 }, desc: 'Вода' },
     'TILE_CITY':             { char: 'C',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Город' },
-    'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход в подземелье' },
-    'TILE_ROAD':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Дорога' },
+    'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход' },
+    'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Дорога' }, // Было: '█'
 
-    // ==========================================
-    // 2. ПОДЗЕМЕЛЬЕ (Стены и Пол)
-    // ==========================================
-    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Обычный пол' },
-    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Обычная стена' },
-    
-    // Специфичные тайлы (для пещер, городов и т.д.)
-    'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain_sprites', x: 3, y: 2 }, desc: 'Органический пол' },
-    'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain_sprites', x: 4, y: 2 }, desc: 'Органическая стена' },
-    'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain_sprites', x: 0, y: 1 }, desc: 'Пол города' }, // Используем тот же спрайт пола или свой
+    // === 2. ПОДЗЕМЕЛЬЕ (стандартные символы, без изменений) ===
+    'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 0 }, desc: 'Пол' },
+    'WALL_DEFAULT':          { char: '#',   tile: { file: 'terrain_sprites', x: 12, y: 2 }, desc: 'Стена' },
+    'FLOOR_ORGANIC':         { char: 'o',   tile: { file: 'terrain_sprites', x: 3, y: 2 }, desc: 'Орг. пол' },
+    'WALL_ORGANIC':          { char: 'O',   tile: { file: 'terrain_sprites', x: 4, y: 2 }, desc: 'Орг. стена' },
+    'FLOOR_CITY':            { char: '·',   tile: { file: 'terrain_sprites', x: 0, y: 0 }, desc: 'Пол города' },
     'WALL_CITY':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Стена города' },
-
-    // Лестницы
-    'STAIRS_DOWN':           { char: '<',   tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница вниз' },
-    'STAIRS_UP':             { char: '>',   tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница вверх' },
+    'STAIRS_UP':             { char: '>',  tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница ↑' },
+    'STAIRS_DOWN':           { char: '<',  tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница ↓' },
+    
 
     // ==========================================
     // 3. СУЩНОСТИ (Игрок и NPC)
@@ -3588,6 +3679,7 @@ const SPRITE_REGISTRY = {
     'ITEM_BOW':              { char: '(',   tile: { file: 'item_sprites', x: 5, y: 0 }, desc: 'Лук' },
     'ITEM_CROSSBOW':         { char: '=',   tile: { file: 'item_sprites', x: 6, y: 0 }, desc: 'Арбалет' },
     'ITEM_STAFF':            { char: '|',   tile: { file: 'item_sprites', x: 7, y: 0 }, desc: 'Посох' },
+    
 
     // Броня
     'ITEM_ARMOR_LEATHER':    { char: ']',   tile: { file: 'item_sprites', x: 8, y: 0 }, desc: 'Кожаная броня' },
@@ -3596,10 +3688,11 @@ const SPRITE_REGISTRY = {
     'ITEM_GREAVES':          { char: '"',   tile: { file: 'item_sprites', x: 11, y: 0 }, desc: 'Наголенники' }, // Совпадает с FLOOR_ORGANIC
     'ITEM_CLOAK':            { char: '{',   tile: { file: 'item_sprites', x: 12, y: 0 }, desc: 'Плащ' },
     'ITEM_HELMET':           { char: 'H',   tile: { file: 'item_sprites', x: 13, y: 0 }, desc: 'Шлем' },
-    'ITEM_GLOVES':           { char: ',',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
+    'ITEM_GLOVES':           { char: 'v',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
 
     // Ресурсы и прочее
-    'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 18, y: 0 }, desc: 'Золото' },
+    'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
+    'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' }, 
     
     // Зелья и еда
     'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
@@ -3630,174 +3723,241 @@ function getTileData(id) {
 ```js
 
 
-// tileset_renderer.js
+/**
+ * МОДУЛЬ ОТРИСОВКИ СПРАЙТОВ (TilesetRenderer)
+ * Отвечает за загрузку PNG-тайлсетов и их отрисовку с программной окраской.
+ */
 const TilesetRenderer = (function() {
+    'use strict';
+
+    // === КОНФИГУРАЦИЯ ===
     const TILE_SIZE = 16;
+    const SPRITE_FILES = [
+        { src: 'terrain_sprites.png', key: 'terrain_sprites' },
+        { src: 'creature_sprites.png', key: 'creature_sprites' },
+        { src: 'item_sprites.png',   key: 'item_sprites' }
+    ];
+
+    // === СОСТОЯНИЕ ===
     const spriteSheets = {};
     let isReady = false;
-    let debugMode = false;
 
-    // === МАППИНГ: символ → (файл, колонка, строка) ===
-    // Убедитесь, что координаты x,y соответствуют вашему PNG!
+    // === МАППИНГ СИМВОЛОВ
+    // Формат: 'символ': { file: 'ключ_картинки', x: колонка, y: ряд }
     const TILE_MAP = {
-        // Terrain
-        '.': { file: 'terrain_sprites', x: 0, y: 1 }, // FLOOR_DEFAULT, TILE_PLAIN
-        '#': { file: 'terrain_sprites', x: 1, y: 2 }, // WALL_DEFAULT
-        '>': { file: 'terrain_sprites', x: 3, y: 0 }, // STAIRS_UP
-        '<': { file: 'terrain_sprites', x: 2, y: 0 }, // STAIRS_DOWN
-        'T': { file: 'terrain_sprites', x: 8, y: 2 }, // TILE_FOREST (и ENEMY_TROLL, но спрайт врага берется из файла creature)
-        '^': { file: 'terrain_sprites', x: 5, y: 2 }, // TILE_MOUNTAIN (и ITEM_AXE)
-        '≈': { file: 'terrain_sprites', x: 7, y: 2 }, // TILE_WATER
-        'C': { file: 'terrain_sprites', x: 9, y: 2 }, // TILE_CITY
-        'D': { file: 'terrain_sprites', x: 6, y: 0 }, // TILE_DUNGEON_ENTRANCE
-        '█': { file: 'terrain_sprites', x: 11, y: 2 }, // TILE_ROAD, WALL_CITY
-        'o': { file: 'terrain_sprites', x: 3, y: 2 }, // FLOOR_ORGANIC (и ITEM_GREAVES)
-        'O': { file: 'terrain_sprites', x: 4, y: 2 }, // WALL_ORGANIC (и ENEMY_ORC - тут нужен отдельный спрайт для Орка в creature!)
-        
-        // Creatures & NPCs
-        '@': { file: 'creature_sprites', x: 2, y: 0 }, // PLAYER
-        'r': { file: 'creature_sprites', x: 8, y: 9 }, // ENEMY_RAT
-        'g': { file: 'creature_sprites', x: 12, y: 3 }, // ENEMY_GOBLIN
-        'w': { file: 'creature_sprites', x: 1, y: 9 }, // ENEMY_WOLF
-        'j': { file: 'creature_sprites', x: 3, y: 15 }, // ENEMY_SLIME
-        'b': { file: 'creature_sprites', x: 5, y: 0 }, // ENEMY_BANDIT
-        's': { file: 'creature_sprites', x: 6, y: 0 }, // ENEMY_SKELETON
-        'O': { file: 'creature_sprites', x: 7, y: 0 }, // ENEMY_ORC (Внимание: тот же ключ 'O', что и у стены! 
-                                                // ВАШ РЕНДЕРЕР ДОЛЖЕН ПРИОРИТЕЗИРОВАТЬ СУЩНОСТИ НАД ТАЙЛАМИ.
-                                                // Если ключи в объекте совпадают, одно перезапишет другое.
-                                                // Решение: В TILE_MAP ключи должны быть уникальными. 
-                                                // Но так как и стена, и орк используют символ 'O', 
-                                                // вам нужно проверять контекст при отрисовке.
-                                                // Обычно спрайтовый рендерер принимает (char, layer).
-                                                // Если у вас один общий TILE_MAP, то 'O' будет последним записанным.
-                                                // Исправьте ключи, если рендерер не поддерживает слои.
-                                                // Например, используйте разные символы для Орка и Стены, если это возможно.
-                                                // Или убедитесь, что при отрисовке врага вы обращаетесь к 'creature' файлу напрямую.
-                                               //),
-        'z': { file: 'creature_sprites', x: 8, y: 0 }, // ENEMY_ZOMBIE
-        'h': { file: 'creature_sprites', x: 9, y: 0 }, // ENEMY_HARPY
-        'G': { file: 'creature_sprites', x: 10, y: 0 }, // ENEMY_GHOST (и ITEM_GLOVES)
-        'V': { file: 'creature_sprites', x: 11, y: 0 }, // ENEMY_VAMPIRE
-        'T': { file: 'creature_sprites', x: 12, y: 0 }, // ENEMY_TROLL (и TILE_FOREST)
-        'L': { file: 'creature_sprites', x: 13, y: 0 }, // ENEMY_LICH
-        'M': { file: 'creature_sprites', x: 14, y: 0 }, // ENEMY_GOLEM
-        'q': { file: 'creature_sprites', x: 15, y: 0 }, // ENEMY_DRAGON
-        '☺': { file: 'creature_sprites', x: 8, y: 3 }, // NPC
+        // === ПОДЗЕМЕЛЬЕ (стандартные, без изменений) ===
+        '.':  { file: 'terrain_sprites', x: 0, y: 0 },  // FLOOR_DEFAULT
+        '#':  { file: 'terrain_sprites', x: 12, y: 2 },  // WALL_DEFAULT
+        'o':  { file: 'terrain_sprites', x: 3, y: 2 },  // FLOOR_ORGANIC
+        'O':  { file: 'terrain_sprites', x: 4, y: 2 },  // WALL_ORGANIC
+        '·':  { file: 'terrain_sprites', x: 0, y: 0 },  // FLOOR_CITY
+        '█':  { file: 'terrain_sprites', x: 11, y: 2 }, // WALL_CITY
+        '>': { file: 'terrain_sprites', x: 3, y: 0 },  // STAIRS_UP
+        '<': { file: 'terrain_sprites', x: 2, y: 0 },  // STAIRS_DOWN
 
-        // Items
-        '/': { file: 'item_sprites', x: 0, y: 0 },
-        '^': { file: 'item_sprites', x: 1, y: 0 },
-        ')': { file: 'item_sprites', x: 2, y: 0 },
-        '*': { file: 'item_sprites', x: 3, y: 0 },
-        'Y': { file: 'item_sprites', x: 4, y: 0 },
-        '(': { file: 'item_sprites', x: 5, y: 0 },
-        '=': { file: 'item_sprites', x: 6, y: 0 },
-        '|': { file: 'item_sprites', x: 7, y: 0 },
-        ']': { file: 'item_sprites', x: 8, y: 0 },
-        '[': { file: 'item_sprites', x: 9, y: 0 },
-        '}': { file: 'item_sprites', x: 10, y: 0 },
-        '{': { file: 'item_sprites', x: 11, y: 0 },
-        'H': { file: 'item_sprites', x: 12, y: 0 },
-        '!': { file: 'item_sprites', x: 14, y: 0 },
-        '+': { file: 'item_sprites', x: 15, y: 0 },
-        '%': { file: 'item_sprites', x: 16, y: 0 },
-        '~': { file: 'item_sprites', x: 17, y: 0 },
-        '$': { file: 'item_sprites', x: 18, y: 0 }
+        // === ГЛОБАЛЬНАЯ КАРТА (новые уникальные символы) ===
+        '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // TILE_PLAIN
+        '─':  { file: 'terrain_sprites', x: 1, y: 2 }, // TILE_ROAD
+        'T':  { file: 'terrain_sprites', x: 8, y: 2 },  // TILE_FOREST
+        '^':  { file: 'terrain_sprites', x: 5, y: 2 },  // TILE_MOUNTAIN
+        '≈':  { file: 'terrain_sprites', x: 7, y: 2 },  // TILE_WATER
+        'C':  { file: 'terrain_sprites', x: 9, y: 2 },  // TILE_CITY
+        'D':  { file: 'terrain_sprites', x: 6, y: 0 },  // TILE_DUNGEON_ENTRANCE
+
+
+        // --- СУЩЕСТВА ---
+        '@': { file: 'creature_sprites', x: 2,  y: 0 },  // Игрок
+        'r': { file: 'creature_sprites', x: 8,  y: 9 },  // Крыса
+        'g': { file: 'creature_sprites', x: 12, y: 3 },  // Гоблин
+        'w': { file: 'creature_sprites', x: 1,  y: 9 },  // Волк
+        'j': { file: 'creature_sprites', x: 3,  y: 15 }, // Слизень
+        'b': { file: 'creature_sprites', x: 5,  y: 0 },  // Бандит
+        's': { file: 'creature_sprites', x: 6,  y: 0 },  // Скелет
+        'k': { file: 'creature_sprites', x: 7,  y: 0 },  // Орк
+        'z': { file: 'creature_sprites', x: 8,  y: 0 },  // Зомби
+        'h': { file: 'creature_sprites', x: 9,  y: 0 },  // Гарпия
+        'G': { file: 'creature_sprites', x: 10, y: 0 },  // Призрак
+        'V': { file: 'creature_sprites', x: 11, y: 0 },  // Вампир
+        't': { file: 'creature_sprites', x: 12, y: 0 },  // Тролль
+        'L': { file: 'creature_sprites', x: 13, y: 0 },  // Лич
+        'M': { file: 'creature_sprites', x: 14, y: 0 },  // Голем
+        'q': { file: 'creature_sprites', x: 15, y: 0 },  // Дракон
+        '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
+
+        // --- ПРЕДМЕТЫ ---
+        '/': { file: 'item_sprites', x: 0,  y: 0 }, // Меч
+        'P': { file: 'item_sprites', x: 1,  y: 0 }, // Топор
+        ')': { file: 'item_sprites', x: 2,  y: 0 }, // Булава
+        '*': { file: 'item_sprites', x: 3,  y: 0 }, // Кинжал
+        'Y': { file: 'item_sprites', x: 4,  y: 0 }, // Копье
+        '(': { file: 'item_sprites', x: 5,  y: 0 }, // Лук
+        '=': { file: 'item_sprites', x: 6,  y: 0 }, // Арбалет
+        '|': { file: 'item_sprites', x: 7,  y: 0 }, // Посох
+        ']': { file: 'item_sprites', x: 8,  y: 0 }, // Кожа
+        '[': { file: 'item_sprites', x: 9,  y: 0 }, // Кольчуга
+        '}': { file: 'item_sprites', x: 10, y: 0 }, // Щит
+        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
+        '{': { file: 'item_sprites', x: 12, y: 0 }, // Плащ
+        'H': { file: 'item_sprites', x: 13, y: 0 }, // Шлем
+        'v': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
+        '!': { file: 'item_sprites', x: 15, y: 0 }, // Зелье
+        '+': { file: 'item_sprites', x: 16, y: 0 }, // Эликсир
+        '%': { file: 'item_sprites', x: 17, y: 0 }, // Еда
+        '~': { file: 'item_sprites', x: 18, y: 0 }, // Мясо
+        '?': { file: 'item_sprites', x: 3, y: 4 }, // ITEM_BOOK
+        '$': { file: 'item_sprites', x: 13, y: 3 }  // Золото
     };
+
+    // === ИНИЦИАЛИЗАЦИЯ (Загрузка изображений) ===
     async function init() {
-        const files = [
-            { src: 'terrain_sprites.png', key: 'terrain_sprites' },
-            { src: 'creature_sprites.png', key: 'creature_sprites' },
-            { src: 'item_sprites.png', key: 'item_sprites' }
-        ];
-        
-        // Исправленный Promise.all с правильными скобками
-        await Promise.all(files.map(({src, key}) => new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                spriteSheets[key] = img;
-                console.log(`✅ Загружен тайлсет: ${key} (${img.width}x${img.height})`);
-                resolve();
-            };
-            img.onerror = () => {
-                console.error(`❌ Ошибка загрузки: ${src}`);
-                reject();
-            };
-            img.src = src;
-        })));
-        
-        isReady = true;
+        try {
+            await Promise.all(SPRITE_FILES.map(({ src, key }) => {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        spriteSheets[key] = img;
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        console.error(`❌ Не удалось загрузить тайлсет: ${src}`);
+                        reject(new Error(`Failed to load ${src}`));
+                    };
+                    img.src = src;
+                });
+            }));
+            isReady = true;
+            console.log("✅ TilesetRenderer: Все спрайты загружены.");
+        } catch (error) {
+            console.error("❌ Критическая ошибка загрузки спрайтов:", error);
+        }
     }
 
-    function draw(ctx, ch, sx, sy, color) {
+    // === ОТРИСОВКА ===
+    function draw(ctx, char, screenX, screenY, color) {
         if (!ctx) return;
 
-        const destX = sx * TILE_SIZE;
-        const destY = sy * TILE_SIZE;
+        const destX = screenX * TILE_SIZE;
+        const destY = screenY * TILE_SIZE;
+        const tileData = TILE_MAP[char];
 
-        const tile = TILE_MAP[ch];
-        
-        // Fallback на текст, если спрайт не найден
-        if (!tile) {
+        // 1. Fallback: Если символ не найден в маппинге -> рисуем текст
+        if (!tileData) {
             ctx.fillStyle = color || '#fff';
-            ctx.font = '16px Consolas, monospace';
+            ctx.font = `${TILE_SIZE}px Consolas, monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(ch, destX + TILE_SIZE/2, destY + TILE_SIZE/2);
+            ctx.fillText(char, destX + TILE_SIZE / 2, destY + TILE_SIZE / 2);
             return;
         }
 
-        const img = spriteSheets[tile.file];
-        
+        const img = spriteSheets[tileData.file];
+
+        // 2. Ошибка: Картинка не загружена
         if (!img || !isReady) {
-            // Если картинка не загрузилась, рисуем красный квадрат
-            ctx.fillStyle = '#ff0000';
+            ctx.fillStyle = '#ff0000'; // Красный квадрат
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
             return;
         }
 
-        const srcX = tile.x * TILE_SIZE;
-        const srcY = tile.y * TILE_SIZE;
+        const srcX = tileData.x * TILE_SIZE;
+        const srcY = tileData.y * TILE_SIZE;
 
-        // Проверка границ спрайт-листа
+        // 3. Ошибка: Координаты вне границ картинки
         if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
-            ctx.fillStyle = '#ffff00';
+            ctx.fillStyle = '#ffff00'; // Желтый квадрат
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            console.warn(`⚠️ OOB: Спрайт '${char}' (${tileData.file}) за пределами изображения`);
             return;
         }
 
+        // 4. Отрисовка спрайта
         ctx.save();
-
-        // 1. Рисуем базовый белый спрайт
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1.0;
+        
+        // Очищаем ячейку (на случай, если там был мусор)
+        ctx.clearRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        
+        // Рисуем сам спрайт
         ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
 
-        // 2. Накладываем цвет
-        const fillColor = color || '#ffffff';
-        
-        // Пропускаем окраску, если цвет черный (чтобы не скрыть спрайт) или если цвет не задан
-        if (fillColor && fillColor !== '#000' && fillColor !== '#000000') {
-            // source-atop: рисует новое только там, где уже есть контент (спрайт)
+        // 5. Программная окраска (если цвет не белый/черный)
+        if (color && color !== '#fff' && color !== '#ffffff' && color !== '#000' && color !== '#000000') {
+            // source-atop: рисует новый цвет ТОЛЬКО там, где уже есть непрозрачные пиксели (спрайт)
             ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = fillColor;
+            ctx.fillStyle = color;
             ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
         }
 
         ctx.restore();
     }
 
-    return { 
-        init, 
-        draw, 
+    // === ПУБЛИЧНЫЙ ИНТЕРФЕЙС ===
+    return {
+        init,
+        draw,
         TILE_SIZE,
-        setDebug: (v) => debugMode = v,
         isReady: () => isReady
     };
 })();
 ```
+# ###lore.js
+```js
 
+/**
+ * МОДУЛЬ ЛОРА (lore.js)
+ * Управляет выдачей текстовых фрагментов из книг.
+ */
 
+const LoreModule = (function() {
+    'use strict';
+
+    // База текстов. Можно расширять бесконечно.
+    const BOOK_FRAGMENTS = [
+        "Дневник неизвестного путника: 'День 4. Запасы еды на исходе. В темноте я слышу шорох крыс, но они кажутся мне сейчас друзьями.'",
+        "Выдержка из трактата 'Основы некромантии': 'Жизнь — это лишь искра. Смерть — это океан. Не бойтесь утонуть, бойтесь высохнуть.'",
+        "Старая карта с пометками: 'Здесь был вход... или выход? Стрелки указывают в разные стороны. Камень теплый на ощупь.'",
+        "Записка, найденная в склепе: 'Они не мертвы. Они просто ждут. Не буди тех, кто спит под фундаментом.'",
+        "Фрагмент королевского указа: '...в связи с эпидемией чумы, въезд в столицу закрыт. Всем нарушителям — отрубать головы без суда.'",
+        "Молитва забытому богу: 'О, Хранитель Порога, дай мне сил пройти сквозь тьму, или дай тьме сил поглотить меня.'",
+        "Нацарапано на стене: 'НЕ ДОВЕРЯЙ ТЕНЯМ. ОНИ ЖИВЫЕ.'",
+        "Рецепт зелья: 'Взять корень мандрагоры, высушить на солнце... стоп, какое солнце? Мы же под землей.'",
+        "Письмо домой: 'Мама, я стал героем. Или монстром. Я уже не различаю отражения в воде.'",
+        "Торговый договор: '50 мечей за 100 золотых. Доставка в Северные Врата. Опасность пути оценивается как высокая.'",
+        "Легенда о первом короле: 'Он нашел корону в пещере. Говорят, корона нашла его сама.'",
+        "Наблюдения алхимика: 'Слизь зеленого цвета реагирует на железо. При контакте выделяется ядовитый газ.'",
+        "Последняя запись в журнале стражи: 'Они идут снизу. Барабаны... я слышу барабаны.'",
+        "Детский рисунок на клочке бумаги: 'Папа ушел в пещеру и не вернулся. Я нарисовал ему фонарь, чтобы он не заблудился.'",
+        "Философский трактат: 'Если дерево падает в лесу, а рядом нет никого, кто это услышит, издает ли оно звук? А если это падает человек?'",
+        "Инструкция к механизму: 'Не нажимать красную кнопку. Серьезно. Мы потеряли трех лучших инженеров.'",
+        "Отрывок из поэмы: 'Под камнем спит древнее зло, / Оно видит сны про тепло. / Но стоит лучу пробиться сквозь мрак, / Как мир охватит вечный мрак.'",
+        "Запись в судовом журнале (странно для подземелья): 'Шторм усиливается. Компас сошел с ума. Мы плывем в никуда.'",
+        "Предсказание гадалки: 'Ты найдешь то, что ищешь, но потеряешь то, что любишь.'",
+        "Надпись на могильной плите: 'Здесь лежит тот, кто слишком много знал.'",
+        "Черновик письма: 'Дорогой брат, прости меня за то, что я сделал с нашим отцом. Это было необходимо.'",
+        "Отчет разведчика: 'Вход в логово дракона охраняют два голема. Уязвимое место — суставы.'",
+        "Рецепт пирога: '3 стакана муки, 2 яйца, щепотка соли... и немного любви.'",
+        "Запись в дневнике сумасшедшего: 'Стены дышат. Пол пульсирует. Я часть этого места.'",
+        "Указ императора: 'Всем магам зарегистрироваться в гильдии. Незаконное использование магии карается смертью.'"
+    ];
+
+    let currentIndex = 0;
+
+    /**
+     * Получить следующую фразу из списка (циклически)
+     */
+    function getNextFragment() {
+        const text = BOOK_FRAGMENTS[currentIndex];
+        
+        // Увеличиваем индекс, если дошли до конца - сбрасываем в 0
+        currentIndex = (currentIndex + 1) % BOOK_FRAGMENTS.length;
+        
+        return text;
+    }
+
+    return {
+        getNextFragment: getNextFragment
+    };
+})();
+```
 
 
 
