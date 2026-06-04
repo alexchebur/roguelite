@@ -1,15 +1,15 @@
 /**
  * МОДУЛЬ СИСТЕМЫ КВЕСТОВ (quest_system.js)
- * Генерирует детерминированные квесты на основе координат и сидов.
- * Зависит от: name_generator.js, worldCurve.js, data.js, entity.js
+ * Генерирует детерминированные квесты, привязанные к РЕАЛЬНЫМ точкам интереса (POI) на глобальной карте.
+ * Зависит от: name_generator.js, worldCurve.js, data.js, entity.js, globalMap.js
  */
 
 const QuestSystemModule = (function() {
     'use strict';
 
     // === КОНФИГУРАЦИЯ ===
-    const MAX_QUEST_RADIUS = 50; // Максимальное расстояние до цели
-    const MIN_QUEST_RADIUS = 5;  // Минимальное расстояние (чтобы не отправлять за соседний дом)
+    const MAX_QUEST_RADIUS = 50; // Основной радиус поиска цели
+    const FALLBACK_RADIUS = 100; // Расширенный радиус, если в 50 клетках нет подземелий
 
     // === БАЗА ШАБЛОНОВ (Универсальные тексты с переменными) ===
     const QUEST_TEMPLATES = {
@@ -32,16 +32,10 @@ const QuestSystemModule = (function() {
 
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-    /**
-     * Выбирает случайный элемент из массива через SeededRandom
-     */
     function pickRandom(rng, array) {
         return array[Math.floor(rng.next() * array.length)];
     }
 
-    /**
-     * Генерирует текст квеста, подставляя переменные
-     */
     function formatBriefing(template, data) {
         let text = template;
         text = text.replace(/{item}/g, data.itemName || "древний предмет");
@@ -52,78 +46,92 @@ const QuestSystemModule = (function() {
         return text;
     }
 
-    /**
-     * Создает уникальный ID квеста, привязанный к локации и типу
-     */
     function generateQuestId(gx, gy, type, index) {
         return `Q_${type}_${gx}_${gy}_${index}`;
     }
 
-    // === ОСНОВНАЯ ЛОГИКА ГЕНЕРАЦИИ ===
+    /**
+     * НОВАЯ ФУНКЦИЯ: Поиск реального POI (подземелья) в заданном радиусе
+     */
+    function findRealPOI(gx, gy, radius, poiType) {
+        const candidates = [];
+        
+        // Проходим по квадрату, но фильтруем по кругу (манхэттенское расстояние)
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                
+                const tx = gx + dx;
+                const ty = gy + dy;
+                
+                // Спрашиваем у GlobalMapModule, есть ли здесь точка интереса
+                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
+                    const poi = GlobalMapModule.getPOI(tx, ty);
+                    if (poi && poi.type === poiType) {
+                        candidates.push(poi);
+                    }
+                }
+            }
+        }
+        return candidates.length > 0 ? candidates : null;
+    }
 
     /**
-     * Рассчитывает параметры цели квеста (координаты, имена, количества)
+     * Рассчитывает параметры цели квеста, привязываясь к РЕАЛЬНЫМ координатам карты
      */
     function calculateTargetParams(gx, gy, type, difficultyLevel) {
-        // Сид для целей квеста отличается от сида генерации карты (+777), 
-        // чтобы цели не совпадали со стенами или входами случайно
         const seed = createSeed(gx, gy, difficultyLevel) + 777; 
         const rng = new SeededRandom(seed);
-        
         let targetData = {};
 
-        // 1. Расчет координат цели (в радиусе 50)
-        let tx, ty, dist;
-        let attempts = 0;
-        do {
-            const angle = rng.next() * Math.PI * 2;
-            // Распределение расстояния: чем дальше, тем реже (опционально), здесь равномерно
-            const r = rng.int(MIN_QUEST_RADIUS, MAX_QUEST_RADIUS);
-            
-            tx = gx + Math.round(Math.cos(angle) * r);
-            ty = gy + Math.round(Math.sin(angle) * r);
-            
-            // Манхэттенское расстояние для проверки лимита
-            dist = Math.abs(tx - gx) + Math.abs(ty - gy);
-            attempts++;
-        } while (attempts < 50 && dist > MAX_QUEST_RADIUS);
-
-        targetData.targetX = tx;
-        targetData.targetY = ty;
-
-        // 2. Генерация названия локации для этих координат
-        // Мы генерируем имя так, как если бы там БЫЛО подземелье нужного типа
-        // Это создает иллюзию, что мир уже сгенерирован
-        const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue'];
-        const dType = pickRandom(rng, dungeonTypes);
+        // Для всех основных типов квестов нам нужна реальная локация (подземелье)
+        const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
         
-        // Используем существующий модуль имен
-        const locInfo = NameGeneratorModule.generateLocationData(tx, ty, dType);
-        targetData.locationName = locInfo.fullName;
-        targetData.dungeonType = dType;
+        let targetPoi = null;
+        if (candidates && candidates.length > 0) {
+            // Выбираем случайное подземелье из найденных детерминированно
+            targetPoi = rng.choice(candidates);
+        } else {
+            // FALLBACK: Если в радиусе 50 клеток генерация не создала ни одного подземелья
+            // (маловероятно, но возможно), ищем до 100 клеток, чтобы не ломать игру
+            const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
+            if (wideCandidates && wideCandidates.length > 0) {
+                targetPoi = rng.choice(wideCandidates);
+            }
+        }
 
-        // 3. Специфичные параметры по типу квеста
+        if (targetPoi) {
+            // Успех: мы нашли реальное подземелье!
+            targetData.targetX = targetPoi.x;
+            targetData.targetY = targetPoi.y;
+            targetData.locationName = targetPoi.name;
+            targetData.dungeonType = targetPoi.dungeonType;
+        } else {
+            // КРАЙНИЙ СЛУЧАЙ: Подземелий нет вообще нигде рядом. 
+            // Генерируем фейковую точку, но это произойдет крайне редко.
+            const angle = rng.next() * Math.PI * 2;
+            const r = rng.int(10, MAX_QUEST_RADIUS);
+            targetData.targetX = gx + Math.round(Math.cos(angle) * r);
+            targetData.targetY = gy + Math.round(Math.sin(angle) * r);
+            targetData.locationName = "Забытых руинах";
+            targetData.dungeonType = 'rogue';
+        }
+
+        // Специфичные параметры по типу квеста
         if (type === 'FETCH') {
-            // Выбираем предмет, который имеет смысл искать
             const possibleItems = DataModule.ITEM_TYPES.filter(i => 
-                i.type !== 'gold' && 
-                i.type !== 'book' && 
-                i.type !== 'food' &&
-                i.type !== 'potion_hp' &&
-                i.type !== 'potion_str'
+                i.type !== 'gold' && i.type !== 'book' && i.type !== 'food' && 
+                i.type !== 'potion_hp' && i.type !== 'potion_str'
             );
             const itemTemplate = pickRandom(rng, possibleItems);
-            targetData.itemName = itemTemplate.baseName; // Без прилагательного ("Меч", а не "Ржавый меч")
+            targetData.itemName = itemTemplate.baseName;
             targetData.itemType = itemTemplate.type;
         } 
         else if (type === 'HUNT') {
-            // Выбираем врага, соответствующего сложности региона
-            // Для простоты берем случайного из доступных, но можно фильтровать по depth
             const enemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
             const enemyTemplate = pickRandom(rng, enemies);
             
             targetData.enemyName = enemyTemplate.name;
-            // Количество растет с сложностью мира (WorldCurve)
             const baseCount = rng.int(3, 5);
             const multiplier = WorldCurveModule.getEnemyMultiplier(gx, gy);
             targetData.count = Math.max(1, Math.floor(baseCount * multiplier));
@@ -134,32 +142,21 @@ const QuestSystemModule = (function() {
 
     /**
      * Публичная функция: Создает объект квеста
-     * @param {number} gx - Глобальная X игрока (или города)
-     * @param {number} gy - Глобальная Y игрока (или города)
-     * @param {number} questIndex - Индекс квеста у этого NPC/точки (0, 1, 2...)
      */
     function createQuest(gx, gy, questIndex) {
         const types = ['FETCH', 'HUNT', 'EXPLORE'];
-        // Сид зависит от индекса, чтобы у одного NPC были разные квесты
         const rng = new SeededRandom(createSeed(gx, gy, questIndex));
         
         const type = pickRandom(rng, types);
+        const difficulty = Math.abs(gx) + Math.abs(gy); 
         
-        // Сложность региона (чем дальше от 0,0, тем сложнее)
-        const difficulty = Math.abs(gx) + Math.abs(gy);
-        
-        // 1. Получаем параметры цели
         const targetData = calculateTargetParams(gx, gy, type, difficulty);
         
-        // 2. Рассчитываем награду через WorldCurve
         const goldBase = rng.int(50, 150);
         const goldMult = WorldCurveModule.getGoldMultiplier(gx, gy);
         const finalGold = Math.floor(goldBase * goldMult);
-
-        // 3. Формируем ID
+        
         const id = generateQuestId(gx, gy, type, questIndex);
-
-        // 4. Выбираем шаблон текста и заполняем его
         const templates = QUEST_TEMPLATES[type];
         const template = pickRandom(rng, templates);
         
@@ -187,17 +184,13 @@ const QuestSystemModule = (function() {
     }
 
     /**
-     * Проверка выполнения квеста (вызывается из GameModule)
-     * @param {object} quest - Объект квеста
-     * @param {object} eventData - Данные события { type: 'kill'|'pickup'|'move', ... }
-     * @returns {boolean} true, если квест обновлен или выполнен
+     * Проверка выполнения квеста
      */
     function checkProgress(quest, eventData) {
         if (quest.isCompleted || !quest.isActive) return false;
 
         let updated = false;
 
-        // Тип HUNT: проверка убийств
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
                 quest.progress++;
@@ -205,29 +198,21 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // Тип FETCH: проверка наличия предмета в инвентаре
-        // Примечание: Полная проверка происходит при сдаче NPC, 
-        // но здесь мы можем дать подсказку, если игрок поднял нужный тип предмета
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
-            // Сравниваем базовые типы, так как имя может отличаться прилагательным
             if (eventData.itemType === quest.target.itemType) {
-                // Не увеличиваем прогресс численно, просто помечаем, что предмет найден
-                // Для UI можно использовать флаг, но для логики достаточно проверки инвентаря при сдаче
                 updated = true; 
             }
         }
 
-        // Тип EXPLORE: проверка координат
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
-            if (dist <= 1) { // Игрок наступил на клетку цели
+            if (dist <= 1) { 
                 quest.progress = quest.maxProgress;
                 quest.isCompleted = true;
-                return true; // Квест выполнен мгновенно
+                return true; 
             }
         }
 
-        // Проверка завершения для HUNT
         if (quest.type === 'HUNT' && quest.progress >= quest.maxProgress) {
             quest.isCompleted = true;
         }
