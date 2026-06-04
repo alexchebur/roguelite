@@ -22,8 +22,8 @@ const DataModule = (function() {
         // === УРОВЕНЬ 4-6 ===
         { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon" },
         { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold" },
-        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [3, 5], lootType: "food" },
-        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [4, 7], def: [2, 3], lootType: "weapon" },
+        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [1, 3], lootType: "food" },
+        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [3, 5], def: [2, 3], lootType: "weapon" },
 
         // === УРОВЕНЬ 7-9 ===
         { name: "Зомби", char: getChar('ENEMY_ZOMBIE'), color: "#607D8B", hp: [50, 70], atk: [6, 9], def: [2, 4], lootType: "gold" },
