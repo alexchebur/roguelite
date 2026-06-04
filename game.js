@@ -149,45 +149,43 @@ const GameModule = (function() {
 
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
     function tryGiveQuest(npc) {
-        // Проверяем, доступен ли модуль квестов
         if (typeof QuestSystemModule === 'undefined') return false;
+        
+        // Если это не квестодатель, выходим
+        if (!npc.isQuestGiver) return false;
 
-        // Генерируем уникальный ID для этого NPC в этом городе
-        // Используем координаты города из entrancePos (так как мы внутри города)
-        // Или можно использовать глобальные координаты входа в город, если они сохранены где-то еще.
-        // Для простоты используем текущие глобальные координаты игрока (он же в городе)
-        // Но лучше использовать координаты самого POI. 
-        // Так как entrancePos хранит точку входа, используем её.
         if (!entrancePos) return false;
-
         const cityGx = entrancePos.x;
         const cityGy = entrancePos.y;
         
-        // Индекс NPC можно взять из его имени или просто хардкод 0 для первого встречного
-        // Для разнообразия можно хешировать имя NPC
-        let npcIndex = 0;
-        for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
-
-        const questId = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5).id; // Генерируем временно чтобы получить ID
+        // Используем индекс 0, так как у нас один главный квестодатель на город
+        const questIndex = 0; 
         
-        // Проверяем, не выполняли ли мы уже этот квест и не активен ли он
+        // Генерируем ID, чтобы проверить, не брали ли мы его
+        const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, questIndex);
+        const questId = tempQuest.id;
+        
         const alreadyActive = activeQuests.some(q => q.id === questId);
         const alreadyDone = completedQuestIds.has(questId);
 
         if (!alreadyActive && !alreadyDone) {
-            // Создаем настоящий квест
-            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, questIndex);
             newQuest.isActive = true;
             activeQuests.push(newQuest);
             
-            RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
+            RenderModule.log(`📜 НОВЫЙ КВЕСТ:`, "event");
             RenderModule.log(newQuest.briefing, "info");
             
-            // Обновляем инспектор
             if (typeof RenderModule.updateInspector === 'function') {
                 RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
             }
             return true;
+        } else if (alreadyActive) {
+             RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
+             return true; // Блокируем обычный диалог
+        } else if (alreadyDone) {
+             RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
+             return true;
         }
         
         return false;
