@@ -88,7 +88,7 @@ const CombatModule = (function() {
 
     // === ВЫПАДЕНИЕ ЛУТА ===
     // Исправленная сигнатура: (enemy, player, depth, itemsArray, logFn)
-    function dropLoot(enemy, player, depth, itemsArray, logFn) {
+    function dropLoot(enemy, depth, itemsArray, logFn) {
         if (!enemy.lootType) return;
 
         // Шанс выпадения 40% (если random > 0.4, то выходим)
