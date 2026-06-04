@@ -583,6 +583,14 @@ const GameModule = (function() {
         deadEnemies.forEach(enemy => {
             // ✅ ИСПРАВЛЕНО: правильный порядок аргументов (enemy, depth, itemsArray, logFn)
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
+           
+    
+            activeQuests.forEach(q => {
+                if (QuestSystemModule.checkProgress(q, { type: 'kill', enemyName: enemy.name })) {
+                    RenderModule.log(`Квест: Убито ${enemy.name} (${q.progress}/${q.maxProgress})`, "info");
+                    if (q.isCompleted) completeQuest(q);
+                }
+            });
         });
 
         // Удаляем мертвых из массива
