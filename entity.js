@@ -23,7 +23,8 @@ const EntityModule = (function() {
             char: template.char, color: template.color,
             hp: hp, maxHp: hp,
             atk: atk, def: def,
-            isEnemy: true
+            isEnemy: true,
+            lootType: template.lootType
         };
     }
 
