@@ -66,7 +66,6 @@ const GameModule = (function() {
         
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
         RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
-        RenderModule.log("💡 ПК: Клик для осмотра. Мобильные: Тап для осмотра, Свайп для движения.", "info");
     }
 
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
@@ -93,7 +92,7 @@ const GameModule = (function() {
         const wx = sx + cam.x;
         const wy = sy + cam.y;
 
-        // 1. Враги (Атака или Осмотр)
+        // 1. Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
             const weapon = player.equipment.weapon;
@@ -174,7 +173,8 @@ const GameModule = (function() {
                 RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
             }
             
-            updateQuestCompass(); // Обновляем стрелку
+            // Сразу обновляем компас, так как мы еще в городе (режим dungeon), 
+            // но при выходе он должен показать направление
             return true;
         } else if (alreadyActive) {
              RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
@@ -198,10 +198,9 @@ const GameModule = (function() {
         completedQuestIds.add(quest.id);
         
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-        updateQuestCompass(); // Обновляем стрелку
+        updateQuestCompass(); // Обновляем компас после завершения
     }
 
-    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
     // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
     function getQuestArrow(targetX, targetY, currentX, currentY) {
         const dx = targetX - currentX;
@@ -228,9 +227,9 @@ const GameModule = (function() {
         const coordsEl = document.getElementById("ui-loc-coords");
         if (!coordsEl) return;
 
-        // Работаем только на глобальной карте
+        // Работаем ТОЛЬКО на глобальной карте
         if (gameMode !== 'global') {
-            // В подземелье пусть работает старая логика из render.js (Выход: стрелка)
+            // В подземелье/городе пусть работает старая логика из render.js (Выход: стрелка)
             // Мы просто выходим, чтобы не мешать render.js
             return;
         }
@@ -349,7 +348,7 @@ const GameModule = (function() {
                 });
             }
 
-            updateQuestCompass(); // Обновляем стрелку после хода
+            updateQuestCompass(); // <--- ВАЖНО: Обновляем стрелку после каждого шага
             renderGlobalMap();
         } else {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
@@ -394,6 +393,9 @@ const GameModule = (function() {
         explored.clear();
        
         RenderModule.log("Вы вернулись на поверхность", "info");
+        
+        // <--- ВАЖНО: Сразу обновляем компас при выходе
+        updateQuestCompass(); 
         renderGlobalMap();
     }
     
@@ -535,7 +537,7 @@ const GameModule = (function() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
         
-        // Обновляем компас/координаты
+        // <--- ВАЖНО: Обновляем компас при каждой отрисовке глобальной карты
         updateQuestCompass();
         
         if (player) {
