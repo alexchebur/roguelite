@@ -114,11 +114,9 @@ const GameModule = (function() {
 
         // 2. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
-        // В handleMapClick, блок NPC:
         if (npc) {
             const questGiven = tryGiveQuest(npc);
             if (!questGiven) {
-                // Обычный диалог
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
                 }
@@ -149,39 +147,38 @@ const GameModule = (function() {
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
     function tryGiveQuest(npc) {
         if (typeof QuestSystemModule === 'undefined') return false;
-        
-        // Если это не квестодатель, выходим
         if (!npc.isQuestGiver) return false;
 
         if (!entrancePos) return false;
         const cityGx = entrancePos.x;
         const cityGy = entrancePos.y;
         
-        // Используем индекс 0, так как у нас один главный квестодатель на город
-        const questIndex = 0; 
-        
-        // Генерируем ID, чтобы проверить, не брали ли мы его
-        const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, questIndex);
+        let npcIndex = 0;
+        for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+
+        const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
         const questId = tempQuest.id;
         
         const alreadyActive = activeQuests.some(q => q.id === questId);
         const alreadyDone = completedQuestIds.has(questId);
 
         if (!alreadyActive && !alreadyDone) {
-            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, questIndex);
+            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
             newQuest.isActive = true;
             activeQuests.push(newQuest);
             
-            RenderModule.log(`📜 НОВЫЙ КВЕСТ:`, "event");
+            RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
             RenderModule.log(newQuest.briefing, "info");
             
             if (typeof RenderModule.updateInspector === 'function') {
                 RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
             }
+            
+            updateQuestCompass(); // Обновляем компас сразу после взятия
             return true;
         } else if (alreadyActive) {
              RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
-             return true; // Блокируем обычный диалог
+             return true;
         } else if (alreadyDone) {
              RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
              return true;
@@ -195,16 +192,79 @@ const GameModule = (function() {
         if (!player) return;
         
         player.gold += quest.rewardGold;
-        // Можно добавить опыт
-        // player.xp += quest.rewardXp || 0; 
-        
         RenderModule.log(`🏆 Квест выполнен! Получено: ${quest.rewardGold} золотых.`, "loot");
         
-        // Удаляем из активных
         activeQuests = activeQuests.filter(q => q.id !== quest.id);
         completedQuestIds.add(quest.id);
         
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        updateQuestCompass(); // Обновляем компас (может исчезнуть или смениться)
+    }
+
+    // === ЛОГИКА КОМПАСА КВЕСТОВ ===
+    function getQuestCompassDirection() {
+        if (!player || activeQuests.length === 0) return null;
+
+        const activeQuest = activeQuests.find(q => !q.isCompleted);
+        if (!activeQuest) return null;
+
+        let targetX, targetY;
+        targetX = activeQuest.target.targetX;
+        targetY = activeQuest.target.targetY;
+
+        if (targetX === undefined || targetY === undefined) return null;
+
+        const playerPos = GlobalMapModule.getPlayerPosition();
+        const dx = targetX - playerPos.x;
+        const dy = targetY - playerPos.y;
+
+        const angle = Math.atan2(dy, dx);
+        let degrees = angle * (180 / Math.PI);
+        if (degrees < 0) degrees += 360;
+
+        return degrees;
+    }
+
+    function updateQuestCompass() {
+        const compassEl = document.getElementById("ui-loc-coords");
+        if (!compassEl) return;
+
+        // Показываем компас только на глобальной карте
+        if (gameMode !== 'global') {
+            // В подземелье можно вернуть стандартный текст или скрыть
+            // Но так как мы заменяем элемент, лучше просто скрыть или показать координаты
+            // Для простоты, если мы не на глобальной карте, компас не обновляем здесь, 
+            // он обновится при выходе на карту.
+            return;
+        }
+
+        const direction = getQuestCompassDirection();
+        
+        if (direction !== null) {
+            compassEl.style.display = "block";
+            compassEl.style.transform = `rotate(${direction}deg)`;
+            
+            const q = activeQuests.find(q => !q.isCompleted);
+            if (q) {
+                if (q.type === 'HUNT') {
+                    compassEl.style.color = "#ff5555";
+                    compassEl.innerHTML = "➤ Охота";
+                } else if (q.type === 'FETCH') {
+                    compassEl.style.color = "#ffd700";
+                    compassEl.innerHTML = "➤ Поиск";
+                } else {
+                    compassEl.style.color = "#58a6ff";
+                    compassEl.innerHTML = "➤ Путь";
+                }
+            }
+        } else {
+            // Если активных квестов нет, показываем координаты
+            compassEl.style.display = "block";
+            compassEl.style.transform = "none";
+            compassEl.style.color = "var(--text-dim)";
+            const playerPos = GlobalMapModule.getPlayerPosition();
+            compassEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+        }
     }
 
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
@@ -290,10 +350,9 @@ const GameModule = (function() {
                 return;
             }
 
-            // ✅ ИСПРАВЛЕНО: Проверка квестов типа EXPLORE/FETCH при движении
+            // Проверка квестов типа EXPLORE/FETCH при движении
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
-                    // Передаем текущие координаты игрока
                     if (QuestSystemModule.checkProgress(q, { type: 'move', x: playerPos.x, y: playerPos.y })) {
                          RenderModule.log(`📍 Квест выполнен: Вы достигли ${q.target.locationName}!`, "event");
                          grantReward(q);
@@ -301,6 +360,7 @@ const GameModule = (function() {
                 });
             }
 
+            updateQuestCompass(); // Обновляем стрелку после хода
             renderGlobalMap();
         } else {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
@@ -485,7 +545,9 @@ const GameModule = (function() {
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
-        document.getElementById("ui-loc-coords").textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+        
+        // Обновляем компас/координаты
+        updateQuestCompass();
         
         if (player) {
             const globalLocData = {
@@ -604,7 +666,7 @@ const GameModule = (function() {
         deadEnemies.forEach(enemy => {
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
    
-            // ✅ ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
+            // ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
                     if (QuestSystemModule.checkProgress(q, { type: 'kill', enemyName: enemy.name })) {
@@ -649,8 +711,6 @@ const GameModule = (function() {
 
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
-            // При столкновении с NPC тоже можно попробовать дать квест, если игрок не двигается
-            // Но обычно квесты дают кликом. Здесь просто диалог.
             RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             moveNpcs(); 
             moveEnemies();
@@ -682,12 +742,11 @@ const GameModule = (function() {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
-                // ✅ ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
                 if (typeof QuestSystemModule !== 'undefined') {
                     activeQuests.forEach(q => {
                         if (QuestSystemModule.checkProgress(q, { type: 'pickup', itemType: item.type })) {
                              RenderModule.log(`📦 Это предмет для квеста!`, "info");
-                             // Квест завершается только при сдаче NPC, но мы можем пометить прогресс
                         }
                     });
                 }
@@ -739,7 +798,6 @@ const GameModule = (function() {
         return player;
     }
 
-    // Экспортируем функцию получения квестов для UI (если захотите вывести список)
     function getActiveQuests() {
         return activeQuests;
     }
