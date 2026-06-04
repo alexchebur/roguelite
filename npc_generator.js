@@ -78,6 +78,18 @@ const NpcGeneratorModule = (function() {
                 direction: directions[rng.int(0, 3)] 
             });
         }
+        // В конце функции generateCityNpcs, перед return npcs;
+        if (npcs.length > 0) {
+            // Делаем первого NPC квестодателем
+            const giver = npcs[0];
+            giver.isQuestGiver = true;
+            giver.color = "#FFD700"; // Золотой
+            giver.name = "Капитан стражи"; // Уникальное имя
+            giver.dialog = "Город нуждается в твоей помощи.";
+        
+            // Остальные NPC остаются обычными
+        }
+
         return npcs;
     }
 
