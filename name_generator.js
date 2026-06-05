@@ -80,36 +80,24 @@ function createSeed(x, y, depth = 0) {
 }
 
 // Генератор названий
+// Генератор названий
 const NameGeneratorModule = {
     
-    
-    
-    // Добавить в NameGeneratorModule
-    // === ГЕНЕРАЦИЯ НАЗВАНИЙ ГОРОДОВ (обновленная) ===
+    // === ГЕНЕРАЦИЯ НАЗВАНИЙ ГОРОДОВ ===
     generateCityName(x, y) {
         const seed = createSeed(x, y);
         const rng = new SeededRandom(seed);
         
-        // 1. Используем слоги из "Светлого мира" для основы названия
         const lightTheme = NAME_COMPONENTS.themes.light;
-        
-        // Выбираем префикс и корень
         const prefix = rng.choice(lightTheme.prefixes);
         const root = rng.choice(lightTheme.roots);
-        
-        // Собираем основу: Префикс + Корень (иногда можно добавить еще один корень для длины)
         let baseName = prefix + root;
         
-        // 2. Используем классические окончания для городов
         const citySuffixes = ['град', 'стед', 'борг', 'виль', 'хейм', 'форд', 'порт', 'полис', 'хольм', 'дол', 'фьорд', 'федль', 'карт', 'хольт', 'трис', 'трайн', 'кройн'];
         const suffix = rng.choice(citySuffixes);
         
-        // 3. Формируем итоговое название с большой буквы
-        // Пример: Лум + ан + град = Луманград
         return (baseName + suffix).charAt(0).toUpperCase() + (baseName + suffix).slice(1);
     },
-    
-    
     
     generateName(random, theme) {
         let name = '';
@@ -133,12 +121,10 @@ const NameGeneratorModule = {
     },
     
     getLocationType(random, dungeonType) {
-        // Если передан конкретный тип подземелья и он существует в locationTypes
         if (dungeonType && NAME_COMPONENTS.locationTypes[dungeonType]) {
             const typeVariants = NAME_COMPONENTS.locationTypes[dungeonType];
             return random.choice(typeVariants);
         }
-        // Fallback: случайный тип (на случай ошибки)
         const typeKeys = Object.keys(NAME_COMPONENTS.locationTypes);
         const randomType = random.choice(typeKeys);
         const typeVariants = NAME_COMPONENTS.locationTypes[randomType];
@@ -183,14 +169,12 @@ const NameGeneratorModule = {
         return NAME_COMPONENTS.themes[themeKey];
     },
 
-    // ИСПРАВЛЕНА: теперь принимает dungeonType
     generateLocationData(x, y, dungeonType) {
         const seed = createSeed(x, y);
         const rng = new SeededRandom(seed);
         
         const theme = this.getRandomTheme(rng);
         const namePart = this.generateName(rng, theme);
-        // Передаём dungeonType в getLocationType
         const typePart = this.getLocationType(rng, dungeonType);
         const description = this.generateDescription(rng);
         
@@ -199,6 +183,24 @@ const NameGeneratorModule = {
             description: description,
             themeName: theme.name,
             seed: seed
+        };
+    },
+
+    // === ГЕНЕРАЦИЯ ИМЕНИ БОССА (ДОБАВЛЕНО ВНУТРЬ МОДУЛЯ) ===
+    generateBossName: function(x, y, depth) {
+        const seed = createSeed(x, y, depth) + 777; 
+        const rng = new SeededRandom(seed);
+        
+        const race = rng.choice(BOSS_DATA.races);
+        const pre = rng.choice(BOSS_DATA.syllables.prefixes);
+        const root = rng.choice(BOSS_DATA.syllables.roots);
+        const suf = rng.choice(BOSS_DATA.syllables.suffixes);
+        
+        const properName = (pre + root + suf).charAt(0).toUpperCase() + (pre + root + suf).slice(1);
+        
+        return {
+            fullName: `${race} ${properName}`,
+            bossType: race
         };
     }
 };
