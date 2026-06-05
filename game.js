@@ -609,60 +609,7 @@ const GameModule = (function() {
         }
     }
 
-// В файле game.js
 
-function moveNpcs() {
-    if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
-    
-    const PLAYER_SPEED_THRESHOLD = 10;
-    const width = DataModule.MAP_WIDTH;
-    const height = DataModule.MAP_HEIGHT;
-
-    window.currentCityNpcs.forEach(npc => {
-        // Добавляем поля скорости, если их нет (для совместимости со старыми сохранениями/генерацией)
-        if (npc.speed === undefined) npc.speed = 5; // NPC медленные
-        if (npc.energy === undefined) npc.energy = 0;
-
-        npc.energy += npc.speed;
-
-        if (npc.energy >= PLAYER_SPEED_THRESHOLD) {
-            npc.energy -= PLAYER_SPEED_THRESHOLD;
-
-            // --- СТАРАЯ ЛОГИКА ДВИЖЕНИЯ NPC ---
-            if (!npc.direction) {
-                const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
-                npc.direction = dirs[Math.floor(Math.random() * dirs.length)];
-            }
-
-            let moved = false;
-            let attempts = 0;
-            while (!moved && attempts < 4) {
-                const nx = npc.x + npc.direction.dx;
-                const ny = npc.y + npc.direction.dy;
-
-                if (nx < 0 || nx >= width || ny < 0 || ny >= height || MapModule.isWall(nx, ny)) {
-                    npc.direction = getRandomDirection();
-                    attempts++;
-                    continue;
-                }
-
-                const blockedByNpc = window.currentCityNpcs.some(other => other !== npc && other.x === nx && other.y === ny);
-                const blockedByPlayer = (player.x === nx && player.y === ny);
-                const blockedByEnemy = enemies.some(e => e.hp > 0 && e.x === nx && e.y === ny);
-
-                if (blockedByNpc || blockedByPlayer || blockedByEnemy) {
-                    npc.direction = getRandomDirection();
-                    attempts++;
-                    continue;
-                }
-
-                npc.x = nx;
-                npc.y = ny;
-                moved = true;
-            }
-        }
-    });
-}
 
     // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
     
