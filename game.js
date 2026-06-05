@@ -827,6 +827,7 @@ const GameModule = (function() {
         }
 
         if (MapModule.isWall(nx, ny)) return;
+        
         // Проверка столкновения с боссом (учитываем его размер 2x2)
         const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
             (nx === e.x && ny === e.y) || 
@@ -861,7 +862,19 @@ const GameModule = (function() {
 
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
-            RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            // === ИЗМЕНЕНИЕ: Логика выдачи квестов при касании ===
+            let questHandled = false;
+            
+            // Проверяем, является ли NPC раздатчиком квестов
+            if (npc.isQuestGiver) {
+                questHandled = tryGiveQuest(npc);
+            }
+
+            // Если квест не был обработан (NPC обычный), показываем диалог
+            if (!questHandled) {
+                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            }
+            
             moveNpcs(); 
             moveEnemies();
             renderFrame();
