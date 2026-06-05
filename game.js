@@ -483,6 +483,7 @@ const GameModule = (function() {
     }    
     
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
         const enemyCount = 8 + Math.floor(depth * 1.5);
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
@@ -530,8 +531,11 @@ const GameModule = (function() {
                 worldGoldMult
             );
             items.push(...goldItems);
+        }
+
         // === СПАВН БОССА (только в подземельях типа 'boss') ===
-        if (dungeonType === 'boss') {
+        // Используем currentDungeonTypeName, так как он уже установлен в loadDungeonLevel
+        if (currentDungeonTypeName === 'boss') {
             // Ищем безопасную позицию подальше от игрока и лестниц
             let bossPos = null;
             let attempts = 0;
@@ -554,13 +558,14 @@ const GameModule = (function() {
             }
 
             if (bossPos) {
-                const bossNameData = NameGeneratorModule.generateBossName(gx, gy, depth);
-                const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossNameData);
-                enemies.push(bossEntity);
-                RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
+                // Проверяем, загружен ли модуль сущностей с функцией createBoss
+                if (typeof EntityModule.createBoss === 'function') {
+                    const bossNameData = NameGeneratorModule.generateBossName(gx, gy, depth);
+                    const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossNameData);
+                    enemies.push(bossEntity);
+                    RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
+                }
             }
-        }
-    
         }
     }  
 
