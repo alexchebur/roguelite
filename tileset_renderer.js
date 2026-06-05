@@ -107,7 +107,7 @@ const TilesetRenderer = (function() {
         }
     }
 
-    // === ОТРИСОВКА ===
+    // === ОТРИСОВКА ПО СИМВОЛУ (стандартная) ===
     function draw(ctx, char, screenX, screenY, color) {
         if (!ctx) return;
 
@@ -165,10 +165,60 @@ const TilesetRenderer = (function() {
         ctx.restore();
     }
 
+    // === НОВАЯ ФУНКЦИЯ: ОТРИСОВКА ПО КЛЮЧУ РЕЕСТРА (для боссов 2x2) ===
+    function drawByKey(ctx, key, screenX, screenY, color) {
+        if (!ctx) return;
+
+        const destX = screenX * TILE_SIZE;
+        const destY = screenY * TILE_SIZE;
+        
+        // Получаем данные тайла напрямую из реестра спрайтов
+        const tileData = getTileData(key); 
+
+        // Если ключа нет в реестре, рисуем красный квадрат ошибки
+        if (!tileData) {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            console.warn(`⚠️ Не найден ключ спрайта: ${key}`);
+            return;
+        }
+
+        const img = spriteSheets[tileData.file];
+
+        if (!img || !isReady) {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            return;
+        }
+
+        const srcX = tileData.x * TILE_SIZE;
+        const srcY = tileData.y * TILE_SIZE;
+
+        // Проверка границ
+        if (srcX + TILE_SIZE > img.width || srcY + TILE_SIZE > img.height) {
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+            return;
+        }
+
+        ctx.save();
+        ctx.clearRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+
+        // Окраска
+        if (color && color !== '#fff' && color !== '#ffffff' && color !== '#000' && color !== '#000000') {
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = color;
+            ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
+        }
+        ctx.restore();
+    }
+
     // === ПУБЛИЧНЫЙ ИНТЕРФЕЙС ===
     return {
         init,
         draw,
+        drawByKey, // <--- ДОБАВЛЕНО ЗДЕСЬ
         TILE_SIZE,
         isReady: () => isReady
     };
