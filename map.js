@@ -113,17 +113,13 @@ const MapModule = (function() {
         
         let startPos;
         if (entryPoint === 'down') {
-            // Наступили на < (спуск) → появляемся у > (stairsUp)
             startPos = getSafePos(stairsUp);
-            console.log(`✅ Спуск: появляемся у > (${startPos.x},${startPos.y})`);
         } else if (entryPoint === 'up') {
-            // Наступили на > (подъём) → появляемся у < (stairsDown)
             startPos = getSafePos(stairsDown);
-            console.log(`✅ Подъём: появляемся у < (${startPos.x},${startPos.y})`);
         } else {
-            // Первый вход в подземелье
-            startPos = getSafePos(stairsUp);
-            console.log(`✅ Вход: появляемся у > (${startPos.x},${startPos.y})`);
+            // Используем startPos из генератора, но на всякий случай пропускаем через getSafePos
+            startPos = getSafePos(result.startPos); 
+            console.log(`✅ Вход: появляемся у (${startPos.x},${startPos.y})`);
         }
         
         return startPos;
