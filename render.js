@@ -261,10 +261,17 @@ const RenderModule = (function() {
                     
                     if (sx >= -2 && sx < COLS && sy >= -2 && sy < ROWS && isVisible) {
                         if (e.isBoss) {
-                            // === ОТРИСОВКА БОССА 2x2 ===
-                            // Используем символ босса (например, 'B' или тот, что в entity.js)
-                            // И рисуем его как "большой" спрайт
-                            TilesetRenderer.drawBig(ctx, e.char, sx, sy, e.color);
+                            // === ОТРИСОВКА БОССА 2x2 ИЗ 4 ЧАСТЕЙ ===
+                            // Определяем префикс ключей в зависимости от типа босса
+                            let prefix = 'BOSS_DRAGON'; 
+                            if (e.bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
+                            else if (e.bossType.includes('Лич')) prefix = 'BOSS_LICH';
+                            
+                            // Рисуем 4 тайла: TL (Top-Left), TR, BL, BR
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_TL`, sx, sy, e.color);       // Верх-Лево
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_TR`, sx + 1, sy, e.color);   // Верх-Право
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_BL`, sx, sy + 1, e.color);   // Низ-Лево
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_BR`, sx + 1, sy + 1, e.color); // Низ-Право
                         } else {
                             // Обычный враг
                             TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
@@ -273,7 +280,6 @@ const RenderModule = (function() {
                 }
             });
         }
-
         // 4. NPC
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
