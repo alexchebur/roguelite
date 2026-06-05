@@ -530,6 +530,37 @@ const GameModule = (function() {
                 worldGoldMult
             );
             items.push(...goldItems);
+        // === СПАВН БОССА (только в подземельях типа 'boss') ===
+        if (dungeonType === 'boss') {
+            // Ищем безопасную позицию подальше от игрока и лестниц
+            let bossPos = null;
+            let attempts = 0;
+            while (!bossPos && attempts < 100) {
+                const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+                const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+                
+                // Проверяем, что это пол И что 2x2 область свободна от стен
+                if (!MapModule.isWall(rx, ry) && 
+                    !MapModule.isWall(rx+1, ry) && 
+                    !MapModule.isWall(rx, ry+1) && 
+                    !MapModule.isWall(rx+1, ry+1)) {
+                    
+                    const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
+                    if (distToPlayer > 15) { // Подальше от игрока
+                        bossPos = { x: rx, y: ry };
+                    }
+                }
+                attempts++;
+            }
+
+            if (bossPos) {
+                const bossNameData = NameGeneratorModule.generateBossName(gx, gy, depth);
+                const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossNameData);
+                enemies.push(bossEntity);
+                RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
+            }
+        }
+    
         }
     }  
 
@@ -623,21 +654,17 @@ const GameModule = (function() {
         enemies.forEach(e => {
             if (e.hp <= 0) return;
             
-            // Получаем стандартный радиус обзора (8) или переопределенный (если в нас стреляли)
-            const aggroRange = e.aggroOverride || 8;
-            
             const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-            
-            if (dist < aggroRange) {
-                // Если враг был "разбужен" выстрелом, сбрасываем флаг через время или оставляем до смерти
-                // (можно добавить таймер, но пока оставим так)
-                
-                if (dist === 1) {
-                    CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
-                    checkDeath();
-                } else {
-                    const astar = new ROT.Path.AStar(player.x, player.y,
-                         (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+            const inSight = dist <= 8; // Радиус обнаружения
+
+            if (e.isBoss) {
+                // === ЛОГИКА БОССА ===
+                let nextX = e.x, nextY = e.y;
+
+                if (inSight) {
+                    // 1. Игрок в поле зрения: Идем к игроку по A*
+                    const astar = new ROT.Path.AStar(player.x, player.y, 
+                        (x, y) => !MapModule.isWall(x, y), { topology: 8 });
                     
                     let next = null;
                     astar.compute(e.x, e.y, (x, y) => {
@@ -645,16 +672,77 @@ const GameModule = (function() {
                     });
 
                     if (next) {
-                        const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
-                        const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
+                        // Проверка: не уперся ли в игрока (для атаки)
+                        if (next.x === player.x && next.y === player.y) {
+                            CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                            checkDeath();
+                            return; // Ход сделан
+                        }
+                        nextX = next.x;
+                        nextY = next.y;
+                    }
+                } else {
+                    // 2. Игрок НЕ в поле зрения: Случайное блуждание
+                    const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
+                    // Перемешиваем направления для естественности
+                    dirs.sort(() => Math.random() - 0.5);
+                    
+                    for (const dir of dirs) {
+                        const nx = e.x + dir.dx;
+                        const ny = e.y + dir.dy;
                         
-                        if (!isBlockedByNpc && !isBlockedByEnemy) {
-                            e.x = next.x;
-                            e.y = next.y;
+                        // Проверка, что ВСЯ область 2x2 нового положения свободна
+                        if (!MapModule.isWall(nx, ny) && 
+                            !MapModule.isWall(nx+1, ny) && 
+                            !MapModule.isWall(nx, ny+1) && 
+                            !MapModule.isWall(nx+1, ny+1)) {
+                            
+                            // Не наступать на игрока при блуждании
+                            if ((nx === player.x && ny === player.y) || 
+                                (nx+1 === player.x && ny === player.y) ||
+                                (nx === player.x && ny+1 === player.y) ||
+                                (nx+1 === player.x && ny+1 === player.y)) {
+                                continue;
+                            }
+                            
+                            nextX = nx;
+                            nextY = ny;
+                            break;
                         }
                     }
                 }
-             }
+
+                // Применяем движение босса
+                if (nextX !== e.x || nextY !== e.y) {
+                    e.x = nextX;
+                    e.y = nextY;
+                }
+
+            } else {
+                // === СТАНДАРТНАЯ ЛОГИКА ОБЫЧНЫХ ВРАГОВ (без изменений) ===
+                const aggroRange = e.aggroOverride || 8;
+                if (dist < aggroRange) {
+                    if (dist === 1) {
+                        CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                        checkDeath();
+                    } else {
+                        const astar = new ROT.Path.AStar(player.x, player.y,
+                            (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                        let next = null;
+                        astar.compute(e.x, e.y, (x, y) => {
+                            if (!next && (x !== e.x || y !== e.y)) next = { x, y };
+                        });
+                        if (next) {
+                            const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
+                            const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
+                            if (!isBlockedByNpc && !isBlockedByEnemy) {
+                                e.x = next.x;
+                                e.y = next.y;
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
     
@@ -691,6 +779,22 @@ const GameModule = (function() {
         }
 
         if (MapModule.isWall(nx, ny)) return;
+        // Проверка столкновения с боссом (учитываем его размер 2x2)
+        const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
+            (nx === e.x && ny === e.y) || 
+            (nx === e.x + 1 && ny === e.y) || 
+            (nx === e.x && ny === e.y + 1) || 
+            (nx === e.x + 1 && ny === e.y + 1)
+        ));
+        if (bossInWay) {
+            // Если игрок пытается войти в клетку босса, атакуем его
+            CombatModule.attack(player, bossInWay, (m, t) => RenderModule.log(m, t));
+            checkDeath();
+            moveNpcs();
+            moveEnemies();
+            renderFrame();
+            return;
+        }
 
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
