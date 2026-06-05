@@ -609,13 +609,26 @@ const GameModule = (function() {
         }
     }
 
-    // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
-    function moveNpcs() {
-        if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
-        const width = DataModule.MAP_WIDTH;
-        const height = DataModule.MAP_HEIGHT;
+// В файле game.js
 
-        window.currentCityNpcs.forEach(npc => {
+function moveNpcs() {
+    if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
+    
+    const PLAYER_SPEED_THRESHOLD = 10;
+    const width = DataModule.MAP_WIDTH;
+    const height = DataModule.MAP_HEIGHT;
+
+    window.currentCityNpcs.forEach(npc => {
+        // Добавляем поля скорости, если их нет (для совместимости со старыми сохранениями/генерацией)
+        if (npc.speed === undefined) npc.speed = 5; // NPC медленные
+        if (npc.energy === undefined) npc.energy = 0;
+
+        npc.energy += npc.speed;
+
+        if (npc.energy >= PLAYER_SPEED_THRESHOLD) {
+            npc.energy -= PLAYER_SPEED_THRESHOLD;
+
+            // --- СТАРАЯ ЛОГИКА ДВИЖЕНИЯ NPC ---
             if (!npc.direction) {
                 const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
                 npc.direction = dirs[Math.floor(Math.random() * dirs.length)];
@@ -647,13 +660,9 @@ const GameModule = (function() {
                 npc.y = ny;
                 moved = true;
             }
-        });
-    }
-
-    function getRandomDirection() {
-        const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
-        return dirs[Math.floor(Math.random() * dirs.length)];
-    }
+        }
+    });
+}
 
     function moveEnemies() {
         enemies.forEach(e => {
