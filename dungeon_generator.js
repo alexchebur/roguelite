@@ -115,10 +115,11 @@ function generateRoomCorridorMap(rand, width, height) {
 }
 
 // === ГЕНЕРАЦИЯ ПЕЩЕР (CAVE) С ИСПРАВЛЕНИЕМ ПРОХОДИМОСТИ ===
-function generateCaveMap(rand, width, height) {
-    // 1. Шум
+unction generateCaveMap(rand, width, height) {
+    // 1. Инициализация шумом
     let grid = Array(height).fill().map(() => Array(width).fill(1));
-    const fillChance = 0.45;
+    const fillChance = 0.45; 
+    
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
@@ -129,13 +130,12 @@ function generateCaveMap(rand, width, height) {
         }
     }
 
-    // 2. Сглаживание
+    // 2. Сглаживание (5 итераций для более крупных полостей)
     for (let i = 0; i < 5; i++) {
         grid = smoothMap(grid, width, height);
     }
 
-    // 3. Исправление диагоналей (Утолщение)
-    // Запускаем 2 раза для надежности широких проходов
+    // 3. Утолщение стен (исправление диагоналей)
     grid = thickenWalls(grid, width, height);
     grid = thickenWalls(grid, width, height);
 
@@ -143,7 +143,8 @@ function generateCaveMap(rand, width, height) {
     const regions = findRegions(grid, width, height);
     regions.sort((a, b) => b.cells.length - a.cells.length);
 
-    if (regions.length < 2 || regions[0].cells.length < (width * height * 0.15)) {
+    // Если карта получилась "плохой" (слишком мало пола), перегенерируем рекурсивно
+    if (regions.length === 0 || regions[0].cells.length < (width * height * 0.1)) {
         return generateCaveMap(rand, width, height);
     }
 
@@ -154,11 +155,30 @@ function generateCaveMap(rand, width, height) {
         connectRegions(grid, mainRegion, target, width, height, rand);
     }
 
-    // 5. Финальное утолщение после прорытия туннелей
+    // Финальное утолщение после туннелей
     grid = thickenWalls(grid, width, height);
 
-    return grid;
+    // 5. ГАРАНТИРОВАННЫЙ ПОИСК СТАРТОВОЙ ТОЧКИ
+    // Берем центр самой большой пещеры как старт
+    let startX = Math.floor(width / 2);
+    let startY = Math.floor(height / 2);
+    
+    // Если центр — стена, ищем ближайший пол в главном регионе
+    if (grid[startY][startX] === 1) {
+        let minDist = Infinity;
+        for (const cell of mainRegion.cells) {
+            const dist = Math.abs(cell.x - startX) + Math.abs(cell.y - startY);
+            if (dist < minDist) {
+                minDist = dist;
+                startX = cell.x;
+                startY = cell.y;
+            }
+        }
+    }
+
+    return { grid, startPos: { x: startX, y: startY } };
 }
+
 
 // === СТАРЫЙ CELLULAR (ТОЖЕ ЧИНИМ) ===
 function generateCellularMap(rand, width, height) {
@@ -323,17 +343,23 @@ const DungeonGeneratorModule = {
         const dungeonType = selectDungeonType(rand);
         
         let mapGrid;
+        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+
         if (dungeonType.name === 'cave') {
-            mapGrid = generateCaveMap(rand, width, height);
+            // Cave возвращает объект с grid и startPos
+            const caveResult = generateCaveMap(rand, width, height);
+            mapGrid = caveResult.grid;
+            startPos = caveResult.startPos;
         } else if (dungeonType.name === 'cellular') {
             mapGrid = generateCellularMap(rand, width, height);
+            // Для cellular тоже можно добавить поиск старта, если нужно
         } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
              mapGrid = generateArenaMap(rand, width, height);
         } else {
             mapGrid = generateRoomCorridorMap(rand, width, height);
         }
 
-        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+        // Финальная проверка: если startPos все еще в стене (для других типов), ищем пол
         if (mapGrid[startPos.y][startPos.x] === 1) {
             let found = false;
             for(let r=1; r < Math.max(width,height); r++) {
@@ -352,6 +378,7 @@ const DungeonGeneratorModule = {
                 if(found) break;
             }
         }
+
         return {
             mapData: mapGrid,
             dungeonType: dungeonType,
