@@ -262,7 +262,26 @@ const EntityModule = (function() {
 
         return placedItems;
     }
+    // === СОЗДАНИЕ БОССА ===
+    function createBoss(x, y, depth, bossData) {
+        // Базовые статы босса сильно масштабируются от глубины
+        const hp = Math.floor(150 * (1 + depth * 0.4));
+        const atk = Math.floor(15 * (1 + depth * 0.3));
+        const def = Math.floor(8 * (1 + depth * 0.3));
 
+        return {
+            x: x, y: y,
+            name: bossData.fullName,
+            char: 'B', // Символ-заглушка, рендерер использует isBoss
+            color: '#ff0000',
+            hp: hp, maxHp: hp,
+            atk: atk, def: def,
+            isEnemy: true,
+            isBoss: true,          // ФЛАГ: это босс
+            bossType: bossData.bossType, // Для выбора спрайтов
+            lootType: 'boss_loot'
+        };
+    }
     return {
         createPlayer,
         createEnemy,
@@ -270,7 +289,8 @@ const EntityModule = (function() {
         spawnEnemies,
         spawnItems,
         spawnGold,
-        spawnItemsInCity // <--- ДОБАВИТЬ ЭКСПОРТ
+        spawnItemsInCity,
+        createBoss// <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
 
