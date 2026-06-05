@@ -4,23 +4,38 @@ const CombatModule = (function() {
     
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА ЛИНИИ ВИДИМОСТИ (LOS) ===
     // Проверяет, есть ли прямая видимость между (x1,y1) и (x2,y2) без стен
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА ЛИНИИ ВИДИМОСТИ (LOS) ===
+    // Проверяет, есть ли прямая видимость между (x1,y1) и (x2,y2) без стен
     function hasLineOfSight(x1, y1, x2, y2) {
-        // Используем встроенный в ROT.js алгоритм Raycasting
-        let blocked = false;
-        const raycaster = new ROT.Ray(x1, y1, x2, y2);
-        
-        raycaster.compute((x, y) => {
-            // Если мы достигли цели, прерываем проверку (цель видна)
-            if (x === x2 && y === y2) return true; 
-            
-            // Если на пути стена - блокируем
-            if (MapModule.isWall(x, y)) {
-                blocked = true;
-                return true; // Остановить луч
+        // Если точка совпадает с целью - видим
+        if (x1 === x2 && y1 === y2) return true;
+
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = (x1 < x2) ? 1 : -1;
+        const sy = (y1 < y2) ? 1 : -1;
+        let err = dx - dy;
+
+        let cx = x1;
+        let cy = y1;
+
+        while (true) {
+            // Если дошли до цели - путь чист
+            if (cx === x2 && cy === y2) return true;
+
+            // Если наткнулись на стену - путь заблокирован
+            if (MapModule.isWall(cx, cy)) return false;
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                cx += sx;
             }
-        });
-        
-        return !blocked;
+            if (e2 < dx) {
+                err += dx;
+                cy += sy;
+            }
+        }
     }
 
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ АНИМАЦИИ УДАРА ===
