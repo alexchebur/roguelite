@@ -622,15 +622,22 @@ const GameModule = (function() {
     function moveEnemies() {
         enemies.forEach(e => {
             if (e.hp <= 0) return;
+            
+            // Получаем стандартный радиус обзора (8) или переопределенный (если в нас стреляли)
+            const aggroRange = e.aggroOverride || 8;
+            
             const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
             
-            if (dist < 8) {
+            if (dist < aggroRange) {
+                // Если враг был "разбужен" выстрелом, сбрасываем флаг через время или оставляем до смерти
+                // (можно добавить таймер, но пока оставим так)
+                
                 if (dist === 1) {
                     CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                     checkDeath();
                 } else {
                     const astar = new ROT.Path.AStar(player.x, player.y,
-                        (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                         (x, y) => !MapModule.isWall(x, y), { topology: 8 });
                     
                     let next = null;
                     astar.compute(e.x, e.y, (x, y) => {
@@ -647,7 +654,7 @@ const GameModule = (function() {
                         }
                     }
                 }
-            }
+             }
         });
     }
     
