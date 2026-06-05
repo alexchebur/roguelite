@@ -820,7 +820,6 @@ window.onload = async () => {
 
 /**
  * МОДУЛЬ ГЕНЕРАЦИИ ПОДЗЕМЕЛИЙ (dungeon_generator.js)
- * Использует SeededRandom и createSeed из name_generator.js
  */
 
 // Проверка зависимостей
@@ -828,14 +827,15 @@ if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
     console.error("Ошибка: name_generator.js должен быть загружен перед dungeon_generator.js");
 }
 
+// Определяем типы здесь, чтобы они были доступны и в этом файле, и могли быть экспортированы
 const DUNGEON_TYPES = [
-    { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#333', wallColor: '#555' }, 
-    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
-    { name: 'icy', weight: 20, emoji: '❄️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#aaddff', wallColor: '#ffffff' },
-    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#781a6f', wallColor: '#995792' },
-    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: getChar('FLOOR_ORGANIC'), wallChar: getChar('WALL_ORGANIC'), floorColor: '#2e7d32', wallColor: '#4caf50' },
-    { name: 'arena', weight: 3, emoji: '🦴', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#962e1b', wallColor: '#cf2f13' },
-    { name: 'boss', weight: 2, emoji: '👑', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#b71c1c', wallColor: '#880e4f' }
+    { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: '.', wallChar: '#', floorColor: '#333', wallColor: '#555' }, 
+    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: 'o', wallChar: 'O', floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
+    { name: 'icy', weight: 20, emoji: '❄️', floorChar: '.', wallChar: '#', floorColor: '#aaddff', wallColor: '#ffffff' },
+    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: '.', wallChar: '#', floorColor: '#781a6f', wallColor: '#995792' },
+    { name: 'cellular', weight: 10, emoji: '🧿', floorChar: 'o', wallChar: 'O', floorColor: '#2e7d32', wallColor: '#4caf50' },
+    { name: 'arena', weight: 3, emoji: '🦴', floorChar: '.', wallChar: '#', floorColor: '#962e1b', wallColor: '#cf2f13' },
+    { name: 'boss', weight: 2, emoji: '👑', floorChar: '.', wallChar: '#', floorColor: '#b71c1c', wallColor: '#880e4f' }
 ];
 
 const TOTAL_WEIGHT = DUNGEON_TYPES.reduce((sum, t) => sum + t.weight, 0);
@@ -851,6 +851,27 @@ function selectDungeonType(rand) {
     return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
 }
 
+// === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: УТОЛЩЕНИЕ СТЕН (FIX DIAGONALS) ===
+function thickenWalls(grid, width, height) {
+    const changes = []; 
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            if (grid[y][x] === 1) {
+                const horizontalGap = (grid[y][x-1] === 0 && grid[y][x+1] === 0);
+                const verticalGap = (grid[y-1][x] === 0 && grid[y+1][x] === 0);
+                if (horizontalGap || verticalGap) {
+                    changes.push({x, y});
+                }
+            }
+        }
+    }
+    for (const pos of changes) {
+        grid[pos.y][pos.x] = 0;
+    }
+    return grid;
+}
+
+// === СТАНДАРТНАЯ ГЕНЕРАЦИЯ (КОМНАТЫ) ===
 function generateRoomCorridorMap(rand, width, height) {
     const grid = Array(height).fill().map(() => Array(width).fill(1));
     const rooms = [];
@@ -859,7 +880,7 @@ function generateRoomCorridorMap(rand, width, height) {
         const w = rand.int(4, 8);
         const h = rand.int(4, 8);
         const x = rand.int(1, width - w - 1);
-        const y = rand.int(1, height - h - 1);
+        const y = rand.int(1, height - h - 1); 
         let overlaps = false;
         for (const r of rooms) {
             if (x < r.x + r.w + 1 && x + w + 1 > r.x && y < r.y + r.h + 1 && y + h + 1 > r.y) {
@@ -883,19 +904,84 @@ function generateRoomCorridorMap(rand, width, height) {
             const cy1 = Math.floor(r1.y + r1.h / 2);
             const cx2 = Math.floor(r2.x + r2.w / 2);
             const cy2 = Math.floor(r2.y + r2.h / 2);
+            
             const stepX = cx1 <= cx2 ? 1 : -1;
             for (let x = cx1; stepX > 0 ? x <= cx2 : x >= cx2; x += stepX) {
-                if (cy1 >= 0 && cy1 < height && x >= 0 && x < width) grid[cy1][x] = 0;
+                if (cy1 >= 0 && cy1 < height && x >= 0 && x < width) {
+                    grid[cy1][x] = 0;
+                    if(cy1+1 < height) grid[cy1+1][x] = 0;
+                }
             }
             const stepY = cy1 <= cy2 ? 1 : -1;
             for (let y = cy1; stepY > 0 ? y <= cy2 : y >= cy2; y += stepY) {
-                if (y >= 0 && y < height && cx2 >= 0 && cx2 < width) grid[y][cx2] = 0;
+                if (y >= 0 && y < height && cx2 >= 0 && cx2 < width) {
+                    grid[y][cx2] = 0;
+                    if(cx2+1 < width) grid[y][cx2+1] = 0;
+                }
             }
         }
     }
     return grid;
 }
 
+// === ГЕНЕРАЦИЯ ПЕЩЕР (CAVE) ===
+function generateCaveMap(rand, width, height) {
+    let grid = Array(height).fill().map(() => Array(width).fill(1));
+    const fillChance = 0.45;
+    
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                grid[y][x] = 1;
+            } else {
+                grid[y][x] = rand.next() < fillChance ? 1 : 0;
+            }
+        }
+    }
+
+    for (let i = 0; i < 5; i++) {
+        grid = smoothMap(grid, width, height);
+    }
+
+    grid = thickenWalls(grid, width, height);
+    grid = thickenWalls(grid, width, height);
+
+    const regions = findRegions(grid, width, height);
+    regions.sort((a, b) => b.cells.length - a.cells.length);
+
+    if (regions.length < 2 || regions[0].cells.length < (width * height * 0.15)) {
+        return generateCaveMap(rand, width, height);
+    }
+
+    const mainRegion = regions[0];
+    const targets = regions.slice(1, 6); 
+    
+    for (const target of targets) {
+        connectRegions(grid, mainRegion, target, width, height, rand);
+    }
+
+    grid = thickenWalls(grid, width, height);
+
+    // Гарантированный поиск старта
+    let startX = Math.floor(width / 2);
+    let startY = Math.floor(height / 2);
+    
+    if (grid[startY][startX] === 1) {
+        let minDist = Infinity;
+        for (const cell of mainRegion.cells) {
+            const dist = Math.abs(cell.x - startX) + Math.abs(cell.y - startY);
+            if (dist < minDist) {
+                minDist = dist;
+                startX = cell.x;
+                startY = cell.y;
+            }
+        }
+    }
+
+    return { grid, startPos: { x: startX, y: startY } };
+}
+
+// === CELLULAR MAP (ИСПРАВЛЕННЫЙ) ===
 function generateCellularMap(rand, width, height) {
     let grid = Array(height).fill().map(() => Array(width).fill(1));
     const fillChance = 0.45;
@@ -911,7 +997,7 @@ function generateCellularMap(rand, width, height) {
                 if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
                     newGrid[y][x] = 1;
                     continue;
-                }
+                 }
                 let wallCount = 0;
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
@@ -924,6 +1010,10 @@ function generateCellularMap(rand, width, height) {
         }
         grid = newGrid;
     }
+    
+    grid = thickenWalls(grid, width, height);
+    grid = thickenWalls(grid, width, height);
+    
     return grid;
 }
 
@@ -950,38 +1040,130 @@ function generateArenaMap(rand, width, height) {
     return grid;
 }
 
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ CAVE ===
+function smoothMap(grid, width, height) {
+    const newGrid = Array(height).fill().map(() => Array(width).fill(1));
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            let wallCount = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (grid[y + dy][x + dx] === 1) wallCount++;
+                }
+            }
+            if (wallCount > 4) newGrid[y][x] = 1;
+            else if (wallCount < 4) newGrid[y][x] = 0;
+            else newGrid[y][x] = grid[y][x];
+        }
+    }
+    return newGrid;
+}
+
+function findRegions(grid, width, height) {
+    const visited = Array(height).fill().map(() => Array(width).fill(false));
+    const regions = [];
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (grid[y][x] === 0 && !visited[y][x]) {
+                const region = { id: regions.length, cells: [] };
+                const stack = [{x, y}];
+                visited[y][x] = true;
+                while (stack.length > 0) {
+                    const curr = stack.pop();
+                    region.cells.push(curr);
+                    const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+                    for (const [dx, dy] of dirs) {
+                        const nx = curr.x + dx;
+                        const ny = curr.y + dy;
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            if (grid[ny][nx] === 0 && !visited[ny][nx]) {
+                                visited[ny][nx] = true;
+                                stack.push({x: nx, y: ny});
+                            }
+                        }
+                    }
+                }
+                if (region.cells.length > 10) regions.push(region);
+            }
+        }
+    }
+    return regions;
+}
+
+function connectRegions(grid, regA, regB, width, height, rand) {
+    const start = regA.cells[Math.floor(rand.next() * regA.cells.length)];
+    const end = regB.cells[Math.floor(rand.next() * regB.cells.length)];
+    let currX = start.x;
+    let currY = start.y;
+    const steps = Math.abs(end.x - start.x) + Math.abs(end.y - start.y);
+    
+    for (let i = 0; i < steps * 1.5; i++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const ty = currY + dy;
+                const tx = currX + dx;
+                if (ty > 0 && ty < height - 1 && tx > 0 && tx < width - 1) {
+                    grid[ty][tx] = 0;
+                }
+            }
+        }
+        const dx = end.x - currX;
+        const dy = end.y - currY;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            currX += Math.sign(dx);
+            if (rand.next() < 0.2) currY += (rand.next() < 0.5 ? 1 : -1);
+        } else {
+            currY += Math.sign(dy);
+            if (rand.next() < 0.2) currX += (rand.next() < 0.5 ? 1 : -1);
+        }
+        currX = Math.max(1, Math.min(width - 2, currX));
+        currY = Math.max(1, Math.min(height - 2, currY));
+        if (Math.abs(currX - end.x) < 2 && Math.abs(currY - end.y) < 2) break;
+    }
+}
+
+// === МОДУЛЬ ЭКСПОРТА ===
 const DungeonGeneratorModule = {
     generateLevel: function(x, y, depth, width, height) {
         const seedVal = createSeed(x, y, depth);
         const rand = new SeededRandom(seedVal);
         const dungeonType = selectDungeonType(rand);
+        
         let mapGrid;
-        if (dungeonType.name === 'cellular') {
+        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+
+        if (dungeonType.name === 'cave') {
+            const caveResult = generateCaveMap(rand, width, height);
+            mapGrid = caveResult.grid;
+            startPos = caveResult.startPos;
+        } else if (dungeonType.name === 'cellular') {
             mapGrid = generateCellularMap(rand, width, height);
         } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
-            mapGrid = generateArenaMap(rand, width, height);
+             mapGrid = generateArenaMap(rand, width, height);
         } else {
             mapGrid = generateRoomCorridorMap(rand, width, height);
         }
-        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+
+        // Финальная проверка старта для всех типов
         if (mapGrid[startPos.y][startPos.x] === 1) {
             let found = false;
-            for(let r=1; r<Math.max(width,height); r++) {
-                for(let dy=-r; dy<=r; dy++) {
-                    for(let dx=-r; dx<=r; dx++) {
+            for(let r=1; r < Math.max(width,height); r++) {
+                for(let dy=-r; dy <=r; dy++) {
+                    for(let dx=-r; dx <=r; dx++) {
                         const ny = startPos.y + dy;
                         const nx = startPos.x + dx;
-                        if(ny>=0 && ny<height && nx>=0 && nx<width && mapGrid[ny][nx]===0) {
+                        if(ny >=0 && ny <height && nx >=0 && nx <width && mapGrid[ny][nx]===0) {
                             startPos = {x: nx, y: ny};
                             found = true;
                             break;
-                        }
+                         }
                     }
                     if(found) break;
                 }
                 if(found) break;
             }
         }
+
         return {
             mapData: mapGrid,
             dungeonType: dungeonType,
@@ -997,33 +1179,41 @@ const DungeonGeneratorModule = {
         if (!dungeonType) {
             dungeonType = selectDungeonType(rand);
         }
+        
         let mapGrid;
-        if (dungeonType.name === 'cellular') {
+        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+
+        if (dungeonType.name === 'cave') {
+            const caveResult = generateCaveMap(rand, width, height);
+            mapGrid = caveResult.grid;
+            startPos = caveResult.startPos;
+        } else if (dungeonType.name === 'cellular') {
             mapGrid = generateCellularMap(rand, width, height);
         } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
             mapGrid = generateArenaMap(rand, width, height);
         } else {
             mapGrid = generateRoomCorridorMap(rand, width, height);
         }
-        let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
+
         if (mapGrid[startPos.y][startPos.x] === 1) {
             let found = false;
-            for(let r=1; r<Math.max(width,height); r++) {
-                for(let dy=-r; dy<=r; dy++) {
-                    for(let dx=-r; dx<=r; dx++) {
+            for(let r=1; r < Math.max(width,height); r++) {
+                for(let dy=-r; dy <=r; dy++) {
+                    for(let dx=-r; dx <=r; dx++) {
                         const ny = startPos.y + dy;
                         const nx = startPos.x + dx;
-                        if(ny>=0 && ny<height && nx>=0 && nx<width && mapGrid[ny][nx]===0) {
+                        if(ny >=0 && ny <height && nx >=0 && nx <width && mapGrid[ny][nx]===0) {
                             startPos = {x: nx, y: ny};
                             found = true;
                             break;
-                        }
+                         }
                     }
                     if(found) break;
                 }
                 if(found) break;
             }
         }
+
         return {
             mapData: mapGrid,
             dungeonType: dungeonType,
@@ -1459,7 +1649,10 @@ function generatePOIs(rand, cx, cy, tiles) {
                     tiles[y][x] = 'dungeon_entrance';
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
-                    const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
+                    //const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
+                    //const dungeonType = rand.choice(dungeonTypes);
+                    // В функции generatePOIs внутри globalMap.js:
+                    const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue', 'cellular', 'arena', 'boss'];
                     const dungeonType = rand.choice(dungeonTypes);
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
                     pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
@@ -1679,7 +1872,7 @@ const MapModule = (function() {
     // Кеш для связанных лестниц между уровнями
     const stairsCache = new Map();
 
-    // Вспомогательная функция поиска случайной клетки пола
+    // Вспомогательная функция поиска случайной клетки пола (для спавна врагов/предметов)
     function findRandomFloor(excludePos, far = false, seed = null) {
         if (!seed) seed = `stairs_${currentDungeonType?.name || 'default'}`;
         const rng = new Math.seedrandom(seed);
@@ -1705,14 +1898,46 @@ const MapModule = (function() {
         }
         return excludePos || { x: 0, y: 0 };
     }
-    // Вспомогательная функция: гарантирует, что позиция будет на полу, а не в стене
-    function getSafePos(pos) {
+
+    // === НОВАЯ ФУНКЦИЯ: Поиск безопасного места РЯДОМ с точкой ===
+    function getSafePosNearby(targetPos, maxRadius = 5) {
+        if (!targetPos) return { x: 2, y: 2 };
+        
+        // 1. Проверяем саму точку
+        if (currentMapData[targetPos.y] && currentMapData[targetPos.y][targetPos.x] === 0) {
+            return targetPos;
+        }
+
+        // 2. Ищем по спирали вокруг точки в заданном радиусе
+        for (let r = 1; r <= maxRadius; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    // Пропускаем углы квадрата, чтобы сохранить форму круга/ромба (опционально)
+                    // if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; 
+                    
+                    const nx = targetPos.x + dx;
+                    const ny = targetPos.y + dy;
+                    
+                    if (ny >= 0 && ny < DataModule.MAP_HEIGHT && nx >= 0 && nx < DataModule.MAP_WIDTH) {
+                        if (currentMapData[ny][nx] === 0) {
+                            return { x: nx, y: ny };
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 3. Если совсем рядом нет места (редкий случай в пещерах), ищем глобально
+        console.warn("⚠️ Не удалось найти место рядом с целью, ищу глобально...");
+        return getSafePosGlobal(targetPos);
+    }
+
+    // Старая функция глобального поиска (как запасной вариант)
+    function getSafePosGlobal(pos) {
         if (!pos) return { x: 2, y: 2 };
-        // Если координата уже на полу, возвращаем её
         if (currentMapData[pos.y] && currentMapData[pos.y][pos.x] === 0) return pos;
         
-        // Иначе ищем ближайший пол по спирали
-        for (let r = 1; r < 15; r++) {
+        for (let r = 1; r < 20; r++) {
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
                     const nx = pos.x + dx, ny = pos.y + dy;
@@ -1722,7 +1947,7 @@ const MapModule = (function() {
                 }
             }
         }
-        return pos; // fallback, если всё заполнено стенами (почти невозможно)
+        return pos;
     }
 
     // Генерация или восстановление лестниц для уровня
@@ -1730,29 +1955,24 @@ const MapModule = (function() {
         const cacheKey = `${gx}_${gy}_${depth}`;
         let cached = stairsCache.get(cacheKey);
 
-        // Если есть кеш, строго проверяем валидность координат на ТЕКУЩЕЙ карте
         if (cached) {
             const upValid = cached.stairsUp && currentMapData[cached.stairsUp.y]?.[cached.stairsUp.x] === 0;
             const downValid = cached.stairsDown && currentMapData[cached.stairsDown.y]?.[cached.stairsDown.x] === 0;
 
-            // Если обе лестницы на полу (или в городе, где down=null), используем кеш
             if (upValid && (currentDungeonType.name === 'city' || downValid)) {
                 stairsUp = cached.stairsUp;
                 stairsDown = cached.stairsDown;
                 return;
             }
-            // Кеш повреждён или карта изменилась → очищаем и генерируем заново
             stairsCache.delete(cacheKey);
         }
 
         // 1. Определяем stairsUp
         if (depth > 0) {
-            // Связываем с лестницей вниз предыдущего уровня
             const prevKey = `${gx}_${gy}_${depth - 1}`;
-            const prevCached = stairsCache.get(prevKey);
+            const prevCached = stairsCache.get(prevKey); 
             if (prevCached?.stairsDown) {
                 stairsUp = prevCached.stairsDown;
-                // Проверяем, не стала ли она стеной на новом уровне
                 if (currentMapData[stairsUp.y]?.[stairsUp.x] !== 0) {
                     stairsUp = findRandomFloor(null, false, `up_fb_${gx}_${gy}_${depth}`);
                 }
@@ -1770,7 +1990,6 @@ const MapModule = (function() {
             stairsDown = null;
         }
 
-        // 3. Сохраняем корректную пару в кеш
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
     }
 
@@ -1783,144 +2002,121 @@ const MapModule = (function() {
         generateStaircase(gx, gy, depth);
         
         let startPos;
+        
+        // ЛОГИКА ВЫБОРА СТАРТОВОЙ ПОЗИЦИИ
         if (entryPoint === 'down') {
-            // Наступили на < (спуск) → появляемся у > (stairsUp)
-            startPos = getSafePos(stairsUp);
-            console.log(`✅ Спуск: появляемся у > (${startPos.x},${startPos.y})`);
+            // Спуск вниз: появляемся у верхней лестницы (>)
+            startPos = getSafePosNearby(stairsUp, 5);
         } else if (entryPoint === 'up') {
-            // Наступили на > (подъём) → появляемся у < (stairsDown)
-            startPos = getSafePos(stairsDown);
-            console.log(`✅ Подъём: появляемся у < (${startPos.x},${startPos.y})`);
+            // Подъем вверх: появляемся у нижней лестницы (<)
+            startPos = getSafePosNearby(stairsDown, 5);
         } else {
-            // Первый вход в подземелье
-            startPos = getSafePos(stairsUp);
-            console.log(`✅ Вход: появляемся у > (${startPos.x},${startPos.y})`);
+            // Первый вход в подземелье: появляемся у входа (>)
+            // Используем startPos из генератора, но проверяем его близость к stairsUp
+            // Если генератор вернул точку далеко от входа, принудительно ставим у входа
+            const genStart = result.startPos;
+            
+            // Проверяем, есть ли пол в точке генератора
+            if (genStart && currentMapData[genStart.y]?.[genStart.x] === 0) {
+                 // Если точка валидна, используем её, НО только если она не слишком далеко от входа
+                 // (для пещер лучше всегда ставить у входа, чтобы игрок не потерялся)
+                 startPos = getSafePosNearby(stairsUp, 5);
+            } else {
+                 startPos = getSafePosNearby(stairsUp, 5);
+            }
         }
         
         return startPos;
     }
-    // Публичные методы
+
     function generate(gx, gy, depth) {
         return generateLevel(gx, gy, depth, null);
     }
 
     function generateWithType(gx, gy, depth, dungeonType, entryPoint = null) {
         return generateLevel(gx, gy, depth, dungeonType, entryPoint);
-    }
+    } 
 
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА ===
-    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
-// В файле map.js
-
-    // ... (начало MapModule) ...
-
-    // Переменная для хранения внутренних координат текущего уровня (для спавна лута в городах)
     let currentMapInteriorCoords = [];
 
-    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
     function generateCityLayout(rand, width, height, density = 0.7) {
-        // 1. Стартуем с полной сетки стен
         const grid = Array(height).fill().map(() => Array(width).fill(1));
         const interiorCoords = []; 
 
-        // 2. Вырезаем внутреннее пространство (улицы по всей карте)
         for (let y = 1; y < height - 1; y++) {
             for (let x = 1; x < width - 1; x++) {
                 grid[y][x] = 0;
             }
         }
 
-        const STREET_W = 2; // Ширина улиц
+        const STREET_W = 2;
         let y = 2; 
 
-        // 3. Размещаем здания по упорядоченной сетке
         while (y < height - 6) {
             const bh = rand.int(4, 8); 
-            
-            // === ИСПРАВЛЕНИЕ: Проверяем, влезает ли здание по высоте ===
-            if (y + bh > height) {
-                break; // Если не влезает, прекращаем строить здания в этом ряду
-            }
+            if (y + bh > height) break;
 
             let x = 2; 
-
             while (x < width - 6) {
                 const bw = rand.int(5, 9); 
-                
-                // Проверка плотности (пропускаем некоторые здания)
                 if (rand.next() > density) {
                     x += bw + STREET_W;
                     continue;
                 }
-
                 if (x + bw + STREET_W >= width - 1) break;
 
-                // Рисуем здание: стены по периметру, пол внутри
                 for (let dy = 0; dy < bh; dy++) {
                     for (let dx = 0; dx < bw; dx++) {
                         const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
                         const val = isPerimeter ? 1 : 0;
-                        
-                        // Теперь эта строка безопасна, так как мы проверили y + bh выше
                         grid[y + dy][x + dx] = val;
-                        
-                        // Если это пол внутри здания, сохраняем координаты для спавна предметов
                         if (val === 0) {
                             interiorCoords.push({ x: x + dx, y: y + dy });
                         }
                     }
                 }
 
-                // 4. Вырезаем дверь (чтобы можно было войти с улицы)
                 const side = rand.int(0, 3); 
                 let doorX = 0, doorY = 0;
-                 
-                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }       // Верх
-                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } // Право
-                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; } // Низ
-                else { doorX = x; doorY = y + rand.int(1, bh - 2); }                  // Лево
-                 
+                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
+                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); }
+                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
+                else { doorX = x; doorY = y + rand.int(1, bh - 2); }
+                
                 grid[doorY][doorX] = 0; 
-
                 x += bw + STREET_W;
             }
             y += bh + STREET_W;
         }
         
-        // Возвращаем объект с сеткой и списком внутренних точек
         return { grid, interiorCoords };
     }
 
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
         const rand = new SeededRandom(seedVal);
-        
-        // 1. Определяем тип города (плотность застройки)
         const density = rand.next() * 0.3 + 0.3; 
         
-        // Генерируем планировку
         const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
         
-        // === ИСПРАВЛЕНИЕ: Сохраняем данные в переменные модуля ===
         currentMapData = layoutResult.grid;
         currentMapInteriorCoords = layoutResult.interiorCoords || [];
         
         currentDungeonType = { 
-             name: 'city',
-            wallChar: getChar('WALL_CITY'),   // '█'
-            floorChar: getChar('FLOOR_CITY'), // '·'
+            name: 'city',
+            wallChar: getChar('WALL_CITY'),
+            floorChar: getChar('FLOOR_CITY'),
             wallColor: '#6b7280', 
             floorColor: '#374151' 
         };
     
-        // === ЛЕСТНИЦА " > " СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
         const upSeed = `up_city_${gx}_${gy}_${depth}`;
         const rng = new Math.seedrandom(upSeed);
         const w = DataModule.MAP_WIDTH;
         const h = DataModule.MAP_HEIGHT;
         
         const edgeTiles = [];
-        // Проверяем края карты на наличие пола (улиц)
         for (let y = 1; y < h - 1; y++) {
             if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
             if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
@@ -1933,7 +2129,6 @@ const MapModule = (function() {
         if (edgeTiles.length > 0) {
             stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
         } else {
-            // Fallback, если вдруг все края оказались стенами (маловероятно)
             stairsUp = { x: 2, y: 2 };
         }
         
@@ -1943,7 +2138,7 @@ const MapModule = (function() {
 
     function clearCache() {
         stairsCache.clear();
-        currentMapInteriorCoords = []; // Очищаем и координаты интерьера при сбросе
+        currentMapInteriorCoords = [];
         console.log("🗑️ Кеш лестниц очищен");
     }
 
@@ -1955,9 +2150,8 @@ const MapModule = (function() {
 
     function getRandomFloor(excludePos) {
         return findRandomFloor(excludePos);
-    }
+    } 
 
-    // Отладочная функция для просмотра кеша
     function debugCache() {
         console.log("=== Текущий кеш лестниц ===");
         for (let [key, value] of stairsCache.entries()) {
@@ -1970,7 +2164,6 @@ const MapModule = (function() {
         get currentDungeonType() { return currentDungeonType; },
         get stairsUp() { return stairsUp; },
         get stairsDown() { return stairsDown; },
-        // Экспортируем доступ к внутренним координатам
         get interiorCoords() { return currentMapInteriorCoords; },
         
         generate,
