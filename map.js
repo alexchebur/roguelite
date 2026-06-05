@@ -8,7 +8,7 @@ const MapModule = (function() {
     // Кеш для связанных лестниц между уровнями
     const stairsCache = new Map();
 
-    // Вспомогательная функция поиска случайной клетки пола
+    // Вспомогательная функция поиска случайной клетки пола (для спавна врагов/предметов)
     function findRandomFloor(excludePos, far = false, seed = null) {
         if (!seed) seed = `stairs_${currentDungeonType?.name || 'default'}`;
         const rng = new Math.seedrandom(seed);
@@ -34,14 +34,46 @@ const MapModule = (function() {
         }
         return excludePos || { x: 0, y: 0 };
     }
-    // Вспомогательная функция: гарантирует, что позиция будет на полу, а не в стене
-    function getSafePos(pos) {
+
+    // === НОВАЯ ФУНКЦИЯ: Поиск безопасного места РЯДОМ с точкой ===
+    function getSafePosNearby(targetPos, maxRadius = 5) {
+        if (!targetPos) return { x: 2, y: 2 };
+        
+        // 1. Проверяем саму точку
+        if (currentMapData[targetPos.y] && currentMapData[targetPos.y][targetPos.x] === 0) {
+            return targetPos;
+        }
+
+        // 2. Ищем по спирали вокруг точки в заданном радиусе
+        for (let r = 1; r <= maxRadius; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    // Пропускаем углы квадрата, чтобы сохранить форму круга/ромба (опционально)
+                    // if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; 
+                    
+                    const nx = targetPos.x + dx;
+                    const ny = targetPos.y + dy;
+                    
+                    if (ny >= 0 && ny < DataModule.MAP_HEIGHT && nx >= 0 && nx < DataModule.MAP_WIDTH) {
+                        if (currentMapData[ny][nx] === 0) {
+                            return { x: nx, y: ny };
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 3. Если совсем рядом нет места (редкий случай в пещерах), ищем глобально
+        console.warn("⚠️ Не удалось найти место рядом с целью, ищу глобально...");
+        return getSafePosGlobal(targetPos);
+    }
+
+    // Старая функция глобального поиска (как запасной вариант)
+    function getSafePosGlobal(pos) {
         if (!pos) return { x: 2, y: 2 };
-        // Если координата уже на полу, возвращаем её
         if (currentMapData[pos.y] && currentMapData[pos.y][pos.x] === 0) return pos;
         
-        // Иначе ищем ближайший пол по спирали
-        for (let r = 1; r < 15; r++) {
+        for (let r = 1; r < 20; r++) {
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
                     const nx = pos.x + dx, ny = pos.y + dy;
@@ -51,7 +83,7 @@ const MapModule = (function() {
                 }
             }
         }
-        return pos; // fallback, если всё заполнено стенами (почти невозможно)
+        return pos;
     }
 
     // Генерация или восстановление лестниц для уровня
@@ -59,29 +91,24 @@ const MapModule = (function() {
         const cacheKey = `${gx}_${gy}_${depth}`;
         let cached = stairsCache.get(cacheKey);
 
-        // Если есть кеш, строго проверяем валидность координат на ТЕКУЩЕЙ карте
         if (cached) {
             const upValid = cached.stairsUp && currentMapData[cached.stairsUp.y]?.[cached.stairsUp.x] === 0;
             const downValid = cached.stairsDown && currentMapData[cached.stairsDown.y]?.[cached.stairsDown.x] === 0;
 
-            // Если обе лестницы на полу (или в городе, где down=null), используем кеш
             if (upValid && (currentDungeonType.name === 'city' || downValid)) {
                 stairsUp = cached.stairsUp;
                 stairsDown = cached.stairsDown;
                 return;
             }
-            // Кеш повреждён или карта изменилась → очищаем и генерируем заново
             stairsCache.delete(cacheKey);
         }
 
         // 1. Определяем stairsUp
         if (depth > 0) {
-            // Связываем с лестницей вниз предыдущего уровня
             const prevKey = `${gx}_${gy}_${depth - 1}`;
-            const prevCached = stairsCache.get(prevKey);
+            const prevCached = stairsCache.get(prevKey); 
             if (prevCached?.stairsDown) {
                 stairsUp = prevCached.stairsDown;
-                // Проверяем, не стала ли она стеной на новом уровне
                 if (currentMapData[stairsUp.y]?.[stairsUp.x] !== 0) {
                     stairsUp = findRandomFloor(null, false, `up_fb_${gx}_${gy}_${depth}`);
                 }
@@ -99,7 +126,6 @@ const MapModule = (function() {
             stairsDown = null;
         }
 
-        // 3. Сохраняем корректную пару в кеш
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
     }
 
@@ -112,140 +138,121 @@ const MapModule = (function() {
         generateStaircase(gx, gy, depth);
         
         let startPos;
+        
+        // ЛОГИКА ВЫБОРА СТАРТОВОЙ ПОЗИЦИИ
         if (entryPoint === 'down') {
-            startPos = getSafePos(stairsUp);
+            // Спуск вниз: появляемся у верхней лестницы (>)
+            startPos = getSafePosNearby(stairsUp, 5);
         } else if (entryPoint === 'up') {
-            startPos = getSafePos(stairsDown);
+            // Подъем вверх: появляемся у нижней лестницы (<)
+            startPos = getSafePosNearby(stairsDown, 5);
         } else {
-            // Используем startPos из генератора, но на всякий случай пропускаем через getSafePos
-            startPos = getSafePos(result.startPos); 
-            console.log(`✅ Вход: появляемся у (${startPos.x},${startPos.y})`);
+            // Первый вход в подземелье: появляемся у входа (>)
+            // Используем startPos из генератора, но проверяем его близость к stairsUp
+            // Если генератор вернул точку далеко от входа, принудительно ставим у входа
+            const genStart = result.startPos;
+            
+            // Проверяем, есть ли пол в точке генератора
+            if (genStart && currentMapData[genStart.y]?.[genStart.x] === 0) {
+                 // Если точка валидна, используем её, НО только если она не слишком далеко от входа
+                 // (для пещер лучше всегда ставить у входа, чтобы игрок не потерялся)
+                 startPos = getSafePosNearby(stairsUp, 5);
+            } else {
+                 startPos = getSafePosNearby(stairsUp, 5);
+            }
         }
         
         return startPos;
     }
-    // Публичные методы
+
     function generate(gx, gy, depth) {
         return generateLevel(gx, gy, depth, null);
     }
 
     function generateWithType(gx, gy, depth, dungeonType, entryPoint = null) {
         return generateLevel(gx, gy, depth, dungeonType, entryPoint);
-    }
+    } 
 
     // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА ===
-    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (исправленный) ===
-// В файле map.js
-
-    // ... (начало MapModule) ...
-
-    // Переменная для хранения внутренних координат текущего уровня (для спавна лута в городах)
     let currentMapInteriorCoords = [];
 
-    // === ГЕНЕРАТОР ПЛАНИРОВКИ ГОРОДА (с возвратом внутренних координат) ===
     function generateCityLayout(rand, width, height, density = 0.7) {
-        // 1. Стартуем с полной сетки стен
         const grid = Array(height).fill().map(() => Array(width).fill(1));
         const interiorCoords = []; 
 
-        // 2. Вырезаем внутреннее пространство (улицы по всей карте)
         for (let y = 1; y < height - 1; y++) {
             for (let x = 1; x < width - 1; x++) {
                 grid[y][x] = 0;
             }
         }
 
-        const STREET_W = 2; // Ширина улиц
+        const STREET_W = 2;
         let y = 2; 
 
-        // 3. Размещаем здания по упорядоченной сетке
         while (y < height - 6) {
             const bh = rand.int(4, 8); 
-            
-            // === ИСПРАВЛЕНИЕ: Проверяем, влезает ли здание по высоте ===
-            if (y + bh > height) {
-                break; // Если не влезает, прекращаем строить здания в этом ряду
-            }
+            if (y + bh > height) break;
 
             let x = 2; 
-
             while (x < width - 6) {
                 const bw = rand.int(5, 9); 
-                
-                // Проверка плотности (пропускаем некоторые здания)
                 if (rand.next() > density) {
                     x += bw + STREET_W;
                     continue;
                 }
-
                 if (x + bw + STREET_W >= width - 1) break;
 
-                // Рисуем здание: стены по периметру, пол внутри
                 for (let dy = 0; dy < bh; dy++) {
                     for (let dx = 0; dx < bw; dx++) {
                         const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
                         const val = isPerimeter ? 1 : 0;
-                        
-                        // Теперь эта строка безопасна, так как мы проверили y + bh выше
                         grid[y + dy][x + dx] = val;
-                        
-                        // Если это пол внутри здания, сохраняем координаты для спавна предметов
                         if (val === 0) {
                             interiorCoords.push({ x: x + dx, y: y + dy });
                         }
                     }
                 }
 
-                // 4. Вырезаем дверь (чтобы можно было войти с улицы)
                 const side = rand.int(0, 3); 
                 let doorX = 0, doorY = 0;
-                 
-                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }       // Верх
-                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); } // Право
-                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; } // Низ
-                else { doorX = x; doorY = y + rand.int(1, bh - 2); }                  // Лево
-                 
+                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
+                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); }
+                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
+                else { doorX = x; doorY = y + rand.int(1, bh - 2); }
+                
                 grid[doorY][doorX] = 0; 
-
                 x += bw + STREET_W;
             }
             y += bh + STREET_W;
         }
         
-        // Возвращаем объект с сеткой и списком внутренних точек
         return { grid, interiorCoords };
     }
 
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
         const rand = new SeededRandom(seedVal);
-        
-        // 1. Определяем тип города (плотность застройки)
         const density = rand.next() * 0.3 + 0.3; 
         
-        // Генерируем планировку
         const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
         
-        // === ИСПРАВЛЕНИЕ: Сохраняем данные в переменные модуля ===
         currentMapData = layoutResult.grid;
         currentMapInteriorCoords = layoutResult.interiorCoords || [];
         
         currentDungeonType = { 
-             name: 'city',
-            wallChar: getChar('WALL_CITY'),   // '█'
-            floorChar: getChar('FLOOR_CITY'), // '·'
+            name: 'city',
+            wallChar: getChar('WALL_CITY'),
+            floorChar: getChar('FLOOR_CITY'),
             wallColor: '#6b7280', 
             floorColor: '#374151' 
         };
     
-        // === ЛЕСТНИЦА " > " СТРОГО У ВНЕШНЕЙ СТЕНЫ ===
         const upSeed = `up_city_${gx}_${gy}_${depth}`;
         const rng = new Math.seedrandom(upSeed);
         const w = DataModule.MAP_WIDTH;
         const h = DataModule.MAP_HEIGHT;
         
         const edgeTiles = [];
-        // Проверяем края карты на наличие пола (улиц)
         for (let y = 1; y < h - 1; y++) {
             if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
             if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
@@ -258,7 +265,6 @@ const MapModule = (function() {
         if (edgeTiles.length > 0) {
             stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
         } else {
-            // Fallback, если вдруг все края оказались стенами (маловероятно)
             stairsUp = { x: 2, y: 2 };
         }
         
@@ -268,7 +274,7 @@ const MapModule = (function() {
 
     function clearCache() {
         stairsCache.clear();
-        currentMapInteriorCoords = []; // Очищаем и координаты интерьера при сбросе
+        currentMapInteriorCoords = [];
         console.log("🗑️ Кеш лестниц очищен");
     }
 
@@ -280,9 +286,8 @@ const MapModule = (function() {
 
     function getRandomFloor(excludePos) {
         return findRandomFloor(excludePos);
-    }
+    } 
 
-    // Отладочная функция для просмотра кеша
     function debugCache() {
         console.log("=== Текущий кеш лестниц ===");
         for (let [key, value] of stairsCache.entries()) {
@@ -295,7 +300,6 @@ const MapModule = (function() {
         get currentDungeonType() { return currentDungeonType; },
         get stairsUp() { return stairsUp; },
         get stairsDown() { return stairsDown; },
-        // Экспортируем доступ к внутренним координатам
         get interiorCoords() { return currentMapInteriorCoords; },
         
         generate,
