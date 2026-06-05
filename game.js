@@ -111,12 +111,17 @@ const GameModule = (function() {
             return;
         }
 
-        // 2. NPC (Диалог или Квест)
+        // 2. NPC (Диалог или Статус Квеста)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
-            const questGiven = tryGiveQuest(npc);
-            if (!questGiven) {
-                if (typeof RenderModule.updateInspector === 'function') {
+            // Проверяем, является ли он раздатчиком квестов
+            if (npc.isQuestGiver) {
+                // Если это раздатчик, tryGiveQuest проверит статус (активен/выполнен)
+                // и выведет соответствующее сообщение в лог ("Ты еще не выполнил..." или "Спасибо...")
+                tryGiveQuest(npc);
+            } else {
+                // Обычный NPC - просто диалог
+                if (typeof RenderModule.updateInspector == 'function') {
                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
                 }
                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
@@ -155,12 +160,14 @@ const GameModule = (function() {
         let npcIndex = 0;
         for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
 
+        // Создаем временный квест для получения ID
         const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
         const questId = tempQuest.id;
         
         const alreadyActive = activeQuests.some(q => q.id === questId);
         const alreadyDone = completedQuestIds.has(questId);
 
+        // Сценарий 1: Новый квест
         if (!alreadyActive && !alreadyDone) {
             const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
             newQuest.isActive = true;
@@ -172,14 +179,20 @@ const GameModule = (function() {
             if (typeof RenderModule.updateInspector === 'function') {
                 RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
             }
-            
-            // Сразу обновляем компас, так как мы еще в городе (режим dungeon), 
-            // но при выходе он должен показать направление
-            return true;
-        } else if (alreadyActive) {
-             RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
-             return true;
-        } else if (alreadyDone) {
+            return true; // Квест выдан
+        } 
+        // Сценарий 2: Квест активен, но не выполнен
+        else if (alreadyActive) {
+             // Мы не выдаем квест снова, но помечаем, что взаимодействие было
+             // Можно добавить напоминание в лог, если нужно, но пока просто возвращаем true
+             // чтобы заблокировать обычный диалог при клике, если хотим строгости.
+             // Но лучше пусть напоминает о задаче.
+             const q = activeQuests.find(q => q.id === questId);
+             RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение! Ищи ${q.target.locationName}."`, "info");
+             return true; 
+        } 
+        // Сценарий 3: Квест выполнен
+        else if (alreadyDone) {
              RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
              return true;
         }
