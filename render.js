@@ -160,37 +160,25 @@ const RenderModule = (function() {
     }
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ОТРИСОВКА БОССА 2x2 ===
     function drawBoss(ctx, bossType, sx, sy, color) {
-        // Определяем префикс спрайтов на основе типа босса
-        let prefix = 'BOSS_DRAGON'; // По умолчанию
+        let prefix = 'BOSS_DRAGON'; 
         if (bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
         else if (bossType.includes('Лич')) prefix = 'BOSS_LICH';
-        // Можно добавить else if для других рас
+        else if (bossType.includes('Паук')) prefix = 'BOSS_DRAGON'; // Заглушка, добавьте свои ключи
 
         const parts = [
-            { key: `${prefix}_TL`, dx: 0, dy: 0 }, // Верх-Лево
-            { key: `${prefix}_TR`, dx: 1, dy: 0 }, // Верх-Право
-            { key: `${prefix}_BL`, dx: 0, dy: 1 }, // Низ-Лево
-            { key: `${prefix}_BR`, dx: 1, dy: 1 }  // Низ-Право
+            { key: `${prefix}_TL`, dx: 0, dy: 0 },
+            { key: `${prefix}_TR`, dx: 1, dy: 0 },
+            { key: `${prefix}_BL`, dx: 0, dy: 1 },
+            { key: `${prefix}_BR`, dx: 1, dy: 1 }
         ];
 
         parts.forEach(part => {
             const drawX = sx + part.dx;
             const drawY = sy + part.dy;
-
-            // Рисуем только если часть попадает в экран
             if (drawX >= 0 && drawX < COLS && drawY >= 0 && drawY < ROWS) {
-                const tileData = getTileData(part.key);
-                if (tileData) {
-                    // Используем внутренний метод TilesetRenderer для отрисовки конкретного тайла
-                    // (Мы вызываем логику напрямую, так как TilesetRenderer.draw ожидает char)
-                    const img = TilesetRenderer.spriteSheets ? TilesetRenderer.spriteSheets[tileData.file] : null; 
-                    // Примечание: чтобы это работало, нужно сделать spriteSheets доступным, 
-                    // или просто использовать getChar и стандартный draw, если спрайты не критичны.
-                    
-                    // УПРОЩЕННЫЙ ВАРИАНТ (если прямой доступ к img сложен):
-                    // Мы можем добавить специальный метод в TilesetRenderer, но пока используем хак:
-                    // Передаем фиктивный char, но TilesetRenderer должен уметь брать данные по ключу.
-                    // Давайте добавим в TilesetRenderer поддержку ключей.
+                // Вызываем новый метод, который мы добавили в TilesetRenderer
+                if (typeof TilesetRenderer.drawByKey === 'function') {
+                    TilesetRenderer.drawByKey(ctx, part.key, drawX, drawY, color);
                 }
             }
         });
