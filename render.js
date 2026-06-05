@@ -226,13 +226,23 @@ const RenderModule = (function() {
             });
         }
 
-        // 3. ВРАГИ
+        // 3. ВРАГИ (включая боссов 2x2)
         if (enemies) {
             enemies.forEach(e => {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
-                    if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                        TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                    
+                    // Проверяем, видна ли хотя бы одна часть босса
+                    const isVisible = visible.has(`${e.x},${e.y}`);
+                    
+                    if (sx >= -1 && sx < COLS && sy >= -1 && sy < ROWS && isVisible) {
+                        if (e.isBoss) {
+                            // === ОТРИСОВКА БОССА 2x2 ===
+                            drawBoss(ctx, e.bossType, sx, sy, e.color);
+                        } else {
+                            // Обычный враг
+                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                        }
                     }
                 }
             });
