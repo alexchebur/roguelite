@@ -256,13 +256,15 @@ const RenderModule = (function() {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
                     
-                    // Проверяем, видна ли хотя бы одна часть босса
+                    // Проверяем видимость хотя бы одной части босса
                     const isVisible = visible.has(`${e.x},${e.y}`);
                     
-                    if (sx >= -1 && sx < COLS && sy >= -1 && sy < ROWS && isVisible) {
+                    if (sx >= -2 && sx < COLS && sy >= -2 && sy < ROWS && isVisible) {
                         if (e.isBoss) {
                             // === ОТРИСОВКА БОССА 2x2 ===
-                            drawBoss(ctx, e.bossType, sx, sy, e.color);
+                            // Используем символ босса (например, 'B' или тот, что в entity.js)
+                            // И рисуем его как "большой" спрайт
+                            TilesetRenderer.drawBig(ctx, e.char, sx, sy, e.color);
                         } else {
                             // Обычный враг
                             TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
