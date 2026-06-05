@@ -77,7 +77,28 @@ const SPRITE_REGISTRY = {
 
     // Ресурсы и прочее
     'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
-    'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' }, 
+    'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' },
+
+        // === БОССЫ (2x2 спрайта) ===
+    // Древний Дракон
+    'BOSS_DRAGON_TL': { char: 'Q', tile: { file: 'creature_sprites', x: 15, y: 1 }, desc: 'Дракон (TL)' },
+    'BOSS_DRAGON_TR': { char: 'Q', tile: { file: 'creature_sprites', x: 16, y: 1 }, desc: 'Дракон (TR)' },
+    'BOSS_DRAGON_BL': { char: 'Q', tile: { file: 'creature_sprites', x: 15, y: 2 }, desc: 'Дракон (BL)' },
+    'BOSS_DRAGON_BR': { char: 'Q', tile: { file: 'creature_sprites', x: 16, y: 2 }, desc: 'Дракон (BR)' },
+    
+    // Каменный Голем
+    'BOSS_GOLEM_TL': { char: 'M', tile: { file: 'creature_sprites', x: 14, y: 1 }, desc: 'Голем (TL)' },
+    'BOSS_GOLEM_TR': { char: 'M', tile: { file: 'creature_sprites', x: 15, y: 1 }, desc: 'Голем (TR)' },
+    'BOSS_GOLEM_BL': { char: 'M', tile: { file: 'creature_sprites', x: 14, y: 2 }, desc: 'Голем (BL)' },
+    'BOSS_GOLEM_BR': { char: 'M', tile: { file: 'creature_sprites', x: 15, y: 2 }, desc: 'Голем (BR)' },
+
+    // Король Личей
+    'BOSS_LICH_TL': { char: 'L', tile: { file: 'creature_sprites', x: 13, y: 1 }, desc: 'Лич (TL)' },
+    'BOSS_LICH_TR': { char: 'L', tile: { file: 'creature_sprites', x: 14, y: 1 }, desc: 'Лич (TR)' },
+    'BOSS_LICH_BL': { char: 'L', tile: { file: 'creature_sprites', x: 13, y: 2 }, desc: 'Лич (BL)' },
+    'BOSS_LICH_BR': { char: 'L', tile: { file: 'creature_sprites', x: 14, y: 2 }, desc: 'Лич (BR)' },
+
+    // (Для остальных рас можно добавить аналогичные блоки или использовать дефолтные)
     
     // Зелья и еда
     'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
