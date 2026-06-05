@@ -9,7 +9,6 @@ if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
 
 const DUNGEON_TYPES = [
     { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#333', wallColor: '#555' }, 
-    // Cave теперь будет использовать специальный алгоритм
     { name: 'cave', weight: 25, emoji: '🕸️', floorChar: getChar('FLOOR_ORGANIC'), wallChar: getChar('WALL_ORGANIC'), floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
     { name: 'icy', weight: 20, emoji: '❄️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#aaddff', wallColor: '#ffffff' },
     { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: getChar('FLOOR_DEFAULT'), wallChar: getChar('WALL_DEFAULT'), floorColor: '#781a6f', wallColor: '#995792' },
@@ -31,8 +30,37 @@ function selectDungeonType(rand) {
     return DUNGEON_TYPES[DUNGEON_TYPES.length - 1];
 }
 
-// --- СТАРЫЕ ФУНКЦИИ (Room/Corridor, Arena) оставляем без изменений ---
+// === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: УТОЛЩЕНИЕ СТЕН (FIX DIAGONALS) ===
+// Превращает стены в пол, если они являются единственным барьером между двумя клетками пола
+function thickenWalls(grid, width, height) {
+    // Создаем копию, чтобы изменения не влияли на текущую итерацию проверки
+    const changes = []; 
+    
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            // Если это стена
+            if (grid[y][x] === 1) {
+                // Проверяем горизонтальный проход (слева и справа пол)
+                const horizontalGap = (grid[y][x-1] === 0 && grid[y][x+1] === 0);
+                // Проверяем вертикальный проход (сверху и снизу пол)
+                const verticalGap = (grid[y-1][x] === 0 && grid[y+1][x] === 0);
 
+                if (horizontalGap || verticalGap) {
+                    changes.push({x, y});
+                }
+            }
+        }
+    }
+
+    // Применяем изменения
+    for (const pos of changes) {
+        grid[pos.y][pos.x] = 0;
+    }
+    
+    return grid;
+}
+
+// === СТАНДАРТНАЯ ГЕНЕРАЦИЯ (КОМНАТЫ) ===
 function generateRoomCorridorMap(rand, width, height) {
     const grid = Array(height).fill().map(() => Array(width).fill(1));
     const rooms = [];
@@ -65,16 +93,107 @@ function generateRoomCorridorMap(rand, width, height) {
             const cy1 = Math.floor(r1.y + r1.h / 2);
             const cx2 = Math.floor(r2.x + r2.w / 2);
             const cy2 = Math.floor(r2.y + r2.h / 2);
+            
+            // Делаем коридоры шире (2 клетки)
             const stepX = cx1 <= cx2 ? 1 : -1;
             for (let x = cx1; stepX > 0 ? x <= cx2 : x >= cx2; x += stepX) {
-                if (cy1 >= 0 && cy1 < height && x >= 0 && x < width) grid[cy1][x] = 0;
+                if (cy1 >= 0 && cy1 < height && x >= 0 && x < width) {
+                    grid[cy1][x] = 0;
+                    if(cy1+1 < height) grid[cy1+1][x] = 0; // Ширина 2
+                }
             }
             const stepY = cy1 <= cy2 ? 1 : -1;
             for (let y = cy1; stepY > 0 ? y <= cy2 : y >= cy2; y += stepY) {
-                if (y >= 0 && y < height && cx2 >= 0 && cx2 < width) grid[y][cx2] = 0;
+                if (y >= 0 && y < height && cx2 >= 0 && cx2 < width) {
+                    grid[y][cx2] = 0;
+                    if(cx2+1 < width) grid[y][cx2+1] = 0; // Ширина 2
+                }
             }
         }
     }
+    return grid;
+}
+
+// === ГЕНЕРАЦИЯ ПЕЩЕР (CAVE) С ИСПРАВЛЕНИЕМ ПРОХОДИМОСТИ ===
+function generateCaveMap(rand, width, height) {
+    // 1. Шум
+    let grid = Array(height).fill().map(() => Array(width).fill(1));
+    const fillChance = 0.45;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                grid[y][x] = 1;
+            } else {
+                grid[y][x] = rand.next() < fillChance ? 1 : 0;
+            }
+        }
+    }
+
+    // 2. Сглаживание
+    for (let i = 0; i < 5; i++) {
+        grid = smoothMap(grid, width, height);
+    }
+
+    // 3. Исправление диагоналей (Утолщение)
+    // Запускаем 2 раза для надежности широких проходов
+    grid = thickenWalls(grid, width, height);
+    grid = thickenWalls(grid, width, height);
+
+    // 4. Поиск регионов и соединение
+    const regions = findRegions(grid, width, height);
+    regions.sort((a, b) => b.cells.length - a.cells.length);
+
+    if (regions.length < 2 || regions[0].cells.length < (width * height * 0.15)) {
+        return generateCaveMap(rand, width, height);
+    }
+
+    const mainRegion = regions[0];
+    const targets = regions.slice(1, 6); 
+    
+    for (const target of targets) {
+        connectRegions(grid, mainRegion, target, width, height, rand);
+    }
+
+    // 5. Финальное утолщение после прорытия туннелей
+    grid = thickenWalls(grid, width, height);
+
+    return grid;
+}
+
+// === СТАРЫЙ CELLULAR (ТОЖЕ ЧИНИМ) ===
+function generateCellularMap(rand, width, height) {
+    let grid = Array(height).fill().map(() => Array(width).fill(1));
+    const fillChance = 0.45;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (rand.next() < fillChance) grid[y][x] = 1;
+        }
+    }
+    for (let iter = 0; iter < 4; iter++) {
+        const newGrid = Array(height).fill().map(() => Array(width).fill(1));
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                    newGrid[y][x] = 1;
+                    continue;
+                 }
+                let wallCount = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (grid[y + dy][x + dx] === 1) wallCount++;
+                    }
+                }
+                newGrid[y][x] = (wallCount >= 5) ? 1 : 0;
+            }
+        }
+        grid = newGrid;
+    }
+    
+    // === ИСПРАВЛЕНИЕ: Утолщаем стены ===
+    grid = thickenWalls(grid, width, height);
+    grid = thickenWalls(grid, width, height);
+    
     return grid;
 }
 
@@ -101,60 +220,8 @@ function generateArenaMap(rand, width, height) {
     return grid;
 }
 
-// --- НОВЫЙ АЛГОРИТМ ДЛЯ ПЕЩЕР (CAVE) ---
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ CAVE ===
 
-function generateCaveMap(rand, width, height) {
-    // 1. Инициализация шумом (Cellular Automata Start)
-    let grid = Array(height).fill().map(() => Array(width).fill(1));
-    const fillChance = 0.45; // Шанс стать стеной
-    
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            // Края всегда стены
-            if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                grid[y][x] = 1;
-            } else {
-                grid[y][x] = rand.next() < fillChance ? 1 : 0;
-            }
-        }
-    }
-
-    // 2. Сглаживание (4-5 итераций)
-    for (let i = 0; i < 5; i++) {
-        grid = smoothMap(grid, width, height);
-    }
-
-    // 3. Поиск основных пещер (Connected Components)
-    const regions = findRegions(grid, width, height);
-    
-    // Сортируем по размеру (убывание)
-    regions.sort((a, b) => b.cells.length - a.cells.length);
-
-    // Если пещер мало или они маленькие, пробуем перегенерировать (простая защита от пустых карт)
-    if (regions.length < 2 || regions[0].cells.length < (width * height * 0.15)) {
-        return generateCaveMap(rand, width, height); // Рекурсивный重试
-    }
-
-    // 4. Соединение пещер туннелями
-    // Берем самую большую пещеру как "Главную" и соединяем с ней остальные крупные
-    const mainRegion = regions[0];
-    const connectedRegions = [mainRegion];
-    
-    // Пробуем соединить топ-5 пещер
-    const targets = regions.slice(1, 6); 
-    
-    for (const target of targets) {
-        connectRegions(grid, mainRegion, target, width, height, rand);
-        connectedRegions.push(target);
-    }
-
-    // 5. Дополнительное сглаживание границ туннелей (опционально, чтобы туннели не выглядели слишком прямыми)
-    // Можно пропустить для производительности, туннели будут "природными трещинами"
-
-    return grid;
-}
-
-// Вспомогательная: Сглаживание карты по правилам клеточного автомата
 function smoothMap(grid, width, height) {
     const newGrid = Array(height).fill().map(() => Array(width).fill(1));
     for (let y = 1; y < height - 1; y++) {
@@ -165,16 +232,14 @@ function smoothMap(grid, width, height) {
                     if (grid[y + dy][x + dx] === 1) wallCount++;
                 }
             }
-            // Правило: если вокруг 5+ стен -> становись стеной. Если < 4 -> пол.
             if (wallCount > 4) newGrid[y][x] = 1;
             else if (wallCount < 4) newGrid[y][x] = 0;
-            else newGrid[y][x] = grid[y][x]; // Сохраняем состояние при равенстве
+            else newGrid[y][x] = grid[y][x];
         }
     }
     return newGrid;
 }
 
-// Вспомогательная: Поиск связанных областей (Flood Fill)
 function findRegions(grid, width, height) {
     const visited = Array(height).fill().map(() => Array(width).fill(false));
     const regions = [];
@@ -202,7 +267,7 @@ function findRegions(grid, width, height) {
                         }
                     }
                 }
-                if (region.cells.length > 10) { // Игнорируем микро-дырки
+                if (region.cells.length > 10) {
                     regions.push(region);
                 }
             }
@@ -211,21 +276,17 @@ function findRegions(grid, width, height) {
     return regions;
 }
 
-// Вспомогательная: Прорытие туннеля между двумя регионами
 function connectRegions(grid, regA, regB, width, height, rand) {
-    // Выбираем случайные точки из каждого региона
     const start = regA.cells[Math.floor(rand.next() * regA.cells.length)];
     const end = regB.cells[Math.floor(rand.next() * regB.cells.length)];
 
-    // Копаем туннель (Drunkard's Walk или L-shape с шумом)
     let currX = start.x;
     let currY = start.y;
     
-    // Делаем туннель широким (2-3 клетки) и немного кривым
     const steps = Math.abs(end.x - start.x) + Math.abs(end.y - start.y);
     
-    for (let i = 0; i < steps * 1.5; i++) { // *1.5 чтобы сделать путь более извилистым
-        // Рисуем "пятно" пола вокруг текущей точки
+    for (let i = 0; i < steps * 1.5; i++) {
+        // Рисуем толстый туннель (3x3)
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 const ty = currY + dy;
@@ -236,29 +297,24 @@ function connectRegions(grid, regA, regB, width, height, rand) {
             }
         }
 
-        // Двигаемся к цели с небольшим рандомом
         const dx = end.x - currX;
         const dy = end.y - currY;
         
         if (Math.abs(dx) > Math.abs(dy)) {
             currX += Math.sign(dx);
-            if (rand.next() < 0.2) currY += (rand.next() < 0.5 ? 1 : -1); // Шум по Y
+            if (rand.next() < 0.2) currY += (rand.next() < 0.5 ? 1 : -1);
         } else {
             currY += Math.sign(dy);
-            if (rand.next() < 0.2) currX += (rand.next() < 0.5 ? 1 : -1); // Шум по X
+            if (rand.next() < 0.2) currX += (rand.next() < 0.5 ? 1 : -1);
         }
         
-        // Защита от выхода за границы
         currX = Math.max(1, Math.min(width - 2, currX));
         currY = Math.max(1, Math.min(height - 2, currY));
 
-        // Если дошли близко к цели, выходим
         if (Math.abs(currX - end.x) < 2 && Math.abs(currY - end.y) < 2) break;
     }
 }
 
-
-// --- ОБНОВЛЕННАЯ ЛОГИКА ВЫБОРА ГЕНЕРАТОРА ---
 
 const DungeonGeneratorModule = {
     generateLevel: function(x, y, depth, width, height) {
@@ -267,20 +323,16 @@ const DungeonGeneratorModule = {
         const dungeonType = selectDungeonType(rand);
         
         let mapGrid;
-        // Явное разделение алгоритмов
         if (dungeonType.name === 'cave') {
             mapGrid = generateCaveMap(rand, width, height);
         } else if (dungeonType.name === 'cellular') {
-            // Старый cellular для других типов (например, organic)
             mapGrid = generateCellularMap(rand, width, height);
         } else if (dungeonType.name === 'arena' || dungeonType.name === 'boss') {
              mapGrid = generateArenaMap(rand, width, height);
         } else {
-            // Dungeon, Rogue, Icy используют комнаты
             mapGrid = generateRoomCorridorMap(rand, width, height);
         }
 
-        // Поиск стартовой позиции (безопасный спавн)
         let startPos = { x: Math.floor(width/2), y: Math.floor(height/2) };
         if (mapGrid[startPos.y][startPos.x] === 1) {
             let found = false;
@@ -354,35 +406,3 @@ const DungeonGeneratorModule = {
         };
     }
 };
-
-// Старая функция cellular (оставляем для совместимости, если нужна для типа 'cellular')
-function generateCellularMap(rand, width, height) {
-    let grid = Array(height).fill().map(() => Array(width).fill(1));
-    const fillChance = 0.45;
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (rand.next() < fillChance) grid[y][x] = 1;
-        }
-    }
-    for (let iter = 0; iter < 4; iter++) {
-        const newGrid = Array(height).fill().map(() => Array(width).fill(1));
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                    newGrid[y][x] = 1;
-                    continue;
-                 }
-                let wallCount = 0;
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        if (grid[y + dy][x + dx] === 1) wallCount++;
-                    }
-                }
-                newGrid[y][x] = (wallCount >= 5) ? 1 : 0;
-            }
-        }
-        grid = newGrid;
-    }
-    return grid;
-}
