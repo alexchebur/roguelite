@@ -214,12 +214,49 @@ const TilesetRenderer = (function() {
         ctx.restore();
     }
 
+
+        // === НОВАЯ ФУНКЦИЯ: ОТРИСОВКА БОЛЬШИХ СПРАЙТОВ (2x2) ===
+    function drawBig(ctx, char, screenX, screenY, color) {
+        if (!ctx) return;
+
+        const tileData = TILE_MAP[char];
+        if (!tileData) return;
+
+        const img = spriteSheets[tileData.file];
+        if (!img || !isReady) return;
+
+        const srcX = tileData.x * TILE_SIZE;
+        const srcY = tileData.y * TILE_SIZE;
+
+        // Размеры назначения: 2 тайла в ширину и высоту
+        const destW = TILE_SIZE * 2;
+        const destH = TILE_SIZE * 2;
+        const destX = screenX * TILE_SIZE;
+        const destY = screenY * TILE_SIZE;
+
+        ctx.save();
+        ctx.clearRect(destX, destY, destW, destH);
+        
+        // Рисуем изображение, растягивая его на 2x2 клетки
+        ctx.drawImage(img, srcX, srcY, TILE_SIZE, TILE_SIZE, destX, destY, destW, destH);
+
+        // Окраска (если нужна)
+        if (color && color !== '#fff' && color !== '#ffffff' && color !== '#000' && color !== '#000000') {
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = color;
+            ctx.fillRect(destX, destY, destW, destH);
+        }
+        ctx.restore();
+    }
+
     // === ПУБЛИЧНЫЙ ИНТЕРФЕЙС ===
     return {
         init,
         draw,
-        drawByKey, // <--- ДОБАВЛЕНО ЗДЕСЬ
+        drawBig, // <--- ДОБАВИТЬ ЭТО
+        drawByKey, // Если вы добавляли её ранее
         TILE_SIZE,
         isReady: () => isReady
     };
 })();
+
