@@ -81,22 +81,22 @@ const SPRITE_REGISTRY = {
 
         // === БОССЫ (2x2 спрайта) ===
     // Древний Дракон
-    'BOSS_DRAGON_TL': { char: 'Q', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (TL)' },
-    'BOSS_DRAGON_TR': { char: 'Q', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (TR)' },
-    'BOSS_DRAGON_BL': { char: 'Q', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (BL)' },
-    'BOSS_DRAGON_BR': { char: 'Q', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (BR)' },
+    'BOSS_DRAGON_TL': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (TL)' },
+    'BOSS_DRAGON_TR': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (TR)' },
+    'BOSS_DRAGON_BL': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (BL)' },
+    'BOSS_DRAGON_BR': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Дракон (BR)' },
     
     // Каменный Голем
-    'BOSS_GOLEM_TL': { char: 'M', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (TL)' },
-    'BOSS_GOLEM_TR': { char: 'M', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (TR)' },
-    'BOSS_GOLEM_BL': { char: 'M', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (BL)' },
-    'BOSS_GOLEM_BR': { char: 'M', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (BR)' },
+    'BOSS_GOLEM_TL': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (TL)' },
+    'BOSS_GOLEM_TR': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (TR)' },
+    'BOSS_GOLEM_BL': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (BL)' },
+    'BOSS_GOLEM_BR': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Голем (BR)' },
 
     // Король Личей
-    'BOSS_LICH_TL': { char: 'L', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (TL)' },
-    'BOSS_LICH_TR': { char: 'L', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (TR)' },
-    'BOSS_LICH_BL': { char: 'L', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (BL)' },
-    'BOSS_LICH_BR': { char: 'L', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (BR)' },
+    'BOSS_LICH_TL': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (TL)' },
+    'BOSS_LICH_TR': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (TR)' },
+    'BOSS_LICH_BL': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (BL)' },
+    'BOSS_LICH_BR': { char: 'B', tile: { file: 'creature_sprites', x: 0, y: 18 }, desc: 'Лич (BR)' },
 
     // (Для остальных рас можно добавить аналогичные блоки или использовать дефолтные)
     
