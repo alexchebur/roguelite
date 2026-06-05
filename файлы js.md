@@ -12,6 +12,10 @@ const GameModule = (function() {
     let explored = new Set();
     let busy = false;
     
+    // === КВЕСТЫ ===
+    let activeQuests = []; 
+    let completedQuestIds = new Set(); 
+
     // === Режимы: 'global' (глобальная карта) или 'dungeon' (подземелье) ===
     let gameMode = 'global';
     let entrancePos = null; 
@@ -32,7 +36,6 @@ const GameModule = (function() {
             if (typeof RenderModule === 'undefined') {
                 throw new Error("RenderModule не загружен ");
             }
-            // Ждем завершения инициализации рендерера (и загрузки спрайтов)
             await RenderModule.init();
             RenderModule.setRedrawCallback(renderFrame);
         } catch (e) {
@@ -56,7 +59,6 @@ const GameModule = (function() {
         window.addEventListener("keydown", (e) => handleInput(e));
         addTouchControls();
 
-        // Обработка кликов мышью (только для ПК)
         const mapContainer = document.getElementById("map-container");
         if (mapContainer) {
             mapContainer.addEventListener("mousedown", (e) => {
@@ -68,10 +70,9 @@ const GameModule = (function() {
         
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
         RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
-        RenderModule.log("💡 ПК: Клик для осмотра. Мобильные: Тап для осмотра, Свайп для движения.", "info");
     }
 
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР) ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -95,23 +96,17 @@ const GameModule = (function() {
         const wx = sx + cam.x;
         const wy = sy + cam.y;
 
-        // Враги
+        // 1. Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
             const weapon = player.equipment.weapon;
-            
-            // Если экипировано дальнее оружие, пытаемся стрелять
             if (weapon && !weapon.meleeType) {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
-                if (killed) {
-                    enemies = enemies.filter(e => e.hp > 0); // Удаляем труп
-                }
-                // После выстрела ход переходит к врагам
+                if (killed) enemies = enemies.filter(e => e.hp > 0);
                 moveNpcs();
                 moveEnemies();
                 renderFrame();
             } else {
-                // Иначе просто осмотр
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
                 }
@@ -120,17 +115,20 @@ const GameModule = (function() {
             return;
         }
 
-        // NPC
+        // 2. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
-            if (typeof RenderModule.updateInspector === 'function') {
-                RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
+            const questGiven = tryGiveQuest(npc);
+            if (!questGiven) {
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
+                }
+                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             }
-            RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             return;
         }
 
-        // Предметы
+        // 3. Предметы
         const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
              let details = "";
@@ -149,31 +147,134 @@ const GameModule = (function() {
         }
     }
 
+    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
+    function tryGiveQuest(npc) {
+        if (typeof QuestSystemModule === 'undefined') return false;
+        if (!npc.isQuestGiver) return false;
+
+        if (!entrancePos) return false;
+        const cityGx = entrancePos.x;
+        const cityGy = entrancePos.y;
+        
+        let npcIndex = 0;
+        for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+
+        const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+        const questId = tempQuest.id;
+        
+        const alreadyActive = activeQuests.some(q => q.id === questId);
+        const alreadyDone = completedQuestIds.has(questId);
+
+        if (!alreadyActive && !alreadyDone) {
+            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+            newQuest.isActive = true;
+            activeQuests.push(newQuest);
+            
+            RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
+            RenderModule.log(newQuest.briefing, "info");
+            
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
+            }
+            
+            // Сразу обновляем компас, так как мы еще в городе (режим dungeon), 
+            // но при выходе он должен показать направление
+            return true;
+        } else if (alreadyActive) {
+             RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
+             return true;
+        } else if (alreadyDone) {
+             RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
+             return true;
+        }
+        
+        return false;
+    }
+
+    // === НАГРАДА ЗА КВЕСТ ===
+    function grantReward(quest) {
+        if (!player) return;
+        
+        player.gold += quest.rewardGold;
+        RenderModule.log(`🏆 Квест выполнен! Получено: ${quest.rewardGold} золотых.`, "loot");
+        
+        activeQuests = activeQuests.filter(q => q.id !== quest.id);
+        completedQuestIds.add(quest.id);
+        
+        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        updateQuestCompass(); // Обновляем компас после завершения
+    }
+
+    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
+    function getQuestArrow(targetX, targetY, currentX, currentY) {
+        const dx = targetX - currentX;
+        const dy = targetY - currentY;
+        
+        if (dx === 0 && dy === 0) return '📍'; 
+
+        let arrow = '';
+        if (dy < 0) arrow += '↑'; 
+        else if (dy > 0) arrow += '↓';
+        
+        if (dx > 0) arrow += '→'; 
+        else if (dx < 0) arrow += '←';
+        
+        if (arrow === '↑←') arrow = '↖';
+        if (arrow === '↑→') arrow = '↗';
+        if (arrow === '↓←') arrow = '↙';
+        if (arrow === '↓→') arrow = '↘';
+        
+        return arrow;
+    }
+
+    function updateQuestCompass() {
+        const coordsEl = document.getElementById("ui-loc-coords");
+        if (!coordsEl) return;
+
+        // Работаем ТОЛЬКО на глобальной карте
+        if (gameMode !== 'global') {
+            // В подземелье/городе пусть работает старая логика из render.js (Выход: стрелка)
+            // Мы просто выходим, чтобы не мешать render.js
+            return;
+        }
+
+        const activeQuest = activeQuests.find(q => !q.isCompleted);
+        
+        if (activeQuest && activeQuest.target) {
+            const playerPos = GlobalMapModule.getPlayerPosition();
+            const arrow = getQuestArrow(activeQuest.target.targetX, activeQuest.target.targetY, playerPos.x, playerPos.y);
+            
+            // Красим стрелку в зависимости от типа квеста
+            let color = "#fff";
+            if (activeQuest.type === 'HUNT') color = "#ff5555";
+            else if (activeQuest.type === 'FETCH') color = "#ffd700";
+            else color = "#58a6ff";
+
+            // ЗАПИСЫВАЕМ НАПРЯМУЮ В ЭЛЕМЕНТ
+            coordsEl.innerHTML = `<span style="color:${color}">Квест: ${arrow}</span>`;
+        } else {
+            // Если квестов нет, показываем обычные координаты
+            const playerPos = GlobalMapModule.getPlayerPosition();
+            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+        }
+    }
+
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
-    // === Обработка сенсорного управления (Движение по касанию) ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
         const canvas = mapContainer.querySelector("canvas");
         
-        if (!canvas) {
-            console.warn("Canvas не найден для сенсорного управления");
-            return;
-        }
+        if (!canvas) return;
 
-        // Обработчик касания для движения
         canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault(); // Предотвращаем скролл страницы
-            
+            e.preventDefault();
             if (busy || (player && player.hp <= 0)) return;
             
             const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0];
-            
-            // Координаты касания относительно левого верхнего угла canvas
             const touchX = touch.clientX - rect.left;
             const touchY = touch.clientY - rect.top;
             
-            // Центр экрана
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
             
@@ -181,26 +282,19 @@ const GameModule = (function() {
             const offsetX = touchX - centerX;
             const offsetY = touchY - centerY;
             
-            // Определяем направление по большей оси (горизонталь или вертикаль)
             if (Math.abs(offsetX) > Math.abs(offsetY)) {
                 dx = offsetX > 0 ? 1 : -1;
             } else {
                 dy = offsetY > 0 ? 1 : -1;
             }
             
-            // Выполняем ход
             if (gameMode === 'global') {
                 processGlobalTurn(dx, dy);
             } else {
                 processTurn(dx, dy);
             }
 
-            // === ПАРАЛЛЕЛЬНАЯ ИНСПЕКЦИЯ (если попали в существо) ===
-            // Так как мы уже сделали ход, игрок мог сместиться, но мы проверяем 
-            // клетку, на которую только что попытались шагнуть (или где стоим, если стена)
-            // Для простоты вызываем инспекцию по координатам касания на карте
-            
-            // Вычисляем координаты клетки, на которую нажали
+            // Параллельная инспекция
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             const clickX = (touch.clientX - rect.left) * scaleX;
@@ -212,25 +306,14 @@ const GameModule = (function() {
             const sx = Math.floor(clickX / cellW);
             const sy = Math.floor(clickY / cellH);
             
-            // Важно: камера могла сместиться, если ход был успешным. 
-            // Но для мгновенной реакции лучше использовать позицию игрока ДО хода или просто текущую.
-            // Используем текущую камеру для точности отображения того, что под пальцем СЕЙЧАС.
             const cam = RenderModule.getCameraOffset(player);
             const wx = sx + cam.x;
             const wy = sy + cam.y;
 
-            // Проверяем, есть ли там кто-то, и выводим инфо
             const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
             if (enemy) {
                 if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
-                }
-            }
-
-            const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
-            if (npc) {
-                if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
+                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}`, "enemy");
                 }
             }
             
@@ -240,6 +323,7 @@ const GameModule = (function() {
             RenderModule.log("💡 Коснитесь части экрана для движения", "info");
         }
     }    
+    
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
@@ -252,10 +336,23 @@ const GameModule = (function() {
         if (GlobalMapModule.tryMove(dx, dy)) {
             const playerPos = GlobalMapModule.getPlayerPosition();
             const poi = GlobalMapModule.getPOI(playerPos.x, playerPos.y);
+            
             if (poi) {
                 enterPOI(poi);
                 return;
             }
+
+            // Проверка квестов типа EXPLORE/FETCH при движении
+            if (typeof QuestSystemModule !== 'undefined') {
+                activeQuests.forEach(q => {
+                    if (QuestSystemModule.checkProgress(q, { type: 'move', x: playerPos.x, y: playerPos.y })) {
+                         RenderModule.log(`📍 Квест выполнен: Вы достигли ${q.target.locationName}!`, "event");
+                         grantReward(q);
+                    }
+                });
+            }
+
+            updateQuestCompass(); // <--- ВАЖНО: Обновляем стрелку после каждого шага
             renderGlobalMap();
         } else {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
@@ -300,13 +397,12 @@ const GameModule = (function() {
         explored.clear();
        
         RenderModule.log("Вы вернулись на поверхность", "info");
+        
+        // <--- ВАЖНО: Сразу обновляем компас при выходе
+        updateQuestCompass(); 
         renderGlobalMap();
     }
     
-// В файле game.js
-
-// ... существующий код ...
-
     // === ЗАГРУЗКА ГОРОДА ===
     function loadCityLevel(gx, gy, cityName) {
         enemies = []; 
@@ -333,20 +429,10 @@ const GameModule = (function() {
             }
         }
 
-        // === ИЗМЕНЕНИЕ: Спавн предметов внутри зданий ===
         if (EntityModule.spawnItemsInCity) {
-            // Получаем координаты внутренних помещений из MapModule
             const interior = MapModule.interiorCoords || [];
-            
-            items = EntityModule.spawnItemsInCity(
-                interior,          // Список разрешенных клеток (внутри зданий)
-                DataModule.ITEM_TYPES,
-                6,                 // Количество предметов
-                1.0,               // Множитель силы
-                2                  // (Этот параметр не используется в новой функции, можно убрать или адаптировать)
-            );
+            items = EntityModule.spawnItemsInCity(interior, DataModule.ITEM_TYPES, 6, 1.0);
         } else {
-            // Fallback: если новая функция не загружена, используем старый метод (предметы везде)
             if (EntityModule.spawnItems) {
                 items = EntityModule.spawnItems(MapModule.currentMapData, player, DataModule.ITEM_TYPES, 6, 1.0, 2);
             }
@@ -361,14 +447,12 @@ const GameModule = (function() {
         renderFrame();
     }    
 
-
-    
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         enemies = [];
         items = [];
         npcs = [];
-        window.currentCityNpcs = []; // На всякий случай
+        window.currentCityNpcs = [];
         explored.clear();
     
         const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType, entryPoint);
@@ -402,20 +486,17 @@ const GameModule = (function() {
         renderFrame();
     }    
     
-    // === СПАВН СУЩНОСТЕЙ С УЧЕТОМ ГЛУБИНЫ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
-        // 1. Спавн врагов
         const enemyCount = 8 + Math.floor(depth * 1.5);
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
         
-        // Фильтрация врагов по глубине
         let availableEnemies = DataModule.ENEMY_TYPES;
         if (depth < 3) {
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
         } else if (depth < 7) {
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
         }
-        // Если глубина >= 7, доступны все
 
         enemies = EntityModule.spawnEnemies(
             MapModule.currentMapData,
@@ -426,8 +507,6 @@ const GameModule = (function() {
             3
         );
         
-        // 2. Спавн обычных предметов (оружие, броня, зелья)
-        // Убран фиксированный сид: лут теперь генерируется случайно при каждом входе
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
         
         if (EntityModule.spawnItems) {
@@ -435,16 +514,14 @@ const GameModule = (function() {
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                4, // Количество обычных предметов
+                4,
                 itemMult,
                 3
             );
         }
 
-        // 3. Спавн золота через EntityModule (случайное распределение при каждом входе)
         const goldTemplate = DataModule.ITEM_TYPES.find(item => item.type === 'gold');
         if (goldTemplate && EntityModule.spawnGold) {
-            // Количество кучек: 2 на 1-м уровне, +1 за каждые 2 уровня глубины
             const goldPilesCount = 2 + Math.floor(depth / 2);
             const worldGoldMult = WorldCurveModule.getGoldMultiplier ? WorldCurveModule.getGoldMultiplier(gx, gy) : 1;
             
@@ -456,15 +533,16 @@ const GameModule = (function() {
                 depth,
                 worldGoldMult
             );
-            
-            // Добавляем сгенерированное золото в общий массив предметов levels
             items.push(...goldItems);
         }
     }  
+
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
-        document.getElementById("ui-loc-coords").textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+        
+        // <--- ВАЖНО: Обновляем компас при каждой отрисовке глобальной карты
+        updateQuestCompass();
         
         if (player) {
             const globalLocData = {
@@ -475,8 +553,6 @@ const GameModule = (function() {
             RenderModule.updateUI(player, globalLocData, null);
         } else {
             document.getElementById("ui-loc-name").textContent = "Глобальная карта";
-            //document.getElementById("ui-loc-desc").textContent = "Исследуйте мир...";
-            //document.getElementById("ui-loc-type").textContent = `Режим: ГЛОБАЛЬНАЯ КАРТА`;
             document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
             document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
             const invDiv = document.getElementById("inventory-list");
@@ -550,15 +626,22 @@ const GameModule = (function() {
     function moveEnemies() {
         enemies.forEach(e => {
             if (e.hp <= 0) return;
+            
+            // Получаем стандартный радиус обзора (8) или переопределенный (если в нас стреляли)
+            const aggroRange = e.aggroOverride || 8;
+            
             const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
             
-            if (dist < 8) {
+            if (dist < aggroRange) {
+                // Если враг был "разбужен" выстрелом, сбрасываем флаг через время или оставляем до смерти
+                // (можно добавить таймер, но пока оставим так)
+                
                 if (dist === 1) {
                     CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                     checkDeath();
                 } else {
                     const astar = new ROT.Path.AStar(player.x, player.y,
-                        (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                         (x, y) => !MapModule.isWall(x, y), { topology: 8 });
                     
                     let next = null;
                     astar.compute(e.x, e.y, (x, y) => {
@@ -575,7 +658,7 @@ const GameModule = (function() {
                         }
                     }
                 }
-            }
+             }
         });
     }
     
@@ -583,13 +666,22 @@ const GameModule = (function() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
         deadEnemies.forEach(enemy => {
-            // ✅ ИСПРАВЛЕНО: правильный порядок аргументов (enemy, depth, itemsArray, logFn)
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
+   
+            // ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
+            if (typeof QuestSystemModule !== 'undefined') {
+                activeQuests.forEach(q => {
+                    if (QuestSystemModule.checkProgress(q, { type: 'kill', enemyName: enemy.name })) {
+                        RenderModule.log(`Квест: Убито ${enemy.name} (${q.progress}/${q.maxProgress})`, "info");
+                        if (q.isCompleted) grantReward(q);
+                    }
+                });
+            }
         });
 
-        // Удаляем мертвых из массива
         enemies = enemies.filter(e => e.hp > 0);
     }
+
     // === ОСНОВНОЙ ХОД ИГРЫ ===
     function processTurn(dx, dy) {
         const nx = player.x + dx;
@@ -640,19 +732,26 @@ const GameModule = (function() {
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
             } 
             else if (item.type === 'book') {
-                // === ЛОГИКА ЧТЕНИЯ КНИГИ ===
                 if (typeof LoreModule !== 'undefined') {
                     const fragment = LoreModule.getNextFragment();
                     RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
-                    RenderModule.log(fragment, "event"); // Используем тип 'event' или создай новый стиль для лора
+                    RenderModule.log(fragment, "event");
                 } else {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
             } 
             else {
-                // Обычные предметы идут в инвентарь
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
+                
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
+                if (typeof QuestSystemModule !== 'undefined') {
+                    activeQuests.forEach(q => {
+                        if (QuestSystemModule.checkProgress(q, { type: 'pickup', itemType: item.type })) {
+                             RenderModule.log(`📦 Это предмет для квеста!`, "info");
+                        }
+                    });
+                }
             }
         
             items.splice(itemIdx, 1);
@@ -696,15 +795,19 @@ const GameModule = (function() {
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawMinimap(player, explored);
     }
-    // ... (внутри GameModule) ...
     
     function getPlayer() {
         return player;
     }
 
+    function getActiveQuests() {
+        return activeQuests;
+    }
+
     return {
         init,
-        getPlayer // <--- ДОБАВИТЬ
+        getPlayer,
+        getActiveQuests
     };
 })();
 
@@ -959,7 +1062,8 @@ const EntityModule = (function() {
             char: template.char, color: template.color,
             hp: hp, maxHp: hp,
             atk: atk, def: def,
-            isEnemy: true
+            isEnemy: true,
+            lootType: template.lootType
         };
     }
 
@@ -1208,6 +1312,7 @@ const EntityModule = (function() {
         spawnItemsInCity // <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
+
 
 ```
 
@@ -2094,32 +2199,32 @@ const NpcGeneratorModule = (function() {
     // Базы данных
     const NPC_DATA = {
         titles: [
-            "Стражник", "Торговец", "Старейшина", "Пьяница", "Кузнец", "Бродяга",
-            "Клирик", "Священник", "Бард", "Охотник", "Крестьянин", "Чиновник",
-            "Пастух", "Знахарка", "Трактирщик", "Гонец", "Зазывала", "Странник",
-            "Плотник", "Егерь", "Монах", "Рыбак", "Купец", "Бродячий философ"
+             "Стражник", "Торговец", "Старейшина", "Пьяница", "Кузнец", "Бродяга",
+             "Клирик", "Священник", "Бард", "Охотник", "Крестьянин", "Чиновник",
+             "Пастух", "Знахарка", "Трактирщик", "Гонец", "Зазывала", "Странник",
+             "Плотник", "Егерь", "Монах", "Рыбак", "Купец", "Бродячий философ"
         ],
         phrases: [
-            "Добро пожаловать в наш город.",
-            "Осторожнее за стенами, там полно тварей.",
-            "Ищешь неприятностей?",
-            "Я слежу за тобой, ничтожество",
-            "Я видел, как ты входил. Ты выглядишь опасно.",
-            "Мирного тебе пути.",
-            "В последнее время ночи стали слишком тихими...",
-            "Говорят, в глубинах подземелий водятся драконы.",
-            "Не доверяй теням в переулке.",
-            "Я слышал шёпот из глубин. Они просыпаются.",
-            "Мой дед говорил, что раньше здесь процветала торговля.",
-            "Нынче на дорогах небезопасно.",
-            "Берегись подземных тварей.",
-            "В этом городе отличный эль.",
-            "Странник, ты ищешь славу или золото? Оба пути опасны.",
-            "Меня тоже когда-то вела дорога приключений.",
-            "Молитвы не спасут тебя от когтей, но успокоят душу.",
-            "Говорят, никто не возвращался из заброшенных руин.",
-            "Люди слышали стук барабанов глубоко под землей.",
-            "Не спускайся глубже без хорошего клинка."
+             "Добро пожаловать в наш город.",
+             "Осторожнее за стенами, там полно тварей.",
+             "Ищешь неприятностей?",
+             "Я слежу за тобой, ничтожество",
+             "Я видел, как ты входил. Ты выглядишь опасно.",
+             "Мирного тебе пути.",
+             "В последнее время ночи стали слишком тихими...",
+             "Говорят, в глубинах подземелий водятся драконы.",
+             "Не доверяй теням в переулке.",
+             "Я слышал шёпот из глубин. Они просыпаются.",
+             "Мой дед говорил, что раньше здесь процветала торговля.",
+             "Нынче на дорогах небезопасно.",
+             "Берегись подземных тварей.",
+             "В этом городе отличный эль.",
+             "Странник, ты ищешь славу или золото? Оба пути опасны.",
+             "Меня тоже когда-то вела дорога приключений.",
+             "Молитвы не спасут тебя от когтей, но успокоят душу.",
+             "Говорят, никто не возвращался из заброшенных руин.",
+             "Люди слышали стук барабанов глубоко под землей.",
+             "Не спускайся глубже без хорошего клинка."
         ]
     };
 
@@ -2127,7 +2232,7 @@ const NpcGeneratorModule = (function() {
      * Генерирует список NPC для города
      * @param {number} gx - глобальная X
      * @param {number} gy - глобальная Y
-     * @param {Array} mapGrid - двумерный массив карты города (0 - пол, 1 - стена)
+     * @param {Array} mapGrid  - двумерный массив карты города (0 - пол, 1 - стена)
      * @returns {Array} массив объектов NPC
      */
     function generateCityNpcs(gx, gy, mapGrid, playerStart) {
@@ -2149,20 +2254,33 @@ const NpcGeneratorModule = (function() {
         while (npcs.length < count && attempts < 200) {
             attempts++;
             const x = rng.int(1, w - 2), y = rng.int(1, h - 2);
-            if (mapGrid[y][x] !== 0) continue; 
-            if (Math.abs(x - playerStart.x) + Math.abs(y - playerStart.y) < 3) continue; 
-            if (npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 2)) continue; 
+            
+            // Проверки валидности позиции
+            if (mapGrid[y][x] !== 0) continue; // Не стена
+            if (Math.abs(x - playerStart.x) + Math.abs(y - playerStart.y) < 3) continue; // Не рядом со входом
+            if (npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 2)) continue; // Не слишком близко к другим NPC
 
             npcs.push({
                 x, y,
                 name: rng.choice(NPC_DATA.titles),
-                char: "☺", color: "#58a6ff",
+                char: "☺", 
+                color: "#58a6ff",
                 dialog: rng.choice(NPC_DATA.phrases),
                 isNPC: true,
-                // Выбираем начальное случайное направление
                 direction: directions[rng.int(0, 3)] 
             });
         }
+
+        // === ЛОГИКА КВЕСТОДАТЕЛЯ ===
+        if (npcs.length > 0) {
+            // Делаем первого NPC квестодателем
+            const giver = npcs[0];
+            giver.isQuestGiver = true;
+            giver.color = "#FFD700"; // Золотой цвет для выделения
+            giver.name = "Капитан стражи"; // Уникальное имя
+            giver.dialog = "Город нуждается в твоей помощи.";
+        }
+
         return npcs;
     }
 
@@ -2238,12 +2356,6 @@ const RenderModule = (function() {
         } else {
             console.warn("TilesetRenderer не найден.");
         }
-
-        // 2. Ждем загрузки спрайтов для глобальной карты (если они отличаются)
-        // Если вы используете те же файлы, что и в TilesetRenderer, этот шаг можно пропустить,
-        // так как TilesetRenderer уже загрузил их в свои spriteSheets.
-        // Но если у вас есть отдельная логика drawSprite в render.js, убедитесь, что картинки загружены.
-        // Для простоты, давайте полагаться на TilesetRenderer для всего.
 
         // Запуск цикла очистки старых эффектов (если есть модуль эффектов)
         if (typeof startEffectLoop === 'function') startEffectLoop();
@@ -2332,32 +2444,6 @@ const RenderModule = (function() {
         }
     }
 
-    // === ФУНКЦИЯ ОТРИСОВКИ СПРАЙТА (Безопасная версия) ===
-    // Теперь она может использовать данные из TilesetRenderer, если нужно,
-    // или оставаться отдельной, если вы хотите использовать sprite_registry.js напрямую.
-    // Но чтобы избежать дублирования, лучше использовать TilesetRenderer.draw() везде.
-    function drawSprite(ctx, id, sx, sy) {
-        // Проверяем, подключен ли реестр
-        if (typeof getTileData !== 'function') return false;
-        
-        const tileData = getTileData(id);
-        if (!tileData) return false;
-
-        // ВАЖНО: Мы должны получить картинку из TilesetRenderer.spriteSheets, 
-        // так как он уже загрузил их.
-        // Но spriteSheets приватный. Поэтому мы полагаемся на TilesetRenderer.draw()
-        // Или можем попытаться достать картинку, если сделаем spriteSheets публичным.
-        // Для простоты, давайте оставим эту функцию как fallback на ASCII, 
-        // а основную отрисовку делегируем TilesetRenderer.draw() в функциях draw и drawGlobalMap.
-        
-        // Если вы все же хотите использовать drawSprite, вам нужно убедиться, 
-        // что картинки загружены. Так как мы ждем TilesetRenderer.init(), 
-        // мы можем предположить, что картинки есть.
-        
-        // Но проще всего удалить drawSprite и использовать везде TilesetRenderer.draw().
-        return false; 
-    }    
-    
     function getCameraOffset(player) {
         const cam = {
             x: player.x - Math.floor(COLS / 2),
@@ -2377,7 +2463,6 @@ const RenderModule = (function() {
 
         // Проверка готовности рендерера
         if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
-            // Если не готов, рисуем ASCII заглушку
             ctx.fillStyle = '#fff';
             ctx.font = '16px Consolas, monospace';
             ctx.textAlign = 'center';
@@ -2536,7 +2621,6 @@ const RenderModule = (function() {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, cvs.width, cvs.height);
         
-        // ✅ ИСПРАВЛЕНИЕ: Увеличиваем размер до 50 на 50, чтобы масштаб совпадал с мини-картой подземелья
         const MINIMAP_SIZE = 50; 
         const cellW = cvs.width / MINIMAP_SIZE;
         const cellH = cvs.height / MINIMAP_SIZE;
@@ -2568,50 +2652,31 @@ const RenderModule = (function() {
                 if (gx === centerX && gy === centerY) color = '#0f0'; // Игрок
                 
                 ctx.fillStyle = color;
-                // ✅ ИСПРАВЛЕНИЕ: +0.5 предотвращает появление тонких черных линий между пикселями при маленьком масштабе
                 ctx.fillRect(dx * cellW, dy * cellH, cellW + 0.5, cellH + 0.5);
             }
         }
     }
 
+    // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
-            // Строка с ui-loc-desc удалена
-    
-            // Логика цвета остается, но без вывода текста типа
-            if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                document.getElementById("ui-loc-name").style.color = worldTrend.color;
-            } else {
-                document.getElementById("ui-loc-name").style.color = "var(--accent)";
-            }
-            // Строка с ui-loc-type.textContent удалена
-        }
-
-
-
-
-        /*
-        if (locData) {
-            document.getElementById("ui-loc-name").textContent = locData.fullName;
-            //document.getElementById("ui-loc-desc").textContent = locData.description;
             
-            let typeText = `Тип: ${locData.themeName || locData.type || '?'}`;
             if (worldTrend && worldTrend.name !== "Обычный уровень") {
-                typeText += ` | ${worldTrend.name}`;
                 document.getElementById("ui-loc-name").style.color = worldTrend.color;
             } else {
                 document.getElementById("ui-loc-name").style.color = "var(--accent)";
             }
-            document.getElementById("ui-loc-type").textContent = typeText;
         }
-        */
 
+        // === ЛОГИКА КОМПАСА / ВЫХОДА ===
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
-            if (!player || locData?.themeName === "Поверхность" || !MapModule.stairsUp) {
-                exitEl.textContent = "Выход: —";
-            } else {
+            // Проверяем, находимся ли мы в подземелье (не на поверхности)
+            const isDungeon = locData && locData.themeName !== "Поверхность";
+            
+            if (isDungeon && MapModule.stairsUp) {
+                // МЫ В ПОДЗЕМЕЛЬЕ: Показываем стрелку к выходу (стандартная логика)
                 const sx = MapModule.stairsUp.x, sy = MapModule.stairsUp.y;
                 const dx = sx - player.x, dy = sy - player.y;
                 
@@ -2628,9 +2693,13 @@ const RenderModule = (function() {
                     if (arrow === '↓→') arrow = '↘';
                 }
                 exitEl.textContent = `Выход: ${arrow}`;
-            }
+            } 
+            // ЕСЛИ МЫ НА ПОВЕРХНОСТИ (ГЛОБАЛЬНАЯ КАРТА):
+            // Мы НИЧЕГО не пишем сюда. 
+            // Элемент остается как есть, а GameModule.updateQuestCompass() заполнит его стрелкой квеста или координатами.
         }
         
+        // === СТАТИСТИКА И ИНВЕНТАРЬ ===
         if (player && player.hp !== undefined) {
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
@@ -2918,11 +2987,9 @@ const WorldCurveModule = (function() {
     <meta charset="UTF-8">
     <title>Roguelike: Подземелье Координат</title>
     
-
-
+    <!-- ... ваши скрипты ... -->
     <script src="rot.min.js"></script>
     <script src="seedrandom.min.js"></script>
-    
     <script src="sprite_registry.js"></script>
     <script src="name_generator.js"></script>
     <script src="worldCurve.js"></script>
@@ -2932,19 +2999,16 @@ const WorldCurveModule = (function() {
     <script src="entity.js"></script>
     <script src="combat.js"></script>
     <script src="globalMap.js"></script>
-    
-    <!-- ВАЖНО: TilesetRenderer должен быть загружен ДО render.js -->
     <script src="tileset_renderer.js"></script> 
-    
     <script src="render.js"></script>
     <script src="npc_generator.js"></script>
-    <script src="effect_system.js"></script> <!-- Если используете эффекты -->
+    <script src="effect_system.js"></script>
     <script src="lore.js"></script>
+    <script src="quest_system.js"></script>
     <script src="game.js"></script>
 
-    
-    
     <style>
+        /* ... ваши стили ... */
         :root {
             --bg-color: #0d1117;
             --panel-bg: #161b22;
@@ -2956,7 +3020,6 @@ const WorldCurveModule = (function() {
             --gold: #d29922;
             --font-stack: 'Consolas', 'Monaco', monospace;
         }
-
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
@@ -2967,17 +3030,15 @@ const WorldCurveModule = (function() {
             flex-direction: column;
             overflow: hidden;
         }
-
         #game-layout {
             display: grid;
             grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 100px 1fr 140px;
+            grid-template-rows: 100px 1fr 140px; /* Вернул стандартную высоту */
             height: 100%;
             gap: 4px;
             padding: 4px;
             box-sizing: border-box;
         }
-
         .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
@@ -2987,7 +3048,6 @@ const WorldCurveModule = (function() {
             display: flex;
             flex-direction: column;
         }
-
         h3 {
             margin: 0 0 8px 0;
             font-size: 13px;
@@ -2997,21 +3057,34 @@ const WorldCurveModule = (function() {
             padding-bottom: 4px;
             letter-spacing: 1px;
         }
-
         header {
             grid-column: 1 / -1;
             display: flex;
             flex-direction: column; 
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 10px 15px; 
+            padding: 5px 15px; 
         }
-        .loc-info { text-align: center; width: 100% }
-        .loc-name { color: var(--accent); font-weight: bold; font-size: 1.1em; }
-        .loc-coords { color: var(--text-dim); font-size: 0.8em; margin-bottom: 8px; }
-        .loc-desc { color: var(--text-dim); font-size: 0.8em; font-style: italic; margin-top: 2px;}
-        .loc-type { color: var(--gold); font-size: 0.8em; margin-top: 1px; }
+        .loc-info { 
+            text-align: center; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .loc-name { 
+            color: var(--accent); 
+            font-weight: bold; 
+            font-size: 1.1em; 
+            line-height: 1.2;
+        }
+        .loc-coords { 
+            color: var(--text-dim); 
+            font-size: 0.9em; 
+            min-height: 1.2em; /* Чтобы текст не прыгал */
+        }
         
         #map-container {
             grid-column: 2;
@@ -3026,21 +3099,17 @@ const WorldCurveModule = (function() {
             width: 100%;
             height: 100%;
         }
-
         #map-container canvas {
             display: block;
             transform-origin: center center;
             image-rendering: pixelated;
         }
-
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
         .val-def { color: var(--accent); }
-        
         .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
         .equip-item { color: var(--gold); }
-
         #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
         .inv-item {
             padding: 3px 5px;
@@ -3054,7 +3123,6 @@ const WorldCurveModule = (function() {
             text-overflow: ellipsis;
         }
         .inv-item:hover { background: rgba(255,255,255,0.1); }
-
         #log-list {
             overflow-y: auto;
             flex: 1;
@@ -3066,23 +3134,18 @@ const WorldCurveModule = (function() {
         .log-combat { color: var(--danger); }
         .log-loot { color: var(--gold); }
         .log-info { color: var(--accent); }
-
-
-        
-        /* === НОВЫЙ СТИЛЬ ДЛЯ КНИГ И ЛОРА === */
         .log-lore { 
-            color: #d2b48c; /* Цвет старого пергамента/песочный */
-            font-style: italic; /* Курсив для художественного текста */
-            border-left: 3px solid #8b7355; /* Декоративная линия слева */
-            padding-left: 8px; /* Отступ от линии */
-            background: rgba(139, 115, 85, 0.1); /* Легкий фон */
+            color: #d2b48c;
+            font-style: italic;
+            border-left: 3px solid #8b7355;
+            padding-left: 8px;
+            background: rgba(139, 115, 85, 0.1);
             margin-top: 4px;
             margin-bottom: 4px;
-            font-family: 'Georgia', serif; /* Шрифт с засечками для контраста с моноширинным интерфейсом */
+            font-family: 'Georgia', serif;
             font-size: 12px;
             line-height: 1.4;
         }
-
         #minimap-panel {
             grid-column: 1;
             grid-row: 3;
@@ -3096,7 +3159,6 @@ const WorldCurveModule = (function() {
             border-radius: 4px;
             image-rendering: pixelated;
         }
-
         footer {
             grid-column: 2 / 4;
             grid-row: 3;
@@ -3117,8 +3179,7 @@ const WorldCurveModule = (function() {
         <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
         <div class="loc-info">
             <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <!--<div id="ui-loc-type" class="loc-type"></div>-->
-            <!--<div id="ui-loc-desc" class="loc-desc"></div>-->
+            <!-- ОДИН ЭЛЕМЕНТ ДЛЯ ВСЕГО -->
             <div id="ui-loc-coords" class="loc-coords">Выход: —</div>
         </div>
     </header>
@@ -3126,11 +3187,8 @@ const WorldCurveModule = (function() {
     <div class="panel" style="grid-row: 2;">
         <h3>Персонаж</h3>
         <div id="ui-stats"></div>
-        
         <h3 style="margin-top: 15px;">Экипировка</h3>
         <div id="ui-equip"></div>
-
-        <!-- === НОВЫЙ БЛОК: ИНСПЕКТОР === -->
         <h3 style="margin-top: 15px; color: var(--accent);">👁️ Инспектор</h3>
         <div id="ui-inspector" style="font-size: 12px; color: var(--text-dim); min-height: 40px;">
             <div style="font-style: italic; opacity: 0.7;">Кликните по объекту на карте...</div>
@@ -3167,22 +3225,44 @@ const WorldCurveModule = (function() {
 ```js
 
 // =========================== Модуль боя и использования предметов ===========================
+// =========================== Модуль боя и использования предметов ===========================
 const CombatModule = (function() {
     
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА ЛИНИИ ВИДИМОСТИ (LOS) ===
+    // Проверяет, есть ли прямая видимость между (x1,y1) и (x2,y2) без стен
+    function hasLineOfSight(x1, y1, x2, y2) {
+        // Используем встроенный в ROT.js алгоритм Raycasting
+        let blocked = false;
+        const raycaster = new ROT.Ray(x1, y1, x2, y2);
+        
+        raycaster.compute((x, y) => {
+            // Если мы достигли цели, прерываем проверку (цель видна)
+            if (x === x2 && y === y2) return true; 
+            
+            // Если на пути стена - блокируем
+            if (MapModule.isWall(x, y)) {
+                blocked = true;
+                return true; // Остановить луч
+            }
+        });
+        
+        return !blocked;
+    }
+
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ АНИМАЦИИ УДАРА ===
     function triggerHitAnimation() {
         let frames = 0;
-        const maxFrames = 5; // Количество кадров анимации (примерно 150-200мс)
+        const maxFrames = 5; 
         
         const interval = setInterval(() => {
             frames++;
-            RenderModule.requestRedraw(); // Принудительно перерисовываем экран
+            RenderModule.requestRedraw(); 
             
             if (frames >= maxFrames) {
                 clearInterval(interval);
-                RenderModule.requestRedraw(); // Финальная перерисовка, чтобы вернуть обычный символ
+                RenderModule.requestRedraw(); 
             }
-        }, 40); // Частота обновления (40мс = 25 FPS для анимации)
+        }, 40); 
     }
 
     // === АТАКА БЛИЖНЕГО БОЯ ===
@@ -3193,11 +3273,9 @@ const CombatModule = (function() {
 
         defender.hp -= dmg;
         
-        // === ЭФФЕКТ ВСПЫШКИ ===
-        defender.flashEndTime = Date.now() + 200; // Длительность 200мс
+        defender.flashEndTime = Date.now() + 200; 
         defender.flashChar = "*"; 
         
-        // Запускаем анимацию перерисовки
         triggerHitAnimation();
 
         const attackerName = attacker.name || "Вы";
@@ -3213,37 +3291,88 @@ const CombatModule = (function() {
         return false;
     }
 
-    // === ДИСТАНЦИОННАЯ АТАКА ===
+    // === ДИСТАНЦИОННАЯ АТАКА (ОБНОВЛЕННАЯ) ===
     function rangedAttack(player, target, weapon, logFn, updateUiFn) {
-        // ... (проверки без изменений) ...
+        // 1. Проверка наличия оружия и типа
         if (!weapon || weapon.meleeType !== false) return false;
+        
+        // 2. Проверка боеприпасов
         if (weapon.currentAmmo <= 0) {
             logFn(`Нет боеприпасов для ${weapon.name}!`, "combat");
             return false;
         }
+
+        // 3. Расчет дистанции
         const dist = Math.abs(player.x - target.x) + Math.abs(player.y - target.y);
+
+        // 4. ЛОГИКА "В УПОР" (Требование 1)
+        // Если враг вплотную (дистанция 1), стрелять нельзя/неэффективно. 
+        // Игрок атакует базовой силой (как кулаками или рукояткой), бонус оружия не применяется.
+        if (dist === 1) {
+            logFn(`${target.name} слишком близко! Вы бьете прикладом.`, "combat");
+            // Вызываем обычную атаку с базовыми статами игрока (без бонуса оружия)
+            // Для этого временно убираем бонус оружия, если он экипирован
+            const savedAtk = player.atk;
+            if (player.equipment.weapon === weapon) {
+                player.atk -= weapon.val; // Убираем бонус оружия
+            }
+            
+            const killed = attack(player, target, logFn);
+            
+            // Возвращаем бонус
+            if (player.equipment.weapon === weapon) {
+                player.atk = savedAtk;
+            }
+            
+            if (updateUiFn) updateUiFn();
+            return killed;
+        }
+
+        // 5. Проверка максимальной дальности (Требование 2: теперь проверяется против нового range из data.js)
         if (dist > weapon.range) {
             logFn(`${target.name} слишком далеко для ${weapon.name} (макс. ${weapon.range})!`, "combat");
             return false;
         }
 
+        // 6. Проверка препятствий (Требование 3)
+        if (!hasLineOfSight(player.x, player.y, target.x, target.y)) {
+            logFn(`Препятствие мешает выстрелу в ${target.name}!`, "combat");
+            return false;
+        }
+
+        // --- ЕСЛИ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ: СТРЕЛЬБА ---
+        
         weapon.currentAmmo--;
+        
+        // Расчет урона: База игрока + Сила оружия - Защита врага
+        // Важно: здесь мы используем полный ATK игрока, который уже включает weapon.val
         let dmg = Math.max(1, player.atk - target.def); 
+        
         let crit = Math.random() < 0.1;
         if (crit) dmg = Math.floor(dmg * 1.5);
 
         target.hp -= dmg;
         
-        // === ЭФФЕКТ ВСПЫШКИ ===
+        // Эффекты
         target.flashEndTime = Date.now() + 200;
         target.flashChar = "*";
-        
-        // Запускаем анимацию перерисовки
         triggerHitAnimation();
 
         logFn(`Вы стреляете в ${target.name} из ${weapon.name} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
         if (updateUiFn) updateUiFn();
+
+        // 7. АГРО (Требование 2)
+        // При попадании враг "видит" игрока независимо от расстояния.
+        // В текущей архитектуре moveEnemies проверяет dist < 8. 
+        // Чтобы враг побежал за игроком после выстрела с 15 клеток, нам нужно 
+        // либо увеличить глобальный радиус агро, либо пометить врага как "разбуженного".
+        // Самый простой способ без переписывания AI - временно увеличить его радиус восприятия
+        // или просто надеяться, что игрок подойдет ближе, пока враг идет.
+        // Но чтобы выполнить требование "начинает двигаться", добавим флаг или просто увеличим радиус в game.js.
+        // Пока оставим логику здесь, но учтем, что в game.js радиус жестко задан.
+        // *Хак*: Можно добавить свойство target.aggroRange = 20, и проверить его в moveEnemies.
+        target.aggroOverride = 20; // Помечаем врага, что он разозлен
 
         if (target.hp <= 0) {
             logFn(`${target.name} погибает от выстрела!`, "info");
@@ -3252,24 +3381,34 @@ const CombatModule = (function() {
         return false;
     }
 
+    // ... (остальной код dropLoot и useItem остается без изменений) ...
+
     // ... (остальной код combat.js без изменений) ...
 
     // === ВЫПАДЕНИЕ ЛУТА ===
     // Исправленная сигнатура: (enemy, player, depth, itemsArray, logFn)
-    function dropLoot(enemy, player, depth, itemsArray, logFn) {
+    // === ВЫПАДЕНИЕ ЛУТА ===
+    // Сигнатура: (enemy, depth, itemsArray, logFn)
+    function dropLoot(enemy, depth, itemsArray, logFn) {
         if (!enemy.lootType) return;
 
-        // Шанс выпадения 40% (если random > 0.4, то выходим)
+        // Шанс выпадения 40%
         if (Math.random() > 0.4) return;
 
         let droppedItem = null;
-        // Используем seedrandom для разнообразия, но можно и Math.random
+        
+        // Инициализируем генератор
         const rng = new Math.seedrandom(`loot_${enemy.x}_${enemy.y}_${Date.now()}`);
+        
+        // ✅ ИСПРАВЛЕНИЕ: создаем свою функцию выбора из массива, 
+        // так как seedrandom не имеет встроенного .choice()
+        const choice = (array) => array[Math.floor(rng() * array.length)];
 
         if (enemy.lootType === 'gold') {
             // Золото: количество растет с глубиной
             const baseGold = 5 + Math.floor(depth * 2.5);
-            const amount = Math.floor(baseGold * (0.8 + Math.random() * 0.4)); 
+            // Используем rng() вместо Math.random() для консистентности
+            const amount = Math.floor(baseGold * (0.8 + rng() * 0.4)); 
             
             droppedItem = {
                 x: enemy.x, y: enemy.y,
@@ -3284,8 +3423,7 @@ const CombatModule = (function() {
             // Еда
             const foods = DataModule.ITEM_TYPES.filter(i => i.type === 'food');
             if (foods.length > 0) {
-                const template = rng.choice(foods);
-                // createItem принимает: (template, x, y, itemPowerMult)
+                const template = choice(foods); // ✅ Теперь работает корректно
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, 1.0);
             }
         } 
@@ -3293,7 +3431,7 @@ const CombatModule = (function() {
             // Оружие/Броня
             const equips = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
             if (equips.length > 0) {
-                const template = rng.choice(equips);
+                const template = choice(equips); // ✅ Теперь работает корректно
                 // Множитель силы зависит от глубины
                 const powerMult = 1.0 + (depth * 0.15); 
                 droppedItem = EntityModule.createItem(template, enemy.x, enemy.y, powerMult);
@@ -3387,8 +3525,8 @@ const DataModule = (function() {
         // === УРОВЕНЬ 4-6 ===
         { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon" },
         { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold" },
-        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [3, 5], lootType: "food" },
-        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [4, 7], def: [2, 3], lootType: "weapon" },
+        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [1, 3], lootType: "food" },
+        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [3, 5], def: [2, 3], lootType: "weapon" },
 
         // === УРОВЕНЬ 7-9 ===
         { name: "Зомби", char: getChar('ENEMY_ZOMBIE'), color: "#607D8B", hp: [50, 70], atk: [6, 9], def: [2, 4], lootType: "gold" },
@@ -3412,9 +3550,11 @@ const DataModule = (function() {
         { type: "weapon", char: getChar('ITEM_SPEAR'), color: "#FFD700", baseName: "Копьё", stat: "atk", val: [4, 8], gender: "it", plural: false, meleeType: true, range: 1 },
         
         // === ДИСТАНЦИОННОЕ ОРУЖИЕ ===
-        { type: "weapon", char: getChar('ITEM_BOW'), color: "#FF9800", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false, meleeType: false, range: 6, maxAmmo: 20 },
-        { type: "weapon", char: getChar('ITEM_CROSSBOW'), color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false, meleeType: false, range: 8, maxAmmo: 15 },
-        { type: "weapon", char: getChar('ITEM_STAFF'), color: "#B39DDB", baseName: "Посох огня", stat: "atk", val: [2, 4], gender: "he", plural: false, meleeType: false, range: 5, maxAmmo: 50 },
+        { type: "weapon", char: getChar('ITEM_BOW'), color: "#FF9800", baseName: "Лук", stat: "atk", val: [3, 6], gender: "he", plural: false, meleeType: false, range: 15, maxAmmo: 20 },
+        { type: "weapon", char: getChar('ITEM_CROSSBOW'), color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false, meleeType: false, range: 10, maxAmmo: 15 },
+        { type: "weapon", char: getChar('ITEM_STAFF'), color: "#B39DDB", baseName: "Посох огня", stat: "atk", val: [2, 4], gender: "he", plural: false, meleeType: false, range: 16, maxAmmo: 50 },
+        
+        // ... остальные предметы ...
         
         // === БРОНЯ ===
         { type: "armor", char: getChar('ITEM_ARMOR_LEATHER'), color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3], gender: "she", plural: false },
@@ -3721,8 +3861,6 @@ function getTileData(id) {
 ```
 # ###tileset_renderer.js
 ```js
-
-
 /**
  * МОДУЛЬ ОТРИСОВКИ СПРАЙТОВ (TilesetRenderer)
  * Отвечает за загрузку PNG-тайлсетов и их отрисовку с программной окраской.
@@ -3959,6 +4097,237 @@ const LoreModule = (function() {
 })();
 ```
 
+# ###quest_system.js
+```js
 
+/**
+ * МОДУЛЬ СИСТЕМЫ КВЕСТОВ (quest_system.js)
+ * Генерирует детерминированные квесты, привязанные к РЕАЛЬНЫМ точкам интереса (POI) на глобальной карте.
+ * Зависит от: name_generator.js, worldCurve.js, data.js, entity.js, globalMap.js
+ */
 
+const QuestSystemModule = (function() {
+    'use strict';
+
+    // === КОНФИГУРАЦИЯ ===
+    const MAX_QUEST_RADIUS = 50; // Основной радиус поиска цели
+    const FALLBACK_RADIUS = 100; // Расширенный радиус, если в 50 клетках нет подземелий
+
+    // === БАЗА ШАБЛОНОВ (Универсальные тексты с переменными) ===
+    const QUEST_TEMPLATES = {
+        FETCH: [
+            "Мне нужен {item}. Говорят, последний раз его видели в {location}. Принеси его, и я заплачу {gold} золотых.",
+            "В {location} затерялся ценный артефакт: {item}. Найди его для меня. Награда: {gold} монет.",
+            "Я слышал, что в руинах {location} можно найти {item}. Это опасно, но я готов заплатить {gold} золотых."
+        ],
+        HUNT: [
+            "{enemy} расплодились в окрестностях {location}. Убей {count} штук, и город будет в безопасности. Награда: {gold} золотых.",
+            "Охотники боятся идти в {location}. Там слишком много {enemy}. Устрани {count} особей, и я дам тебе {gold} монет.",
+            "Голова каждого {enemy} из {location} стоит денег. Принеси мне доказательства смерти {count} тварей. Плачу {gold}."
+        ],
+        EXPLORE: [
+            "Разведчики пропали near {location}. Доберись туда и проверь вход. Я жду новостей. Награда за риск: {gold} золотых.",
+            "На карте отмечено странное место: {location}. Сходи туда и убедись, что вход открыт. Плачу {gold} за информацию.",
+            "Говорят, в {location} творится неладное. Исследуй окрестности. Если вернешься живым, получишь {gold} монет."
+        ]
+    };
+
+    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+
+    function pickRandom(rng, array) {
+        return array[Math.floor(rng.next() * array.length)];
+    }
+
+    function formatBriefing(template, data) {
+        let text = template;
+        text = text.replace(/{item}/g, data.itemName || "древний предмет");
+        text = text.replace(/{enemy}/g, data.enemyName || "врагов");
+        text = text.replace(/{location}/g, data.locationName || "неизвестном месте");
+        text = text.replace(/{count}/g, data.count || "несколько");
+        text = text.replace(/{gold}/g, data.gold || "немного");
+        return text;
+    }
+
+    function generateQuestId(gx, gy, type, index) {
+        return `Q_${type}_${gx}_${gy}_${index}`;
+    }
+
+    /**
+     * НОВАЯ ФУНКЦИЯ: Поиск реального POI (подземелья) в заданном радиусе
+     */
+    function findRealPOI(gx, gy, radius, poiType) {
+        const candidates = [];
+        
+        // Проходим по квадрату, но фильтруем по кругу (манхэттенское расстояние)
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                
+                const tx = gx + dx;
+                const ty = gy + dy;
+                
+                // Спрашиваем у GlobalMapModule, есть ли здесь точка интереса
+                if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
+                    const poi = GlobalMapModule.getPOI(tx, ty);
+                    if (poi && poi.type === poiType) {
+                        candidates.push(poi);
+                    }
+                }
+            }
+        }
+        return candidates.length > 0 ? candidates : null;
+    }
+
+    /**
+     * Рассчитывает параметры цели квеста, привязываясь к РЕАЛЬНЫМ координатам карты
+     */
+    function calculateTargetParams(gx, gy, type, difficultyLevel) {
+        const seed = createSeed(gx, gy, difficultyLevel) + 777; 
+        const rng = new SeededRandom(seed);
+        let targetData = {};
+
+        // Для всех основных типов квестов нам нужна реальная локация (подземелье)
+        const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
+        
+        let targetPoi = null;
+        if (candidates && candidates.length > 0) {
+            // Выбираем случайное подземелье из найденных детерминированно
+            targetPoi = rng.choice(candidates);
+        } else {
+            // FALLBACK: Если в радиусе 50 клеток генерация не создала ни одного подземелья
+            // (маловероятно, но возможно), ищем до 100 клеток, чтобы не ломать игру
+            const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
+            if (wideCandidates && wideCandidates.length > 0) {
+                targetPoi = rng.choice(wideCandidates);
+            }
+        }
+
+        if (targetPoi) {
+            // Успех: мы нашли реальное подземелье!
+            targetData.targetX = targetPoi.x;
+            targetData.targetY = targetPoi.y;
+            targetData.locationName = targetPoi.name;
+            targetData.dungeonType = targetPoi.dungeonType;
+        } else {
+            // КРАЙНИЙ СЛУЧАЙ: Подземелий нет вообще нигде рядом. 
+            // Генерируем фейковую точку, но это произойдет крайне редко.
+            const angle = rng.next() * Math.PI * 2;
+            const r = rng.int(10, MAX_QUEST_RADIUS);
+            targetData.targetX = gx + Math.round(Math.cos(angle) * r);
+            targetData.targetY = gy + Math.round(Math.sin(angle) * r);
+            targetData.locationName = "Забытых руинах";
+            targetData.dungeonType = 'rogue';
+        }
+
+        // Специфичные параметры по типу квеста
+        if (type === 'FETCH') {
+            const possibleItems = DataModule.ITEM_TYPES.filter(i => 
+                i.type !== 'gold' && i.type !== 'book' && i.type !== 'food' && 
+                i.type !== 'potion_hp' && i.type !== 'potion_str'
+            );
+            const itemTemplate = pickRandom(rng, possibleItems);
+            targetData.itemName = itemTemplate.baseName;
+            targetData.itemType = itemTemplate.type;
+        } 
+        else if (type === 'HUNT') {
+            const enemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
+            const enemyTemplate = pickRandom(rng, enemies);
+            
+            targetData.enemyName = enemyTemplate.name;
+            const baseCount = rng.int(3, 5);
+            const multiplier = WorldCurveModule.getEnemyMultiplier(gx, gy);
+            targetData.count = Math.max(1, Math.floor(baseCount * multiplier));
+        }
+
+        return targetData;
+    }
+
+    /**
+     * Публичная функция: Создает объект квеста
+     */
+    function createQuest(gx, gy, questIndex) {
+        const types = ['FETCH', 'HUNT', 'EXPLORE'];
+        const rng = new SeededRandom(createSeed(gx, gy, questIndex));
+        
+        const type = pickRandom(rng, types);
+        const difficulty = Math.abs(gx) + Math.abs(gy); 
+        
+        const targetData = calculateTargetParams(gx, gy, type, difficulty);
+        
+        const goldBase = rng.int(50, 150);
+        const goldMult = WorldCurveModule.getGoldMultiplier(gx, gy);
+        const finalGold = Math.floor(goldBase * goldMult);
+        
+        const id = generateQuestId(gx, gy, type, questIndex);
+        const templates = QUEST_TEMPLATES[type];
+        const template = pickRandom(rng, templates);
+        
+        const briefingData = {
+            itemName: targetData.itemName,
+            enemyName: targetData.enemyName,
+            locationName: targetData.locationName,
+            count: targetData.count,
+            gold: finalGold
+        };
+        
+        const briefing = formatBriefing(template, briefingData);
+
+        return {
+            id: id,
+            type: type,
+            target: targetData,
+            progress: 0,
+            maxProgress: (type === 'HUNT') ? targetData.count : 1,
+            rewardGold: finalGold,
+            briefing: briefing,
+            isCompleted: false,
+            isActive: false
+        };
+    }
+
+    /**
+     * Проверка выполнения квеста
+     */
+    function checkProgress(quest, eventData) {
+        if (quest.isCompleted || !quest.isActive) return false;
+
+        let updated = false;
+
+        if (quest.type === 'HUNT' && eventData.type === 'kill') {
+            if (eventData.enemyName === quest.target.enemyName) {
+                quest.progress++;
+                updated = true;
+            }
+        }
+
+        if (quest.type === 'FETCH' && eventData.type === 'pickup') {
+            if (eventData.itemType === quest.target.itemType) {
+                updated = true; 
+            }
+        }
+
+        if (quest.type === 'EXPLORE' && eventData.type === 'move') {
+            const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
+            if (dist <= 1) { 
+                quest.progress = quest.maxProgress;
+                quest.isCompleted = true;
+                return true; 
+            }
+        }
+
+        if (quest.type === 'HUNT' && quest.progress >= quest.maxProgress) {
+            quest.isCompleted = true;
+        }
+
+        return updated;
+    }
+
+    return {
+        createQuest: createQuest,
+        checkProgress: checkProgress,
+        MAX_RADIUS: MAX_QUEST_RADIUS
+    };
+
+})();
+```
 
