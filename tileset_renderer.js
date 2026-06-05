@@ -58,7 +58,11 @@ const TilesetRenderer = (function() {
         'M': { file: 'creature_sprites', x: 14, y: 0 },  // Голем
         'q': { file: 'creature_sprites', x: 15, y: 0 },  // Дракон
         '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
-
+        
+        // === БОССЫ (2x2) ===
+        // Добавляем символ 'B', который используется в entity.js для всех боссов
+        'B': { file: 'creature_sprites', x: 0,  y: 18 }, // Босс (верхний левый угол 32x32)
+        
         // --- ПРЕДМЕТЫ ---
         '/': { file: 'item_sprites', x: 0,  y: 0 }, // Меч
         'P': { file: 'item_sprites', x: 1,  y: 0 }, // Топор
