@@ -253,83 +253,79 @@ function tryGiveQuest(npc) {
         updateQuestCompass(); // Обновляем компас после завершения
     }
 
-    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
-    function getQuestArrow(targetX, targetY, currentX, currentY) {
-        const dx = targetX - currentX;
-        const dy = targetY - currentY;
-        
-        if (dx === 0 && dy === 0) return '📍'; 
+    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ==// === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
+function getQuestArrow(targetX, targetY, currentX, currentY) {
+    const dx = targetX - currentX;
+    const dy = targetY - currentY;
+    
+    if (dx === 0 && dy === 0) return '📍'; 
 
-        let arrow = '';
-        if (dy < 0) arrow += '↑'; 
-        else if (dy > 0) arrow += '↓';
-        
-        if (dx > 0) arrow += '→'; 
-        else if (dx < 0) arrow += '←';
-        
-        if (arrow === '↑←') arrow = '↖';
-        if (arrow === '↑→') arrow = '↗';
-        if (arrow === '↓←') arrow = '↙';
-        if (arrow === '↓→') arrow = '↘';
-        
-        return arrow;
+    let arrow = '';
+    if (dy < 0) arrow += '↑'; 
+    else if (dy > 0) arrow += '↓';
+    
+    if (dx > 0) arrow += '→'; 
+    else if (dx < 0) arrow += '←';
+    
+    if (arrow === '↑←') arrow = '↖';
+    if (arrow === '↑→') arrow = '↗';
+    if (arrow === '↓←') arrow = '↙';
+    if (arrow === '↓→') arrow = '↘';
+    
+    return arrow;
+}
+
+function updateQuestCompass() {
+    const coordsEl = document.getElementById("ui-loc-coords");
+    if (!coordsEl) return;
+
+    // Работаем ТОЛЬКО на глобальной карте
+    if (gameMode !== 'global') {
+        return;
     }
 
-    function updateQuestCompass() {
-        const coordsEl = document.getElementById("ui-loc-coords");
-        if (!coordsEl) return;
+    const playerPos = GlobalMapModule.getPlayerPosition();
+    
+    // 1. Ищем квест, который выполнен, но награда еще не сдана
+    const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
+    
+    // 2. Если таких нет, ищем обычный активный квест
+    const activeQuest = !turnInQuest ? activeQuests.find(q => !q.isCompleted) : null;
 
-        // Работаем ТОЛЬКО на глобальной карте
-        if (gameMode !== 'global') {
+    let targetX, targetY, color;
+
+    if (turnInQuest) {
+        // Цель: Город, где взят квест (используем originX/originY из объекта квеста)
+        if (turnInQuest.originX !== undefined && turnInQuest.originY !== undefined) {
+            targetX = turnInQuest.originX;
+            targetY = turnInQuest.originY;
+            color = "#00ff00"; // Зеленый для награды
+        } else {
+            console.warn("⚠️ Ошибка: Квест на сдачу есть, но originX/originY отсутствуют!");
+            // Показываем обычные координаты, чтобы интерфейс не ломался
+            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
             return;
         }
-
-        const playerPos = GlobalMapModule.getPlayerPosition();
+    } else if (activeQuest && activeQuest.target) {
+        // Цель: Подземелье или локация квеста
+        targetX = activeQuest.target.targetX;
+        targetY = activeQuest.target.targetY;
         
-        // 1. Ищем квест, который выполнен, но награда еще не сдана
-        // Важно: проверяем наличие флага isTurnedIn
-        const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
-        
-        // 2. Если таких нет, ищем обычный активный квест
-        const activeQuest = !turnInQuest ? activeQuests.find(q => !q.isCompleted) : null;
-
-        let targetX, targetY, color;
-
-        if (turnInQuest) {
-            // Цель: Город, где взят квест
-            if (entrancePos) {
-                targetX = entrancePos.x;
-                targetY = entrancePos.y;
-                color = "#00ff00"; // Зеленый для награды
-                
-                // ОТЛАДКА: Раскомментируйте, если стрелка все равно не появляется
-                // console.log("🧭 Компас: Режим НАГРАДЫ. Цель:", targetX, targetY);
-            } else {
-                 console.warn("⚠️ Ошибка: Квест на сдачу есть, но entrancePos потерян!");
-            }
-        } else if (activeQuest && activeQuest.target) {
-            // Цель: Подземелье
-            targetX = activeQuest.target.targetX;
-            targetY = activeQuest.target.targetY;
-            
-            if (activeQuest.type === 'HUNT') color = "#ff5555";
-            else if (activeQuest.type === 'FETCH') color = "#ffd700";
-            else color = "#58a6ff";
-            
-            // console.log("🧭 Компас: Режим КВЕСТА. Цель:", targetX, targetY);
-        }
-
-        if (targetX !== undefined) {
-            const arrow = getQuestArrow(targetX, targetY, playerPos.x, playerPos.y);
-            const label = turnInQuest ? "Награда" : "Квест";
-            
-            coordsEl.innerHTML = `<span style="color:${color}">${label}: ${arrow}</span>`;
-        } else {
-            // Если квестов нет или ошибка данных, показываем координаты
-            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
-        }
+        if (activeQuest.type === 'HUNT') color = "#ff5555";
+        else if (activeQuest.type === 'FETCH') color = "#ffd700";
+        else color = "#58a6ff";
     }
 
+    if (targetX !== undefined && targetY !== undefined) {
+        const arrow = getQuestArrow(targetX, targetY, playerPos.x, playerPos.y);
+        const label = turnInQuest ? "🏆 Награда" : "📜 Квест";
+        
+        coordsEl.innerHTML = `<span style="color:${color}">${label}: ${arrow}</span>`;
+    } else {
+        // Если квестов нет или ошибка данных, показываем координаты
+        coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+    }
+}
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
