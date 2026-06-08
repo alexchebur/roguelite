@@ -72,6 +72,7 @@ const GameModule = (function() {
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -96,22 +97,29 @@ const GameModule = (function() {
         const wy = sy + cam.y;
 
         // 1. Враги
+        // 1. Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
             const weapon = player.equipment.weapon;
+            
+            // Логика дистанционной атаки
             if (weapon && !weapon.meleeType) {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
                 
-                // === ИСПРАВЛЕНИЕ: Если враг убит, нужно запустить логику смерти ===
                 if (killed) {
+                    // Удаляем врага из массива
                     enemies = enemies.filter(e => e.hp > 0);
-                    checkDeath(); // <--- ЭТОГО НЕ ХВАТАЛО! (Опыт + Квесты + Лут)
+                    
+                    // === ВАЖНО: Вызываем checkDeath для лута, опыта и квестов ===
+                    checkDeath(); 
                 }
                 
                 moveNpcs();
                 moveEnemies();
                 renderFrame();
-            } else {
+            } 
+            // Логика осмотра (если оружие ближнего боя или его нет)
+            else {
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
                 }
@@ -124,10 +132,8 @@ const GameModule = (function() {
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
             if (npc.isQuestGiver) {
-                // tryGiveQuest теперь сам обновит инспектор и лог
                 tryGiveQuest(npc);
             } else {
-                // Обычный NPC - просто диалог
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
                 }
