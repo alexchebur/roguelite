@@ -73,6 +73,7 @@ const GameModule = (function() {
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -96,8 +97,6 @@ const GameModule = (function() {
         const wx = sx + cam.x;
         const wy = sy + cam.y;
 
-        // 1. Враги
-        // 1. Враги
         // 1. Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
@@ -161,7 +160,6 @@ const GameModule = (function() {
             RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
         }
     }
-
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
     function tryGiveQuest(npc) {
         if (typeof QuestSystemModule === 'undefined') return false;
