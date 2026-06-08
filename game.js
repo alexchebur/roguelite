@@ -448,7 +448,7 @@ const GameModule = (function() {
         renderGlobalMap();
         if (entrancePos) {
             GlobalMapModule.setPlayerPosition(entrancePos.x, entrancePos.y);
-            entrancePos = null;
+            //entrancePos = null;
         }
         if (MapModule.clearCache) MapModule.clearCache();
 
