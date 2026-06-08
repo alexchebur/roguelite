@@ -98,6 +98,7 @@ const GameModule = (function() {
 
         // 1. Враги
         // 1. Враги
+        // 1. Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
             const weapon = player.equipment.weapon;
@@ -107,10 +108,10 @@ const GameModule = (function() {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
                 
                 if (killed) {
-                    // Удаляем врага из массива
+                    // 1. Удаляем врага из массива
                     enemies = enemies.filter(e => e.hp > 0);
                     
-                    // === ВАЖНО: Вызываем checkDeath для лута, опыта и квестов ===
+                    // 2. ВАЖНО: Вызываем логику смерти для лута, опыта и квестов
                     checkDeath(); 
                 }
                 
