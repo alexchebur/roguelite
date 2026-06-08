@@ -108,7 +108,7 @@ const GameModule = (function() {
                 
                 if (killed) {
                     // 1. Удаляем врага из массива
-                    enemies = enemies.filter(e => e.hp > 0);
+                    //enemies = enemies.filter(e => e.hp > 0);
                     
                     // 2. ВАЖНО: Вызываем логику смерти для лута, опыта и квестов
                     checkDeath(); 
