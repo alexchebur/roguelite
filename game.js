@@ -825,22 +825,22 @@ const GameModule = (function() {
         deadEnemies.forEach(enemy => {
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
             
-            // 1. Начисляем опыт за убийство (база 10 + глубина * 5)
+            // 1. Начисляем опыт
             const xpGain = 10 + (currentDepth * 5);
             gainXp(xpGain);
 
-            // 2. ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО (HUNT)
+            // 2. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
-                    // Передаем текущие координаты города/подземелья (dungeonX, dungeonY)
-                    // чтобы система проверила, там ли игрок находится
+                    // ВАЖНО: dungeonX и dungeonY должны быть объявлены в начале GameModule
+                    // и обновляться в loadDungeonLevel
                     if (QuestSystemModule.checkProgress(q, { 
                         type: 'kill', 
                         enemyName: enemy.name,
-                        locX: dungeonX,
-                        locY: dungeonY
+                        locX: dungeonX, // <-- Убедитесь, что эта переменная жива
+                        locY: dungeonY  // <-- и эта тоже
                     })) {
-                         RenderModule.log(`Квест: Убито ${enemy.name} (${q.progress}/${q.maxProgress})`, "info");
+                        // Сообщение теперь внутри checkProgress, но можно оставить и тут для дублирования
                         if (q.isCompleted) grantReward(q);
                     }
                 });
