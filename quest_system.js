@@ -14,7 +14,7 @@ const QuestSystemModule = (function() {
     // === БАЗА ШАБЛОНОВ (Универсальные тексты с переменными) ===
     const QUEST_TEMPLATES = {
         FETCH: [
-            "Мне нужен {item}. Говорят, последний раз его видели на глубине {depth}+ уровней в {location}. Принеси его, и я заплачу {gold} золотых.",
+            "Мне нужен {item}. Говорят, последний раз его видели в {location} (глубина {depth}+). Принеси его, и я заплачу {gold} золотых.",
             "В {location} (не ниже {depth} уровня) затерялся ценный артефакт: {item}. Найди его для меня. Награда: {gold} монет."
         ],
         HUNT: [
@@ -197,25 +197,36 @@ const QuestSystemModule = (function() {
             isActive: false
         };
     }
-    }
+    
 
     /**
-     * Проверка выполнения квеста
+     * Проверка выполнения квеста с учетом ЛОКАЦИИ
      */
     function checkProgress(quest, eventData) {
         if (quest.isCompleted || !quest.isActive) return false;
 
         let updated = false;
 
+        // Проверка локации: если у квеста есть целевые координаты (targetX/Y), 
+        // мы проверяем, совпадают ли они с текущими координатами игрока (eventData.locX/Y)
+        const isInCorrectLocation = (
+            !quest.target.targetX || 
+            (eventData.locX === quest.target.targetX && eventData.locY === quest.target.targetY)
+        );
+
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
-            if (eventData.enemyName === quest.target.enemyName) {
+            // Засчитываем убийство только если имя врага совпадает И игрок в правильной локации
+            if (eventData.enemyName === quest.target.enemyName && isInCorrectLocation) {
                 quest.progress++;
                 updated = true;
+            } else if (eventData.enemyName === quest.target.enemyName && !isInCorrectLocation) {
+                 // Опционально: можно подсказывать игроку, что он не там
+                 // RenderModule.log(`Этот ${eventData.enemyName} не тот, что нужен для квеста...`, "info");
             }
         }
 
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
-            if (eventData.itemType === quest.target.itemType) {
+            if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
                 updated = true; 
             }
         }
@@ -235,7 +246,6 @@ const QuestSystemModule = (function() {
 
         return updated;
     }
-
     return {
         createQuest: createQuest,
         checkProgress: checkProgress,
