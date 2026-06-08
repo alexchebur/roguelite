@@ -856,6 +856,7 @@ const GameModule = (function() {
 
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
