@@ -911,26 +911,30 @@ const GameModule = (function() {
             gainXp(xpGain);
 
             // 3. ПРОВЕРКА КВЕСТОВ
+            // 3. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
                 // Создаем копию массива, так как grantReward может изменить activeQuests
                 const questsToCheck = [...activeQuests];
                 
                 questsToCheck.forEach(q => {
-                    console.log(`📜 Проверка квеста: ${q.id}, Тип: ${q.type}, Прогресс: ${q.progress}/${q.maxProgress}`);
-                    
-                    const progressUpdated = QuestSystemModule.checkProgress(q, { 
-                        type: 'kill', 
-                        enemyName: enemy.name,
-                        locX: dungeonX,
-                        locY: dungeonY
-                    });
+                    // === ВАЖНО: Формируем правильный объект eventData ===
+                    const eventData = {
+                        type: 'kill',
+                        enemyName: enemy.name, // <-- Убедитесь, что enemy.name существует
+                        locX: dungeonX,        // <-- Глобальная X координата подземелья
+                        locY: dungeonY         // <-- Глобальная Y координата подземелья
+                    };
+
+                    console.log(`📜 Отправка в квест-систему:`, eventData); // Для отладки
+
+                    const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
                     if (progressUpdated) {
-                        console.log(`✅ Прогресс квеста обновлен! Новый статус: ${q.progress}/${q.maxProgress}. Завершен: ${q.isCompleted}`);
+                        console.log(`✅ Прогресс обновлен! ${q.progress}/${q.maxProgress}`);
                     }
 
                     if (q.isCompleted && !q.isTurnedIn) {
-                        console.log(`🏆 Квест выполнен! Выдача награды...`);
+                        console.log(`🏆 Квест выполнен!`);
                         grantReward(q);
                     }
                 });
