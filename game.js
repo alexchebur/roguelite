@@ -929,9 +929,9 @@ const GameModule = (function() {
                         //RenderModule.log(`Квест: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
                     //}
 
-                    if (q.isCompleted && !q.isTurnedIn) {
-                        RenderModule.log(`🏆 Цель квеста достигнута! Вернитесь за наградой.`, "event");
-                    }
+                    //if (q.isCompleted && !q.isTurnedIn) {
+                        //RenderModule.log(`🏆 Цель квеста достигнута! Вернитесь за наградой.`, "event");
+                    //}
                 });
             }
         });
