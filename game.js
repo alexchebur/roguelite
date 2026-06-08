@@ -69,6 +69,7 @@ const GameModule = (function() {
     }
 
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -111,17 +112,42 @@ const GameModule = (function() {
             return;
         }
 
-        // 2. NPC (Диалог или Статус Квеста)
+        // 2. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
-            // Проверяем, является ли он раздатчиком квестов
             if (npc.isQuestGiver) {
-                // Если это раздатчик, tryGiveQuest проверит статус (активен/выполнен)
-                // и выведет соответствующее сообщение в лог ("Ты еще не выполнил..." или "Спасибо...")
+                // Если это раздатчик квестов, вызываем логику проверки
                 tryGiveQuest(npc);
+                
+                // Дополнительно обновляем инспектор, чтобы игрок видел статус квеста прямо в интерфейсе
+                let statusText = "";
+                if (!entrancePos) return;
+                const cityGx = entrancePos.x;
+                const cityGy = entrancePos.y;
+                let npcIndex = 0;
+                for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+                
+                const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+                const questId = tempQuest.id;
+                
+                const alreadyActive = activeQuests.some(q => q.id === questId);
+                const alreadyDone = completedQuestIds.has(questId);
+
+                if (!alreadyActive && !alreadyDone) {
+                    statusText = "Нажмите, чтобы принять задание.";
+                } else if (alreadyActive) {
+                    const q = activeQuests.find(q => q.id === questId);
+                    statusText = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
+                } else {
+                    statusText = "Задание выполнено. Спасибо!";
+                }
+                
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`📜 ${npc.name}`, statusText, "npc");
+                }
             } else {
                 // Обычный NPC - просто диалог
-                if (typeof RenderModule.updateInspector == 'function') {
+                if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
                 }
                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
@@ -132,7 +158,7 @@ const GameModule = (function() {
         // 3. Предметы
         const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
-             let details = "";
+             let details = " ";
              if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
              if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
              
