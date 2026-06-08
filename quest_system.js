@@ -199,9 +199,6 @@ const QuestSystemModule = (function() {
     /**
      * Проверка выполнения квеста с учетом ЛОКАЦИИ
      */
-    /**
-     * Проверка выполнения квеста с учетом ЛОКАЦИИ
-     */
     function checkProgress(quest, eventData) {
         if (quest.isCompleted || !quest.isActive) return false;
 
@@ -221,13 +218,10 @@ const QuestSystemModule = (function() {
                 if (isInCorrectLocation) {
                     quest.progress++;
                     updated = true;
-                    // Логируем прогресс прямо здесь, чтобы игрок видел反馈
-                    if (typeof RenderModule !== 'undefined') {
+                    // Логируем прогресс прямо здесь
+                    if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                         RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
                     }
-                } else {
-                    // Опционально: сообщить игроку, что он не в том месте
-                    // if (typeof RenderModule !== 'undefined') RenderModule.log("Вы не в той локации для этого квеста.", "info");
                 }
             }
         }
@@ -251,7 +245,7 @@ const QuestSystemModule = (function() {
         if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
-                if (typeof RenderModule !== 'undefined') {
+                if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                     RenderModule.log(`🏆 Квест "${quest.target.locationName}" выполнен! Вернитесь за наградой.`, "event");
                 }
             }
@@ -259,5 +253,12 @@ const QuestSystemModule = (function() {
 
         return updated;
     }
+
+    // === ВАЖНО: ЭТОГО БЛОКА НЕ ХВАТАЛО В ВАШЕМ КОДЕ ===
+    return {
+        createQuest: createQuest,
+        checkProgress: checkProgress,
+        MAX_RADIUS: MAX_QUEST_RADIUS
+    };
 
 })();
