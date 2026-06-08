@@ -286,6 +286,7 @@ const GameModule = (function() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         
         // 1. Ищем квест, который выполнен, но награда еще не сдана (Приоритет №1)
+        // ВНИМАНИЕ: Убедитесь, что в quest_system.js у квеста есть поле isTurnedIn: false по умолчанию
         const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
         
         // 2. Если таких нет, ищем обычный активный квест (Приоритет №2)
@@ -295,6 +296,7 @@ const GameModule = (function() {
 
         if (turnInQuest) {
             // Цель: Город, где взят квест (entrancePos хранит координаты входа в этот город)
+            // Если entrancePos null (баг), пробуем взять координаты из ID квеста или дефолтные
             if (entrancePos) {
                 targetX = entrancePos.x;
                 targetY = entrancePos.y;
@@ -322,7 +324,6 @@ const GameModule = (function() {
             coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         }
     }
-
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
