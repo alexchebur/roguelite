@@ -269,28 +269,45 @@ const GameModule = (function() {
 
         // Работаем ТОЛЬКО на глобальной карте
         if (gameMode !== 'global') {
-            // В подземелье/городе пусть работает старая логика из render.js (Выход: стрелка)
-            // Мы просто выходим, чтобы не мешать render.js
             return;
         }
 
-        const activeQuest = activeQuests.find(q => !q.isCompleted);
+        const playerPos = GlobalMapModule.getPlayerPosition();
         
-        if (activeQuest && activeQuest.target) {
-            const playerPos = GlobalMapModule.getPlayerPosition();
-            const arrow = getQuestArrow(activeQuest.target.targetX, activeQuest.target.targetY, playerPos.x, playerPos.y);
-            
-            // Красим стрелку в зависимости от типа квеста
-            let color = "#fff";
-            if (activeQuest.type === 'HUNT') color = "#ff5555";
-            else if (activeQuest.type === 'FETCH') color = "#ffd700";
-            else color = "#58a6ff";
+        // 1. Ищем квест, который выполнен, но награда еще не сдана (Приоритет №1)
+        const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
+        
+        // 2. Если таких нет, ищем обычный активный квест (Приоритет №2)
+        const activeQuest = !turnInQuest ? activeQuests.find(q => !q.isCompleted) : null;
 
-            // ЗАПИСЫВАЕМ НАПРЯМУЮ В ЭЛЕМЕНТ
-            coordsEl.innerHTML = `<span style="color:${color}">Квест: ${arrow}</span>`;
+        let targetX, targetY, type, color;
+
+        if (turnInQuest) {
+            // Цель: Город, где взят квест (entrancePos хранит координаты входа в этот город)
+            if (entrancePos) {
+                targetX = entrancePos.x;
+                targetY = entrancePos.y;
+                type = 'TURN_IN';
+                color = "#00ff00"; // Ярко-зеленый для награды
+            }
+        } else if (activeQuest && activeQuest.target) {
+            // Цель: Подземелье или локация квеста
+            targetX = activeQuest.target.targetX;
+            targetY = activeQuest.target.targetY;
+            type = activeQuest.type;
+            
+            if (type === 'HUNT') color = "#ff5555";
+            else if (type === 'FETCH') color = "#ffd700";
+            else color = "#58a6ff";
+        }
+
+        if (targetX !== undefined) {
+            const arrow = getQuestArrow(targetX, targetY, playerPos.x, playerPos.y);
+            const label = turnInQuest ? "Награда" : "Квест";
+            
+            coordsEl.innerHTML = `<span style="color:${color}">${label}: ${arrow}</span>`;
         } else {
             // Если квестов нет, показываем обычные координаты
-            const playerPos = GlobalMapModule.getPlayerPosition();
             coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         }
     }
