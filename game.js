@@ -912,29 +912,25 @@ const GameModule = (function() {
             // 3. ПРОВЕРКА КВЕСТОВ
             // 3. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
-                // Создаем копию массива, так как grantReward может изменить activeQuests
                 const questsToCheck = [...activeQuests];
                 
                 questsToCheck.forEach(q => {
-                    // === ВАЖНО: Формируем правильный объект eventData ===
                     const eventData = {
                         type: 'kill',
-                        enemyName: enemy.name, // <-- Убедитесь, что enemy.name существует
-                        locX: dungeonX,        // <-- Глобальная X координата подземелья
-                        locY: dungeonY         // <-- Глобальная Y координата подземелья
+                        enemyName: enemy.name,
+                        locX: dungeonX,
+                        locY: dungeonY
                     };
-
-                    console.log(`📜 Отправка в квест-систему:`, eventData); // Для отладки
 
                     const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
+                    // === ДОБАВЛЕНО: Гарантированный вывод в журнал игры ===
                     if (progressUpdated) {
-                        console.log(`✅ Прогресс обновлен! ${q.progress}/${q.maxProgress}`);
+                        RenderModule.log(`Квест: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
                     }
 
                     if (q.isCompleted && !q.isTurnedIn) {
-                        console.log(`🏆 Квест выполнен!`);
-                        grantReward(q);
+                        RenderModule.log(`🏆 Цель квеста достигнута! Вернитесь за наградой.`, "event");
                     }
                 });
             }
