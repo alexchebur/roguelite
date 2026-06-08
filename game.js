@@ -161,12 +161,32 @@ const GameModule = (function() {
         let npcIndex = 0;
         for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
 
-        // Создаем временный квест для получения ID
         const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
         const questId = tempQuest.id;
         
         const alreadyActive = activeQuests.some(q => q.id === questId);
         const alreadyDone = completedQuestIds.has(questId);
+
+        // Сценарий 0: Квест выполнен, но награда еще не получена (СДАЧА КВЕСТА)
+        if (alreadyActive) {
+            const q = activeQuests.find(q => q.id === questId);
+            if (q.isCompleted && !q.isTurnedIn) {
+                player.gold += q.rewardGold;
+                q.isTurnedIn = true; // Помечаем как сданный
+                
+                RenderModule.log(`🏆 Квест сдан! Получено: ${q.rewardGold} золотых.`, "loot");
+                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+                
+                // Переносим в архив
+                activeQuests = activeQuests.filter(aq => aq.id !== questId);
+                completedQuestIds.add(questId);
+                
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
+                }
+                return true;
+            }
+        }
 
         // Сценарий 1: Новый квест
         if (!alreadyActive && !alreadyDone) {
@@ -182,7 +202,7 @@ const GameModule = (function() {
             }
             return true; 
         } 
-        // Сценарий 2: Квест активен
+        // Сценарий 2: Квест активен, но цель еще не достигнута
         else if (alreadyActive) {
              const q = activeQuests.find(q => q.id === questId);
              const statusMsg = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
@@ -194,7 +214,7 @@ const GameModule = (function() {
              }
              return true; 
         } 
-        // Сценарий 3: Квест выполнен
+        // Сценарий 3: Квест полностью завершен (сдан)
         else if (alreadyDone) {
              RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
              
@@ -840,15 +860,13 @@ const GameModule = (function() {
             // 2. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
-                    // ВАЖНО: Передаем dungeonX и dungeonY для проверки локации
                     if (QuestSystemModule.checkProgress(q, { 
                         type: 'kill', 
                         enemyName: enemy.name,
                         locX: dungeonX, 
                         locY: dungeonY  
                     })) {
-                        // Сообщение о прогрессе теперь внутри checkProgress, но можно оставить и тут
-                        if (q.isCompleted) grantReward(q);
+                        // grantReward(q); <--- УДАЛИТЬ ЭТУ СТРОКУ
                     }
                 });
             }
