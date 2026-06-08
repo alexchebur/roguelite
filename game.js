@@ -795,11 +795,12 @@ const GameModule = (function() {
     }
     
     // === СИСТЕМА ПРОКАЧКИ ===
+    // === СИСТЕМА ПРОКАЧКИ ===
     function gainXp(amount) {
         if (!player) return;
         player.xp += amount;
         
-        // Простая формула: для следующего уровня нужно Level * 50 XP
+        // Формула: для следующего уровня нужно Level * 50 XP
         const xpNeeded = player.level * 50;
         
         if (player.xp >= xpNeeded) {
@@ -808,7 +809,7 @@ const GameModule = (function() {
             
             // Улучшаем статы через WorldCurveModule
             player.maxHp = WorldCurveModule.getPlayerBaseHP(player.level);
-            player.hp = player.maxHp; // Лечим при уровне
+            player.hp = player.maxHp; // Полное лечение при уровне
             player.atk = WorldCurveModule.getPlayerBaseAtk(player.level);
             player.def = WorldCurveModule.getPlayerBaseDef(player.level);
             
@@ -817,7 +818,7 @@ const GameModule = (function() {
         }
     }
 
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
@@ -828,11 +829,18 @@ const GameModule = (function() {
             const xpGain = 10 + (currentDepth * 5);
             gainXp(xpGain);
 
-            // 2. ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
+            // 2. ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО (HUNT)
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
-                    if (QuestSystemModule.checkProgress(q, { type: 'kill', enemyName: enemy.name })) {
-                        RenderModule.log(`Квест: Убито ${enemy.name} (${q.progress}/${q.maxProgress})`, "info");
+                    // Передаем текущие координаты города/подземелья (dungeonX, dungeonY)
+                    // чтобы система проверила, там ли игрок находится
+                    if (QuestSystemModule.checkProgress(q, { 
+                        type: 'kill', 
+                        enemyName: enemy.name,
+                        locX: dungeonX,
+                        locY: dungeonY
+                    })) {
+                         RenderModule.log(`Квест: Убито ${enemy.name} (${q.progress}/${q.maxProgress})`, "info");
                         if (q.isCompleted) grantReward(q);
                     }
                 });
@@ -841,6 +849,8 @@ const GameModule = (function() {
 
         enemies = enemies.filter(e => e.hp > 0);
     }
+
+
 
     // === ОСНОВНОЙ ХОД ИГРЫ ===
     function processTurn(dx, dy) {
@@ -929,6 +939,9 @@ const GameModule = (function() {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
             } 
+    // ... (внутри processTurn, блок подбора предметов) ...
+    // Найдите блок else { player.inventory.push(item); ... } и замените его на:
+    
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
@@ -936,8 +949,14 @@ const GameModule = (function() {
                 // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
                 if (typeof QuestSystemModule !== 'undefined') {
                     activeQuests.forEach(q => {
-                        if (QuestSystemModule.checkProgress(q, { type: 'pickup', itemType: item.type })) {
-                             RenderModule.log(`📦 Это предмет для квеста!`, "info");
+                        // Для квестов на поиск тоже проверяем локацию
+                        if (QuestSystemModule.checkProgress(q, { 
+                            type: 'pickup', 
+                            itemType: item.type,
+                            locX: dungeonX,
+                            locY: dungeonY
+                        })) {
+                             RenderModule.log(`📦 Это предмет для квеста "${q.target.locationName}"!`, "info");
                         }
                     });
                 }
