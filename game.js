@@ -882,26 +882,31 @@ const GameModule = (function() {
 
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP, Локации и Лута) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
         deadEnemies.forEach(enemy => {
+            // 1. Выпадение лута (используем currentDepth для силы предметов)
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
             
-            // 1. Начисляем опыт
+            // 2. Начисление опыта
             const xpGain = 10 + (currentDepth * 5);
             gainXp(xpGain);
 
-            // 2. ПРОВЕРКА КВЕСТОВ
+            // 3. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
+                    // ВАЖНО: Передаем dungeonX и dungeonY для проверки локации
                     if (QuestSystemModule.checkProgress(q, { 
                         type: 'kill', 
                         enemyName: enemy.name,
-                        locX: dungeonX, 
-                        locY: dungeonY  
+                        locX: dungeonX, // <-- Теперь передается!
+                        locY: dungeonY  // <-- И это тоже!
                     })) {
-                        // grantReward(q); <--- УДАЛИТЬ ЭТУ СТРОКУ
+                        // Если квест только что выполнен, можно добавить доп. сообщение здесь,
+                        // но основное сообщение теперь внутри checkProgress
+                        if (q.isCompleted) grantReward(q);
                     }
                 });
             }
@@ -909,7 +914,6 @@ const GameModule = (function() {
 
         enemies = enemies.filter(e => e.hp > 0);
     }
-
 
 
     // === ОСНОВНОЙ ХОД ИГРЫ ===
