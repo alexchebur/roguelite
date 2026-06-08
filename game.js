@@ -71,6 +71,7 @@ const GameModule = (function() {
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -117,39 +118,8 @@ const GameModule = (function() {
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
             if (npc.isQuestGiver) {
-                // Если это раздатчик квестов, вызываем логику проверки
-                // tryGiveQuest сам решит, выдавать квест или показать статус
+                // tryGiveQuest теперь сам обновит инспектор и лог
                 tryGiveQuest(npc);
-                
-                // Дополнительно обновляем инспектор для наглядности
-                let statusText = "Нажмите, чтобы принять задание.";
-                
-                // Безопасная проверка статуса квеста
-                if (typeof QuestSystemModule !== 'undefined' && entrancePos) {
-                    const cityGx = entrancePos.x;
-                    const cityGy = entrancePos.y;
-                    let npcIndex = 0;
-                    for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
-                    
-                    const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
-                    const questId = tempQuest.id;
-                    
-                    const alreadyActive = activeQuests.some(q => q.id === questId);
-                    const alreadyDone = completedQuestIds.has(questId);
-
-                    if (alreadyActive) {
-                        const q = activeQuests.find(q => q.id === questId);
-                        statusText = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
-                    } else if (alreadyDone) {
-                        statusText = "Задание выполнено. Спасибо!";
-                    } else {
-                        statusText = "Новое задание доступно!";
-                    }
-                }
-                
-                if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`📜 ${npc.name}`, statusText, "npc");
-                }
             } else {
                 // Обычный NPC - просто диалог
                 if (typeof RenderModule.updateInspector === 'function') {
@@ -210,21 +180,27 @@ const GameModule = (function() {
             if (typeof RenderModule.updateInspector === 'function') {
                 RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
             }
-            return true; // Квест выдан
+            return true; 
         } 
-        // Сценарий 2: Квест активен, но не выполнен
+        // Сценарий 2: Квест активен
         else if (alreadyActive) {
-             // Мы не выдаем квест снова, но помечаем, что взаимодействие было
-             // Можно добавить напоминание в лог, если нужно, но пока просто возвращаем true
-             // чтобы заблокировать обычный диалог при клике, если хотим строгости.
-             // Но лучше пусть напоминает о задаче.
              const q = activeQuests.find(q => q.id === questId);
+             const statusMsg = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
+             
              RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение! Ищи ${q.target.locationName}."`, "info");
+             
+             if (typeof RenderModule.updateInspector === 'function') {
+                 RenderModule.updateInspector(`📜 ${npc.name}`, statusMsg, "npc");
+             }
              return true; 
         } 
         // Сценарий 3: Квест выполнен
         else if (alreadyDone) {
              RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
+             
+             if (typeof RenderModule.updateInspector === 'function') {
+                 RenderModule.updateInspector(`📜 ${npc.name}`, "Задание выполнено. Спасибо!", "npc");
+             }
              return true;
         }
         
@@ -850,6 +826,7 @@ const GameModule = (function() {
     }
 
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
@@ -863,15 +840,14 @@ const GameModule = (function() {
             // 2. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
-                    // ВАЖНО: dungeonX и dungeonY должны быть объявлены в начале GameModule
-                    // и обновляться в loadDungeonLevel
+                    // ВАЖНО: Передаем dungeonX и dungeonY для проверки локации
                     if (QuestSystemModule.checkProgress(q, { 
                         type: 'kill', 
                         enemyName: enemy.name,
-                        locX: dungeonX, // <-- Убедитесь, что эта переменная жива
-                        locY: dungeonY  // <-- и эта тоже
+                        locX: dungeonX, 
+                        locY: dungeonY  
                     })) {
-                        // Сообщение теперь внутри checkProgress, но можно оставить и тут для дублирования
+                        // Сообщение о прогрессе теперь внутри checkProgress, но можно оставить и тут
                         if (q.isCompleted) grantReward(q);
                     }
                 });
