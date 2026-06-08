@@ -169,35 +169,45 @@ const QuestSystemModule = (function() {
         };
     }
 
-    /**
-     * Проверка выполнения квеста с учетом ЛОКАЦИИ
-     */
     function checkProgress(quest, eventData) {
-        if (quest.isCompleted || !quest.isActive) return false;
+        // 1. Базовые проверки
+        if (quest.isCompleted || !quest.isActive) {
+            // console.log(`❌ Квест ${quest.id} не активен или уже выполнен.`);
+            return false;
+        }
 
         let updated = false;
 
-        // === ПРОВЕРКА ЛОКАЦИИ ===
-        // Если у квеста есть целевые координаты (targetX/Y), мы проверяем, 
-        // совпадают ли они с переданными locX/locY (координатами текущего подземелья).
+        // 2. Проверка локации
         const isInCorrectLocation = (
             !quest.target.targetX || 
             (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
              eventData.locY !== undefined && eventData.locY === quest.target.targetY)
         );
 
+        // ОТЛАДКА: Выводим информацию о проверке
+        console.log(`🔍 Проверка квеста: ${quest.type}`);
+        console.log(`   Враг/Предмет: ${eventData.enemyName || eventData.itemType}`);
+        console.log(`   Нужно: ${quest.target.enemyName || quest.target.itemType}`);
+        console.log(`   Локация игрока: ${eventData.locX},${eventData.locY}`);
+        console.log(`   Локация квеста: ${quest.target.targetX},${quest.target.targetY}`);
+        console.log(`   Совпадение локации: ${isInCorrectLocation}`);
+
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
+                console.log(`   ✅ Имя врага совпало!`);
                 if (isInCorrectLocation) {
                     quest.progress++;
                     updated = true;
+                    console.log(`   📈 Прогресс: ${quest.progress}/${quest.maxProgress}`);
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                         RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
                     }
                 } else {
-                    // Опционально: можно раскомментировать, если хотите сообщать игроку об ошибке локации
-                    // if (typeof RenderModule !== 'undefined') RenderModule.log("Вы не в том подземелье для этого квеста.", "info");
+                    console.log(`   ❌ Ошибка локации! Вы не в том подземелье.`);
                 }
+            } else {
+                console.log(`   ❌ Имя врага не совпадает.`);
             }
         }
 
@@ -216,10 +226,11 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // Проверка завершения для HUNT и FETCH
+        // Проверка завершения
         if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
+                console.log(`   🏆 Квест ВЫПОЛНЕН!`);
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                     RenderModule.log(`🏆 Квест "${quest.target.locationName}" выполнен! Вернитесь за наградой.`, "event");
                 }
@@ -228,7 +239,6 @@ const QuestSystemModule = (function() {
 
         return updated;
     }
-
     return {
         createQuest: createQuest,
         checkProgress: checkProgress,
