@@ -70,6 +70,7 @@ const GameModule = (function() {
 
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -117,29 +118,33 @@ const GameModule = (function() {
         if (npc) {
             if (npc.isQuestGiver) {
                 // Если это раздатчик квестов, вызываем логику проверки
+                // tryGiveQuest сам решит, выдавать квест или показать статус
                 tryGiveQuest(npc);
                 
-                // Дополнительно обновляем инспектор, чтобы игрок видел статус квеста прямо в интерфейсе
-                let statusText = "";
-                if (!entrancePos) return;
-                const cityGx = entrancePos.x;
-                const cityGy = entrancePos.y;
-                let npcIndex = 0;
-                for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+                // Дополнительно обновляем инспектор для наглядности
+                let statusText = "Нажмите, чтобы принять задание.";
                 
-                const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
-                const questId = tempQuest.id;
-                
-                const alreadyActive = activeQuests.some(q => q.id === questId);
-                const alreadyDone = completedQuestIds.has(questId);
+                // Безопасная проверка статуса квеста
+                if (typeof QuestSystemModule !== 'undefined' && entrancePos) {
+                    const cityGx = entrancePos.x;
+                    const cityGy = entrancePos.y;
+                    let npcIndex = 0;
+                    for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+                    
+                    const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+                    const questId = tempQuest.id;
+                    
+                    const alreadyActive = activeQuests.some(q => q.id === questId);
+                    const alreadyDone = completedQuestIds.has(questId);
 
-                if (!alreadyActive && !alreadyDone) {
-                    statusText = "Нажмите, чтобы принять задание.";
-                } else if (alreadyActive) {
-                    const q = activeQuests.find(q => q.id === questId);
-                    statusText = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
-                } else {
-                    statusText = "Задание выполнено. Спасибо!";
+                    if (alreadyActive) {
+                        const q = activeQuests.find(q => q.id === questId);
+                        statusText = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
+                    } else if (alreadyDone) {
+                        statusText = "Задание выполнено. Спасибо!";
+                    } else {
+                        statusText = "Новое задание доступно!";
+                    }
                 }
                 
                 if (typeof RenderModule.updateInspector === 'function') {
