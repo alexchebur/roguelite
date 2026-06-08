@@ -169,55 +169,75 @@ const QuestSystemModule = (function() {
         };
     }
 
+    /**
+     * Проверка выполнения квеста с учетом ЛОКАЦИИ и защитой от ошибок данных
+     */
     function checkProgress(quest, eventData) {
         // 1. Базовые проверки
-        if (quest.isCompleted || !quest.isActive) {
-            // console.log(`❌ Квест ${quest.id} не активен или уже выполнен.`);
+        if (!quest || quest.isCompleted || !quest.isActive) {
+            return false;
+        }
+
+        // Защита от отсутствия eventData
+        if (!eventData) {
+            console.warn("⚠️ QuestSystem: checkProgress вызван без eventData!");
             return false;
         }
 
         let updated = false;
 
         // 2. Проверка локации
+        // Если у квеста нет targetX (баг генерации), считаем локацию любой.
+        // Иначе требуем точного совпадения locX/locY из eventData.
         const isInCorrectLocation = (
             !quest.target.targetX || 
             (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
              eventData.locY !== undefined && eventData.locY === quest.target.targetY)
         );
 
-        // ОТЛАДКА: Выводим информацию о проверке
-        console.log(`🔍 Проверка квеста: ${quest.type}`);
-        console.log(`   Враг/Предмет: ${eventData.enemyName || eventData.itemType}`);
-        console.log(`   Нужно: ${quest.target.enemyName || quest.target.itemType}`);
-        console.log(`   Локация игрока: ${eventData.locX},${eventData.locY}`);
-        console.log(`   Локация квеста: ${quest.target.targetX},${quest.target.targetY}`);
-        console.log(`   Совпадение локации: ${isInCorrectLocation}`);
+        // --- ОТЛАДКА: Выводим предупреждение, если данные неполные ---
+        if (quest.type === 'HUNT' && eventData.type === 'kill') {
+            if (!eventData.enemyName) {
+                console.error(`❌ ОШИБКА ДАННЫХ: В eventData отсутствует enemyName!`, eventData);
+                console.error(`   Ожидалось имя врага: ${quest.target.enemyName}`);
+                return false; // Прерываем, так как нельзя проверить имя
+            }
+            
+            if (eventData.locX === undefined || eventData.locY === undefined) {
+                console.warn(`⚠️ ПРЕДУПРЕЖДЕНИЕ: В eventData отсутствуют координаты локации (locX/locY)!`);
+                console.warn(`   Текущие значения: locX=${eventData.locX}, locY=${eventData.locY}`);
+                console.warn(`   Цель квеста находится в: ${quest.target.targetX}, ${quest.target.targetY}`);
+            }
+        }
 
+        // 3. Логика HUNT (Убийство)
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
-                console.log(`   ✅ Имя врага совпало!`);
                 if (isInCorrectLocation) {
                     quest.progress++;
                     updated = true;
-                    console.log(`   📈 Прогресс: ${quest.progress}/${quest.maxProgress}`);
+                    
+                    // Логируем прогресс в игру
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                         RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
                     }
                 } else {
-                    console.log(`   ❌ Ошибка локации! Вы не в том подземелье.`);
+                    // Опционально: можно раскомментировать, если хотите спамить в консоль об ошибке локации
+                    // console.log(`❌ Не та локация для убийства ${eventData.enemyName}. Нужно: ${quest.target.targetX},${quest.target.targetY}`);
                 }
-            } else {
-                console.log(`   ❌ Имя врага не совпадает.`);
             }
         }
 
+        // 4. Логика FETCH (Поиск предмета)
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
             if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
                 updated = true; 
             }
         }
 
+        // 5. Логика EXPLORE (Исследование)
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
+            // Для explore проверяем глобальные координаты игрока (x, y)
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
             if (dist <= 1) { 
                 quest.progress = quest.maxProgress;
@@ -226,11 +246,10 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // Проверка завершения
+        // 6. Проверка завершения квеста
         if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
-                console.log(`   🏆 Квест ВЫПОЛНЕН!`);
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                     RenderModule.log(`🏆 Квест "${quest.target.locationName}" выполнен! Вернитесь за наградой.`, "event");
                 }
