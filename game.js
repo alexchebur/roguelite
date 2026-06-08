@@ -101,7 +101,13 @@ const GameModule = (function() {
             const weapon = player.equipment.weapon;
             if (weapon && !weapon.meleeType) {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
-                if (killed) enemies = enemies.filter(e => e.hp > 0);
+                
+                // === ИСПРАВЛЕНИЕ: Если враг убит, нужно запустить логику смерти ===
+                if (killed) {
+                    enemies = enemies.filter(e => e.hp > 0);
+                    checkDeath(); // <--- ЭТОГО НЕ ХВАТАЛО! (Опыт + Квесты + Лут)
+                }
+                
                 moveNpcs();
                 moveEnemies();
                 renderFrame();
