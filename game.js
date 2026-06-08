@@ -883,12 +883,22 @@ const GameModule = (function() {
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP, Локации и Лута) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Отладочная версия) ===
     function checkDeath() {
+        // Фильтруем мертвых врагов
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
+        if (deadEnemies.length > 0) {
+            console.log(`💀 Найдено мертвых врагов: ${deadEnemies.length}`);
+        }
+
         deadEnemies.forEach(enemy => {
-            // 1. Выпадение лута (используем currentDepth для силы предметов)
+            console.log(`🔄 Обработка смерти: ${enemy.name} (${enemy.x}, ${enemy.y})`);
+
+            // 1. Выпадение лута
+            // Убедимся, что items - это тот самый массив, который используется в игре
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
+            console.log(`🎒 Лут обработан. Всего предметов в мире: ${items.length}`);
             
             // 2. Начисление опыта
             const xpGain = 10 + (currentDepth * 5);
@@ -896,23 +906,34 @@ const GameModule = (function() {
 
             // 3. ПРОВЕРКА КВЕСТОВ
             if (typeof QuestSystemModule !== 'undefined') {
-                activeQuests.forEach(q => {
-                    // ВАЖНО: Передаем dungeonX и dungeonY для проверки локации
-                    if (QuestSystemModule.checkProgress(q, { 
+                // Создаем копию массива, так как grantReward может изменить activeQuests
+                const questsToCheck = [...activeQuests];
+                
+                questsToCheck.forEach(q => {
+                    console.log(`📜 Проверка квеста: ${q.id}, Тип: ${q.type}, Прогресс: ${q.progress}/${q.maxProgress}`);
+                    
+                    const progressUpdated = QuestSystemModule.checkProgress(q, { 
                         type: 'kill', 
                         enemyName: enemy.name,
-                        locX: dungeonX, // <-- Теперь передается!
-                        locY: dungeonY  // <-- И это тоже!
-                    })) {
-                        // Если квест только что выполнен, можно добавить доп. сообщение здесь,
-                        // но основное сообщение теперь внутри checkProgress
-                        if (q.isCompleted) grantReward(q);
+                        locX: dungeonX,
+                        locY: dungeonY
+                    });
+
+                    if (progressUpdated) {
+                        console.log(`✅ Прогресс квеста обновлен! Новый статус: ${q.progress}/${q.maxProgress}. Завершен: ${q.isCompleted}`);
+                    }
+
+                    if (q.isCompleted && !q.isTurnedIn) {
+                        console.log(`🏆 Квест выполнен! Выдача награды...`);
+                        grantReward(q);
                     }
                 });
             }
         });
 
+        // Удаляем мертвых врагов из основного массива
         enemies = enemies.filter(e => e.hp > 0);
+        console.log(`👾 Оставшихся врагов: ${enemies.length}`);
     }
 
 
