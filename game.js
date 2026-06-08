@@ -855,6 +855,7 @@ const GameModule = (function() {
     }
 
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
@@ -878,11 +879,10 @@ const GameModule = (function() {
 
                     const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
-                    // Если квест только что завершился, обновляем компас ГЛОБАЛЬНОЙ КАРТЫ
-                    // (Это подготовит стрелку "Награда" к моменту выхода на поверхность)
+                    // Если квест только что завершился, обновляем данные компаса
+                    // (Само сообщение уже выведено внутри quest_system.js)
                     if (progressUpdated && q.isCompleted) {
                         updateQuestCompass(); 
-                        RenderModule.log(`🏆 Цель достигнута! Вернитесь за наградой.`, "event");
                     }
                 });
             }
