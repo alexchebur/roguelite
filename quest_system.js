@@ -1,16 +1,12 @@
 /**
  * МОДУЛЬ СИСТЕМЫ КВЕСТОВ (quest_system.js)
- * Генерирует детерминированные квесты, привязанные к РЕАЛЬНЫМ точкам интереса (POI).
  */
-
 const QuestSystemModule = (function() {
     'use strict';
 
-    // === КОНФИГУРАЦИЯ ===
-    const MAX_QUEST_RADIUS = 50; 
-    const FALLBACK_RADIUS = 100; 
+    const MAX_QUEST_RADIUS = 50;
+    const FALLBACK_RADIUS = 100;
 
-    // === БАЗА ШАБЛОНОВ ===
     const QUEST_TEMPLATES = {
         FETCH: [
             "Мне нужен {item}. Говорят, последний раз его видели в {location} (глубина {depth}+). Принеси его, и я заплачу {gold} золотых.",
@@ -26,10 +22,7 @@ const QuestSystemModule = (function() {
         ]
     };
 
-    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-    function pickRandom(rng, array) {
-        return array[Math.floor(rng.next() * array.length)];
-    }
+    function pickRandom(rng, array) { return array[Math.floor(rng.next() * array.length)]; }
 
     function formatBriefing(template, data) {
         let text = template;
@@ -42,9 +35,7 @@ const QuestSystemModule = (function() {
         return text;
     }
 
-    function generateQuestId(gx, gy, type, index) {
-        return `Q_${type}_${gx}_${gy}_${index}`;
-    }
+    function generateQuestId(gx, gy, type, index) { return `Q_${type}_${gx}_${gy}_${index}`; }
 
     function findRealPOI(gx, gy, radius, poiType) {
         const candidates = [];
@@ -55,9 +46,7 @@ const QuestSystemModule = (function() {
                 const ty = gy + dy;
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
                     const poi = GlobalMapModule.getPOI(tx, ty);
-                    if (poi && poi.type === poiType) {
-                        candidates.push(poi);
-                    }
+                    if (poi && poi.type === poiType) candidates.push(poi);
                 }
             }
         }
@@ -163,81 +152,42 @@ const QuestSystemModule = (function() {
             rewardGold: finalGold,
             briefing: briefing,
             isCompleted: false,
-            isCompleted: false,   // Цель выполнена?
-            isTurnedIn: false,    // Награда получена?
+            isTurnedIn: false,
             isActive: false
         };
     }
 
-    /**
-     * Проверка выполнения квеста с учетом ЛОКАЦИИ и защитой от ошибок данных
-     */
     function checkProgress(quest, eventData) {
-        // 1. Базовые проверки
-        if (!quest || quest.isCompleted || !quest.isActive) {
-            return false;
-        }
-
-        // Защита от отсутствия eventData
-        if (!eventData) {
-            console.warn("⚠️ QuestSystem: checkProgress вызван без eventData!");
-            return false;
-        }
+        if (!quest || quest.isCompleted || !quest.isActive) return false;
+        if (!eventData) return false;
 
         let updated = false;
 
-        // 2. Проверка локации
-        // Если у квеста нет targetX (баг генерации), считаем локацию любой.
-        // Иначе требуем точного совпадения locX/locY из eventData.
         const isInCorrectLocation = (
             !quest.target.targetX || 
             (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
              eventData.locY !== undefined && eventData.locY === quest.target.targetY)
         );
 
-        // --- ОТЛАДКА: Выводим предупреждение, если данные неполные ---
-        if (quest.type === 'HUNT' && eventData.type === 'kill') {
-            if (!eventData.enemyName) {
-                console.error(`❌ ОШИБКА ДАННЫХ: В eventData отсутствует enemyName!`, eventData);
-                console.error(`   Ожидалось имя врага: ${quest.target.enemyName}`);
-                return false; // Прерываем, так как нельзя проверить имя
-            }
-            
-            if (eventData.locX === undefined || eventData.locY === undefined) {
-                console.warn(`⚠️ ПРЕДУПРЕЖДЕНИЕ: В eventData отсутствуют координаты локации (locX/locY)!`);
-                console.warn(`   Текущие значения: locX=${eventData.locX}, locY=${eventData.locY}`);
-                console.warn(`   Цель квеста находится в: ${quest.target.targetX}, ${quest.target.targetY}`);
-            }
-        }
-
-        // 3. Логика HUNT (Убийство)
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
                 if (isInCorrectLocation) {
                     quest.progress++;
                     updated = true;
-                    
-                    // Логируем прогресс в игру
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                         RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
                     }
-                } else {
-                    // Опционально: можно раскомментировать, если хотите спамить в консоль об ошибке локации
-                    // console.log(`❌ Не та локация для убийства ${eventData.enemyName}. Нужно: ${quest.target.targetX},${quest.target.targetY}`);
                 }
             }
         }
 
-        // 4. Логика FETCH (Поиск предмета)
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
             if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
                 updated = true; 
             }
         }
 
-        // 5. Логика EXPLORE (Исследование)
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
-            // Для explore проверяем глобальные координаты игрока (x, y)
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
             if (dist <= 1) { 
                 quest.progress = quest.maxProgress;
@@ -246,7 +196,6 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // 6. Проверка завершения квеста
         if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
@@ -258,6 +207,7 @@ const QuestSystemModule = (function() {
 
         return updated;
     }
+
     return {
         createQuest: createQuest,
         checkProgress: checkProgress,
