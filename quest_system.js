@@ -1,17 +1,16 @@
 /**
  * МОДУЛЬ СИСТЕМЫ КВЕСТОВ (quest_system.js)
- * Генерирует детерминированные квесты, привязанные к РЕАЛЬНЫМ точкам интереса (POI) на глобальной карте.
- * Зависит от: name_generator.js, worldCurve.js, data.js, entity.js, globalMap.js
+ * Генерирует детерминированные квесты, привязанные к РЕАЛЬНЫМ точкам интереса (POI).
  */
 
 const QuestSystemModule = (function() {
     'use strict';
 
     // === КОНФИГУРАЦИЯ ===
-    const MAX_QUEST_RADIUS = 50; // Основной радиус поиска цели
-    const FALLBACK_RADIUS = 100; // Расширенный радиус, если в 50 клетках нет подземелий
+    const MAX_QUEST_RADIUS = 50; 
+    const FALLBACK_RADIUS = 100; 
 
-    // === БАЗА ШАБЛОНОВ (Универсальные тексты с переменными) ===
+    // === БАЗА ШАБЛОНОВ ===
     const QUEST_TEMPLATES = {
         FETCH: [
             "Мне нужен {item}. Говорят, последний раз его видели в {location} (глубина {depth}+). Принеси его, и я заплачу {gold} золотых.",
@@ -28,7 +27,6 @@ const QuestSystemModule = (function() {
     };
 
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-
     function pickRandom(rng, array) {
         return array[Math.floor(rng.next() * array.length)];
     }
@@ -40,6 +38,7 @@ const QuestSystemModule = (function() {
         text = text.replace(/{location}/g, data.locationName || "неизвестном месте");
         text = text.replace(/{count}/g, data.count || "несколько");
         text = text.replace(/{gold}/g, data.gold || "немного");
+        text = text.replace(/{depth}/g, data.depth || "1");
         return text;
     }
 
@@ -47,21 +46,13 @@ const QuestSystemModule = (function() {
         return `Q_${type}_${gx}_${gy}_${index}`;
     }
 
-    /**
-     * НОВАЯ ФУНКЦИЯ: Поиск реального POI (подземелья) в заданном радиусе
-     */
     function findRealPOI(gx, gy, radius, poiType) {
         const candidates = [];
-        
-        // Проходим по квадрату, но фильтруем по кругу (манхэттенское расстояние)
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 if (Math.abs(dx) + Math.abs(dy) > radius) continue;
-                
                 const tx = gx + dx;
                 const ty = gy + dy;
-                
-                // Спрашиваем у GlobalMapModule, есть ли здесь точка интереса
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
                     const poi = GlobalMapModule.getPOI(tx, ty);
                     if (poi && poi.type === poiType) {
@@ -73,23 +64,17 @@ const QuestSystemModule = (function() {
         return candidates.length > 0 ? candidates : null;
     }
 
-    /**
-     * Рассчитывает параметры цели квеста, привязываясь к РЕАЛЬНЫМ координатам карты
-     */
     function calculateTargetParams(gx, gy, type, difficultyLevel) {
         const seed = createSeed(gx, gy, difficultyLevel) + 777; 
         const rng = new SeededRandom(seed);
         let targetData = {};
 
-        // Для всех основных типов квестов нам нужна реальная локация (подземелье)
         const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
-        
         let targetPoi = null;
+        
         if (candidates && candidates.length > 0) {
-            // Выбираем случайное подземелье из найденных детерминированно
             targetPoi = rng.choice(candidates);
         } else {
-            // FALLBACK: Если в радиусе 50 клеток генерация не создала ни одного подземелья
             const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
             if (wideCandidates && wideCandidates.length > 0) {
                 targetPoi = rng.choice(wideCandidates);
@@ -97,13 +82,11 @@ const QuestSystemModule = (function() {
         }
 
         if (targetPoi) {
-            // Успех: мы нашли реальное подземелье!
             targetData.targetX = targetPoi.x;
             targetData.targetY = targetPoi.y;
             targetData.locationName = targetPoi.name;
             targetData.dungeonType = targetPoi.dungeonType;
         } else {
-            // КРАЙНИЙ СЛУЧАЙ: Подземелий нет вообще нигде рядом. 
             const angle = rng.next() * Math.PI * 2;
             const r = rng.int(10, MAX_QUEST_RADIUS);
             targetData.targetX = gx + Math.round(Math.cos(angle) * r);
@@ -112,7 +95,6 @@ const QuestSystemModule = (function() {
             targetData.dungeonType = 'rogue';
         }
 
-        // Специфичные параметры по типу квеста
         if (type === 'FETCH') {
             const possibleItems = DataModule.ITEM_TYPES.filter(i => 
                 i.type !== 'gold' && i.type !== 'book' && i.type !== 'food' && 
@@ -128,7 +110,6 @@ const QuestSystemModule = (function() {
             
             targetData.enemyName = enemyTemplate.name;
             const baseCount = rng.int(3, 5);
-            // Используем множитель мира для количества врагов, но без учета глубины (так как квест на поверхности)
             const multiplier = WorldCurveModule.getEnemyMultiplier(gx, gy);
             targetData.count = Math.max(1, Math.floor(baseCount * Math.sqrt(multiplier)));
         }
@@ -136,31 +117,21 @@ const QuestSystemModule = (function() {
         return targetData;
     }
 
-    /**
-     * Публичная функция: Создает объект квеста
-     */
     function createQuest(gx, gy, questIndex) {
         const types = ['FETCH', 'HUNT', 'EXPLORE'];
         const rng = new SeededRandom(createSeed(gx, gy, questIndex));
-        
         const type = pickRandom(rng, types);
         
-        // === НОВАЯ ЛОГИКА РАСЧЕТА СЛОЖНОСТИ ===
         const globalDist = Math.abs(gx) + Math.abs(gy);
-        
-        // Получаем текущий уровень игрока
         let playerLevel = 1;
         if (typeof GameModule !== 'undefined' && GameModule.getPlayer) {
             const p = GameModule.getPlayer();
             if (p) playerLevel = p.level;
         }
 
-        // Формула: 1 тир сложности за каждые 15 клеток пути + уровень игрока.
         const questEnemyTier = Math.min(6, Math.floor(globalDist / 15) + playerLevel);
-        
         const targetData = calculateTargetParams(gx, gy, type, questEnemyTier);
         
-        // Рекомендуемая глубина для квеста
         const recommendedDepth = Math.max(1, Math.min(5, Math.floor(questEnemyTier / 1.5)));
         targetData.recommendedDepth = recommendedDepth;
 
@@ -204,9 +175,9 @@ const QuestSystemModule = (function() {
 
         let updated = false;
 
-        // Проверка локации: 
-        // Если у квеста есть targetX/Y, мы требуем совпадения с locX/locY из eventData.
-        // Если targetX нет (баг генерации), считаем что локация любая.
+        // === ПРОВЕРКА ЛОКАЦИИ ===
+        // Если у квеста есть целевые координаты (targetX/Y), мы проверяем, 
+        // совпадают ли они с переданными locX/locY (координатами текущего подземелья).
         const isInCorrectLocation = (
             !quest.target.targetX || 
             (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
@@ -218,10 +189,12 @@ const QuestSystemModule = (function() {
                 if (isInCorrectLocation) {
                     quest.progress++;
                     updated = true;
-                    // Логируем прогресс прямо здесь
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                         RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
                     }
+                } else {
+                    // Опционально: можно раскомментировать, если хотите сообщать игроку об ошибке локации
+                    // if (typeof RenderModule !== 'undefined') RenderModule.log("Вы не в том подземелье для этого квеста.", "info");
                 }
             }
         }
@@ -254,7 +227,6 @@ const QuestSystemModule = (function() {
         return updated;
     }
 
-    // === ВАЖНО: ЭТОГО БЛОКА НЕ ХВАТАЛО В ВАШЕМ КОДЕ ===
     return {
         createQuest: createQuest,
         checkProgress: checkProgress,
