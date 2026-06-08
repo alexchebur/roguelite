@@ -794,13 +794,41 @@ const GameModule = (function() {
         });
     }
     
+    // === СИСТЕМА ПРОКАЧКИ ===
+    function gainXp(amount) {
+        if (!player) return;
+        player.xp += amount;
+        
+        // Простая формула: для следующего уровня нужно Level * 50 XP
+        const xpNeeded = player.level * 50;
+        
+        if (player.xp >= xpNeeded) {
+            player.level++;
+            player.xp -= xpNeeded;
+            
+            // Улучшаем статы через WorldCurveModule
+            player.maxHp = WorldCurveModule.getPlayerBaseHP(player.level);
+            player.hp = player.maxHp; // Лечим при уровне
+            player.atk = WorldCurveModule.getPlayerBaseAtk(player.level);
+            player.def = WorldCurveModule.getPlayerBaseDef(player.level);
+            
+            RenderModule.log(`🎉 УРОВЕНЬ ПОВЫШЕН! Теперь вы ${player.level} уровня!`, "event");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        }
+    }
+
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
         deadEnemies.forEach(enemy => {
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
-   
-            // ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
+            
+            // 1. Начисляем опыт за убийство (база 10 + глубина * 5)
+            const xpGain = 10 + (currentDepth * 5);
+            gainXp(xpGain);
+
+            // 2. ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
                     if (QuestSystemModule.checkProgress(q, { type: 'kill', enemyName: enemy.name })) {
