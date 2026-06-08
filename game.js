@@ -438,6 +438,8 @@ const GameModule = (function() {
     
     function exitToGlobal() {
         gameMode = 'global';
+        updateQuestCompass(); 
+        renderGlobalMap();
         if (entrancePos) {
             GlobalMapModule.setPlayerPosition(entrancePos.x, entrancePos.y);
             entrancePos = null;
@@ -458,8 +460,7 @@ const GameModule = (function() {
         RenderModule.log("Вы вернулись на поверхность", "info");
         
         // <--- ВАЖНО: Сразу обновляем компас при выходе
-        updateQuestCompass(); 
-        renderGlobalMap();
+
     }
     
     // === ЗАГРУЗКА ГОРОДА ===
