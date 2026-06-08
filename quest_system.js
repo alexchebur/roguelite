@@ -149,7 +149,7 @@ const QuestSystemModule = (function() {
         // === НОВАЯ ЛОГИКА РАСЧЕТА СЛОЖНОСТИ ===
         const globalDist = Math.abs(gx) + Math.abs(gy);
         
-        // Получаем текущий уровень игрока (если модуль доступен)
+        // Получаем текущий уровень игрока
         let playerLevel = 1;
         if (typeof GameModule !== 'undefined' && GameModule.getPlayer) {
             const p = GameModule.getPlayer();
@@ -158,20 +158,17 @@ const QuestSystemModule = (function() {
 
         // Формула: 1 тир сложности за каждые 15 клеток пути + уровень игрока.
         // Ограничиваем максимум 6-кой (чтобы Големы/Драконы были только на очень поздней стадии).
-        // Пример: Игрок 1 ур, расстояние 20. (20/15 = 1) + 1 = 2 тир (Гоблины/Волки).
-        // Пример: Игрок 3 ур, расстояние 60. (60/15 = 4) + 3 = 7 -> ограничивается до 6 (Бандиты/Скелеты/Орки).
         const questEnemyTier = Math.min(6, Math.floor(globalDist / 15) + playerLevel);
         
         const targetData = calculateTargetParams(gx, gy, type, questEnemyTier);
         
-        // Рекомендуемая глубина для квеста (чтобы игрок не шел за боссом на 1-й уровень)
-        // 1-2 тир -> глубина 1-2, 3-4 тир -> глубина 2-4, 5-6 тир -> глубина 4+
+        // Рекомендуемая глубина для квеста
         const recommendedDepth = Math.max(1, Math.min(5, Math.floor(questEnemyTier / 1.5)));
         targetData.recommendedDepth = recommendedDepth;
 
         const goldBase = rng.int(50, 150);
         const goldMult = WorldCurveModule.getGoldMultiplier(globalDist, 0); 
-        const finalGold = Math.floor(goldBase * goldMult) + (playerLevel * 10); // Бонус за уровень
+        const finalGold = Math.floor(goldBase * goldMult) + (playerLevel * 10);
         
         const id = generateQuestId(gx, gy, type, questIndex);
         const templates = QUEST_TEMPLATES[type];
@@ -183,7 +180,7 @@ const QuestSystemModule = (function() {
             locationName: targetData.locationName,
             count: targetData.count,
             gold: finalGold,
-            depth: recommendedDepth // Добавляем глубину в шаблон
+            depth: recommendedDepth
         };
         
         const briefing = formatBriefing(template, briefingData);
@@ -199,6 +196,7 @@ const QuestSystemModule = (function() {
             isCompleted: false,
             isActive: false
         };
+    }
     }
 
     /**
