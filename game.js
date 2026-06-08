@@ -925,9 +925,9 @@ const GameModule = (function() {
                     const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
                     // === ДОБАВЛЕНО: Гарантированный вывод в журнал игры ===
-                    if (progressUpdated) {
-                        RenderModule.log(`Квест: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
-                    }
+                    //if (progressUpdated) {
+                        //RenderModule.log(`Квест: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
+                    //}
 
                     if (q.isCompleted && !q.isTurnedIn) {
                         RenderModule.log(`🏆 Цель квеста достигнута! Вернитесь за наградой.`, "event");
