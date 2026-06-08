@@ -163,6 +163,8 @@ const QuestSystemModule = (function() {
             rewardGold: finalGold,
             briefing: briefing,
             isCompleted: false,
+            isCompleted: false,   // Цель выполнена?
+            isTurnedIn: false,    // Награда получена?
             isActive: false
         };
     }
