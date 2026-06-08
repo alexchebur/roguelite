@@ -280,31 +280,37 @@ const GameModule = (function() {
 
         const playerPos = GlobalMapModule.getPlayerPosition();
         
-        // 1. Ищем квест, который выполнен, но награда еще не сдана (Приоритет №1)
+        // 1. Ищем квест, который выполнен, но награда еще не сдана
+        // Важно: проверяем наличие флага isTurnedIn
         const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
         
-        // 2. Если таких нет, ищем обычный активный квест (Приоритет №2)
+        // 2. Если таких нет, ищем обычный активный квест
         const activeQuest = !turnInQuest ? activeQuests.find(q => !q.isCompleted) : null;
 
-        let targetX, targetY, type, color;
+        let targetX, targetY, color;
 
         if (turnInQuest) {
-            // Цель: Город, где взят квест (entrancePos хранит координаты входа в этот город)
+            // Цель: Город, где взят квест
             if (entrancePos) {
                 targetX = entrancePos.x;
                 targetY = entrancePos.y;
-                type = 'TURN_IN';
-                color = "#00ff00"; // Ярко-зеленый для награды
+                color = "#00ff00"; // Зеленый для награды
+                
+                // ОТЛАДКА: Раскомментируйте, если стрелка все равно не появляется
+                // console.log("🧭 Компас: Режим НАГРАДЫ. Цель:", targetX, targetY);
+            } else {
+                 console.warn("⚠️ Ошибка: Квест на сдачу есть, но entrancePos потерян!");
             }
         } else if (activeQuest && activeQuest.target) {
-            // Цель: Подземелье или локация квеста
+            // Цель: Подземелье
             targetX = activeQuest.target.targetX;
             targetY = activeQuest.target.targetY;
-            type = activeQuest.type;
             
-            if (type === 'HUNT') color = "#ff5555";
-            else if (type === 'FETCH') color = "#ffd700";
+            if (activeQuest.type === 'HUNT') color = "#ff5555";
+            else if (activeQuest.type === 'FETCH') color = "#ffd700";
             else color = "#58a6ff";
+            
+            // console.log("🧭 Компас: Режим КВЕСТА. Цель:", targetX, targetY);
         }
 
         if (targetX !== undefined) {
@@ -313,7 +319,7 @@ const GameModule = (function() {
             
             coordsEl.innerHTML = `<span style="color:${color}">${label}: ${arrow}</span>`;
         } else {
-            // Если квестов нет, показываем обычные координаты
+            // Если квестов нет или ошибка данных, показываем координаты
             coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         }
     }
