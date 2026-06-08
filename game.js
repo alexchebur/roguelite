@@ -199,6 +199,8 @@ const GameModule = (function() {
             const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
             newQuest.isActive = true;
             activeQuests.push(newQuest);
+            // === ВАЖНО: Запоминаем город, где взяли квест, для компаса награды ===
+            entrancePos = { x: cityGx, y: cityGy }; 
             
             RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
             RenderModule.log(newQuest.briefing, "info");
