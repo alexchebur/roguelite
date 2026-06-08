@@ -1,3 +1,15 @@
+Вот полный, исправленный код `game.js`.
+
+**Что сделано:**
+1.  **Дистанционная атака:** В `handleMapClick` убрана ручная фильтрация массива врагов перед вызовом `checkDeath()`. Теперь `checkDeath()` сама находит трупы, выдает лут, опыт и обновляет квесты.
+2.  **Компас награды:**
+    *   Функция `updateQuestCompass` обновлена: она приоритетно ищет квесты со статусом `isCompleted && !isTurnedIn` и показывает зеленую стрелку "Награда" на город (`entrancePos`).
+    *   В функцию `checkDeath` добавлен вызов `updateQuestCompass()` сразу после того, как квест помечается выполненным. Это гарантирует, что компас переключится в режим "Награда" сразу после убийства последнего врага, даже если вы еще в подземелье (при выходе на поверхность он подхватит это состояние).
+3.  **Чистота кода:** Убраны лишние отладочные `console.log` из боевой версии, оставлена только чистая логика.
+
+Замените всё содержимое файла `game.js` на этот код:
+
+```javascript
 // =========================== Модуль игры (управление, ходы, загрузка уровней) ===========================
 const GameModule = (function() {
     // === Состояние игры ===
@@ -69,11 +81,6 @@ const GameModule = (function() {
     }
 
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         if (!player || gameMode !== 'dungeon') return;
 
@@ -107,10 +114,8 @@ const GameModule = (function() {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
                 
                 if (killed) {
-                    // 1. Удаляем врага из массива
-                    //enemies = enemies.filter(e => e.hp > 0);
-                    
-                    // 2. ВАЖНО: Вызываем логику смерти для лута, опыта и квестов
+                    // ВАЖНО: Не фильтруем массив вручную! checkDeath() сделает это сам,
+                    // предварительно выдав лут, опыт и проверив квесты.
                     checkDeath(); 
                 }
                 
@@ -160,6 +165,7 @@ const GameModule = (function() {
             RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
         }
     }
+
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
     function tryGiveQuest(npc) {
         if (typeof QuestSystemModule === 'undefined') return false;
@@ -286,7 +292,6 @@ const GameModule = (function() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         
         // 1. Ищем квест, который выполнен, но награда еще не сдана (Приоритет №1)
-        // ВНИМАНИЕ: Убедитесь, что в quest_system.js у квеста есть поле isTurnedIn: false по умолчанию
         const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
         
         // 2. Если таких нет, ищем обычный активный квест (Приоритет №2)
@@ -296,7 +301,6 @@ const GameModule = (function() {
 
         if (turnInQuest) {
             // Цель: Город, где взят квест (entrancePos хранит координаты входа в этот город)
-            // Если entrancePos null (баг), пробуем взять координаты из ID квеста или дефолтные
             if (entrancePos) {
                 targetX = entrancePos.x;
                 targetY = entrancePos.y;
@@ -324,6 +328,7 @@ const GameModule = (function() {
             coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
         }
     }
+
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
@@ -552,7 +557,6 @@ const GameModule = (function() {
     }    
     
     // === СПАВН СУЩНОСТЕЙ ===
-    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
         const enemyCount = 8 + Math.floor(depth * 1.5);
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
@@ -603,23 +607,20 @@ const GameModule = (function() {
         }
 
         // === СПАВН БОССА (только в подземельях типа 'boss') ===
-        // Используем currentDungeonTypeName, так как он уже установлен в loadDungeonLevel
         if (currentDungeonTypeName === 'boss') {
-            // Ищем безопасную позицию подальше от игрока и лестниц
             let bossPos = null;
             let attempts = 0;
             while (!bossPos && attempts < 100) {
                 const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
                 const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
                 
-                // Проверяем, что это пол И что 2x2 область свободна от стен
                 if (!MapModule.isWall(rx, ry) && 
                     !MapModule.isWall(rx+1, ry) && 
                     !MapModule.isWall(rx, ry+1) && 
                     !MapModule.isWall(rx+1, ry+1)) {
                     
                     const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
-                    if (distToPlayer > 15) { // Подальше от игрока
+                    if (distToPlayer > 15) {
                         bossPos = { x: rx, y: ry };
                     }
                 }
@@ -627,7 +628,6 @@ const GameModule = (function() {
             }
 
             if (bossPos) {
-                // Проверяем, загружен ли модуль сущностей с функцией createBoss
                 if (typeof EntityModule.createBoss === 'function') {
                     const bossNameData = NameGeneratorModule.generateBossName(gx, gy, depth);
                     const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossNameData);
@@ -662,8 +662,6 @@ const GameModule = (function() {
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
 
-
-
     function handleInput(e) {
         // === ЧИТ-КОД: ENTER для восстановления HP ===
         if (e.key === "Enter") {
@@ -674,7 +672,7 @@ const GameModule = (function() {
                 RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
                 RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             }
-            return; // Прерываем выполнение, чтобы Enter не считался пропуском хода
+            return;
         }
 
         if (busy || (player && player.hp <= 0)) return;
@@ -693,8 +691,6 @@ const GameModule = (function() {
     }
 
     // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
-    
-    // Вспомогательная функция для выбора случайного направления
     function getRandomDirection() {
         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
         return dirs[Math.floor(Math.random() * dirs.length)];
@@ -703,18 +699,16 @@ const GameModule = (function() {
     function moveNpcs() {
         if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
         
-        const PLAYER_SPEED_THRESHOLD = 10; // Порог действия
+        const PLAYER_SPEED_THRESHOLD = 10;
         const width = DataModule.MAP_WIDTH;
         const height = DataModule.MAP_HEIGHT;
 
         window.currentCityNpcs.forEach(npc => {
-            // Инициализация скорости и энергии для NPC
-            if (npc.speed === undefined) npc.speed = 5; // NPC обычно медленные
+            if (npc.speed === undefined) npc.speed = 5;
             if (npc.energy === undefined) npc.energy = Math.floor(Math.random() * npc.speed);
 
             npc.energy += npc.speed;
 
-            // Если энергии достаточно, NPC делает ход
             if (npc.energy >= PLAYER_SPEED_THRESHOLD) {
                 npc.energy -= PLAYER_SPEED_THRESHOLD;
 
@@ -753,31 +747,26 @@ const GameModule = (function() {
     }
 
     function moveEnemies() {
-        const PLAYER_SPEED_THRESHOLD = 10; // Порог действия (базовая скорость игрока)
+        const PLAYER_SPEED_THRESHOLD = 10;
 
         enemies.forEach(e => {
             if (e.hp <= 0) return;
             
-            // 1. Инициализация скорости и энергии (если их нет у старого врага)
             if (e.speed === undefined) e.speed = 10; 
             if (e.energy === undefined) e.energy = Math.floor(Math.random() * e.speed);
 
-            // 2. Накапливаем энергию каждый ход игрока
             e.energy += e.speed;
 
-            // 3. Проверяем, достаточно ли энергии для совершения действия
             if (e.energy >= PLAYER_SPEED_THRESHOLD) {
-                e.energy -= PLAYER_SPEED_THRESHOLD; // Тратим энергию на ход
+                e.energy -= PLAYER_SPEED_THRESHOLD;
 
                 const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-                const inSight = dist <= 8; // Радиус обнаружения
+                const inSight = dist <= 8;
 
                 if (e.isBoss) {
-                    // === ЛОГИКА БОССА ===
                     let nextX = e.x, nextY = e.y;
 
                     if (inSight) {
-                        // 1. Игрок в поле зрения: Идем к игроку по A*
                         const astar = new ROT.Path.AStar(player.x, player.y, 
                             (x, y) => !MapModule.isWall(x, y), { topology: 8 });
                         
@@ -787,32 +776,27 @@ const GameModule = (function() {
                         });
 
                         if (next) {
-                            // Проверка: не уперся ли в игрока (для атаки)
                             if (next.x === player.x && next.y === player.y) {
                                 CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                                 checkDeath();
-                                return; // Ход сделан
+                                return;
                             }
                             nextX = next.x;
                             nextY = next.y;
                         }
                     } else {
-                        // 2. Игрок НЕ в поле зрения: Случайное блуждание
                         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
-                        // Перемешиваем направления для естественности
                         dirs.sort(() => Math.random() - 0.5);
                         
                         for (const dir of dirs) {
                             const nx = e.x + dir.dx;
                             const ny = e.y + dir.dy;
                             
-                            // Проверка, что ВСЯ область 2x2 нового положения свободна
                             if (!MapModule.isWall(nx, ny) && 
                                 !MapModule.isWall(nx+1, ny) && 
                                 !MapModule.isWall(nx, ny+1) && 
                                 !MapModule.isWall(nx+1, ny+1)) {
                                 
-                                // Не наступать на игрока при блуждании
                                 if ((nx === player.x && ny === player.y) || 
                                     (nx+1 === player.x && ny === player.y) ||
                                     (nx === player.x && ny+1 === player.y) ||
@@ -827,14 +811,12 @@ const GameModule = (function() {
                         }
                     }
 
-                    // Применяем движение босса
                     if (nextX !== e.x || nextY !== e.y) {
                         e.x = nextX;
                         e.y = nextY;
                     }
 
                 } else {
-                    // === СТАНДАРТНАЯ ЛОГИКА ОБЫЧНЫХ ВРАГОВ ===
                     const aggroRange = e.aggroOverride || 8;
                     if (dist < aggroRange) {
                         if (dist === 1) {
@@ -863,21 +845,18 @@ const GameModule = (function() {
     }
     
     // === СИСТЕМА ПРОКАЧКИ ===
-    // === СИСТЕМА ПРОКАЧКИ ===
     function gainXp(amount) {
         if (!player) return;
         player.xp += amount;
         
-        // Формула: для следующего уровня нужно Level * 50 XP
         const xpNeeded = player.level * 50;
         
         if (player.xp >= xpNeeded) {
             player.level++;
             player.xp -= xpNeeded;
             
-            // Улучшаем статы через WorldCurveModule
             player.maxHp = WorldCurveModule.getPlayerBaseHP(player.level);
-            player.hp = player.maxHp; // Полное лечение при уровне
+            player.hp = player.maxHp;
             player.atk = WorldCurveModule.getPlayerBaseAtk(player.level);
             player.def = WorldCurveModule.getPlayerBaseDef(player.level);
             
@@ -886,36 +865,21 @@ const GameModule = (function() {
         }
     }
 
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP и Локации) ===
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с учетом XP, Локации и Лута) ===
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Отладочная версия) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     function checkDeath() {
-        // Фильтруем мертвых врагов
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
-        if (deadEnemies.length > 0) {
-            console.log(`💀 Найдено мертвых врагов: ${deadEnemies.length}`);
-        }
-
         deadEnemies.forEach(enemy => {
-            console.log(`🔄 Обработка смерти: ${enemy.name} (${enemy.x}, ${enemy.y})`);
-
             // 1. Выпадение лута
-            // Убедимся, что items - это тот самый массив, который используется в игре
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
-            console.log(`🎒 Лут обработан. Всего предметов в мире: ${items.length}`);
             
             // 2. Начисление опыта
-            const xpGain = 10 + (currentDepth * 5);
-            gainXp(xpGain);
+            gainXp(10 + (currentDepth * 5));
 
-            // 3. ПРОВЕРКА КВЕСТОВ
-            // 3. ПРОВЕРКА КВЕСТОВ
+            // 3. Проверка квестов
             if (typeof QuestSystemModule !== 'undefined') {
-                const questsToCheck = [...activeQuests];
-                
-                questsToCheck.forEach(q => {
+                // Используем копию массива, так как grantReward может изменить activeQuests
+                [...activeQuests].forEach(q => {
                     const eventData = {
                         type: 'kill',
                         enemyName: enemy.name,
@@ -925,21 +889,18 @@ const GameModule = (function() {
 
                     const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
-                    // === ДОБАВЛЕНО: Гарантированный вывод в журнал игры ===
-                    //if (progressUpdated) {
-                        //RenderModule.log(`Квест: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
-                    //}
-
-                    //if (q.isCompleted && !q.isTurnedIn) {
-                        //RenderModule.log(`🏆 Цель квеста достигнута! Вернитесь за наградой.`, "event");
-                    //}
+                    // Если квест только что завершился, обновляем компас ГЛОБАЛЬНОЙ КАРТЫ
+                    // (Это подготовит стрелку "Награда" к моменту выхода на поверхность)
+                    if (progressUpdated && q.isCompleted) {
+                        updateQuestCompass(); 
+                        RenderModule.log(`🏆 Цель достигнута! Вернитесь за наградой.`, "event");
+                    }
                 });
             }
         });
 
         // Удаляем мертвых врагов из основного массива
         enemies = enemies.filter(e => e.hp > 0);
-        console.log(`👾 Оставшихся врагов: ${enemies.length}`);
     }
 
 
@@ -965,7 +926,6 @@ const GameModule = (function() {
             (nx === e.x + 1 && ny === e.y + 1)
         ));
         if (bossInWay) {
-            // Если игрок пытается войти в клетку босса, атакуем его
             CombatModule.attack(player, bossInWay, (m, t) => RenderModule.log(m, t));
             checkDeath();
             moveNpcs();
@@ -991,15 +951,11 @@ const GameModule = (function() {
 
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
-            // === ИЗМЕНЕНИЕ: Логика выдачи квестов при касании ===
             let questHandled = false;
-            
-            // Проверяем, является ли NPC раздатчиком квестов
             if (npc.isQuestGiver) {
                 questHandled = tryGiveQuest(npc);
             }
 
-            // Если квест не был обработан (NPC обычный), показываем диалог
             if (!questHandled) {
                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             }
@@ -1030,9 +986,6 @@ const GameModule = (function() {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
             } 
-    // ... (внутри processTurn, блок подбора предметов) ...
-    // Найдите блок else { player.inventory.push(item); ... } и замените его на:
-    
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
@@ -1040,7 +993,6 @@ const GameModule = (function() {
                 // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
                 if (typeof QuestSystemModule !== 'undefined') {
                     activeQuests.forEach(q => {
-                        // Для квестов на поиск тоже проверяем локацию
                         if (QuestSystemModule.checkProgress(q, { 
                             type: 'pickup', 
                             itemType: item.type,
@@ -1113,3 +1065,4 @@ const GameModule = (function() {
 window.onload = async () => {
     await GameModule.init();
 };
+```
