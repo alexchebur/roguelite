@@ -656,7 +656,21 @@ const GameModule = (function() {
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
 
+
+
     function handleInput(e) {
+        // === ЧИТ-КОД: ENTER для восстановления HP ===
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (player && player.hp > 0) {
+                const healAmount = 100;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
+                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            }
+            return; // Прерываем выполнение, чтобы Enter не считался пропуском хода
+        }
+
         if (busy || (player && player.hp <= 0)) return;
         
         let dx = 0, dy = 0;
@@ -671,8 +685,6 @@ const GameModule = (function() {
             else processTurn(dx, dy);
         }
     }
-
-
 
     // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
     
