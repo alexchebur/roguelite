@@ -90,7 +90,6 @@ const QuestSystemModule = (function() {
             targetPoi = rng.choice(candidates);
         } else {
             // FALLBACK: Если в радиусе 50 клеток генерация не создала ни одного подземелья
-            // (маловероятно, но возможно), ищем до 100 клеток, чтобы не ломать игру
             const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
             if (wideCandidates && wideCandidates.length > 0) {
                 targetPoi = rng.choice(wideCandidates);
@@ -105,7 +104,6 @@ const QuestSystemModule = (function() {
             targetData.dungeonType = targetPoi.dungeonType;
         } else {
             // КРАЙНИЙ СЛУЧАЙ: Подземелий нет вообще нигде рядом. 
-            // Генерируем фейковую точку, но это произойдет крайне редко.
             const angle = rng.next() * Math.PI * 2;
             const r = rng.int(10, MAX_QUEST_RADIUS);
             targetData.targetX = gx + Math.round(Math.cos(angle) * r);
@@ -130,8 +128,9 @@ const QuestSystemModule = (function() {
             
             targetData.enemyName = enemyTemplate.name;
             const baseCount = rng.int(3, 5);
+            // Используем множитель мира для количества врагов, но без учета глубины (так как квест на поверхности)
             const multiplier = WorldCurveModule.getEnemyMultiplier(gx, gy);
-            targetData.count = Math.max(1, Math.floor(baseCount * multiplier));
+            targetData.count = Math.max(1, Math.floor(baseCount * Math.sqrt(multiplier)));
         }
 
         return targetData;
@@ -157,7 +156,6 @@ const QuestSystemModule = (function() {
         }
 
         // Формула: 1 тир сложности за каждые 15 клеток пути + уровень игрока.
-        // Ограничиваем максимум 6-кой (чтобы Големы/Драконы были только на очень поздней стадии).
         const questEnemyTier = Math.min(6, Math.floor(globalDist / 15) + playerLevel);
         
         const targetData = calculateTargetParams(gx, gy, type, questEnemyTier);
@@ -197,7 +195,6 @@ const QuestSystemModule = (function() {
             isActive: false
         };
     }
-    
 
     /**
      * Проверка выполнения квеста с учетом ЛОКАЦИИ
@@ -219,9 +216,6 @@ const QuestSystemModule = (function() {
             if (eventData.enemyName === quest.target.enemyName && isInCorrectLocation) {
                 quest.progress++;
                 updated = true;
-            } else if (eventData.enemyName === quest.target.enemyName && !isInCorrectLocation) {
-                 // Опционально: можно подсказывать игроку, что он не там
-                 // RenderModule.log(`Этот ${eventData.enemyName} не тот, что нужен для квеста...`, "info");
             }
         }
 
@@ -240,12 +234,16 @@ const QuestSystemModule = (function() {
             }
         }
 
-        if (quest.type === 'HUNT' && quest.progress >= quest.maxProgress) {
-            quest.isCompleted = true;
+        // Проверка завершения для HUNT и FETCH
+        if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
+            if (quest.progress >= quest.maxProgress) {
+                quest.isCompleted = true;
+            }
         }
 
         return updated;
     }
+
     return {
         createQuest: createQuest,
         checkProgress: checkProgress,
