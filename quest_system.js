@@ -199,23 +199,36 @@ const QuestSystemModule = (function() {
     /**
      * Проверка выполнения квеста с учетом ЛОКАЦИИ
      */
+    /**
+     * Проверка выполнения квеста с учетом ЛОКАЦИИ
+     */
     function checkProgress(quest, eventData) {
         if (quest.isCompleted || !quest.isActive) return false;
 
         let updated = false;
 
-        // Проверка локации: если у квеста есть целевые координаты (targetX/Y), 
-        // мы проверяем, совпадают ли они с текущими координатами игрока (eventData.locX/Y)
+        // Проверка локации: 
+        // Если у квеста есть targetX/Y, мы требуем совпадения с locX/locY из eventData.
+        // Если targetX нет (баг генерации), считаем что локация любая.
         const isInCorrectLocation = (
             !quest.target.targetX || 
-            (eventData.locX === quest.target.targetX && eventData.locY === quest.target.targetY)
+            (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
+             eventData.locY !== undefined && eventData.locY === quest.target.targetY)
         );
 
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
-            // Засчитываем убийство только если имя врага совпадает И игрок в правильной локации
-            if (eventData.enemyName === quest.target.enemyName && isInCorrectLocation) {
-                quest.progress++;
-                updated = true;
+            if (eventData.enemyName === quest.target.enemyName) {
+                if (isInCorrectLocation) {
+                    quest.progress++;
+                    updated = true;
+                    // Логируем прогресс прямо здесь, чтобы игрок видел反馈
+                    if (typeof RenderModule !== 'undefined') {
+                        RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
+                    }
+                } else {
+                    // Опционально: сообщить игроку, что он не в том месте
+                    // if (typeof RenderModule !== 'undefined') RenderModule.log("Вы не в той локации для этого квеста.", "info");
+                }
             }
         }
 
@@ -238,16 +251,13 @@ const QuestSystemModule = (function() {
         if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
+                if (typeof RenderModule !== 'undefined') {
+                    RenderModule.log(`🏆 Квест "${quest.target.locationName}" выполнен! Вернитесь за наградой.`, "event");
+                }
             }
         }
 
         return updated;
     }
-
-    return {
-        createQuest: createQuest,
-        checkProgress: checkProgress,
-        MAX_RADIUS: MAX_QUEST_RADIUS
-    };
 
 })();
