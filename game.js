@@ -608,6 +608,7 @@ function updateQuestCompass() {
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
         const savedState = dungeonClearState.get(cacheKey);
