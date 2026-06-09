@@ -19,23 +19,23 @@ const DataModule = (function() {
         { name: "Гоблин", char: getChar('ENEMY_GOBLIN'), color: "#4CAF50", hp: [12, 18], atk: [1, 2], def: [0, 1], lootType: "gold", speed: 10 },
         { name: "Волк", char: getChar('ENEMY_WOLF'), color: "#9E9E9E", hp: [15, 22], atk: [2, 3], def: [0, 1], lootType: "food", speed: 10 },
         
-        // === УРОВЕНЬ 4-6 ===
-        { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [25, 35], atk: [3, 5], def: [1, 2], lootType: "weapon", speed: 10 },
-        { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [20, 30], atk: [3, 6], def: [1, 2], lootType: "gold", speed: 8},
-        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [30, 45], atk: [2, 3], def: [1, 3], lootType: "food", speed: 3 },
-        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [35, 50], atk: [3, 5], def: [2, 3], lootType: "weapon", speed: 9 },
+        // === УРОВЕНЬ 4-6 (СНИЖЕНЫ ПОКАЗАТЕЛИ) ===
+        { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [18, 25], atk: [2, 4], def: [0, 1], lootType: "weapon", speed: 10 },
+        { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [15, 22], atk: [2, 4], def: [1, 2], lootType: "gold", speed: 8},
+        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [20, 30], atk: [1, 2], def: [1, 2], lootType: "food", speed: 3 },
+        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [25, 35], atk: [3, 4], def: [1, 2], lootType: "weapon", speed: 9 },
 
         // === УРОВЕНЬ 7-9 ===
-        { name: "Зомби", char: getChar('ENEMY_ZOMBIE'), color: "#607D8B", hp: [50, 70], atk: [6, 9], def: [2, 4], lootType: "gold", speed: 3 },
-        { name: "Гарпия", char: getChar('ENEMY_HARPY'), color: "#E91E63", hp: [40, 60], atk: [8, 12], def: [1, 2], lootType: "weapon", speed: 12 },
-        { name: "Призрак", char: getChar('ENEMY_GHOST'), color: "#7C4DFF", hp: [30, 45], atk: [7, 10], def: [0, 1], lootType: "gold", speed: 8 },
-        { name: "Вампир", char: getChar('ENEMY_VAMPIRE'), color: "#C62828", hp: [60, 85], atk: [9, 13], def: [3, 5], lootType: "weapon", speed: 8 },
+        { name: "Зомби", char: getChar('ENEMY_ZOMBIE'), color: "#607D8B", hp: [40, 55], atk: [4, 7], def: [1, 3], lootType: "gold", speed: 3 },
+        { name: "Гарпия", char: getChar('ENEMY_HARPY'), color: "#E91E63", hp: [30, 45], atk: [6, 9], def: [0, 1], lootType: "weapon", speed: 12 },
+        { name: "Призрак", char: getChar('ENEMY_GHOST'), color: "#7C4DFF", hp: [25, 35], atk: [5, 8], def: [0, 1], lootType: "gold", speed: 8 },
+        { name: "Вампир", char: getChar('ENEMY_VAMPIRE'), color: "#C62828", hp: [50, 70], atk: [7, 10], def: [2, 4], lootType: "weapon", speed: 8 },
 
         // === УРОВЕНЬ 10+ ===
-        { name: "Тролль", char: getChar('ENEMY_TROLL'), color: "#4CAF50", hp: [80, 120], atk: [10, 15], def: [2, 3], lootType: "gold", speed: 9 },
-        { name: "Лич", char: getChar('ENEMY_LICH'), color: "#7B1FA2", hp: [70, 100], atk: [12, 18], def: [2, 4], lootType: "weapon", speed: 10 },
-        { name: "Голем", char: getChar('ENEMY_GOLEM'), color: "#90A4AE", hp: [120, 180], atk: [12, 16], def: [8, 12], lootType: "gold", speed: 8 },
-        { name: "Дракон", char: getChar('ENEMY_DRAGON'), color: "#FF5722", hp: [100, 150], atk: [15, 22], def: [5, 8], lootType: "weapon", speed: 10 }
+        { name: "Тролль", char: getChar('ENEMY_TROLL'), color: "#4CAF50", hp: [70, 100], atk: [8, 12], def: [2, 3], lootType: "gold", speed: 9 },
+        { name: "Лич", char: getChar('ENEMY_LICH'), color: "#7B1FA2", hp: [60, 85], atk: [10, 15], def: [2, 3], lootType: "weapon", speed: 10 },
+        { name: "Голем", char: getChar('ENEMY_GOLEM'), color: "#90A4AE", hp: [100, 150], atk: [10, 14], def: [6, 10], lootType: "gold", speed: 8 },
+        { name: "Дракон", char: getChar('ENEMY_DRAGON'), color: "#FF5722", hp: [90, 130], atk: [12, 18], def: [4, 7], lootType: "weapon", speed: 10 }
     ];
 
     const ITEM_TYPES = [
