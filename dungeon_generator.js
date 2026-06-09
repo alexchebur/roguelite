@@ -393,7 +393,10 @@ const DungeonGeneratorModule = {
                 if(found) break;
             }
         }
-
+        // В самом конце DungeonGeneratorModule
+        getRandomDungeonType: function(rand) {
+            return selectDungeonType(rand);
+        }
         return {
             mapData: mapGrid,
             dungeonType: dungeonType,
