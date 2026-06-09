@@ -2,6 +2,7 @@
 # ###game.js
 ```js
 
+
 // =========================== Модуль игры (управление, ходы, загрузка уровней) ===========================
 const GameModule = (function() {
     // === Состояние игры ===
@@ -100,13 +101,23 @@ const GameModule = (function() {
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
             const weapon = player.equipment.weapon;
+            
+            // Логика дистанционной атаки
             if (weapon && !weapon.meleeType) {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
-                if (killed) enemies = enemies.filter(e => e.hp > 0);
+                
+                if (killed) {
+                    // ВАЖНО: Не фильтруем массив вручную! checkDeath() сделает это сам,
+                    // предварительно выдав лут, опыт и проверив квесты.
+                    checkDeath(); 
+                }
+                
                 moveNpcs();
                 moveEnemies();
                 renderFrame();
-            } else {
+            } 
+            // Логика осмотра (если оружие ближнего боя или его нет)
+            else {
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
                 }
@@ -118,8 +129,9 @@ const GameModule = (function() {
         // 2. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
-            const questGiven = tryGiveQuest(npc);
-            if (!questGiven) {
+            if (npc.isQuestGiver) {
+                tryGiveQuest(npc);
+            } else {
                 if (typeof RenderModule.updateInspector === 'function') {
                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
                 }
@@ -131,7 +143,7 @@ const GameModule = (function() {
         // 3. Предметы
         const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
-             let details = "";
+             let details = " ";
              if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
              if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
              
@@ -148,49 +160,92 @@ const GameModule = (function() {
     }
 
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
-    function tryGiveQuest(npc) {
-        if (typeof QuestSystemModule === 'undefined') return false;
-        if (!npc.isQuestGiver) return false;
+// === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
+function tryGiveQuest(npc) {
+    if (typeof QuestSystemModule === 'undefined') return false;
+    if (!npc.isQuestGiver) return false;
 
-        if (!entrancePos) return false;
-        const cityGx = entrancePos.x;
-        const cityGy = entrancePos.y;
-        
-        let npcIndex = 0;
-        for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+    if (!entrancePos) return false;
+    const cityGx = entrancePos.x;
+    const cityGy = entrancePos.y;
+    
+    let npcIndex = 0;
+    for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
 
-        const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
-        const questId = tempQuest.id;
-        
-        const alreadyActive = activeQuests.some(q => q.id === questId);
-        const alreadyDone = completedQuestIds.has(questId);
+    const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+    const questId = tempQuest.id;
+    
+    const alreadyActive = activeQuests.some(q => q.id === questId);
+    const alreadyDone = completedQuestIds.has(questId);
 
-        if (!alreadyActive && !alreadyDone) {
-            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
-            newQuest.isActive = true;
-            activeQuests.push(newQuest);
+    // Сценарий 0: Квест выполнен, но награда еще не получена (СДАЧА КВЕСТА)
+    if (alreadyActive) {
+        const q = activeQuests.find(q => q.id === questId);
+        if (q.isCompleted && !q.isTurnedIn) {
+            player.gold += q.rewardGold;
+            q.isTurnedIn = true; 
             
-            RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
-            RenderModule.log(newQuest.briefing, "info");
+            RenderModule.log(`🏆 Квест сдан! Получено: ${q.rewardGold} золотых.`, "loot");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            
+            // Очищаем футер, так как квест сдан
+            RenderModule.updateQuestBriefing(null); 
+
+            activeQuests = activeQuests.filter(aq => aq.id !== questId);
+            completedQuestIds.add(questId);
+            updateQuestCompass();
             
             if (typeof RenderModule.updateInspector === 'function') {
-                RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
+                RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
             }
-            
-            // Сразу обновляем компас, так как мы еще в городе (режим dungeon), 
-            // но при выходе он должен показать направление
             return true;
-        } else if (alreadyActive) {
-             RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение!"`, "info");
-             return true;
-        } else if (alreadyDone) {
-             RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
-             return true;
         }
-        
-        return false;
     }
 
+
+    // Сценарий 1: Новый квест
+    if (!alreadyActive && !alreadyDone) {
+        const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+        newQuest.isActive = true;
+        newQuest.originX = cityGx;
+        newQuest.originY = cityGy;
+        activeQuests.push(newQuest);
+        
+        RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
+        RenderModule.log(newQuest.briefing, "info");
+        
+        // >>> ЗАМЕНИТЬ НА ЭТО <<<
+        RenderModule.updateQuestBriefing(newQuest);
+        
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
+        }
+        return true; 
+    }
+    // Сценарий 2: Квест активен, но цель еще не достигнута
+    else if (alreadyActive) {
+         const q = activeQuests.find(q => q.id === questId);
+         const statusMsg = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
+         
+         RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение! Ищи ${q.target.locationName}."`, "info");
+         
+         if (typeof RenderModule.updateInspector === 'function') {
+             RenderModule.updateInspector(`📜 ${npc.name}`, statusMsg, "npc");
+         }
+         return true; 
+    } 
+    // Сценарий 3: Квест полностью завершен (сдан)
+    else if (alreadyDone) {
+         RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
+         
+         if (typeof RenderModule.updateInspector === 'function') {
+             RenderModule.updateInspector(`📜 ${npc.name}`, "Задание выполнено. Спасибо!", "npc");
+         }
+         return true;
+    }
+    
+    return false;
+}
     // === НАГРАДА ЗА КВЕСТ ===
     function grantReward(quest) {
         if (!player) return;
@@ -205,60 +260,79 @@ const GameModule = (function() {
         updateQuestCompass(); // Обновляем компас после завершения
     }
 
-    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
-    function getQuestArrow(targetX, targetY, currentX, currentY) {
-        const dx = targetX - currentX;
-        const dy = targetY - currentY;
-        
-        if (dx === 0 && dy === 0) return '📍'; 
+    // === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ==// === ЛОГИКА КОМПАСА (ПРОСТАЯ СТРЕЛКА) ===
+function getQuestArrow(targetX, targetY, currentX, currentY) {
+    const dx = targetX - currentX;
+    const dy = targetY - currentY;
+    
+    if (dx === 0 && dy === 0) return '📍'; 
 
-        let arrow = '';
-        if (dy < 0) arrow += '↑'; 
-        else if (dy > 0) arrow += '↓';
-        
-        if (dx > 0) arrow += '→'; 
-        else if (dx < 0) arrow += '←';
-        
-        if (arrow === '↑←') arrow = '↖';
-        if (arrow === '↑→') arrow = '↗';
-        if (arrow === '↓←') arrow = '↙';
-        if (arrow === '↓→') arrow = '↘';
-        
-        return arrow;
+    let arrow = '';
+    if (dy < 0) arrow += '↑'; 
+    else if (dy > 0) arrow += '↓';
+    
+    if (dx > 0) arrow += '→'; 
+    else if (dx < 0) arrow += '←';
+    
+    if (arrow === '↑←') arrow = '↖';
+    if (arrow === '↑→') arrow = '↗';
+    if (arrow === '↓←') arrow = '↙';
+    if (arrow === '↓→') arrow = '↘';
+    
+    return arrow;
+}
+
+function updateQuestCompass() {
+    const coordsEl = document.getElementById("ui-loc-coords");
+    if (!coordsEl) return;
+
+    // Работаем ТОЛЬКО на глобальной карте
+    if (gameMode !== 'global') {
+        return;
     }
 
-    function updateQuestCompass() {
-        const coordsEl = document.getElementById("ui-loc-coords");
-        if (!coordsEl) return;
+    const playerPos = GlobalMapModule.getPlayerPosition();
+    
+    // 1. Ищем квест, который выполнен, но награда еще не сдана
+    const turnInQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
+    
+    // 2. Если таких нет, ищем обычный активный квест
+    const activeQuest = !turnInQuest ? activeQuests.find(q => !q.isCompleted) : null;
 
-        // Работаем ТОЛЬКО на глобальной карте
-        if (gameMode !== 'global') {
-            // В подземелье/городе пусть работает старая логика из render.js (Выход: стрелка)
-            // Мы просто выходим, чтобы не мешать render.js
+    let targetX, targetY, color;
+
+    if (turnInQuest) {
+        // Цель: Город, где взят квест (используем originX/originY из объекта квеста)
+        if (turnInQuest.originX !== undefined && turnInQuest.originY !== undefined) {
+            targetX = turnInQuest.originX;
+            targetY = turnInQuest.originY;
+            color = "#00ff00"; // Зеленый для награды
+        } else {
+            console.warn("⚠️ Ошибка: Квест на сдачу есть, но originX/originY отсутствуют!");
+            // Показываем обычные координаты, чтобы интерфейс не ломался
+            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
             return;
         }
-
-        const activeQuest = activeQuests.find(q => !q.isCompleted);
+    } else if (activeQuest && activeQuest.target) {
+        // Цель: Подземелье или локация квеста
+        targetX = activeQuest.target.targetX;
+        targetY = activeQuest.target.targetY;
         
-        if (activeQuest && activeQuest.target) {
-            const playerPos = GlobalMapModule.getPlayerPosition();
-            const arrow = getQuestArrow(activeQuest.target.targetX, activeQuest.target.targetY, playerPos.x, playerPos.y);
-            
-            // Красим стрелку в зависимости от типа квеста
-            let color = "#fff";
-            if (activeQuest.type === 'HUNT') color = "#ff5555";
-            else if (activeQuest.type === 'FETCH') color = "#ffd700";
-            else color = "#58a6ff";
-
-            // ЗАПИСЫВАЕМ НАПРЯМУЮ В ЭЛЕМЕНТ
-            coordsEl.innerHTML = `<span style="color:${color}">Квест: ${arrow}</span>`;
-        } else {
-            // Если квестов нет, показываем обычные координаты
-            const playerPos = GlobalMapModule.getPlayerPosition();
-            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
-        }
+        if (activeQuest.type === 'HUNT') color = "#ff5555";
+        else if (activeQuest.type === 'FETCH') color = "#ffd700";
+        else color = "#58a6ff";
     }
 
+    if (targetX !== undefined && targetY !== undefined) {
+        const arrow = getQuestArrow(targetX, targetY, playerPos.x, playerPos.y);
+        const label = turnInQuest ? "🏆 Награда" : "📜 Квест";
+        
+        coordsEl.innerHTML = `<span style="color:${color}">${label}: ${arrow}</span>`;
+    } else {
+        // Если квестов нет или ошибка данных, показываем координаты
+        coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+    }
+}
     // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
@@ -347,7 +421,15 @@ const GameModule = (function() {
                 activeQuests.forEach(q => {
                     if (QuestSystemModule.checkProgress(q, { type: 'move', x: playerPos.x, y: playerPos.y })) {
                          RenderModule.log(`📍 Квест выполнен: Вы достигли ${q.target.locationName}!`, "event");
-                         grantReward(q);
+                         
+                         // >>> ЗАМЕНИТЬ ЭТУ СТРОКУ <<<
+                         // grantReward(q); 
+                         
+                         // >>> НА ЭТИ ДВЕ СТРОКИ <<<
+                         q.isTurnedIn = false; // Явно указываем, что награда еще не получена
+                         RenderModule.updateQuestBriefing(q);
+                        
+                         updateQuestCompass(); // Обновляем стрелку на "Награда"
                     }
                 });
             }
@@ -379,9 +461,11 @@ const GameModule = (function() {
     
     function exitToGlobal() {
         gameMode = 'global';
+        updateQuestCompass(); 
+        renderGlobalMap();
         if (entrancePos) {
             GlobalMapModule.setPlayerPosition(entrancePos.x, entrancePos.y);
-            entrancePos = null;
+            //entrancePos = null;
         }
         if (MapModule.clearCache) MapModule.clearCache();
 
@@ -399,8 +483,7 @@ const GameModule = (function() {
         RenderModule.log("Вы вернулись на поверхность", "info");
         
         // <--- ВАЖНО: Сразу обновляем компас при выходе
-        updateQuestCompass(); 
-        renderGlobalMap();
+
     }
     
     // === ЗАГРУЗКА ГОРОДА ===
@@ -448,6 +531,7 @@ const GameModule = (function() {
     }    
 
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         enemies = [];
         items = [];
@@ -470,6 +554,21 @@ const GameModule = (function() {
         }
     
         spawnDungeonEntities(gx, gy, depth);
+
+        // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
+        if (typeof QuestSystemModule !== 'undefined') {
+            activeQuests.forEach(q => {
+                // Если квест активен, не выполнен, тип FETCH и цель - это текущее подземелье
+                if (q.isActive && !q.isCompleted && 
+                    q.type === 'FETCH' && 
+                    q.target.targetX === gx && 
+                    q.target.targetY === gy) {
+                    
+                    spawnQuestItem(q);
+                }
+            });
+        }
+        // >>> КОНЕЦ ВСТАВКИ <<<
     
         currentLocData = {
             fullName: `${dungeonName} [Уровень ${depth + 1}]`,
@@ -535,8 +634,82 @@ const GameModule = (function() {
             );
             items.push(...goldItems);
         }
+
+        // === СПАВН БОССА (только в подземельях типа 'boss') ===
+        if (currentDungeonTypeName === 'boss') {
+            let bossPos = null;
+            let attempts = 0;
+            while (!bossPos && attempts < 100) {
+                const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+                const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+                
+                if (!MapModule.isWall(rx, ry) && 
+                    !MapModule.isWall(rx+1, ry) && 
+                    !MapModule.isWall(rx, ry+1) && 
+                    !MapModule.isWall(rx+1, ry+1)) {
+                    
+                    const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
+                    if (distToPlayer > 15) {
+                        bossPos = { x: rx, y: ry };
+                    }
+                }
+                attempts++;
+            }
+
+            if (bossPos) {
+                if (typeof EntityModule.createBoss === 'function') {
+                    const bossNameData = NameGeneratorModule.generateBossName(gx, gy, depth);
+                    const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossNameData);
+                    enemies.push(bossEntity);
+                    RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
+                }
+            }
+        }
     }  
 
+    // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
+    function spawnQuestItem(quest) {
+        if (!quest || quest.type !== 'FETCH') return;
+        
+        // Ищем шаблон предмета в data.js по типу
+        const template = DataModule.ITEM_TYPES.find(t => t.type === quest.target.itemType);
+        if (!template) return;
+
+        // Создаем уникальный объект предмета
+        const questItem = EntityModule.createItem(template, 0, 0, 1.0);
+        
+        // Делаем его уникальным (добавляем пометку в имя)
+        questItem.name = `✨ ${questItem.name} (Квест)`;
+        questItem.isQuestItem = true; // Флаг, чтобы случайно не продать/выкинуть (опционально)
+
+        // Ищем безопасное место для спавна (рядом со стартом или лестницей)
+        let spawnPos = null;
+        
+        // Пробуем найти место рядом с лестницей вверх (входом)
+        if (MapModule.stairsUp) {
+            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(MapModule.stairsUp, 5) : null;
+        }
+        
+        // Если не вышло, ищем рядом с игроком
+        if (!spawnPos && player) {
+            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : null;
+        }
+
+        // Если совсем беда, берем случайную свободную клетку
+        if (!spawnPos) {
+            spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : {x: player.x+1, y: player.y};
+        }
+
+        if (spawnPos) {
+            questItem.x = spawnPos.x;
+            questItem.y = spawnPos.y;
+            items.push(questItem);
+            
+            RenderModule.log(`🔮 Вы чувствуете присутствие нужного артефакта где-то рядом...`, "event");
+        }
+    }
+
+    
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
@@ -562,6 +735,18 @@ const GameModule = (function() {
     }
 
     function handleInput(e) {
+        // === ЧИТ-КОД: ENTER для восстановления HP ===
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (player && player.hp > 0) {
+                const healAmount = 100;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
+                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            }
+            return;
+        }
+
         if (busy || (player && player.hp <= 0)) return;
         
         let dx = 0, dy = 0;
@@ -578,109 +763,219 @@ const GameModule = (function() {
     }
 
     // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
-    function moveNpcs() {
-        if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
-        const width = DataModule.MAP_WIDTH;
-        const height = DataModule.MAP_HEIGHT;
-
-        window.currentCityNpcs.forEach(npc => {
-            if (!npc.direction) {
-                const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
-                npc.direction = dirs[Math.floor(Math.random() * dirs.length)];
-            }
-
-            let moved = false;
-            let attempts = 0;
-            while (!moved && attempts < 4) {
-                const nx = npc.x + npc.direction.dx;
-                const ny = npc.y + npc.direction.dy;
-
-                if (nx < 0 || nx >= width || ny < 0 || ny >= height || MapModule.isWall(nx, ny)) {
-                    npc.direction = getRandomDirection();
-                    attempts++;
-                    continue;
-                }
-
-                const blockedByNpc = window.currentCityNpcs.some(other => other !== npc && other.x === nx && other.y === ny);
-                const blockedByPlayer = (player.x === nx && player.y === ny);
-                const blockedByEnemy = enemies.some(e => e.hp > 0 && e.x === nx && e.y === ny);
-
-                if (blockedByNpc || blockedByPlayer || blockedByEnemy) {
-                    npc.direction = getRandomDirection();
-                    attempts++;
-                    continue;
-                }
-
-                npc.x = nx;
-                npc.y = ny;
-                moved = true;
-            }
-        });
-    }
-
     function getRandomDirection() {
         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
         return dirs[Math.floor(Math.random() * dirs.length)];
     }
 
+    function moveNpcs() {
+        if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
+        
+        const PLAYER_SPEED_THRESHOLD = 10;
+        const width = DataModule.MAP_WIDTH;
+        const height = DataModule.MAP_HEIGHT;
+
+        window.currentCityNpcs.forEach(npc => {
+            if (npc.speed === undefined) npc.speed = 5;
+            if (npc.energy === undefined) npc.energy = Math.floor(Math.random() * npc.speed);
+
+            npc.energy += npc.speed;
+
+            if (npc.energy >= PLAYER_SPEED_THRESHOLD) {
+                npc.energy -= PLAYER_SPEED_THRESHOLD;
+
+                if (!npc.direction) {
+                    npc.direction = getRandomDirection();
+                }
+
+                let moved = false;
+                let attempts = 0;
+                while (!moved && attempts < 4) {
+                    const nx = npc.x + npc.direction.dx;
+                    const ny = npc.y + npc.direction.dy;
+
+                    if (nx < 0 || nx >= width || ny < 0 || ny >= height || MapModule.isWall(nx, ny)) {
+                        npc.direction = getRandomDirection();
+                        attempts++;
+                        continue;
+                    }
+
+                    const blockedByNpc = window.currentCityNpcs.some(other => other !== npc && other.x === nx && other.y === ny);
+                    const blockedByPlayer = (player.x === nx && player.y === ny);
+                    const blockedByEnemy = enemies.some(e => e.hp > 0 && e.x === nx && e.y === ny);
+
+                    if (blockedByNpc || blockedByPlayer || blockedByEnemy) {
+                        npc.direction = getRandomDirection();
+                        attempts++;
+                        continue;
+                    }
+
+                    npc.x = nx;
+                    npc.y = ny;
+                    moved = true;
+                }
+            }
+        });
+    }
+
     function moveEnemies() {
+        const PLAYER_SPEED_THRESHOLD = 10;
+
         enemies.forEach(e => {
             if (e.hp <= 0) return;
             
-            // Получаем стандартный радиус обзора (8) или переопределенный (если в нас стреляли)
-            const aggroRange = e.aggroOverride || 8;
-            
-            const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-            
-            if (dist < aggroRange) {
-                // Если враг был "разбужен" выстрелом, сбрасываем флаг через время или оставляем до смерти
-                // (можно добавить таймер, но пока оставим так)
-                
-                if (dist === 1) {
-                    CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
-                    checkDeath();
-                } else {
-                    const astar = new ROT.Path.AStar(player.x, player.y,
-                         (x, y) => !MapModule.isWall(x, y), { topology: 8 });
-                    
-                    let next = null;
-                    astar.compute(e.x, e.y, (x, y) => {
-                        if (!next && (x !== e.x || y !== e.y)) next = { x, y };
-                    });
+            if (e.speed === undefined) e.speed = 10; 
+            if (e.energy === undefined) e.energy = Math.floor(Math.random() * e.speed);
 
-                    if (next) {
-                        const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
-                        const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
+            e.energy += e.speed;
+
+            if (e.energy >= PLAYER_SPEED_THRESHOLD) {
+                e.energy -= PLAYER_SPEED_THRESHOLD;
+
+                const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
+                const inSight = dist <= 8;
+
+                if (e.isBoss) {
+                    let nextX = e.x, nextY = e.y;
+
+                    if (inSight) {
+                        const astar = new ROT.Path.AStar(player.x, player.y, 
+                            (x, y) => !MapModule.isWall(x, y), { topology: 8 });
                         
-                        if (!isBlockedByNpc && !isBlockedByEnemy) {
-                            e.x = next.x;
-                            e.y = next.y;
+                        let next = null;
+                        astar.compute(e.x, e.y, (x, y) => {
+                            if (!next && (x !== e.x || y !== e.y)) next = { x, y };
+                        });
+
+                        if (next) {
+                            if (next.x === player.x && next.y === player.y) {
+                                CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                                checkDeath();
+                                return;
+                            }
+                            nextX = next.x;
+                            nextY = next.y;
+                        }
+                    } else {
+                        const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
+                        dirs.sort(() => Math.random() - 0.5);
+                        
+                        for (const dir of dirs) {
+                            const nx = e.x + dir.dx;
+                            const ny = e.y + dir.dy;
+                            
+                            if (!MapModule.isWall(nx, ny) && 
+                                !MapModule.isWall(nx+1, ny) && 
+                                !MapModule.isWall(nx, ny+1) && 
+                                !MapModule.isWall(nx+1, ny+1)) {
+                                
+                                if ((nx === player.x && ny === player.y) || 
+                                    (nx+1 === player.x && ny === player.y) ||
+                                    (nx === player.x && ny+1 === player.y) ||
+                                    (nx+1 === player.x && ny+1 === player.y)) {
+                                    continue;
+                                }
+                                
+                                nextX = nx;
+                                nextY = ny;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (nextX !== e.x || nextY !== e.y) {
+                        e.x = nextX;
+                        e.y = nextY;
+                    }
+
+                } else {
+                    const aggroRange = e.aggroOverride || 8;
+                    if (dist < aggroRange) {
+                        if (dist === 1) {
+                            CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                            checkDeath();
+                        } else {
+                            const astar = new ROT.Path.AStar(player.x, player.y,
+                                (x, y) => !MapModule.isWall(x, y), { topology: 8 });
+                            let next = null;
+                            astar.compute(e.x, e.y, (x, y) => {
+                                if (!next && (x !== e.x || y !== e.y)) next = { x, y };
+                            });
+                            if (next) {
+                                const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
+                                const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
+                                if (!isBlockedByNpc && !isBlockedByEnemy) {
+                                    e.x = next.x;
+                                    e.y = next.y;
+                                }
+                            }
                         }
                     }
                 }
-             }
+            }
         });
     }
     
+    // === СИСТЕМА ПРОКАЧКИ ===
+    function gainXp(amount) {
+        if (!player) return;
+        player.xp += amount;
+        
+        const xpNeeded = player.level * 50;
+        
+        if (player.xp >= xpNeeded) {
+            player.level++;
+            player.xp -= xpNeeded;
+            
+            player.maxHp = WorldCurveModule.getPlayerBaseHP(player.level);
+            player.hp = player.maxHp;
+            player.atk = WorldCurveModule.getPlayerBaseAtk(player.level);
+            player.def = WorldCurveModule.getPlayerBaseDef(player.level);
+            
+            RenderModule.log(`🎉 УРОВЕНЬ ПОВЫШЕН! Теперь вы ${player.level} уровня!`, "event");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        }
+    }
+
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
         deadEnemies.forEach(enemy => {
+            // 1. Выпадение лута
             CombatModule.dropLoot(enemy, currentDepth, items, RenderModule.log);
-   
-            // ПРОВЕРКА КВЕСТОВ НА УБИЙСТВО
+            
+            // 2. Начисление опыта
+            gainXp(10 + (currentDepth * 5));
+
+            // 3. Проверка квестов
             if (typeof QuestSystemModule !== 'undefined') {
-                activeQuests.forEach(q => {
-                    if (QuestSystemModule.checkProgress(q, { type: 'kill', enemyName: enemy.name })) {
-                        RenderModule.log(`Квест: Убито ${enemy.name} (${q.progress}/${q.maxProgress})`, "info");
-                        if (q.isCompleted) grantReward(q);
+                // Используем копию массива, так как grantReward может изменить activeQuests
+                [...activeQuests].forEach(q => {
+                    const eventData = {
+                        type: 'kill',
+                        enemyName: enemy.name,
+                        locX: dungeonX,
+                        locY: dungeonY
+                    };
+
+                    const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
+
+                    // Если квест только что завершился, обновляем данные компаса
+                    // (Само сообщение уже выведено внутри quest_system.js)
+                    if (progressUpdated && q.isCompleted) {
+                        updateQuestCompass(); 
                     }
                 });
             }
         });
 
+        // Удаляем мертвых врагов из основного массива
         enemies = enemies.filter(e => e.hp > 0);
     }
+
 
     // === ОСНОВНОЙ ХОД ИГРЫ ===
     function processTurn(dx, dy) {
@@ -695,6 +990,22 @@ const GameModule = (function() {
         }
 
         if (MapModule.isWall(nx, ny)) return;
+        
+        // Проверка столкновения с боссом (учитываем его размер 2x2)
+        const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
+            (nx === e.x && ny === e.y) || 
+            (nx === e.x + 1 && ny === e.y) || 
+            (nx === e.x && ny === e.y + 1) || 
+            (nx === e.x + 1 && ny === e.y + 1)
+        ));
+        if (bossInWay) {
+            CombatModule.attack(player, bossInWay, (m, t) => RenderModule.log(m, t));
+            checkDeath();
+            moveNpcs();
+            moveEnemies();
+            renderFrame();
+            return;
+        }
 
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
@@ -713,7 +1024,15 @@ const GameModule = (function() {
 
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
-            RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            let questHandled = false;
+            if (npc.isQuestGiver) {
+                questHandled = tryGiveQuest(npc);
+            }
+
+            if (!questHandled) {
+                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            }
+            
             moveNpcs(); 
             moveEnemies();
             renderFrame();
@@ -744,16 +1063,32 @@ const GameModule = (function() {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
-                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ОБНОВЛЕННАЯ
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ИСПРАВЛЕННАЯ
                 if (typeof QuestSystemModule !== 'undefined') {
-                    activeQuests.forEach(q => {
-                        if (QuestSystemModule.checkProgress(q, { type: 'pickup', itemType: item.type })) {
-                             RenderModule.log(`📦 Это предмет для квеста!`, "info");
+                    [...activeQuests].forEach(q => {
+                        if (q.type === 'FETCH' && !q.isCompleted) {
+                            // Проверяем совпадение типа предмета
+                            if (item.type === q.target.itemType) {
+                                RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
+                                
+                                // 1. Помечаем квест как выполненный
+                                q.progress = q.maxProgress;
+                                q.isCompleted = true;
+                                
+                                // 2. ВАЖНО: НЕ вызываем grantReward() здесь!
+                                // Мы оставляем квест в activeQuests, чтобы updateQuestCompass 
+                                // мог показать стрелку "Награда" обратно в город.
+                                RenderModule.updateQuestBriefing(q);
+                                RenderModule.log(`Теперь нужно вернуться к заказчику за наградой.`, "event");
+                                
+                                // Обновляем компас, чтобы он сразу переключился на режим "Награда"
+                                updateQuestCompass();
+                            }
                         }
                     });
                 }
-            }
-        
+            }        
             items.splice(itemIdx, 1);
         }
 
@@ -814,6 +1149,7 @@ const GameModule = (function() {
 window.onload = async () => {
     await GameModule.init();
 };
+
 ```
 # dungeon_generator.js
 ```js
@@ -2555,7 +2891,30 @@ const RenderModule = (function() {
         
         console.log("🚀 RenderModule полностью инициализирован.");
     }
+    // === ОБНОВЛЕНИЕ ТЕКУЩЕГО КВЕСТА В ФУТЕРЕ ===
+    function updateQuestBriefing(quest) {
+        const el = document.getElementById("ui-quest-briefing");
+        if (!el) return;
 
+        if (!quest) {
+            el.textContent = "";
+            return;
+        }
+
+        let statusIcon = "📜";
+        if (quest.isCompleted && !quest.isTurnedIn) statusIcon = "🏆";
+        
+        // Формируем краткое описание цели
+        let goalText = "";
+        if (quest.type === 'FETCH') goalText = `Найти: ${quest.target.itemName}`;
+        else if (quest.type === 'HUNT') goalText = `Убить: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
+        else if (quest.type === 'EXPLORE') goalText = `Исследовать: ${quest.target.locationName}`;
+
+        el.innerHTML = `<span style="color:${statusIcon === '🏆' ? '#00ff00' : 'var(--gold)'}">${statusIcon} ${goalText}</span>`;
+    }
+
+
+    
     // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
     function addBlinkEffect(x, y, duration = 500, color = null) {
         activeEffects.push({
@@ -2645,7 +3004,31 @@ const RenderModule = (function() {
         currentCameraOffset = cam;
         return cam;
     }
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ОТРИСОВКА БОССА 2x2 ===
+    function drawBoss(ctx, bossType, sx, sy, color) {
+        let prefix = 'BOSS_DRAGON'; 
+        if (bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
+        else if (bossType.includes('Лич')) prefix = 'BOSS_LICH';
+        else if (bossType.includes('Паук')) prefix = 'BOSS_DRAGON'; // Заглушка, добавьте свои ключи
 
+        const parts = [
+            { key: `${prefix}_TL`, dx: 0, dy: 0 },
+            { key: `${prefix}_TR`, dx: 1, dy: 0 },
+            { key: `${prefix}_BL`, dx: 0, dy: 1 },
+            { key: `${prefix}_BR`, dx: 1, dy: 1 }
+        ];
+
+        parts.forEach(part => {
+            const drawX = sx + part.dx;
+            const drawY = sy + part.dy;
+            if (drawX >= 0 && drawX < COLS && drawY >= 0 && drawY < ROWS) {
+                // Вызываем новый метод, который мы добавили в TilesetRenderer
+                if (typeof TilesetRenderer.drawByKey === 'function') {
+                    TilesetRenderer.drawByKey(ctx, part.key, drawX, drawY, color);
+                }
+            }
+        });
+    }
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ (Использует TilesetRenderer) ===
     function draw(player, enemies, items, npcs = []) {
         const ctx = RenderModule._ctx;
@@ -2713,18 +3096,36 @@ const RenderModule = (function() {
             });
         }
 
-        // 3. ВРАГИ
+        // 3. ВРАГИ (включая боссов 2x2)
         if (enemies) {
             enemies.forEach(e => {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
-                    if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${e.x},${e.y}`)) {
-                        TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                    
+                    // Проверяем видимость хотя бы одной части босса
+                    const isVisible = visible.has(`${e.x},${e.y}`);
+                    
+                    if (sx >= -2 && sx < COLS && sy >= -2 && sy < ROWS && isVisible) {
+                        if (e.isBoss) {
+                            // === ОТРИСОВКА БОССА 2x2 ИЗ 4 ЧАСТЕЙ ===
+                            // Определяем префикс ключей в зависимости от типа босса
+                            let prefix = 'BOSS_DRAGON'; 
+                            if (e.bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
+                            else if (e.bossType.includes('Лич')) prefix = 'BOSS_LICH';
+                            
+                            // Рисуем 4 тайла: TL (Top-Left), TR, BL, BR
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_TL`, sx, sy, e.color);       // Верх-Лево
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_TR`, sx + 1, sy, e.color);   // Верх-Право
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_BL`, sx, sy + 1, e.color);   // Низ-Лево
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_BR`, sx + 1, sy + 1, e.color); // Низ-Право
+                        } else {
+                            // Обычный враг
+                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                        }
                     }
                 }
             });
         }
-
         // 4. NPC
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
@@ -3024,6 +3425,7 @@ const RenderModule = (function() {
         requestRedraw,
         addBlinkEffect,
         addProjectileEffect,
+        updateQuestBriefing,
         COLS,
         ROWS,
         _ctx: null, 
@@ -3402,10 +3804,11 @@ const WorldCurveModule = (function() {
         <canvas id="minimap"></canvas>
     </div>
 
-    <footer class="panel">
-        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
-        <span><kbd>Space</kbd> Пропуск хода</span>
-        <span><kbd>Click</kbd> Использовать предмет</span>
+    <!-- В index.html -->
+    <footer class="panel" style="grid-column: 2 / 4; grid-row: 3; display: flex; align-items: center; justify-content: center; text-align: center;">
+        <div id="ui-quest-briefing" style="color: var(--gold); font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+            <!-- Сюда будет выводиться суть квеста -->
+        </div>
     </footer>
 </div>
 
@@ -4292,44 +4695,31 @@ const LoreModule = (function() {
 
 # ###quest_system.js
 ```js
-
 /**
  * МОДУЛЬ СИСТЕМЫ КВЕСТОВ (quest_system.js)
- * Генерирует детерминированные квесты, привязанные к РЕАЛЬНЫМ точкам интереса (POI) на глобальной карте.
- * Зависит от: name_generator.js, worldCurve.js, data.js, entity.js, globalMap.js
  */
-
 const QuestSystemModule = (function() {
     'use strict';
 
-    // === КОНФИГУРАЦИЯ ===
-    const MAX_QUEST_RADIUS = 50; // Основной радиус поиска цели
-    const FALLBACK_RADIUS = 100; // Расширенный радиус, если в 50 клетках нет подземелий
+    const MAX_QUEST_RADIUS = 50;
+    const FALLBACK_RADIUS = 100;
 
-    // === БАЗА ШАБЛОНОВ (Универсальные тексты с переменными) ===
     const QUEST_TEMPLATES = {
         FETCH: [
-            "Мне нужен {item}. Говорят, последний раз его видели в {location}. Принеси его, и я заплачу {gold} золотых.",
-            "В {location} затерялся ценный артефакт: {item}. Найди его для меня. Награда: {gold} монет.",
-            "Я слышал, что в руинах {location} можно найти {item}. Это опасно, но я готов заплатить {gold} золотых."
+            "Мне нужен предмет: {item}. Говорят, последний раз его видели здесь: {location} (глубина {depth}+). Принеси его, и я заплачу {gold} золотых.",
+            "В {location} (не ниже {depth} уровня) затерялся ценный артефакт: {item}. Найди его для меня. Награда: {gold} монет."
         ],
         HUNT: [
-            "{enemy} расплодились в окрестностях {location}. Убей {count} штук, и город будет в безопасности. Награда: {gold} золотых.",
-            "Охотники боятся идти в {location}. Там слишком много {enemy}. Устрани {count} особей, и я дам тебе {gold} монет.",
-            "Голова каждого {enemy} из {location} стоит денег. Принеси мне доказательства смерти {count} тварей. Плачу {gold}."
+            "{enemy} расплодились на нижних уровнях подземелья {location} (глубина {depth}+). Убей {count} штук, и город будет в безопасности. Награда: {gold} золотых.",
+            "Охотники боятся спускаться в {location} ниже {depth} уровня. Там слишком много {enemy}. Устрани {count} особей, и я дам тебе {gold} монет."
         ],
         EXPLORE: [
-            "Разведчики пропали near {location}. Доберись туда и проверь вход. Я жду новостей. Награда за риск: {gold} золотых.",
-            "На карте отмечено странное место: {location}. Сходи туда и убедись, что вход открыт. Плачу {gold} за информацию.",
-            "Говорят, в {location} творится неладное. Исследуй окрестности. Если вернешься живым, получишь {gold} монет."
+            "Разведчики пропали рядом с подземельем {location}. Доберись до глубины {depth} и проверь, что там происходит. Награда за риск: {gold} золотых.",
+            "На карте отмечено странное место: {location}. Спустись хотя бы на {depth} уровень и убедись, что путь открыт. Плачу {gold} за информацию."
         ]
     };
 
-    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-
-    function pickRandom(rng, array) {
-        return array[Math.floor(rng.next() * array.length)];
-    }
+    function pickRandom(rng, array) { return array[Math.floor(rng.next() * array.length)]; }
 
     function formatBriefing(template, data) {
         let text = template;
@@ -4338,57 +4728,39 @@ const QuestSystemModule = (function() {
         text = text.replace(/{location}/g, data.locationName || "неизвестном месте");
         text = text.replace(/{count}/g, data.count || "несколько");
         text = text.replace(/{gold}/g, data.gold || "немного");
+        text = text.replace(/{depth}/g, data.depth || "1");
         return text;
     }
 
-    function generateQuestId(gx, gy, type, index) {
-        return `Q_${type}_${gx}_${gy}_${index}`;
-    }
+    function generateQuestId(gx, gy, type, index) { return `Q_${type}_${gx}_${gy}_${index}`; }
 
-    /**
-     * НОВАЯ ФУНКЦИЯ: Поиск реального POI (подземелья) в заданном радиусе
-     */
     function findRealPOI(gx, gy, radius, poiType) {
         const candidates = [];
-        
-        // Проходим по квадрату, но фильтруем по кругу (манхэттенское расстояние)
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 if (Math.abs(dx) + Math.abs(dy) > radius) continue;
-                
                 const tx = gx + dx;
                 const ty = gy + dy;
-                
-                // Спрашиваем у GlobalMapModule, есть ли здесь точка интереса
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
                     const poi = GlobalMapModule.getPOI(tx, ty);
-                    if (poi && poi.type === poiType) {
-                        candidates.push(poi);
-                    }
+                    if (poi && poi.type === poiType) candidates.push(poi);
                 }
             }
         }
         return candidates.length > 0 ? candidates : null;
     }
 
-    /**
-     * Рассчитывает параметры цели квеста, привязываясь к РЕАЛЬНЫМ координатам карты
-     */
     function calculateTargetParams(gx, gy, type, difficultyLevel) {
         const seed = createSeed(gx, gy, difficultyLevel) + 777; 
         const rng = new SeededRandom(seed);
         let targetData = {};
 
-        // Для всех основных типов квестов нам нужна реальная локация (подземелье)
         const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
-        
         let targetPoi = null;
+        
         if (candidates && candidates.length > 0) {
-            // Выбираем случайное подземелье из найденных детерминированно
             targetPoi = rng.choice(candidates);
         } else {
-            // FALLBACK: Если в радиусе 50 клеток генерация не создала ни одного подземелья
-            // (маловероятно, но возможно), ищем до 100 клеток, чтобы не ломать игру
             const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
             if (wideCandidates && wideCandidates.length > 0) {
                 targetPoi = rng.choice(wideCandidates);
@@ -4396,14 +4768,11 @@ const QuestSystemModule = (function() {
         }
 
         if (targetPoi) {
-            // Успех: мы нашли реальное подземелье!
             targetData.targetX = targetPoi.x;
             targetData.targetY = targetPoi.y;
             targetData.locationName = targetPoi.name;
             targetData.dungeonType = targetPoi.dungeonType;
         } else {
-            // КРАЙНИЙ СЛУЧАЙ: Подземелий нет вообще нигде рядом. 
-            // Генерируем фейковую точку, но это произойдет крайне редко.
             const angle = rng.next() * Math.PI * 2;
             const r = rng.int(10, MAX_QUEST_RADIUS);
             targetData.targetX = gx + Math.round(Math.cos(angle) * r);
@@ -4412,7 +4781,6 @@ const QuestSystemModule = (function() {
             targetData.dungeonType = 'rogue';
         }
 
-        // Специфичные параметры по типу квеста
         if (type === 'FETCH') {
             const possibleItems = DataModule.ITEM_TYPES.filter(i => 
                 i.type !== 'gold' && i.type !== 'book' && i.type !== 'food' && 
@@ -4429,27 +4797,33 @@ const QuestSystemModule = (function() {
             targetData.enemyName = enemyTemplate.name;
             const baseCount = rng.int(3, 5);
             const multiplier = WorldCurveModule.getEnemyMultiplier(gx, gy);
-            targetData.count = Math.max(1, Math.floor(baseCount * multiplier));
+            targetData.count = Math.max(1, Math.floor(baseCount * Math.sqrt(multiplier)));
         }
 
         return targetData;
     }
 
-    /**
-     * Публичная функция: Создает объект квеста
-     */
     function createQuest(gx, gy, questIndex) {
         const types = ['FETCH', 'HUNT', 'EXPLORE'];
         const rng = new SeededRandom(createSeed(gx, gy, questIndex));
-        
         const type = pickRandom(rng, types);
-        const difficulty = Math.abs(gx) + Math.abs(gy); 
         
-        const targetData = calculateTargetParams(gx, gy, type, difficulty);
+        const globalDist = Math.abs(gx) + Math.abs(gy);
+        let playerLevel = 1;
+        if (typeof GameModule !== 'undefined' && GameModule.getPlayer) {
+            const p = GameModule.getPlayer();
+            if (p) playerLevel = p.level;
+        }
+
+        const questEnemyTier = Math.min(6, Math.floor(globalDist / 15) + playerLevel);
+        const targetData = calculateTargetParams(gx, gy, type, questEnemyTier);
         
+        const recommendedDepth = Math.max(1, Math.min(5, Math.floor(questEnemyTier / 1.5)));
+        targetData.recommendedDepth = recommendedDepth;
+
         const goldBase = rng.int(50, 150);
-        const goldMult = WorldCurveModule.getGoldMultiplier(gx, gy);
-        const finalGold = Math.floor(goldBase * goldMult);
+        const goldMult = WorldCurveModule.getGoldMultiplier(globalDist, 0); 
+        const finalGold = Math.floor(goldBase * goldMult) + (playerLevel * 10);
         
         const id = generateQuestId(gx, gy, type, questIndex);
         const templates = QUEST_TEMPLATES[type];
@@ -4460,7 +4834,8 @@ const QuestSystemModule = (function() {
             enemyName: targetData.enemyName,
             locationName: targetData.locationName,
             count: targetData.count,
-            gold: finalGold
+            gold: finalGold,
+            depth: recommendedDepth
         };
         
         const briefing = formatBriefing(template, briefingData);
@@ -4468,48 +4843,66 @@ const QuestSystemModule = (function() {
         return {
             id: id,
             type: type,
-            target: targetData,
+            target: targetData, 
             progress: 0,
             maxProgress: (type === 'HUNT') ? targetData.count : 1,
             rewardGold: finalGold,
             briefing: briefing,
             isCompleted: false,
+            isTurnedIn: false,
             isActive: false
         };
     }
 
-    /**
-     * Проверка выполнения квеста
-     */
     function checkProgress(quest, eventData) {
-        if (quest.isCompleted || !quest.isActive) return false;
+        if (!quest || quest.isCompleted || !quest.isActive) return false;
+        if (!eventData) return false;
 
         let updated = false;
 
+        const isInCorrectLocation = (
+            !quest.target.targetX || 
+            (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
+             eventData.locY !== undefined && eventData.locY === quest.target.targetY)
+        );
+
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
-                quest.progress++;
-                updated = true;
+                if (isInCorrectLocation) {
+                    quest.progress++;
+                    updated = true;
+                    if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                        RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
+                    }
+                }
             }
         }
 
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
-            if (eventData.itemType === quest.target.itemType) {
+            if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
                 updated = true; 
             }
         }
 
+        // === ИЗМЕНЕНИЕ ДЛЯ EXPLORE ===
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
             if (dist <= 1) { 
                 quest.progress = quest.maxProgress;
                 quest.isCompleted = true;
+                // ВАЖНО: Мы НЕ удаляем квест и НЕ выдаем золото здесь.
+                // Мы просто меняем статус, чтобы компас мог показать стрелку "Награда"
                 return true; 
             }
         }
 
-        if (quest.type === 'HUNT' && quest.progress >= quest.maxProgress) {
-            quest.isCompleted = true;
+        if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
+            if (quest.progress >= quest.maxProgress) {
+                quest.isCompleted = true;
+                if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                    RenderModule.log(`🏆 Квест "${quest.target.locationName}" выполнен! Вернитесь за наградой.`, "event");
+                }
+            }
         }
 
         return updated;
