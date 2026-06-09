@@ -720,6 +720,8 @@ function updateQuestCompass() {
             // Сообщение о боссе тоже можно скрыть, если оно мешает
             // RenderModule.log("💀 Логово босса пусто. Хозяин повержен навсегда.", "info");
         }
+        const totalEnemies = enemies.length;
+        console.log(`🕷️ [DEBUG] Уровень ${depth}: Создано врагов: ${totalEnemies}`, enemies.map(e => e.name));
     }
      
 
