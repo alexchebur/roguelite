@@ -8,6 +8,9 @@ const GameModule = (function() {
     let npcs = []; 
     let explored = new Set();
     let busy = false;
+    // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
+    // Хранит количество живых врагов для каждого уровня: "gx_gy_depth" -> count
+    let dungeonClearState = new Map(); 
     
     // === КВЕСТЫ ===
     let activeQuests = []; 
@@ -456,6 +459,7 @@ function updateQuestCompass() {
     }
     
     function exitToGlobal() {
+        saveCurrentDungeonState();
         gameMode = 'global';
         updateQuestCompass(); 
         renderGlobalMap();
@@ -530,6 +534,7 @@ function updateQuestCompass() {
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
+        saveCurrentDungeonState();
         enemies = [];
         items = [];
         npcs = [];
@@ -601,13 +606,25 @@ function updateQuestCompass() {
     
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
+        const cacheKey = `${gx}_${gy}_${depth}`;
+        const savedState = dungeonClearState.get(cacheKey);
+
         // 1. Количество врагов: база 6 + 1.5 за каждый этаж
-        const enemyCount = 6 + Math.floor(depth * 1.5);
+        let enemyCount = 6 + Math.floor(depth * 1.5);
+        
+        // Если уровень уже посещался, ограничиваем спавн сохраненным числом
+        if (savedState) {
+            enemyCount = Math.min(enemyCount, savedState.enemies);
+            if (savedState.enemies === 0) {
+                RenderModule.log("🕸️ Это место кажется подозрительно тихим... (зачищено)", "info");
+            } else {
+                RenderModule.log(`👣 Вы замечаете следы своей предыдущей битвы. Осталось врагов: ~${savedState.enemies}`, "info");
+            }
+        }
         
         // 2. Множитель сложности врагов
-        // Базовый множитель мира (от удаления от центра карты) * Множитель глубины
-        // Глубина дает +20% к статам за каждый этаж
         const worldMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
         const depthMult = 1 + (depth * 0.1); 
         const enemyMult = worldMult * depthMult;
@@ -616,34 +633,33 @@ function updateQuestCompass() {
         let availableEnemies = DataModule.ENEMY_TYPES;
         
         if (depth < 3) {
-            // Уровень 1-2: Слабые мобы
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => 
                 ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name)
             );
         } else if (depth < 7) {
-            // Уровень 3-6: Средние мобы
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => 
                 ["Бандит", "Скелет", "Орк-разведчик", "Зомби", "Гарпия", "Призрак"].includes(e.name)
             );
         } else {
-            // Уровень 7+: Все враги, включая элиту
-            // Исключаем только самых слабых (Крыс), чтобы они не портили атмосферу
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => e.name !== "Крыса");
         }
 
-        // Спавн врагов
-        enemies = EntityModule.spawnEnemies(
-            MapModule.currentMapData,
-            player,
-            availableEnemies,
-            enemyCount,
-            enemyMult,
-            3, // Минимальная дистанция между врагами
-            depth // Передаем глубину для внутренней фильтрации в entity.js
-        );
+        // Спавн врагов (если их больше 0)
+        if (enemyCount > 0) {
+            enemies = EntityModule.spawnEnemies(
+                MapModule.currentMapData,
+                player,
+                availableEnemies,
+                enemyCount,
+                enemyMult,
+                3, // Минимальная дистанция между врагами
+                depth 
+            );
+        } else {
+            enemies = []; // Если уровень зачищен, массив остается пустым
+        }
         
         // 4. Множитель силы предметов
-        // Предметы становятся лучше на 15% за каждый этаж + бонус мира
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
         
         if (EntityModule.spawnItems) {
@@ -651,18 +667,18 @@ function updateQuestCompass() {
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                4 + Math.floor(depth / 3), // Немного больше предметов на глубине
+                4 + Math.floor(depth / 3), 
                 itemMult,
                 3
             );
+        } else {
+            items = [];
         }
 
-        // 5. Спавн золота (отдельно, так как оно имеет свою логику количества)
+        // 5. Спавн золота
         const goldTemplate = DataModule.ITEM_TYPES.find(item => item.type === 'gold');
         if (goldTemplate && EntityModule.spawnGold) {
-            // Количество кучек золота растет с глубиной
             const goldPilesCount = 2 + Math.floor(depth / 2);
-            // Множитель мира для золота (если есть в worldCurve, иначе 1)
             const worldGoldMult = WorldCurveModule.getGoldMultiplier ? WorldCurveModule.getGoldMultiplier(gx, gy) : 1;
             
             const goldItems = EntityModule.spawnGold(
@@ -673,26 +689,26 @@ function updateQuestCompass() {
                 depth,
                 worldGoldMult
             );
-            // Добавляем золото к остальным предметам
             items.push(...goldItems);
         }
 
         // === СПАВН БОССА (только в подземельях типа 'boss') ===
-        if (currentDungeonTypeName === 'boss') {
+        // Проверяем, не убит ли босс ранее
+        const bossAlreadyDefeated = savedState && savedState.bossDefeated;
+
+        if (currentDungeonTypeName === 'boss' && !bossAlreadyDefeated) {
             let bossPos = null;
             let attempts = 0;
             while (!bossPos && attempts < 100) {
                 const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
                 const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
                 
-                // Проверяем, что место свободно и это пол (учитываем размер босса 2x2)
                 if (!MapModule.isWall(rx, ry) && 
                     !MapModule.isWall(rx+1, ry) && 
                     !MapModule.isWall(rx, ry+1) && 
                     !MapModule.isWall(rx+1, ry+1)) {
                     
                     const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
-                    // Босс должен быть далеко от игрока при спавне
                     if (distToPlayer > 15) {
                         bossPos = { x: rx, y: ry };
                     }
@@ -708,8 +724,11 @@ function updateQuestCompass() {
                     RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
                 }
             }
+        } else if (bossAlreadyDefeated) {
+            RenderModule.log("💀 Логово босса пусто. Хозяин повержен навсегда.", "info");
         }
-    }  
+    }
+     
 
     // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
     function spawnQuestItem(quest) {
@@ -753,6 +772,15 @@ function updateQuestCompass() {
         }
     }
 
+    // === СОХРАНЕНИЕ СОСТОЯНИЯ ПОДЗЕМЕЛЬЯ ПРИ ВЫХОДЕ ===
+    function saveCurrentDungeonState() {
+        if (gameMode === 'dungeon' && currentDepth >= 0) {
+            const cacheKey = `${dungeonX}_${dungeonY}_${currentDepth}`;
+            // Считаем только тех, у кого HP > 0
+            const aliveEnemiesCount = enemies.filter(e => e.hp > 0).length;
+            dungeonClearState.set(cacheKey, aliveEnemiesCount);
+       }
+    }    
     
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
