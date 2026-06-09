@@ -179,16 +179,16 @@ function tryGiveQuest(npc) {
         const q = activeQuests.find(q => q.id === questId);
         if (q.isCompleted && !q.isTurnedIn) {
             player.gold += q.rewardGold;
-            q.isTurnedIn = true; // Помечаем как сданный
+            q.isTurnedIn = true; 
             
             RenderModule.log(`🏆 Квест сдан! Получено: ${q.rewardGold} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             
-            // Переносим в архив
+            // Очищаем футер, так как квест сдан
+            RenderModule.updateQuestBriefing(null); 
+
             activeQuests = activeQuests.filter(aq => aq.id !== questId);
             completedQuestIds.add(questId);
-            
-            // Обновляем компас после сдачи квеста
             updateQuestCompass();
             
             if (typeof RenderModule.updateInspector === 'function') {
@@ -198,11 +198,11 @@ function tryGiveQuest(npc) {
         }
     }
 
+
     // Сценарий 1: Новый квест
     if (!alreadyActive && !alreadyDone) {
         const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
         newQuest.isActive = true;
-        // ВАЖНО: Запоминаем координаты города, где выдали квест
         newQuest.originX = cityGx;
         newQuest.originY = cityGy;
         activeQuests.push(newQuest);
@@ -210,11 +210,14 @@ function tryGiveQuest(npc) {
         RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
         RenderModule.log(newQuest.briefing, "info");
         
+        // >>> ЗАМЕНИТЬ НА ЭТО <<<
+        RenderModule.updateQuestBriefing(newQuest);
+        
         if (typeof RenderModule.updateInspector === 'function') {
             RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
         }
         return true; 
-    } 
+    }
     // Сценарий 2: Квест активен, но цель еще не достигнута
     else if (alreadyActive) {
          const q = activeQuests.find(q => q.id === questId);
@@ -420,6 +423,8 @@ function updateQuestCompass() {
                          
                          // >>> НА ЭТИ ДВЕ СТРОКИ <<<
                          q.isTurnedIn = false; // Явно указываем, что награда еще не получена
+                         RenderModule.updateQuestBriefing(q);
+                        
                          updateQuestCompass(); // Обновляем стрелку на "Награда"
                     }
                 });
@@ -1070,7 +1075,7 @@ function updateQuestCompass() {
                                 // 2. ВАЖНО: НЕ вызываем grantReward() здесь!
                                 // Мы оставляем квест в activeQuests, чтобы updateQuestCompass 
                                 // мог показать стрелку "Награда" обратно в город.
-                                
+                                RenderModule.updateQuestBriefing(q);
                                 RenderModule.log(`Теперь нужно вернуться к заказчику за наградой.`, "event");
                                 
                                 // Обновляем компас, чтобы он сразу переключился на режим "Награда"
