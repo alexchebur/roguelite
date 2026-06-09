@@ -245,36 +245,56 @@ const CombatModule = (function() {
             used = true;
         } 
         else if (item.effect === "buff_atk") {
+            // Зелья дают временный бонус, который накапливается в текущем значении
             player.atk += item.val;
             logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
             used = true;
         }
         else if (item.type === "weapon") {
+            // 1. Снимаем старое оружие, если оно есть
             if (player.equipment.weapon) {
+                // Важно: вычитаем именно то значение, которое было прибавлено
                 player.atk -= player.equipment.weapon.val;
+                // Возвращаем старое оружие в инвентарь
                 player.inventory.push(player.equipment.weapon);
             }
+            
+            // 2. Надеваем новое оружие
             player.equipment.weapon = item;
             player.atk += item.val;
+            
+            // Логика боеприпасов
             if (item.maxAmmo > 0 && item.currentAmmo === 0) {
                 item.currentAmmo = item.maxAmmo;
             }
+            
             logFn(`Вы взяли в руки ${item.name}. Атака +${item.val}.`, "loot");
             used = true;
         } 
         else if (item.type === "armor") {
+            // 1. Снимаем старую броню
             if (player.equipment.armor) {
                 player.def -= player.equipment.armor.val;
                 player.inventory.push(player.equipment.armor);
             }
+            
+            // 2. Надеваем новую броню
             player.equipment.armor = item;
             player.def += item.val;
+            
             logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
             used = true;
         }
 
         if (used) {
+            // Удаляем использованный/экипированный предмет из инвентаря
             player.inventory.splice(index, 1);
+            
+            // === ЗАЩИТА ОТ ОТРИЦАТЕЛЬНЫХ СТАТОВ ===
+            // Минимальная атака и защита не могут быть меньше 0 (или 1 для атаки)
+            if (player.atk < 1) player.atk = 1;
+            if (player.def < 0) player.def = 0;
+            
             updateUiFn();
         }
     }
