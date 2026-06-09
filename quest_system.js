@@ -187,11 +187,14 @@ const QuestSystemModule = (function() {
             }
         }
 
+        // === ИЗМЕНЕНИЕ ДЛЯ EXPLORE ===
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
             if (dist <= 1) { 
                 quest.progress = quest.maxProgress;
                 quest.isCompleted = true;
+                // ВАЖНО: Мы НЕ удаляем квест и НЕ выдаем золото здесь.
+                // Мы просто меняем статус, чтобы компас мог показать стрелку "Награда"
                 return true; 
             }
         }
