@@ -226,10 +226,11 @@
         <canvas id="minimap"></canvas>
     </div>
 
-    <footer class="panel">
-        <span><kbd>←↑↓→</kbd> Движение / Атака</span>
-        <span><kbd>Space</kbd> Пропуск хода</span>
-        <span><kbd>Click</kbd> Использовать предмет</span>
+    <!-- В index.html -->
+    <footer class="panel" style="grid-column: 2 / 4; grid-row: 3; display: flex; align-items: center; justify-content: center; text-align: center;">
+        <div id="ui-quest-briefing" style="color: var(--gold); font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+            <!-- Сюда будет выводиться суть квеста -->
+        </div>
     </footer>
 </div>
 
