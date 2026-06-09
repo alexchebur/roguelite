@@ -68,7 +68,30 @@ const RenderModule = (function() {
         
         console.log("🚀 RenderModule полностью инициализирован.");
     }
+    // === ОБНОВЛЕНИЕ ТЕКУЩЕГО КВЕСТА В ФУТЕРЕ ===
+    function updateQuestBriefing(quest) {
+        const el = document.getElementById("ui-quest-briefing");
+        if (!el) return;
 
+        if (!quest) {
+            el.textContent = "";
+            return;
+        }
+
+        let statusIcon = "📜";
+        if (quest.isCompleted && !quest.isTurnedIn) statusIcon = "🏆";
+        
+        // Формируем краткое описание цели
+        let goalText = "";
+        if (quest.type === 'FETCH') goalText = `Найти: ${quest.target.itemName}`;
+        else if (quest.type === 'HUNT') goalText = `Убить: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
+        else if (quest.type === 'EXPLORE') goalText = `Исследовать: ${quest.target.locationName}`;
+
+        el.innerHTML = `<span style="color:${statusIcon === '🏆' ? '#00ff00' : 'var(--gold)'}">${statusIcon} ${goalText}</span>`;
+    }
+
+
+    
     // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
     function addBlinkEffect(x, y, duration = 500, color = null) {
         activeEffects.push({
@@ -579,6 +602,7 @@ const RenderModule = (function() {
         requestRedraw,
         addBlinkEffect,
         addProjectileEffect,
+        updateQuestBriefing,
         COLS,
         ROWS,
         _ctx: null, 
