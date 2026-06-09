@@ -1049,22 +1049,25 @@ function updateQuestCompass() {
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
                 // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ОБНОВЛЕННАЯ
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ИСПРАВЛЕННАЯ
                 if (typeof QuestSystemModule !== 'undefined') {
-                    // Проходим по копии массива, так как grantReward может его изменить
                     [...activeQuests].forEach(q => {
                         if (q.type === 'FETCH' && !q.isCompleted) {
                             // Проверяем совпадение типа предмета
                             if (item.type === q.target.itemType) {
                                 RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
                                 
-                                // Помечаем квест как выполненный
+                                // 1. Помечаем квест как выполненный
                                 q.progress = q.maxProgress;
                                 q.isCompleted = true;
                                 
-                                // Сразу выдаем награду (или можно требовать вернуться к NPC, но пока сделаем авто-завершение)
-                                grantReward(q);
+                                // 2. ВАЖНО: НЕ вызываем grantReward() здесь!
+                                // Мы оставляем квест в activeQuests, чтобы updateQuestCompass 
+                                // мог показать стрелку "Награда" обратно в город.
                                 
-                                // Обновляем компас
+                                RenderModule.log(`Теперь нужно вернуться к заказчику за наградой.`, "event");
+                                
+                                // Обновляем компас, чтобы он сразу переключился на режим "Награда"
                                 updateQuestCompass();
                             }
                         }
