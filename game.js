@@ -528,6 +528,7 @@ function updateQuestCompass() {
 
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         enemies = [];
         items = [];
@@ -554,13 +555,30 @@ function updateQuestCompass() {
         // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
         if (typeof QuestSystemModule !== 'undefined') {
             activeQuests.forEach(q => {
-                // Если квест активен, не выполнен, тип FETCH и цель - это текущее подземелье
+                // 1. Спавн предмета для FETCH
                 if (q.isActive && !q.isCompleted && 
                     q.type === 'FETCH' && 
                     q.target.targetX === gx && 
                     q.target.targetY === gy) {
                     
                     spawnQuestItem(q);
+                }
+
+                // 2. Проверка прогресса для DIGGER (Глубинный разведчик)
+                if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
+                    // Проверяем координаты подземелья и глубину
+                    if (q.target.targetX === gx && 
+                        q.target.targetY === gy && 
+                        depth >= q.target.targetDepth) {
+                        
+                        // Завершаем квест
+                        q.progress = q.maxProgress;
+                        q.isCompleted = true;
+                        
+                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${depth} в ${dungeonName}!`, "event");
+                        RenderModule.updateQuestBriefing(q);
+                        updateQuestCompass(); // Переключаем стрелку на "Награда"
+                    }
                 }
             });
         }
@@ -1051,35 +1069,64 @@ function updateQuestCompass() {
                     const fragment = LoreModule.getNextFragment();
                     RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
                     RenderModule.log(fragment, "event");
+                    
+                    // === ТРИГГЕР ДЛЯ КВЕСТА SCHOLAR ===
+                    if (typeof QuestSystemModule !== 'undefined') {
+                        activeQuests.forEach(q => {
+                            QuestSystemModule.checkProgress(q, { type: 'read_book' });
+                        });
+                    }
                 } else {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
-            } 
+            }  
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
                 // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ОБНОВЛЕННАЯ
-                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ИСПРАВЛЕННАЯ
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH и COLLECT)
                 if (typeof QuestSystemModule !== 'undefined') {
                     [...activeQuests].forEach(q => {
-                        if (q.type === 'FETCH' && !q.isCompleted) {
-                            // Проверяем совпадение типа предмета
+                        if (q.isCompleted) return; // Пропускаем уже выполненные
+
+                        // === ЛОГИКА ДЛЯ FETCH (Найти 1 предмет) ===
+                        if (q.type === 'FETCH') {
                             if (item.type === q.target.itemType) {
                                 RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
                                 
-                                // 1. Помечаем квест как выполненный
                                 q.progress = q.maxProgress;
                                 q.isCompleted = true;
                                 
-                                // 2. ВАЖНО: НЕ вызываем grantReward() здесь!
-                                // Мы оставляем квест в activeQuests, чтобы updateQuestCompass 
-                                // мог показать стрелку "Награда" обратно в город.
                                 RenderModule.updateQuestBriefing(q);
                                 RenderModule.log(`Теперь нужно вернуться к заказчику за наградой.`, "event");
-                                
-                                // Обновляем компас, чтобы он сразу переключился на режим "Награда"
                                 updateQuestCompass();
+                            }
+                        }
+                        
+                        // === ЛОГИКА ДЛЯ COLLECT (Собрать N предметов) ===
+                        else if (q.type === 'COLLECT') {
+                            // Проверяем тип предмета и локацию (если квест привязан к подземелью)
+                            const isInLocation = (!q.target.targetX || 
+                                                 (dungeonX === q.target.targetX && dungeonY === q.target.targetY));
+                            
+                            if (item.type === q.target.itemType && isInLocation) {
+                                // Используем checkProgress для увеличения счетчика
+                                QuestSystemModule.checkProgress(q, { 
+                                    type: 'pickup', 
+                                    itemType: item.type,
+                                    locX: dungeonX,
+                                    locY: dungeonY
+                                });
+
+                                // Если после подбора квест завершился
+                                if (q.isCompleted) {
+                                    RenderModule.log(`🏆 Вы собрали все ${q.target.itemName}!`, "event");
+                                    RenderModule.updateQuestBriefing(q);
+                                    updateQuestCompass();
+                                } else {
+                                    RenderModule.log(`📦 Подобрано для квеста: ${q.target.itemName} (${q.progress}/${q.maxProgress})`, "info");
+                                }
                             }
                         }
                     });
