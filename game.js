@@ -765,16 +765,24 @@ function updateQuestCompass() {
         }
     }
 
-    // === СОХРАНЕНИЕ СОСТОЯНИЯ ПОДЗЕМЕЛЬЯ ПРИ ВЫХОДЕ ===
+    // === СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ПОКИДАНИИ УРОВНЯ ===
     function saveCurrentDungeonState() {
         if (gameMode === 'dungeon' && currentDepth >= 0) {
             const cacheKey = `${dungeonX}_${dungeonY}_${currentDepth}`;
-            // Считаем только тех, у кого HP > 0
-            const aliveEnemiesCount = enemies.filter(e => e.hp > 0).length;
-            dungeonClearState.set(cacheKey, aliveEnemiesCount);
-       }
-    }    
-    
+            const aliveEnemies = enemies.filter(e => e.hp > 0);
+            
+            let bossDefeated = false;
+            if (currentDungeonTypeName === 'boss') {
+                const bossAlive = aliveEnemies.some(e => e.isBoss);
+                bossDefeated = !bossAlive;
+            }
+            
+            dungeonClearState.set(cacheKey, {
+                enemies: aliveEnemies.length,
+                bossDefeated: bossDefeated
+            });
+        }
+    }
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
