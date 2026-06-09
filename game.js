@@ -516,6 +516,7 @@ function updateQuestCompass() {
     }    
 
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         enemies = [];
         items = [];
@@ -538,6 +539,21 @@ function updateQuestCompass() {
         }
     
         spawnDungeonEntities(gx, gy, depth);
+
+        // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
+        if (typeof QuestSystemModule !== 'undefined') {
+            activeQuests.forEach(q => {
+                // Если квест активен, не выполнен, тип FETCH и цель - это текущее подземелье
+                if (q.isActive && !q.isCompleted && 
+                    q.type === 'FETCH' && 
+                    q.target.targetX === gx && 
+                    q.target.targetY === gy) {
+                    
+                    spawnQuestItem(q);
+                }
+            });
+        }
+        // >>> КОНЕЦ ВСТАВКИ <<<
     
         currentLocData = {
             fullName: `${dungeonName} [Уровень ${depth + 1}]`,
@@ -636,6 +652,49 @@ function updateQuestCompass() {
         }
     }  
 
+    // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
+    function spawnQuestItem(quest) {
+        if (!quest || quest.type !== 'FETCH') return;
+        
+        // Ищем шаблон предмета в data.js по типу
+        const template = DataModule.ITEM_TYPES.find(t => t.type === quest.target.itemType);
+        if (!template) return;
+
+        // Создаем уникальный объект предмета
+        const questItem = EntityModule.createItem(template, 0, 0, 1.0);
+        
+        // Делаем его уникальным (добавляем пометку в имя)
+        questItem.name = `✨ ${questItem.name} (Квест)`;
+        questItem.isQuestItem = true; // Флаг, чтобы случайно не продать/выкинуть (опционально)
+
+        // Ищем безопасное место для спавна (рядом со стартом или лестницей)
+        let spawnPos = null;
+        
+        // Пробуем найти место рядом с лестницей вверх (входом)
+        if (MapModule.stairsUp) {
+            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(MapModule.stairsUp, 5) : null;
+        }
+        
+        // Если не вышло, ищем рядом с игроком
+        if (!spawnPos && player) {
+            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : null;
+        }
+
+        // Если совсем беда, берем случайную свободную клетку
+        if (!spawnPos) {
+            spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : {x: player.x+1, y: player.y};
+        }
+
+        if (spawnPos) {
+            questItem.x = spawnPos.x;
+            questItem.y = spawnPos.y;
+            items.push(questItem);
+            
+            RenderModule.log(`🔮 Вы чувствуете присутствие нужного артефакта где-то рядом...`, "event");
+        }
+    }
+
+    
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
@@ -989,21 +1048,29 @@ function updateQuestCompass() {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
-                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH)
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ОБНОВЛЕННАЯ
                 if (typeof QuestSystemModule !== 'undefined') {
-                    activeQuests.forEach(q => {
-                        if (QuestSystemModule.checkProgress(q, { 
-                            type: 'pickup', 
-                            itemType: item.type,
-                            locX: dungeonX,
-                            locY: dungeonY
-                        })) {
-                             RenderModule.log(`📦 Это предмет для квеста "${q.target.locationName}"!`, "info");
+                    // Проходим по копии массива, так как grantReward может его изменить
+                    [...activeQuests].forEach(q => {
+                        if (q.type === 'FETCH' && !q.isCompleted) {
+                            // Проверяем совпадение типа предмета
+                            if (item.type === q.target.itemType) {
+                                RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
+                                
+                                // Помечаем квест как выполненный
+                                q.progress = q.maxProgress;
+                                q.isCompleted = true;
+                                
+                                // Сразу выдаем награду (или можно требовать вернуться к NPC, но пока сделаем авто-завершение)
+                                grantReward(q);
+                                
+                                // Обновляем компас
+                                updateQuestCompass();
+                            }
                         }
                     });
                 }
-            }
-        
+            }        
             items.splice(itemIdx, 1);
         }
 
