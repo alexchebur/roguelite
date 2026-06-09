@@ -600,26 +600,50 @@ function updateQuestCompass() {
     }    
     
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
-        const enemyCount = 8 + Math.floor(depth * 1.5);
-        const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
+        // 1. Количество врагов: база 6 + 1.5 за каждый этаж
+        const enemyCount = 6 + Math.floor(depth * 1.5);
         
+        // 2. Множитель сложности врагов
+        // Базовый множитель мира (от удаления от центра карты) * Множитель глубины
+        // Глубина дает +20% к статам за каждый этаж
+        const worldMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
+        const depthMult = 1 + (depth * 0.2); 
+        const enemyMult = worldMult * depthMult;
+        
+        // 3. Фильтрация врагов по уровню сложности (Tier System)
         let availableEnemies = DataModule.ENEMY_TYPES;
+        
         if (depth < 3) {
-            availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
+            // Уровень 1-2: Слабые мобы
+            availableEnemies = DataModule.ENEMY_TYPES.filter(e => 
+                ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name)
+            );
         } else if (depth < 7) {
-            availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
+            // Уровень 3-6: Средние мобы
+            availableEnemies = DataModule.ENEMY_TYPES.filter(e => 
+                ["Бандит", "Скелет", "Орк-разведчик", "Зомби", "Гарпия", "Призрак"].includes(e.name)
+            );
+        } else {
+            // Уровень 7+: Все враги, включая элиту
+            // Исключаем только самых слабых (Крыс), чтобы они не портили атмосферу
+            availableEnemies = DataModule.ENEMY_TYPES.filter(e => e.name !== "Крыса");
         }
 
+        // Спавн врагов
         enemies = EntityModule.spawnEnemies(
             MapModule.currentMapData,
             player,
             availableEnemies,
             enemyCount,
             enemyMult,
-            3
+            3, // Минимальная дистанция между врагами
+            depth // Передаем глубину для внутренней фильтрации в entity.js
         );
         
+        // 4. Множитель силы предметов
+        // Предметы становятся лучше на 15% за каждый этаж + бонус мира
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
         
         if (EntityModule.spawnItems) {
@@ -627,15 +651,18 @@ function updateQuestCompass() {
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                4,
+                4 + Math.floor(depth / 3), // Немного больше предметов на глубине
                 itemMult,
                 3
             );
         }
 
+        // 5. Спавн золота (отдельно, так как оно имеет свою логику количества)
         const goldTemplate = DataModule.ITEM_TYPES.find(item => item.type === 'gold');
         if (goldTemplate && EntityModule.spawnGold) {
+            // Количество кучек золота растет с глубиной
             const goldPilesCount = 2 + Math.floor(depth / 2);
+            // Множитель мира для золота (если есть в worldCurve, иначе 1)
             const worldGoldMult = WorldCurveModule.getGoldMultiplier ? WorldCurveModule.getGoldMultiplier(gx, gy) : 1;
             
             const goldItems = EntityModule.spawnGold(
@@ -646,6 +673,7 @@ function updateQuestCompass() {
                 depth,
                 worldGoldMult
             );
+            // Добавляем золото к остальным предметам
             items.push(...goldItems);
         }
 
@@ -657,12 +685,14 @@ function updateQuestCompass() {
                 const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
                 const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
                 
+                // Проверяем, что место свободно и это пол (учитываем размер босса 2x2)
                 if (!MapModule.isWall(rx, ry) && 
                     !MapModule.isWall(rx+1, ry) && 
                     !MapModule.isWall(rx, ry+1) && 
                     !MapModule.isWall(rx+1, ry+1)) {
                     
                     const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
+                    // Босс должен быть далеко от игрока при спавне
                     if (distToPlayer > 15) {
                         bossPos = { x: rx, y: ry };
                     }
