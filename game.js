@@ -609,7 +609,7 @@ function updateQuestCompass() {
         // Базовый множитель мира (от удаления от центра карты) * Множитель глубины
         // Глубина дает +20% к статам за каждый этаж
         const worldMult = WorldCurveModule.getEnemyMultiplier(gx, gy);
-        const depthMult = 1 + (depth * 0.2); 
+        const depthMult = 1 + (depth * 0.1); 
         const enemyMult = worldMult * depthMult;
         
         // 3. Фильтрация врагов по уровню сложности (Tier System)
