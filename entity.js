@@ -13,31 +13,42 @@ const EntityModule = (function() {
         };
     }
 
-// В файле entity.js, функция createEnemy
+    // В файле entity.js, функция createEnemy
 
-function createEnemy(template, x, y, difficultyMult) {
-    const hp = Math.floor(((template.hp[0] + template.hp[1]) / 2) * difficultyMult);
-    const atk = Math.floor(((template.atk[0] + template.atk[1]) / 2) * difficultyMult);
-    const def = Math.floor(((template.def[0] + template.def[1]) / 2) * difficultyMult);
-    
-    // Добавляем скорость и энергию
-    const speed = template.speed || 10; 
-    // Начальная энергия случайна от 0 до speed, чтобы рассинхронизировать толпу
-    const startEnergy = Math.floor(Math.random() * speed); 
+    function createEnemy(template, x, y, difficultyMult) {
+        // 1. Расчет базовых средних значений из шаблона
+        const baseHp = (template.hp[0] + template.hp[1]) / 2;
+        const baseAtk = (template.atk[0] + template.atk[1]) / 2;
+        const baseDef = (template.def[0] + template.def[1]) / 2;
 
-    return {
-        x: x, y: y, name: template.name,
-        char: template.char, color: template.color,
-        hp: hp, maxHp: hp,
-        atk: atk, def: def,
-        isEnemy: true,
-        lootType: template.lootType,
+        // 2. Применение множителя сложности с разными кривыми роста
+        // HP растет пропорционально сложности (линейно)
+        const hp = Math.max(1, Math.floor(baseHp * difficultyMult));
         
-        // Новые поля:
-        speed: speed,      
-        energy: startEnergy 
-    };
-}
+        // Атака растет медленнее (квадратный корень), чтобы бой длился дольше
+        const atk = Math.max(1, Math.floor(baseAtk * Math.sqrt(difficultyMult)));
+        
+        // Защита растет очень медленно, чтобы игрок всегда мог нанести хотя бы 1 урон
+        const def = Math.max(0, Math.floor(baseDef * Math.pow(difficultyMult, 0.3)));
+
+        // 3. Параметры скорости (для системы энергии)
+        const speed = template.speed || 10; 
+        // Начальная энергия случайна от 0 до speed, чтобы рассинхронизировать толпу врагов
+        const startEnergy = Math.floor(Math.random() * speed); 
+
+        return {
+            x: x, y: y, name: template.name,
+            char: template.char, color: template.color,
+            hp: hp, maxHp: hp,
+            atk: atk, def: def,
+            isEnemy: true,
+            lootType: template.lootType,
+            
+            // Новые поля для механики ходов:
+            speed: speed,      
+            energy: startEnergy 
+        };
+    }
 
     // === Вспомогательная функция: выбор формы прилагательного ===
     function getAdjectiveForm(adjObj, gender, plural) {
