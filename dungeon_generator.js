@@ -303,6 +303,7 @@ function connectRegions(grid, regA, regB, width, height, rand) {
 }
 
 // === МОДУЛЬ ЭКСПОРТА ===
+// === МОДУЛЬ ЭКСПОРТА ===
 const DungeonGeneratorModule = {
     generateLevel: function(x, y, depth, width, height) {
         const seedVal = createSeed(x, y, depth);
@@ -393,15 +394,17 @@ const DungeonGeneratorModule = {
                 if(found) break;
             }
         }
-        // В самом конце DungeonGeneratorModule
-        getRandomDungeonType: function(rand) {
-            return selectDungeonType(rand);
-        }
+        
         return {
             mapData: mapGrid,
             dungeonType: dungeonType,
             startPos: startPos,
             seed: seedVal
         };
+    },
+    
+    // ✅ НОВЫЙ МЕТОД - ДОБАВЬТЕ ЭТОТ БЛОК
+    getRandomDungeonType: function(rand) {
+        return selectDungeonType(rand);
     }
 };
