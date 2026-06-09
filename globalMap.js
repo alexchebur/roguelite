@@ -139,7 +139,7 @@ function generatePOIs(rand, cx, cy, tiles) {
                     //const dungeonType = rand.choice(dungeonTypes);
                     // В функции generatePOIs внутри globalMap.js:
                     const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue', 'cellular', 'arena', 'boss'];
-                    const dungeonType = rand.choice(dungeonTypes);
+                    const dungeonType = DungeonGeneratorModule.getRandomDungeonType(rand).name;
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
                     pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
                 }
