@@ -414,7 +414,13 @@ function updateQuestCompass() {
                 activeQuests.forEach(q => {
                     if (QuestSystemModule.checkProgress(q, { type: 'move', x: playerPos.x, y: playerPos.y })) {
                          RenderModule.log(`📍 Квест выполнен: Вы достигли ${q.target.locationName}!`, "event");
-                         grantReward(q);
+                         
+                         // >>> ЗАМЕНИТЬ ЭТУ СТРОКУ <<<
+                         // grantReward(q); 
+                         
+                         // >>> НА ЭТИ ДВЕ СТРОКИ <<<
+                         q.isTurnedIn = false; // Явно указываем, что награда еще не получена
+                         updateQuestCompass(); // Обновляем стрелку на "Награда"
                     }
                 });
             }
