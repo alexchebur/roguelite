@@ -112,10 +112,28 @@ function generatePOIs(rand, cx, cy, tiles) {
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
     
-    // Города
+    // 🛠️ НОВОЕ: Минимальное расстояние между любыми POI (в клетках)
+    const MIN_POI_DISTANCE = 7; 
+
+    // Вспомогательная функция: проверяет, не слишком ли близко к уже созданным POI
+    const isTooClose = (localX, localY) => {
+        const globalX = cx * width + localX;
+        const globalY = cy * height + localY;
+        for (const p of pois) {
+            const dist = Math.abs(p.x - globalX) + Math.abs(p.y - globalY);
+            if (dist < MIN_POI_DISTANCE) return true;
+        }
+        return false;
+    };
+    
+    // 1. Города
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             if ((tiles[y][x] === 'plain' || tiles[y][x] === 'forest') && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
+                
+                // 🛠️ ПРОВЕРКА РАССТОЯНИЯ
+                if (isTooClose(x, y)) continue;
+
                 tiles[y][x] = 'city';
                 const globalX = cx * width + x;
                 const globalY = cy * height + y;
@@ -125,20 +143,22 @@ function generatePOIs(rand, cx, cy, tiles) {
         }
     }
     
-    // Входы в подземелья (чаще в горах или рядом)
+    // 2. Входы в подземелья
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const isMountainArea = tiles[y][x] === 'mountain';
-            const isPlainNearby = !isMountainArea && (tiles[y][x] === 'plain' || tiles[y][x] === 'forest');
-            if ((isMountainArea || isPlainNearby) && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
+            // 🛠️ ИСПРАВЛЕНИЕ: Запрещаем спавн в горах и воде. Только равнина, лес или дорога.
+            const isValidTerrain = tiles[y][x] === 'plain' || tiles[y][x] === 'forest' || tiles[y][x] === 'road';
+            
+            if (isValidTerrain && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
                 if (tiles[y][x] !== 'city') {
+                    
+                    // 🛠️ ПРОВЕРКА РАССТОЯНИЯ
+                    if (isTooClose(x, y)) continue;
+
                     tiles[y][x] = 'dungeon_entrance';
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
-                    //const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
-                    //const dungeonType = rand.choice(dungeonTypes);
-                    // В функции generatePOIs внутри globalMap.js:
-                    //const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue', 'cellular', 'arena', 'boss'];
+                    
                     const dungeonType = DungeonGeneratorModule.getRandomDungeonType(rand).name;
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
                     pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
