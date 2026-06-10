@@ -129,7 +129,7 @@ const MapModule = (function() {
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
     }
 
-    // Основная функция генерации уровня
+    // Основная функция генерации уровня (в map.js)
     function generateLevel(gx, gy, depth, dungeonType, entryPoint = null) {
         const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
@@ -141,26 +141,63 @@ const MapModule = (function() {
         
         // ЛОГИКА ВЫБОРА СТАРТОВОЙ ПОЗИЦИИ
         if (entryPoint === 'down') {
-            // Спуск вниз: появляемся у верхней лестницы (>)
             startPos = getSafePosNearby(stairsUp, 5);
         } else if (entryPoint === 'up') {
-            // Подъем вверх: появляемся у нижней лестницы (<)
             startPos = getSafePosNearby(stairsDown, 5);
         } else {
-            // Первый вход в подземелье: появляемся у входа (>)
-            // Используем startPos из генератора, но проверяем его близость к stairsUp
-            // Если генератор вернул точку далеко от входа, принудительно ставим у входа
             const genStart = result.startPos;
-            
-            // Проверяем, есть ли пол в точке генератора
             if (genStart && currentMapData[genStart.y]?.[genStart.x] === 0) {
-                 // Если точка валидна, используем её, НО только если она не слишком далеко от входа
-                 // (для пещер лучше всегда ставить у входа, чтобы игрок не потерялся)
                  startPos = getSafePosNearby(stairsUp, 5);
             } else {
                  startPos = getSafePosNearby(stairsUp, 5);
             }
         }
+
+        // ==========================================================
+        // 🛠️ НОВОЕ: ГАРАНТИЯ СВЯЗНОСТИ (FIX ЗАМКНУТЫХ ПОЛОСТЕЙ)
+        // ==========================================================
+        if (stairsDown && startPos) {
+            // Проверяем, существует ли путь от старта до лестницы вниз
+            const astar = new ROT.Path.AStar(stairsDown.x, stairsDown.y,
+                (x, y) => !isWall(x, y), { topology: 8 });
+            
+            let isReachable = false;
+            astar.compute(startPos.x, startPos.y, (x, y) => {
+                if (x === stairsDown.x && y === stairsDown.y) {
+                    isReachable = true;
+                }
+            });
+
+            // Если путь не найден (изолированная полость), принудительно прокладываем коридор
+            if (!isReachable) {
+                console.warn(`⚠️ [MapModule] Обнаружена изолированная полость на уровне ${depth}! Прокладываем аварийный коридор.`);
+                let cx = startPos.x;
+                let cy = startPos.y;
+                
+                // Двигаемся по оси X
+                while (cx !== stairsDown.x) {
+                    cx += (cx < stairsDown.x) ? 1 : -1;
+                    if (cy >= 0 && cy < currentMapData.length && cx >= 0 && cx < currentMapData[0].length) {
+                        currentMapData[cy][cx] = 0;
+                        // Делаем коридор чуть шире (2x2) для надежности и эстетики
+                        if (cy + 1 < currentMapData.length) currentMapData[cy + 1][cx] = 0;
+                        if (cx + 1 < currentMapData[0].length) currentMapData[cy][cx + 1] = 0;
+                        if (cy + 1 < currentMapData.length && cx + 1 < currentMapData[0].length) currentMapData[cy + 1][cx + 1] = 0;
+                    }
+                }
+                // Двигаемся по оси Y
+                while (cy !== stairsDown.y) {
+                    cy += (cy < stairsDown.y) ? 1 : -1;
+                    if (cy >= 0 && cy < currentMapData.length && cx >= 0 && cx < currentMapData[0].length) {
+                        currentMapData[cy][cx] = 0;
+                        if (cy + 1 < currentMapData.length) currentMapData[cy + 1][cx] = 0;
+                        if (cx + 1 < currentMapData[0].length) currentMapData[cy][cx + 1] = 0;
+                        if (cy + 1 < currentMapData.length && cx + 1 < currentMapData[0].length) currentMapData[cy + 1][cx + 1] = 0;
+                    }
+                }
+            }
+        }
+        // ==========================================================
         
         return startPos;
     }
