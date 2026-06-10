@@ -1,40 +1,37 @@
 /**
  * МОДУЛЬ ГЛОБАЛЬНОЙ КАРТЫ (globalMap.js)
  * Бесконечная карта, разбитая на чанки.
- * Генерация ландшафта, дорог, городов и входов в подземелья.
  */
+
+// === ВАЖНО: ОЧИСТКА КЭША ПРИ ПЕРЕЗАГРУЗКЕ СКРИПТА ===
+// Это гарантирует, что старые "багованные" чанки не будут использоваться
+const chunkCache = new Map(); 
 
 // Конфигурация
 const GLOBAL_CONFIG = {
-    CHUNK_SIZE: 50,          // размер чанка в клетках
-    WORLD_SEED: 193460752,       // общий сид мира (можно менять)
-    CITY_DENSITY: 0.010,      // вероятность города на клетку
-    DUNGEON_DENSITY: 0.01,   // вероятность входа в подземелье на клетку
-    ROAD_CONNECT_RADIUS: 40  // радиус соединения дорогами POI
+    CHUNK_SIZE: 50,          
+    WORLD_SEED: 193460752,       
+    CITY_DENSITY: 0.010,      
+    DUNGEON_DENSITY: 0.01,   
+    ROAD_CONNECT_RADIUS: 40  
 };
 
-// Кэш чанков: ключ "cx,cy" -> { tiles, pois }
-const chunkCache = new Map();
-
-// Текущая позиция игрока (глобальные координаты)
+// Текущая позиция игрока
 let playerGlobalX = 0;
 let playerGlobalY = 0;
 
 // === Вспомогательные функции ===
 
-// Детерминированный генератор случайных чисел для чанка
 function getChunkRandom(cx, cy) {
     const seed = GLOBAL_CONFIG.WORLD_SEED + cx * 1000003 + cy * 1000033;
     return new SeededRandom(seed);
 }
 
-// Генерация ландшафта (типы клеток) для чанка
-// В файле globalMap.js замените функцию generateTerrain на эту:
-
+// Генерация ландшафта
 function generateTerrain(rand, width, height) {
     const tiles = Array(height).fill().map(() => Array(width).fill('plain'));
     
-    // 1. Горы: случайные области (оставляем как было)
+    // 1. Горы
     const mountainCount = rand.int(5, 15);
     for (let i = 0; i < mountainCount; i++) {
         const mx = rand.int(0, width-1);
@@ -44,22 +41,18 @@ function generateTerrain(rand, width, height) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = mx+dx, y = my+dy;
                 if (x >= 0 && x < width && y >= 0 && y < height && Math.abs(dx)+Math.abs(dy) <= radius) {
-                    if (tiles[y][x] !== 'city' && tiles[y][x] !== 'dungeon_entrance') {
-                        tiles[y][x] = 'mountain';
-                    }
+                    // Горы не стирают города, но города еще не созданы, так что это просто земля
+                    tiles[y][x] = 'mountain';
                 }
             }
         }
     }
     
-    // === ИЗМЕНЕНИЕ: Леса теперь генерируются скоплениями (кластерами) ===
-    // Увеличиваем количество центров лесов и их радиус
+    // 2. Леса (кластерами)
     const forestClusterCount = rand.int(20, 40); 
-    
     for (let i = 0; i < forestClusterCount; i++) {
         const fx = rand.int(0, width-1);
         const fy = rand.int(0, height-1);
-        // Радиус скопления от 1 до 3 клеток
         const radius = rand.int(1, 3); 
 
         for (let dy = -radius; dy <= radius; dy++) {
@@ -67,14 +60,9 @@ function generateTerrain(rand, width, height) {
                 const x = fx + dx;
                 const y = fy + dy;
                 
-                // Проверяем границы карты и форму круга (для более естественных пятен)
                 if (x >= 0 && x < width && y >= 0 && y < height) {
-                    // Если клетка еще не занята городом, входом или горой
-                    if (tiles[y][x] !== 'city' && 
-                        tiles[y][x] !== 'dungeon_entrance' && 
-                        tiles[y][x] !== 'mountain') {
-                        
-                        // Добавляем немного шума: не каждое место в круге станет лесом (80% шанс)
+                    // Лес растет только на равнинах (не на горах)
+                    if (tiles[y][x] === 'plain') {
                         if (rand.next() < 0.8) {
                             tiles[y][x] = 'forest';
                         }
@@ -84,17 +72,17 @@ function generateTerrain(rand, width, height) {
         }
     }
      
-    // 2. Реки (линии) - оставляем без изменений
+    // 3. Реки
     const riverCount = rand.int(1, 3);
     for (let r = 0; r < riverCount; r++) {
         let x = rand.int(0, width-1);
         let y = rand.int(0, height-1);
         for (let step = 0; step < 30; step++) {
-            if (x >= 0 && x < width && y >= 0 && y < height && 
-                tiles[y][x] !== 'mountain' && 
-                tiles[y][x] !== 'city' && 
-                tiles[y][x] !== 'dungeon_entrance') {
-                tiles[y][x] = 'water';
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                // Река НЕ может быть там, где уже есть горы
+                if (tiles[y][x] !== 'mountain') {
+                    tiles[y][x] = 'water';
+                }
             }
             const dir = rand.int(0, 3);
             if (dir === 0) x++;
@@ -106,21 +94,14 @@ function generateTerrain(rand, width, height) {
     return tiles;
 }
 
-// Генерация точек интереса (города, входы в подземелья)
-// В файле globalMap.js, функция generatePOIs
-
-// Генерация точек интереса (города, входы в подземелья)
-// Генерация точек интереса (города, входы в подземелья)
-// Генерация точек интереса (города, входы в подземелья)
+// Генерация точек интереса (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
     
-    // 🛠️ НОВОЕ: Минимальное расстояние между любыми POI (в клетках)
     const MIN_POI_DISTANCE = 7; 
 
-    // Вспомогательная функция: проверяет, не слишком ли близко к уже созданным POI
     const isTooClose = (localX, localY) => {
         const globalX = cx * width + localX;
         const globalY = cy * height + localY;
@@ -134,19 +115,21 @@ function generatePOIs(rand, cx, cy, tiles) {
     // 1. Города
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            // 🛠️ ИСПРАВЛЕНИЕ: Разрешаем города ТОЛЬКО на равнинах и в лесах
-            // Исключаем горы ('mountain'), воду ('water') и дороги ('road')
-            const isValidCityTerrain = tiles[y][x] === 'plain' || tiles[y][x] === 'forest';
+            const currentTile = tiles[y][x];
+            
+            // 🛠️ ЖЕСТКАЯ ПРОВЕРКА: Только равнина или лес. Никакой воды, гор или дорог.
+            const isValidCityTerrain = (currentTile === 'plain' || currentTile === 'forest');
 
             if (isValidCityTerrain && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
                 
-                // 🛠️ ПРОВЕРКА РАССТОЯНИЯ
                 if (isTooClose(x, y)) continue;
 
+                // Ставим город
                 tiles[y][x] = 'city';
                 const globalX = cx * width + x;
                 const globalY = cy * height + y;
                 const cityName = NameGeneratorModule.generateCityName(globalX, globalY);
+                
                 pois.push({ x: globalX, y: globalY, type: 'city', name: cityName });
             }
         }
@@ -155,13 +138,14 @@ function generatePOIs(rand, cx, cy, tiles) {
     // 2. Входы в подземелья
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            // 🛠️ ИСПРАВЛЕНИЕ: Запрещаем спавн в горах и воде. Только равнина, лес или дорога.
-            const isValidTerrain = tiles[y][x] === 'plain' || tiles[y][x] === 'forest' || tiles[y][x] === 'road';
+            const currentTile = tiles[y][x];
+            
+            // 🛠️ ПРОВЕРКА: Равнина, лес или дорога. Не вода, не горы, не город.
+            const isValidTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
             
             if (isValidTerrain && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
-                if (tiles[y][x] !== 'city') {
+                if (currentTile !== 'city') {
                     
-                    // 🛠️ ПРОВЕРКА РАССТОЯНИЯ
                     if (isTooClose(x, y)) continue;
 
                     tiles[y][x] = 'dungeon_entrance';
@@ -177,7 +161,8 @@ function generatePOIs(rand, cx, cy, tiles) {
     }
     return pois;
 }
-// Построение дорог между точками интереса
+
+// Построение дорог
 function connectPOIsWithRoads(tiles, poisLocal, rand) {
     if (poisLocal.length < 2) return;
     
@@ -212,6 +197,7 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
         const stepX = p1.x <= p2.x ? 1 : -1;
         for (let x = p1.x; stepX > 0 ? x <= p2.x : x >= p2.x; x += stepX) {
             if (x >= 0 && x < tiles[0].length && p1.y >= 0 && p1.y < tiles.length) {
+                // Дороги не строятся через горы и воду
                 if (tiles[p1.y][x] !== 'mountain' && tiles[p1.y][x] !== 'water') {
                     tiles[p1.y][x] = 'road';
                 }
@@ -231,7 +217,9 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
 // Генерация целого чанка
 function generateChunk(cx, cy) {
     const rand = getChunkRandom(cx, cy);
+    // 1. Сначала ландшафт (горы, леса, реки)
     const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE);
+    // 2. Потом POI (города, подземелья) - они видят готовый ландшафт
     const pois = generatePOIs(rand, cx, cy, tiles);
     
     const poisLocal = pois.map(p => ({ 
@@ -248,6 +236,8 @@ function getChunkForCell(globalX, globalY) {
     const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
     const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
     const key = `${cx},${cy}`;
+    
+    // Если чанка нет в кэше, генерируем новый
     if (!chunkCache.has(key)) {
         chunkCache.set(key, generateChunk(cx, cy));
     }
@@ -256,16 +246,13 @@ function getChunkForCell(globalX, globalY) {
 
 // === НОВАЯ ФУНКЦИЯ: поиск безопасной стартовой позиции ===
 function findSafeStartPosition(startX, startY, radius = 3) {
-    // Пробуем найти проходимую клетку в радиусе radius
     for (let r = 0; r <= radius; r++) {
         for (let dy = -r; dy <= r; dy++) {
             for (let dx = -r; dx <= r; dx++) {
                 const testX = startX + dx;
                 const testY = startY + dy;
                 
-                // Проверяем, что клетка существует и проходима
                 if (GlobalMapModule.isWalkable(testX, testY)) {
-                    // Дополнительно проверяем, что вокруг не слишком много гор
                     let obstacleCount = 0;
                     for (let ny = -1; ny <= 1; ny++) {
                         for (let nx = -1; nx <= 1; nx++) {
@@ -274,7 +261,6 @@ function findSafeStartPosition(startX, startY, radius = 3) {
                             }
                         }
                     }
-                    // Если в радиусе 1 не более 3 препятствий - подходит
                     if (obstacleCount <= 4) {
                         return { x: testX, y: testY };
                     }
@@ -282,14 +268,12 @@ function findSafeStartPosition(startX, startY, radius = 3) {
             }
         }
     }
-    // Если ничего не нашли, возвращаем исходную позицию
     return { x: startX, y: startY };
 }
 
 // === Публичный API ===
 
 const GlobalMapModule = {
-    // Получить тип тайла в глобальных координатах
     getTileType(globalX, globalY) {
         const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
         const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
@@ -302,34 +286,25 @@ const GlobalMapModule = {
         return 'plain';
     },
 
-    // Получить тип тайла для отображения (учитывая POI)
     getDisplayTileType(globalX, globalY) {
-        // Сначала проверяем, есть ли POI в этой точке
         const poi = this.getPOI(globalX, globalY);
         if (poi) {
             return poi.type === 'city' ? 'city' : 'dungeon_entrance';
         }
-    
-        // Если POI нет, возвращаем обычный тип ландшафта
         return this.getTileType(globalX, globalY);
     },
     
-    // Проверка проходимости
     isWalkable(globalX, globalY) {
         const type = this.getTileType(globalX, globalY);
         return type !== 'mountain' && type !== 'water';
     },
-    
 
-
-    // Получить точку интереса в клетке (если есть)
     getPOI(globalX, globalY) {
         const chunk = getChunkForCell(globalX, globalY);
         if (!chunk || !chunk.pois) return null;
         return chunk.pois.find(p => p.x === globalX && p.y === globalY);
     },
     
-    // Перемещение игрока (возвращает true, если удалось)
     tryMove(dx, dy) {
         const newX = playerGlobalX + dx;
         const newY = playerGlobalY + dy;
@@ -341,18 +316,15 @@ const GlobalMapModule = {
         return false;
     },
     
-    // Текущая позиция игрока
     getPlayerPosition() {
         return { x: playerGlobalX, y: playerGlobalY };
     },
     
-    // Установить позицию (при выходе из подземелья)
     setPlayerPosition(x, y) {
         playerGlobalX = x;
         playerGlobalY = y;
     },
     
-    // НОВЫЙ МЕТОД: инициализация с поиском безопасной позиции
     initSafeStart(startX, startY, radius = 3) {
         const safePos = findSafeStartPosition(startX, startY, radius);
         playerGlobalX = safePos.x;
@@ -360,12 +332,10 @@ const GlobalMapModule = {
         return { x: playerGlobalX, y: playerGlobalY };
     },
     
-    // Получить размер чанка
     getChunkSize() { 
         return GLOBAL_CONFIG.CHUNK_SIZE; 
     },
     
-    // Получить конфигурацию
     getConfig() {
         return GLOBAL_CONFIG;
     }
