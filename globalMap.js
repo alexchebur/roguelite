@@ -110,6 +110,7 @@ function generateTerrain(rand, width, height) {
 // В файле globalMap.js, функция generatePOIs
 
 // Генерация точек интереса (города, входы в подземелья)
+// Генерация точек интереса (города, входы в подземелья)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
@@ -175,7 +176,6 @@ function generatePOIs(rand, cx, cy, tiles) {
     }
     return pois;
 }
-
 // Построение дорог между точками интереса
 function connectPOIsWithRoads(tiles, poisLocal, rand) {
     if (poisLocal.length < 2) return;
