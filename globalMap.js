@@ -109,6 +109,7 @@ function generateTerrain(rand, width, height) {
 // Генерация точек интереса (города, входы в подземелья)
 // В файле globalMap.js, функция generatePOIs
 
+// Генерация точек интереса (города, входы в подземелья)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
@@ -149,14 +150,16 @@ function generatePOIs(rand, cx, cy, tiles) {
         }
     }
     
-    // 2. Входы в подземелья (остается без изменений, но тоже с проверкой расстояния)
+    // 2. Входы в подземелья
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
+            // 🛠️ ИСПРАВЛЕНИЕ: Запрещаем спавн в горах и воде. Только равнина, лес или дорога.
             const isValidTerrain = tiles[y][x] === 'plain' || tiles[y][x] === 'forest' || tiles[y][x] === 'road';
             
             if (isValidTerrain && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
                 if (tiles[y][x] !== 'city') {
                     
+                    // 🛠️ ПРОВЕРКА РАССТОЯНИЯ
                     if (isTooClose(x, y)) continue;
 
                     tiles[y][x] = 'dungeon_entrance';
