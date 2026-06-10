@@ -111,6 +111,7 @@ function generateTerrain(rand, width, height) {
 
 // Генерация точек интереса (города, входы в подземелья)
 // Генерация точек интереса (города, входы в подземелья)
+// Генерация точек интереса (города, входы в подземелья)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
