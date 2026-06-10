@@ -2009,40 +2009,37 @@ const EntityModule = (function() {
 /**
  * МОДУЛЬ ГЛОБАЛЬНОЙ КАРТЫ (globalMap.js)
  * Бесконечная карта, разбитая на чанки.
- * Генерация ландшафта, дорог, городов и входов в подземелья.
  */
+
+// === ВАЖНО: ОЧИСТКА КЭША ПРИ ПЕРЕЗАГРУЗКЕ СКРИПТА ===
+// Это гарантирует, что старые "багованные" чанки не будут использоваться
+const chunkCache = new Map(); 
 
 // Конфигурация
 const GLOBAL_CONFIG = {
-    CHUNK_SIZE: 50,          // размер чанка в клетках
-    WORLD_SEED: 193460752,       // общий сид мира (можно менять)
-    CITY_DENSITY: 0.010,      // вероятность города на клетку
-    DUNGEON_DENSITY: 0.01,   // вероятность входа в подземелье на клетку
-    ROAD_CONNECT_RADIUS: 40  // радиус соединения дорогами POI
+    CHUNK_SIZE: 50,          
+    WORLD_SEED: 193460752,       
+    CITY_DENSITY: 0.010,      
+    DUNGEON_DENSITY: 0.01,   
+    ROAD_CONNECT_RADIUS: 40  
 };
 
-// Кэш чанков: ключ "cx,cy" -> { tiles, pois }
-const chunkCache = new Map();
-
-// Текущая позиция игрока (глобальные координаты)
+// Текущая позиция игрока
 let playerGlobalX = 0;
 let playerGlobalY = 0;
 
 // === Вспомогательные функции ===
 
-// Детерминированный генератор случайных чисел для чанка
 function getChunkRandom(cx, cy) {
     const seed = GLOBAL_CONFIG.WORLD_SEED + cx * 1000003 + cy * 1000033;
     return new SeededRandom(seed);
 }
 
-// Генерация ландшафта (типы клеток) для чанка
-// В файле globalMap.js замените функцию generateTerrain на эту:
-
+// Генерация ландшафта
 function generateTerrain(rand, width, height) {
     const tiles = Array(height).fill().map(() => Array(width).fill('plain'));
     
-    // 1. Горы: случайные области (оставляем как было)
+    // 1. Горы
     const mountainCount = rand.int(5, 15);
     for (let i = 0; i < mountainCount; i++) {
         const mx = rand.int(0, width-1);
@@ -2052,22 +2049,18 @@ function generateTerrain(rand, width, height) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = mx+dx, y = my+dy;
                 if (x >= 0 && x < width && y >= 0 && y < height && Math.abs(dx)+Math.abs(dy) <= radius) {
-                    if (tiles[y][x] !== 'city' && tiles[y][x] !== 'dungeon_entrance') {
-                        tiles[y][x] = 'mountain';
-                    }
+                    // Горы не стирают города, но города еще не созданы, так что это просто земля
+                    tiles[y][x] = 'mountain';
                 }
             }
         }
     }
     
-    // === ИЗМЕНЕНИЕ: Леса теперь генерируются скоплениями (кластерами) ===
-    // Увеличиваем количество центров лесов и их радиус
+    // 2. Леса (кластерами)
     const forestClusterCount = rand.int(20, 40); 
-    
     for (let i = 0; i < forestClusterCount; i++) {
         const fx = rand.int(0, width-1);
         const fy = rand.int(0, height-1);
-        // Радиус скопления от 1 до 3 клеток
         const radius = rand.int(1, 3); 
 
         for (let dy = -radius; dy <= radius; dy++) {
@@ -2075,14 +2068,9 @@ function generateTerrain(rand, width, height) {
                 const x = fx + dx;
                 const y = fy + dy;
                 
-                // Проверяем границы карты и форму круга (для более естественных пятен)
                 if (x >= 0 && x < width && y >= 0 && y < height) {
-                    // Если клетка еще не занята городом, входом или горой
-                    if (tiles[y][x] !== 'city' && 
-                        tiles[y][x] !== 'dungeon_entrance' && 
-                        tiles[y][x] !== 'mountain') {
-                        
-                        // Добавляем немного шума: не каждое место в круге станет лесом (80% шанс)
+                    // Лес растет только на равнинах (не на горах)
+                    if (tiles[y][x] === 'plain') {
                         if (rand.next() < 0.8) {
                             tiles[y][x] = 'forest';
                         }
@@ -2092,17 +2080,17 @@ function generateTerrain(rand, width, height) {
         }
     }
      
-    // 2. Реки (линии) - оставляем без изменений
+    // 3. Реки
     const riverCount = rand.int(1, 3);
     for (let r = 0; r < riverCount; r++) {
         let x = rand.int(0, width-1);
         let y = rand.int(0, height-1);
         for (let step = 0; step < 30; step++) {
-            if (x >= 0 && x < width && y >= 0 && y < height && 
-                tiles[y][x] !== 'mountain' && 
-                tiles[y][x] !== 'city' && 
-                tiles[y][x] !== 'dungeon_entrance') {
-                tiles[y][x] = 'water';
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                // Река НЕ может быть там, где уже есть горы
+                if (tiles[y][x] !== 'mountain') {
+                    tiles[y][x] = 'water';
+                }
             }
             const dir = rand.int(0, 3);
             if (dir === 0) x++;
@@ -2114,39 +2102,64 @@ function generateTerrain(rand, width, height) {
     return tiles;
 }
 
-// Генерация точек интереса (города, входы в подземелья)
+// Генерация точек интереса (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
     
-    // Города
+    const MIN_POI_DISTANCE = 7; 
+
+    const isTooClose = (localX, localY) => {
+        const globalX = cx * width + localX;
+        const globalY = cy * height + localY;
+        for (const p of pois) {
+            const dist = Math.abs(p.x - globalX) + Math.abs(p.y - globalY);
+            if (dist < MIN_POI_DISTANCE) return true;
+        }
+        return false;
+    };
+    
+    // 1. Города
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            if ((tiles[y][x] === 'plain' || tiles[y][x] === 'forest') && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
+            const currentTile = tiles[y][x];
+            
+            // 🛠️ ЖЕСТКАЯ ПРОВЕРКА: Только равнина или лес. Никакой воды, гор или дорог.
+            const isValidCityTerrain = (currentTile === 'plain' || currentTile === 'forest');
+
+            if (isValidCityTerrain && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
+                
+                if (isTooClose(x, y)) continue;
+
+                // Ставим город
                 tiles[y][x] = 'city';
                 const globalX = cx * width + x;
                 const globalY = cy * height + y;
                 const cityName = NameGeneratorModule.generateCityName(globalX, globalY);
+                
                 pois.push({ x: globalX, y: globalY, type: 'city', name: cityName });
             }
         }
     }
     
-    // Входы в подземелья (чаще в горах или рядом)
+    // 2. Входы в подземелья
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const isMountainArea = tiles[y][x] === 'mountain';
-            const isPlainNearby = !isMountainArea && (tiles[y][x] === 'plain' || tiles[y][x] === 'forest');
-            if ((isMountainArea || isPlainNearby) && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
-                if (tiles[y][x] !== 'city') {
+            const currentTile = tiles[y][x];
+            
+            // 🛠️ ПРОВЕРКА: Равнина, лес или дорога. Не вода, не горы, не город.
+            const isValidTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
+            
+            if (isValidTerrain && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
+                if (currentTile !== 'city') {
+                    
+                    if (isTooClose(x, y)) continue;
+
                     tiles[y][x] = 'dungeon_entrance';
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
-                    //const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
-                    //const dungeonType = rand.choice(dungeonTypes);
-                    // В функции generatePOIs внутри globalMap.js:
-                    //const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue', 'cellular', 'arena', 'boss'];
+                    
                     const dungeonType = DungeonGeneratorModule.getRandomDungeonType(rand).name;
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
                     pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
@@ -2157,7 +2170,7 @@ function generatePOIs(rand, cx, cy, tiles) {
     return pois;
 }
 
-// Построение дорог между точками интереса
+// Построение дорог
 function connectPOIsWithRoads(tiles, poisLocal, rand) {
     if (poisLocal.length < 2) return;
     
@@ -2192,6 +2205,7 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
         const stepX = p1.x <= p2.x ? 1 : -1;
         for (let x = p1.x; stepX > 0 ? x <= p2.x : x >= p2.x; x += stepX) {
             if (x >= 0 && x < tiles[0].length && p1.y >= 0 && p1.y < tiles.length) {
+                // Дороги не строятся через горы и воду
                 if (tiles[p1.y][x] !== 'mountain' && tiles[p1.y][x] !== 'water') {
                     tiles[p1.y][x] = 'road';
                 }
@@ -2211,7 +2225,9 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
 // Генерация целого чанка
 function generateChunk(cx, cy) {
     const rand = getChunkRandom(cx, cy);
+    // 1. Сначала ландшафт (горы, леса, реки)
     const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE);
+    // 2. Потом POI (города, подземелья) - они видят готовый ландшафт
     const pois = generatePOIs(rand, cx, cy, tiles);
     
     const poisLocal = pois.map(p => ({ 
@@ -2228,6 +2244,8 @@ function getChunkForCell(globalX, globalY) {
     const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
     const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
     const key = `${cx},${cy}`;
+    
+    // Если чанка нет в кэше, генерируем новый
     if (!chunkCache.has(key)) {
         chunkCache.set(key, generateChunk(cx, cy));
     }
@@ -2236,16 +2254,13 @@ function getChunkForCell(globalX, globalY) {
 
 // === НОВАЯ ФУНКЦИЯ: поиск безопасной стартовой позиции ===
 function findSafeStartPosition(startX, startY, radius = 3) {
-    // Пробуем найти проходимую клетку в радиусе radius
     for (let r = 0; r <= radius; r++) {
         for (let dy = -r; dy <= r; dy++) {
             for (let dx = -r; dx <= r; dx++) {
                 const testX = startX + dx;
                 const testY = startY + dy;
                 
-                // Проверяем, что клетка существует и проходима
                 if (GlobalMapModule.isWalkable(testX, testY)) {
-                    // Дополнительно проверяем, что вокруг не слишком много гор
                     let obstacleCount = 0;
                     for (let ny = -1; ny <= 1; ny++) {
                         for (let nx = -1; nx <= 1; nx++) {
@@ -2254,7 +2269,6 @@ function findSafeStartPosition(startX, startY, radius = 3) {
                             }
                         }
                     }
-                    // Если в радиусе 1 не более 3 препятствий - подходит
                     if (obstacleCount <= 4) {
                         return { x: testX, y: testY };
                     }
@@ -2262,14 +2276,12 @@ function findSafeStartPosition(startX, startY, radius = 3) {
             }
         }
     }
-    // Если ничего не нашли, возвращаем исходную позицию
     return { x: startX, y: startY };
 }
 
 // === Публичный API ===
 
 const GlobalMapModule = {
-    // Получить тип тайла в глобальных координатах
     getTileType(globalX, globalY) {
         const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
         const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
@@ -2282,34 +2294,25 @@ const GlobalMapModule = {
         return 'plain';
     },
 
-    // Получить тип тайла для отображения (учитывая POI)
     getDisplayTileType(globalX, globalY) {
-        // Сначала проверяем, есть ли POI в этой точке
         const poi = this.getPOI(globalX, globalY);
         if (poi) {
             return poi.type === 'city' ? 'city' : 'dungeon_entrance';
         }
-    
-        // Если POI нет, возвращаем обычный тип ландшафта
         return this.getTileType(globalX, globalY);
     },
     
-    // Проверка проходимости
     isWalkable(globalX, globalY) {
         const type = this.getTileType(globalX, globalY);
         return type !== 'mountain' && type !== 'water';
     },
-    
 
-
-    // Получить точку интереса в клетке (если есть)
     getPOI(globalX, globalY) {
         const chunk = getChunkForCell(globalX, globalY);
         if (!chunk || !chunk.pois) return null;
         return chunk.pois.find(p => p.x === globalX && p.y === globalY);
     },
     
-    // Перемещение игрока (возвращает true, если удалось)
     tryMove(dx, dy) {
         const newX = playerGlobalX + dx;
         const newY = playerGlobalY + dy;
@@ -2321,18 +2324,15 @@ const GlobalMapModule = {
         return false;
     },
     
-    // Текущая позиция игрока
     getPlayerPosition() {
         return { x: playerGlobalX, y: playerGlobalY };
     },
     
-    // Установить позицию (при выходе из подземелья)
     setPlayerPosition(x, y) {
         playerGlobalX = x;
         playerGlobalY = y;
     },
     
-    // НОВЫЙ МЕТОД: инициализация с поиском безопасной позиции
     initSafeStart(startX, startY, radius = 3) {
         const safePos = findSafeStartPosition(startX, startY, radius);
         playerGlobalX = safePos.x;
@@ -2340,12 +2340,10 @@ const GlobalMapModule = {
         return { x: playerGlobalX, y: playerGlobalY };
     },
     
-    // Получить размер чанка
     getChunkSize() { 
         return GLOBAL_CONFIG.CHUNK_SIZE; 
     },
     
-    // Получить конфигурацию
     getConfig() {
         return GLOBAL_CONFIG;
     }
@@ -2487,7 +2485,7 @@ const MapModule = (function() {
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
     }
 
-    // Основная функция генерации уровня
+    // Основная функция генерации уровня (в map.js)
     function generateLevel(gx, gy, depth, dungeonType, entryPoint = null) {
         const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
@@ -2499,26 +2497,63 @@ const MapModule = (function() {
         
         // ЛОГИКА ВЫБОРА СТАРТОВОЙ ПОЗИЦИИ
         if (entryPoint === 'down') {
-            // Спуск вниз: появляемся у верхней лестницы (>)
             startPos = getSafePosNearby(stairsUp, 5);
         } else if (entryPoint === 'up') {
-            // Подъем вверх: появляемся у нижней лестницы (<)
             startPos = getSafePosNearby(stairsDown, 5);
         } else {
-            // Первый вход в подземелье: появляемся у входа (>)
-            // Используем startPos из генератора, но проверяем его близость к stairsUp
-            // Если генератор вернул точку далеко от входа, принудительно ставим у входа
             const genStart = result.startPos;
-            
-            // Проверяем, есть ли пол в точке генератора
             if (genStart && currentMapData[genStart.y]?.[genStart.x] === 0) {
-                 // Если точка валидна, используем её, НО только если она не слишком далеко от входа
-                 // (для пещер лучше всегда ставить у входа, чтобы игрок не потерялся)
                  startPos = getSafePosNearby(stairsUp, 5);
             } else {
                  startPos = getSafePosNearby(stairsUp, 5);
             }
         }
+
+        // ==========================================================
+        // 🛠️ НОВОЕ: ГАРАНТИЯ СВЯЗНОСТИ (FIX ЗАМКНУТЫХ ПОЛОСТЕЙ)
+        // ==========================================================
+        if (stairsDown && startPos) {
+            // Проверяем, существует ли путь от старта до лестницы вниз
+            const astar = new ROT.Path.AStar(stairsDown.x, stairsDown.y,
+                (x, y) => !isWall(x, y), { topology: 8 });
+            
+            let isReachable = false;
+            astar.compute(startPos.x, startPos.y, (x, y) => {
+                if (x === stairsDown.x && y === stairsDown.y) {
+                    isReachable = true;
+                }
+            });
+
+            // Если путь не найден (изолированная полость), принудительно прокладываем коридор
+            if (!isReachable) {
+                console.warn(`⚠️ [MapModule] Обнаружена изолированная полость на уровне ${depth}! Прокладываем аварийный коридор.`);
+                let cx = startPos.x;
+                let cy = startPos.y;
+                
+                // Двигаемся по оси X
+                while (cx !== stairsDown.x) {
+                    cx += (cx < stairsDown.x) ? 1 : -1;
+                    if (cy >= 0 && cy < currentMapData.length && cx >= 0 && cx < currentMapData[0].length) {
+                        currentMapData[cy][cx] = 0;
+                        // Делаем коридор чуть шире (2x2) для надежности и эстетики
+                        if (cy + 1 < currentMapData.length) currentMapData[cy + 1][cx] = 0;
+                        if (cx + 1 < currentMapData[0].length) currentMapData[cy][cx + 1] = 0;
+                        if (cy + 1 < currentMapData.length && cx + 1 < currentMapData[0].length) currentMapData[cy + 1][cx + 1] = 0;
+                    }
+                }
+                // Двигаемся по оси Y
+                while (cy !== stairsDown.y) {
+                    cy += (cy < stairsDown.y) ? 1 : -1;
+                    if (cy >= 0 && cy < currentMapData.length && cx >= 0 && cx < currentMapData[0].length) {
+                        currentMapData[cy][cx] = 0;
+                        if (cy + 1 < currentMapData.length) currentMapData[cy + 1][cx] = 0;
+                        if (cx + 1 < currentMapData[0].length) currentMapData[cy][cx + 1] = 0;
+                        if (cy + 1 < currentMapData.length && cx + 1 < currentMapData[0].length) currentMapData[cy + 1][cx + 1] = 0;
+                    }
+                }
+            }
+        }
+        // ==========================================================
         
         return startPos;
     }
