@@ -1683,8 +1683,8 @@ const EntityModule = (function() {
         return {
             x: x, y: y,
             char: "@", color: "#FFF",
-            hp: 100, maxHp: 100,
-            atk: 5, def: 3,
+            hp: 20, maxHp: 20,
+            atk: 2, def: 1,
             level: 1, xp: 0,
             gold: 0,
             inventory: [],
@@ -1692,10 +1692,28 @@ const EntityModule = (function() {
         };
     }
 
+    // В файле entity.js, функция createEnemy
+
     function createEnemy(template, x, y, difficultyMult) {
-        const hp = Math.floor(((template.hp[0] + template.hp[1]) / 2) * difficultyMult);
-        const atk = Math.floor(((template.atk[0] + template.atk[1]) / 2) * difficultyMult);
-        const def = Math.floor(((template.def[0] + template.def[1]) / 2) * difficultyMult);
+        // 1. Расчет базовых средних значений из шаблона
+        const baseHp = (template.hp[0] + template.hp[1]) / 2;
+        const baseAtk = (template.atk[0] + template.atk[1]) / 2;
+        const baseDef = (template.def[0] + template.def[1]) / 2;
+
+        // 2. Применение множителя сложности с разными кривыми роста
+        // HP растет пропорционально сложности (линейно)
+        const hp = Math.max(1, Math.floor(baseHp * difficultyMult));
+        
+        // Атака растет медленнее (квадратный корень), чтобы бой длился дольше
+        const atk = Math.max(1, Math.floor(baseAtk * Math.sqrt(difficultyMult)));
+        
+        // Защита растет очень медленно, чтобы игрок всегда мог нанести хотя бы 1 урон
+        const def = Math.max(0, Math.floor(baseDef * Math.pow(difficultyMult, 0.3)));
+
+        // 3. Параметры скорости (для системы энергии)
+        const speed = template.speed || 10; 
+        // Начальная энергия случайна от 0 до speed, чтобы рассинхронизировать толпу врагов
+        const startEnergy = Math.floor(Math.random() * speed); 
 
         return {
             x: x, y: y, name: template.name,
@@ -1703,7 +1721,11 @@ const EntityModule = (function() {
             hp: hp, maxHp: hp,
             atk: atk, def: def,
             isEnemy: true,
-            lootType: template.lootType
+            lootType: template.lootType,
+            
+            // Новые поля для механики ходов:
+            speed: speed,      
+            energy: startEnergy 
         };
     }
 
@@ -1941,7 +1963,26 @@ const EntityModule = (function() {
 
         return placedItems;
     }
+    // === СОЗДАНИЕ БОССА ===
+    function createBoss(x, y, depth, bossData) {
+        // Базовые статы босса сильно масштабируются от глубины
+        const hp = Math.floor(150 * (1 + depth * 0.4));
+        const atk = Math.floor(15 * (1 + depth * 0.3));
+        const def = Math.floor(8 * (1 + depth * 0.3));
 
+        return {
+            x: x, y: y,
+            name: bossData.fullName,
+            char: 'B', // Символ-заглушка, рендерер использует isBoss
+            color: '#ff0000',
+            hp: hp, maxHp: hp,
+            atk: atk, def: def,
+            isEnemy: true,
+            isBoss: true,          // ФЛАГ: это босс
+            bossType: bossData.bossType, // Для выбора спрайтов
+            lootType: 'boss_loot'
+        };
+    }
     return {
         createPlayer,
         createEnemy,
@@ -1949,9 +1990,12 @@ const EntityModule = (function() {
         spawnEnemies,
         spawnItems,
         spawnGold,
-        spawnItemsInCity // <--- ДОБАВИТЬ ЭКСПОРТ
+        spawnItemsInCity,
+        createBoss// <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
+
+
 
 
 ```
@@ -3940,23 +3984,38 @@ const CombatModule = (function() {
     
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА ЛИНИИ ВИДИМОСТИ (LOS) ===
     // Проверяет, есть ли прямая видимость между (x1,y1) и (x2,y2) без стен
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА ЛИНИИ ВИДИМОСТИ (LOS) ===
+    // Проверяет, есть ли прямая видимость между (x1,y1) и (x2,y2) без стен
     function hasLineOfSight(x1, y1, x2, y2) {
-        // Используем встроенный в ROT.js алгоритм Raycasting
-        let blocked = false;
-        const raycaster = new ROT.Ray(x1, y1, x2, y2);
-        
-        raycaster.compute((x, y) => {
-            // Если мы достигли цели, прерываем проверку (цель видна)
-            if (x === x2 && y === y2) return true; 
-            
-            // Если на пути стена - блокируем
-            if (MapModule.isWall(x, y)) {
-                blocked = true;
-                return true; // Остановить луч
+        // Если точка совпадает с целью - видим
+        if (x1 === x2 && y1 === y2) return true;
+
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = (x1 < x2) ? 1 : -1;
+        const sy = (y1 < y2) ? 1 : -1;
+        let err = dx - dy;
+
+        let cx = x1;
+        let cy = y1;
+
+        while (true) {
+            // Если дошли до цели - путь чист
+            if (cx === x2 && cy === y2) return true;
+
+            // Если наткнулись на стену - путь заблокирован
+            if (MapModule.isWall(cx, cy)) return false;
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                cx += sx;
             }
-        });
-        
-        return !blocked;
+            if (e2 < dx) {
+                err += dx;
+                cy += sy;
+            }
+        }
     }
 
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ АНИМАЦИИ УДАРА ===
@@ -4166,36 +4225,56 @@ const CombatModule = (function() {
             used = true;
         } 
         else if (item.effect === "buff_atk") {
+            // Зелья дают временный бонус, который накапливается в текущем значении
             player.atk += item.val;
             logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
             used = true;
         }
         else if (item.type === "weapon") {
+            // 1. Снимаем старое оружие, если оно есть
             if (player.equipment.weapon) {
+                // Важно: вычитаем именно то значение, которое было прибавлено
                 player.atk -= player.equipment.weapon.val;
+                // Возвращаем старое оружие в инвентарь
                 player.inventory.push(player.equipment.weapon);
             }
+            
+            // 2. Надеваем новое оружие
             player.equipment.weapon = item;
             player.atk += item.val;
+            
+            // Логика боеприпасов
             if (item.maxAmmo > 0 && item.currentAmmo === 0) {
                 item.currentAmmo = item.maxAmmo;
             }
+            
             logFn(`Вы взяли в руки ${item.name}. Атака +${item.val}.`, "loot");
             used = true;
         } 
         else if (item.type === "armor") {
+            // 1. Снимаем старую броню
             if (player.equipment.armor) {
                 player.def -= player.equipment.armor.val;
                 player.inventory.push(player.equipment.armor);
             }
+            
+            // 2. Надеваем новую броню
             player.equipment.armor = item;
             player.def += item.val;
+            
             logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
             used = true;
         }
 
         if (used) {
+            // Удаляем использованный/экипированный предмет из инвентаря
             player.inventory.splice(index, 1);
+            
+            // === ЗАЩИТА ОТ ОТРИЦАТЕЛЬНЫХ СТАТОВ ===
+            // Минимальная атака и защита не могут быть меньше 0 (или 1 для атаки)
+            if (player.atk < 1) player.atk = 1;
+            if (player.def < 0) player.def = 0;
+            
             updateUiFn();
         }
     }
