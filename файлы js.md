@@ -1166,9 +1166,9 @@ if (typeof SeededRandom === 'undefined' || typeof createSeed === 'undefined') {
 // Определяем типы здесь, чтобы они были доступны и в этом файле, и могли быть экспортированы
 const DUNGEON_TYPES = [
     { name: 'dungeon', weight: 30, emoji: '🟫', floorChar: '.', wallChar: '#', floorColor: '#333', wallColor: '#555' }, 
-    { name: 'cave', weight: 25, emoji: '🕸️', floorChar: 'o', wallChar: 'O', floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
+    { name: 'cave', weight: 15, emoji: '🕸️', floorChar: 'o', wallChar: 'O', floorColor: '#2a2a2a', wallColor: '#4a3b3b' },
     { name: 'icy', weight: 20, emoji: '❄️', floorChar: '.', wallChar: '#', floorColor: '#aaddff', wallColor: '#ffffff' },
-    { name: 'rogue', weight: 10, emoji: '🌫️', floorChar: '.', wallChar: '#', floorColor: '#781a6f', wallColor: '#995792' },
+    { name: 'rogue', weight: 20, emoji: '🌫️', floorChar: '.', wallChar: '#', floorColor: '#781a6f', wallColor: '#995792' },
     { name: 'cellular', weight: 10, emoji: '🧿', floorChar: 'o', wallChar: 'O', floorColor: '#2e7d32', wallColor: '#4caf50' },
     { name: 'arena', weight: 3, emoji: '🦴', floorChar: '.', wallChar: '#', floorColor: '#962e1b', wallColor: '#cf2f13' },
     { name: 'boss', weight: 2, emoji: '👑', floorChar: '.', wallChar: '#', floorColor: '#b71c1c', wallColor: '#880e4f' }
@@ -1459,6 +1459,7 @@ function connectRegions(grid, regA, regB, width, height, rand) {
 }
 
 // === МОДУЛЬ ЭКСПОРТА ===
+// === МОДУЛЬ ЭКСПОРТА ===
 const DungeonGeneratorModule = {
     generateLevel: function(x, y, depth, width, height) {
         const seedVal = createSeed(x, y, depth);
@@ -1549,13 +1550,18 @@ const DungeonGeneratorModule = {
                 if(found) break;
             }
         }
-
+        
         return {
             mapData: mapGrid,
             dungeonType: dungeonType,
             startPos: startPos,
             seed: seedVal
         };
+    },
+    
+    // ✅ НОВЫЙ МЕТОД - ДОБАВЬТЕ ЭТОТ БЛОК
+    getRandomDungeonType: function(rand) {
+        return selectDungeonType(rand);
     }
 };
 ```
@@ -1857,10 +1863,10 @@ const EntityModule = (function() {
 // Конфигурация
 const GLOBAL_CONFIG = {
     CHUNK_SIZE: 50,          // размер чанка в клетках
-    WORLD_SEED: 12345,       // общий сид мира (можно менять)
-    CITY_DENSITY: 0.02,      // вероятность города на клетку
-    DUNGEON_DENSITY: 0.03,   // вероятность входа в подземелье на клетку
-    ROAD_CONNECT_RADIUS: 30  // радиус соединения дорогами POI
+    WORLD_SEED: 193460752,       // общий сид мира (можно менять)
+    CITY_DENSITY: 0.010,      // вероятность города на клетку
+    DUNGEON_DENSITY: 0.01,   // вероятность входа в подземелье на клетку
+    ROAD_CONNECT_RADIUS: 40  // радиус соединения дорогами POI
 };
 
 // Кэш чанков: ключ "cx,cy" -> { tiles, pois }
@@ -1988,8 +1994,8 @@ function generatePOIs(rand, cx, cy, tiles) {
                     //const dungeonTypes = DUNGEON_TYPES.map(t => t.name);
                     //const dungeonType = rand.choice(dungeonTypes);
                     // В функции generatePOIs внутри globalMap.js:
-                    const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue', 'cellular', 'arena', 'boss'];
-                    const dungeonType = rand.choice(dungeonTypes);
+                    //const dungeonTypes = ['dungeon', 'cave', 'icy', 'rogue', 'cellular', 'arena', 'boss'];
+                    const dungeonType = DungeonGeneratorModule.getRandomDungeonType(rand).name;
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
                     pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
                 }
@@ -4716,6 +4722,21 @@ const QuestSystemModule = (function() {
         EXPLORE: [
             "Разведчики пропали рядом с подземельем {location}. Доберись до глубины {depth} и проверь, что там происходит. Награда за риск: {gold} золотых.",
             "На карте отмечено странное место: {location}. Спустись хотя бы на {depth} уровень и убедись, что путь открыт. Плачу {gold} за информацию."
+        ],
+        DIGGER: [
+            "Шахтерская гильдия ищет смельчаков. Спустись в {location} хотя бы на {depth} уровень. Награда за риск: {gold} золотых.",
+            "Говорят, на {depth} уровне в {location} есть древние залежи. Доберись туда и проверь. Плачу {gold} монет."
+        ],
+        COLLECT: [
+            "Мне нужно {count} шт. '{item}' для экспериментов. Ищи в подземелье {location} (глубина {depth}+). Награда: {gold} золотых.",
+            "Собери {count} экземпляров '{item}' в подземелье {location}. Заплату {gold} монет."
+        ],
+        BOUNTY: [
+            "Голова {enemy} стоит дорого. Убей {count} штук в любом подземелье. Награда: {gold} золотых.",
+            "Эти твари ({enemy}) стали слишком наглыми. Истреби {count} особей где бы ты их ни нашел. Плачу {gold}."
+        ],
+        SCHOLAR: [
+            "Библиотекарь просит принести знания. Прочитай {count} древних книг, которые найдешь. Награда: {gold} золотых."
         ]
     };
 
@@ -4755,6 +4776,9 @@ const QuestSystemModule = (function() {
         const rng = new SeededRandom(seed);
         let targetData = {};
 
+        // 1. Определение локации (Подземелья)
+        // Для большинства квестов нужна конкретная локация. 
+        // Для BOUNTY и SCHOLAR локация может быть не так важна, но мы её зададим для единообразия UI.
         const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
         let targetPoi = null;
         
@@ -4773,6 +4797,7 @@ const QuestSystemModule = (function() {
             targetData.locationName = targetPoi.name;
             targetData.dungeonType = targetPoi.dungeonType;
         } else {
+            // Фолбэк: случайные координаты
             const angle = rng.next() * Math.PI * 2;
             const r = rng.int(10, MAX_QUEST_RADIUS);
             targetData.targetX = gx + Math.round(Math.cos(angle) * r);
@@ -4781,6 +4806,7 @@ const QuestSystemModule = (function() {
             targetData.dungeonType = 'rogue';
         }
 
+        // 2. Специфичные параметры для типов квестов
         if (type === 'FETCH') {
             const possibleItems = DataModule.ITEM_TYPES.filter(i => 
                 i.type !== 'gold' && i.type !== 'book' && i.type !== 'food' && 
@@ -4799,12 +4825,44 @@ const QuestSystemModule = (function() {
             const multiplier = WorldCurveModule.getEnemyMultiplier(gx, gy);
             targetData.count = Math.max(1, Math.floor(baseCount * Math.sqrt(multiplier)));
         }
+        else if (type === 'DIGGER') {
+            // Цель: добраться до определенной глубины
+            // Глубина зависит от сложности/уровня игрока, но не слишком высокая
+            targetData.targetDepth = rng.int(2, 5); 
+        }
+        else if (type === 'COLLECT') {
+            // Цель: собрать предметы (зелья, книги, еда)
+            const collectibleTypes = ['potion_hp', 'book', 'food'];
+            // Фильтруем типы предметов, которые существуют в игре
+            const possibleItems = DataModule.ITEM_TYPES.filter(i => collectibleTypes.includes(i.type));
+            const itemTemplate = pickRandom(rng, possibleItems);
+            
+            targetData.itemName = itemTemplate.baseName;
+            targetData.itemType = itemTemplate.type;
+            targetData.count = rng.int(2, 4); // Нужно собрать 2-4 шт.
+        }
+        else if (type === 'BOUNTY') {
+            // Цель: убить конкретных врагов (в любом месте или в указанном подземелье)
+            const enemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
+            const enemyTemplate = pickRandom(rng, enemies);
+            
+            targetData.enemyName = enemyTemplate.name;
+            // Для Bounty количество обычно меньше, чем для Hunt, так как это "элитная" цель
+            targetData.count = rng.int(1, 3); 
+        }
+        else if (type === 'SCHOLAR') {
+            // Цель: прочитать книги
+            targetData.count = rng.int(1, 3);
+            // Локация не важна, но оставим для отображения в UI
+            targetData.locationName = "древних библиотеках";
+        }
 
         return targetData;
     }
 
     function createQuest(gx, gy, questIndex) {
-        const types = ['FETCH', 'HUNT', 'EXPLORE'];
+        // Добавляем новые типы квестов
+        const types = ['FETCH', 'HUNT', 'EXPLORE', 'DIGGER', 'COLLECT', 'BOUNTY', 'SCHOLAR'];
         const rng = new SeededRandom(createSeed(gx, gy, questIndex));
         const type = pickRandom(rng, types);
         
@@ -4835,17 +4893,23 @@ const QuestSystemModule = (function() {
             locationName: targetData.locationName,
             count: targetData.count,
             gold: finalGold,
-            depth: recommendedDepth
+            depth: targetData.targetDepth || recommendedDepth // Используем targetDepth для DIGGER, если он есть
         };
         
         const briefing = formatBriefing(template, briefingData);
+
+        // Определяем максимальный прогресс в зависимости от типа квеста
+        let maxProg = 1;
+        if (type === 'HUNT' || type === 'COLLECT' || type === 'BOUNTY' || type === 'SCHOLAR') {
+            maxProg = targetData.count || 1;
+        }
 
         return {
             id: id,
             type: type,
             target: targetData, 
             progress: 0,
-            maxProgress: (type === 'HUNT') ? targetData.count : 1,
+            maxProgress: maxProg,
             rewardGold: finalGold,
             briefing: briefing,
             isCompleted: false,
@@ -4860,12 +4924,29 @@ const QuestSystemModule = (function() {
 
         let updated = false;
 
+        // Проверка локации (для DIGGER, COLLECT, HUNT с привязкой)
         const isInCorrectLocation = (
-            !quest.target.targetX || 
+            !quest.target.targetX || // Если targetX нет (BOUNTY), считаем что мы "везде"
             (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
              eventData.locY !== undefined && eventData.locY === quest.target.targetY)
         );
 
+        // === DIGGER (Глубинный разведчик) ===
+        if (quest.type === 'DIGGER' && eventData.type === 'depth') {
+            // Проверяем, что мы в том же подземелье
+            if (eventData.locX === quest.target.targetX && eventData.locY === quest.target.targetY) {
+                if (eventData.currentDepth >= quest.target.targetDepth) {
+                    quest.progress = quest.maxProgress;
+                    quest.isCompleted = true;
+                    if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${quest.target.targetDepth}!`, "event");
+                    }
+                    return true;
+                }
+            }
+        }
+
+        // === HUNT (Охота в конкретной локации) ===
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
                 if (isInCorrectLocation) {
@@ -4878,25 +4959,57 @@ const QuestSystemModule = (function() {
             }
         }
 
+        // === BOUNTY (Охота за головами - в любом месте) ===
+        if (quest.type === 'BOUNTY' && eventData.type === 'kill') {
+            if (eventData.enemyName === quest.target.enemyName) {
+                // Для BOUNTY локация не важна, убиваем где нашли
+                quest.progress++;
+                updated = true;
+                if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                    RenderModule.log(`Квест: Охота на ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
+                }
+            }
+        }
+
+        // === FETCH (Найти один предмет) ===
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
             if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
                 updated = true; 
             }
         }
 
-        // === ИЗМЕНЕНИЕ ДЛЯ EXPLORE ===
+        // === COLLECT (Собрать N предметов) ===
+        if (quest.type === 'COLLECT' && eventData.type === 'pickup') {
+            if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
+                quest.progress++;
+                updated = true;
+                if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                    RenderModule.log(`Квест: Сбор ${quest.target.itemName} (${quest.progress}/${quest.maxProgress})`, "info");
+                }
+            }
+        }
+
+        // === SCHOLAR (Прочитать книги) ===
+        if (quest.type === 'SCHOLAR' && eventData.type === 'read_book') {
+            quest.progress++;
+            updated = true;
+            if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                RenderModule.log(`Квест: Прочитано книг (${quest.progress}/${quest.maxProgress})`, "info");
+            }
+        }
+
+        // === EXPLORE (Исследование локации) ===
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
             if (dist <= 1) { 
                 quest.progress = quest.maxProgress;
                 quest.isCompleted = true;
-                // ВАЖНО: Мы НЕ удаляем квест и НЕ выдаем золото здесь.
-                // Мы просто меняем статус, чтобы компас мог показать стрелку "Награда"
                 return true; 
             }
         }
 
-        if ((quest.type === 'HUNT' || quest.type === 'FETCH') && updated) {
+        // Финальная проверка завершения для типов с накопительным прогрессом
+        if ((quest.type === 'HUNT' || quest.type === 'FETCH' || quest.type === 'COLLECT' || quest.type === 'BOUNTY' || quest.type === 'SCHOLAR') && updated) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
