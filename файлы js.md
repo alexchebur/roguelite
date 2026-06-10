@@ -2,7 +2,6 @@
 # ###game.js
 ```js
 
-
 // =========================== Модуль игры (управление, ходы, загрузка уровней) ===========================
 const GameModule = (function() {
     // === Состояние игры ===
@@ -12,6 +11,9 @@ const GameModule = (function() {
     let npcs = []; 
     let explored = new Set();
     let busy = false;
+    // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
+    // Хранит количество живых врагов для каждого уровня: "gx_gy_depth" -> count
+    let dungeonClearState = new Map(); 
     
     // === КВЕСТЫ ===
     let activeQuests = []; 
@@ -460,6 +462,7 @@ function updateQuestCompass() {
     }
     
     function exitToGlobal() {
+        saveCurrentDungeonState();
         gameMode = 'global';
         updateQuestCompass(); 
         renderGlobalMap();
@@ -532,7 +535,9 @@ function updateQuestCompass() {
 
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
+        saveCurrentDungeonState();
         enemies = [];
         items = [];
         npcs = [];
@@ -558,13 +563,30 @@ function updateQuestCompass() {
         // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
         if (typeof QuestSystemModule !== 'undefined') {
             activeQuests.forEach(q => {
-                // Если квест активен, не выполнен, тип FETCH и цель - это текущее подземелье
+                // 1. Спавн предмета для FETCH
                 if (q.isActive && !q.isCompleted && 
                     q.type === 'FETCH' && 
                     q.target.targetX === gx && 
                     q.target.targetY === gy) {
                     
                     spawnQuestItem(q);
+                }
+
+                // 2. Проверка прогресса для DIGGER (Глубинный разведчик)
+                if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
+                    // Проверяем координаты подземелья и глубину
+                    if (q.target.targetX === gx && 
+                        q.target.targetY === gy && 
+                        depth >= q.target.targetDepth) {
+                        
+                        // Завершаем квест
+                        q.progress = q.maxProgress;
+                        q.isCompleted = true;
+                        
+                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${depth} в ${dungeonName}!`, "event");
+                        RenderModule.updateQuestBriefing(q);
+                        updateQuestCompass(); // Переключаем стрелку на "Награда"
+                    }
                 }
             });
         }
@@ -586,10 +608,35 @@ function updateQuestCompass() {
     }    
     
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
-        const enemyCount = 8 + Math.floor(depth * 1.5);
+        const cacheKey = `${gx}_${gy}_${depth}`;
+        const savedState = dungeonClearState.get(cacheKey);
+
+        // 1. Количество врагов: база 8 + 1.5 за каждый этаж
+        let enemyCount = 8 + Math.floor(depth * 1.5);
+        
+        // Если уровень уже посещался, ограничиваем спавн сохраненным числом
+        if (savedState) {
+            // Используем savedState.enemies, так как именно так мы сохраняли значение
+            enemyCount = Math.min(enemyCount, savedState.enemies);
+            
+            // Выводим сообщение только если враги еще остались
+            if (savedState.enemies > 0) {
+                RenderModule.log(`👣 Вы замечаете следы своей предыдущей битвы. Осталось врагов: ~${savedState.enemies}`, "info");
+            } else {
+                // Опционально: можно вывести тихое сообщение или вообще ничего
+                // RenderModule.log("🕸️ Это место кажется подозрительно тихим... (зачищено)", "info");
+            }
+        }
+        
+        // 2. Множитель сложности врагов
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
         
+        // 3. Фильтрация врагов по уровню сложности
         let availableEnemies = DataModule.ENEMY_TYPES;
         if (depth < 3) {
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
@@ -597,15 +644,21 @@ function updateQuestCompass() {
             availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
         }
 
-        enemies = EntityModule.spawnEnemies(
-            MapModule.currentMapData,
-            player,
-            availableEnemies,
-            enemyCount,
-            enemyMult,
-            3
-        );
+        // Спавн врагов (если их больше 0)
+        if (enemyCount > 0) {
+            enemies = EntityModule.spawnEnemies(
+                MapModule.currentMapData,
+                player,
+                availableEnemies,
+                enemyCount,
+                enemyMult,
+                3
+            );
+        } else {
+            enemies = []; // Гарантируем пустой массив для зачищенного уровня
+        }
         
+        // 4. Спавн предметов и золота (без изменений)
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
         
         if (EntityModule.spawnItems) {
@@ -635,8 +688,10 @@ function updateQuestCompass() {
             items.push(...goldItems);
         }
 
-        // === СПАВН БОССА (только в подземельях типа 'boss') ===
-        if (currentDungeonTypeName === 'boss') {
+        // === СПАВН БОССА ===
+        const bossAlreadyDefeated = savedState && savedState.bossDefeated;
+
+        if (currentDungeonTypeName === 'boss' && !bossAlreadyDefeated) {
             let bossPos = null;
             let attempts = 0;
             while (!bossPos && attempts < 100) {
@@ -664,8 +719,14 @@ function updateQuestCompass() {
                     RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
                 }
             }
+        } else if (bossAlreadyDefeated) {
+            // Сообщение о боссе тоже можно скрыть, если оно мешает
+            // RenderModule.log("💀 Логово босса пусто. Хозяин повержен навсегда.", "info");
         }
-    }  
+        const totalEnemies = enemies.length;
+        console.log(`🕷️ [DEBUG] Уровень ${depth}: Создано врагов: ${totalEnemies}`, enemies.map(e => e.name));
+    }
+     
 
     // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
     function spawnQuestItem(quest) {
@@ -709,7 +770,24 @@ function updateQuestCompass() {
         }
     }
 
-    
+    // === СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ПОКИДАНИИ УРОВНЯ ===
+    function saveCurrentDungeonState() {
+        if (gameMode === 'dungeon' && currentDepth >= 0) {
+            const cacheKey = `${dungeonX}_${dungeonY}_${currentDepth}`;
+            const aliveEnemies = enemies.filter(e => e.hp > 0);
+            
+            let bossDefeated = false;
+            if (currentDungeonTypeName === 'boss') {
+                const bossAlive = aliveEnemies.some(e => e.isBoss);
+                bossDefeated = !bossAlive;
+            }
+            
+            dungeonClearState.set(cacheKey, {
+                enemies: aliveEnemies.length,
+                bossDefeated: bossDefeated
+            });
+        }
+    }
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
@@ -1055,35 +1133,64 @@ function updateQuestCompass() {
                     const fragment = LoreModule.getNextFragment();
                     RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
                     RenderModule.log(fragment, "event");
+                    
+                    // === ТРИГГЕР ДЛЯ КВЕСТА SCHOLAR ===
+                    if (typeof QuestSystemModule !== 'undefined') {
+                        activeQuests.forEach(q => {
+                            QuestSystemModule.checkProgress(q, { type: 'read_book' });
+                        });
+                    }
                 } else {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
-            } 
+            }  
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
                 // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ОБНОВЛЕННАЯ
-                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ИСПРАВЛЕННАЯ
+                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH и COLLECT)
                 if (typeof QuestSystemModule !== 'undefined') {
                     [...activeQuests].forEach(q => {
-                        if (q.type === 'FETCH' && !q.isCompleted) {
-                            // Проверяем совпадение типа предмета
+                        if (q.isCompleted) return; // Пропускаем уже выполненные
+
+                        // === ЛОГИКА ДЛЯ FETCH (Найти 1 предмет) ===
+                        if (q.type === 'FETCH') {
                             if (item.type === q.target.itemType) {
                                 RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
                                 
-                                // 1. Помечаем квест как выполненный
                                 q.progress = q.maxProgress;
                                 q.isCompleted = true;
                                 
-                                // 2. ВАЖНО: НЕ вызываем grantReward() здесь!
-                                // Мы оставляем квест в activeQuests, чтобы updateQuestCompass 
-                                // мог показать стрелку "Награда" обратно в город.
                                 RenderModule.updateQuestBriefing(q);
                                 RenderModule.log(`Теперь нужно вернуться к заказчику за наградой.`, "event");
-                                
-                                // Обновляем компас, чтобы он сразу переключился на режим "Награда"
                                 updateQuestCompass();
+                            }
+                        }
+                        
+                        // === ЛОГИКА ДЛЯ COLLECT (Собрать N предметов) ===
+                        else if (q.type === 'COLLECT') {
+                            // Проверяем тип предмета и локацию (если квест привязан к подземелью)
+                            const isInLocation = (!q.target.targetX || 
+                                                 (dungeonX === q.target.targetX && dungeonY === q.target.targetY));
+                            
+                            if (item.type === q.target.itemType && isInLocation) {
+                                // Используем checkProgress для увеличения счетчика
+                                QuestSystemModule.checkProgress(q, { 
+                                    type: 'pickup', 
+                                    itemType: item.type,
+                                    locX: dungeonX,
+                                    locY: dungeonY
+                                });
+
+                                // Если после подбора квест завершился
+                                if (q.isCompleted) {
+                                    RenderModule.log(`🏆 Вы собрали все ${q.target.itemName}!`, "event");
+                                    RenderModule.updateQuestBriefing(q);
+                                    updateQuestCompass();
+                                } else {
+                                    RenderModule.log(`📦 Подобрано для квеста: ${q.target.itemName} (${q.progress}/${q.maxProgress})`, "info");
+                                }
                             }
                         }
                     });
@@ -1149,6 +1256,7 @@ function updateQuestCompass() {
 window.onload = async () => {
     await GameModule.init();
 };
+
 
 ```
 # dungeon_generator.js
