@@ -41,11 +41,16 @@ const LoreModule = (function() {
      * Получить следующую фразу из списка (циклически)
      */
     function getNextFragment() {
+        // Шанс 25% получить сюжетную подсказку, если цепочка активна
+        if (Math.random() < 0.25 && typeof QuestChainModule !== 'undefined' && QuestChainModule.isInitialized()) {
+            const chainLore = QuestChainModule.getLoreFragment();
+            if (chainLore) {
+                return `📖 ${chainLore}`;
+            }
+        }
+
         const text = BOOK_FRAGMENTS[currentIndex];
-        
-        // Увеличиваем индекс, если дошли до конца - сбрасываем в 0
         currentIndex = (currentIndex + 1) % BOOK_FRAGMENTS.length;
-        
         return text;
     }
 
