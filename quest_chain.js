@@ -281,11 +281,12 @@ const QuestChainModule = (function() {
         const briefing = template
             .replace(/{city}/g, cityData.name)
             .replace(/{nextCity}/g, nextCity ? nextCity.name : 'дальних земель')
-            .replace(/{item}/g, targetData.itemName)
-            .replace(/{enemy}/g, targetData.enemyName)
-            .replace(/{count}/g, targetData.count)
-            .replace(/{location}/g, targetData.locationName)
-            .replace(/{depth}/g, targetData.targetDepth);
+            .replace(/{item}/g, targetData.itemName || 'древний артефакт')
+            .replace(/{enemy}/g, targetData.enemyName || 'монстров')
+            .replace(/{count}/g, targetData.count || 1)
+            .replace(/{location}/g, targetData.locationName || 'забытых руинах')
+            .replace(/{depth}/g, targetData.targetDepth || targetData.recommendedDepth || 1)
+            .replace(/{gold}/g, finalGold); // <--- ДОБАВИТЬ ЭТУ СТРОКУ
 
         // === ГЕНЕРАЦИЯ ТЕКСТА СДАЧИ ===
         let turnInPool;
