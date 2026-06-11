@@ -270,6 +270,12 @@ const QuestChainModule = (function() {
             targetData.count = rng.int(1, 3);
         }
 
+        // ... (код заполнения targetData) ...
+
+        // === РАСЧЕТ НАГРАДЫ (ПЕРЕНЕСЕНО СЮДА, ПЕРЕД БРИФИНГОМ) ===
+        const baseGold = 100 + (idx * 50);
+        const finalGold = Math.floor(baseGold * (1 + idx * 0.2));
+
         // === ФОРМИРОВАНИЕ БРИФИНГА ===
         let templatePool = CHAIN_TEMPLATES[type] || CHAIN_TEMPLATES.FETCH;
         let template = templatePool[Math.floor(rng.next() * templatePool.length)];
@@ -286,7 +292,7 @@ const QuestChainModule = (function() {
             .replace(/{count}/g, targetData.count || 1)
             .replace(/{location}/g, targetData.locationName || 'забытых руинах')
             .replace(/{depth}/g, targetData.targetDepth || targetData.recommendedDepth || 1)
-            .replace(/{gold}/g, finalGold); // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+            .replace(/{gold}/g, finalGold); // <--- ТЕПЕРЬ ЭТО РАБОТАЕТ
 
         // === ГЕНЕРАЦИЯ ТЕКСТА СДАЧИ ===
         let turnInPool;
@@ -303,10 +309,8 @@ const QuestChainModule = (function() {
             .replace(/{item}/g, targetData.itemName)
             .replace(/{enemy}/g, targetData.enemyName);
 
-        // Награда растет с каждым этапом
-        const baseGold = 100 + (idx * 50);
-        const finalGold = Math.floor(baseGold * (1 + idx * 0.2));
-
+        // Удалите старый расчет baseGold/finalGold отсюда, он теперь выше
+        
         return {
             id: `chain_${cityData.x}_${cityData.y}`,
             type: type,
