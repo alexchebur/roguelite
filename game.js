@@ -49,6 +49,14 @@ const GameModule = (function() {
         if (typeof GlobalMapModule !== 'undefined') {
             const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
             RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
+
+            // >>> ИНИЦИАЛИЗАЦИЯ СЮЖЕТНОЙ ЦЕПОЧКИ <<<
+            if (typeof QuestChainModule !== 'undefined') {
+                QuestChainModule.init(startPos.x, startPos.y);
+                RenderModule.log("📜 Сюжетная линия мира сгенерирована.", "info");
+            }
+            // >>> КОНЕЦ БЛОКА <<<
+
         } else {
             RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
             return;
