@@ -254,7 +254,21 @@ const QuestChainModule = (function() {
             isFinal: cityData.isFinal
         };
     }
-    function getChainCities() { return chainCities; }
+    // === ПУБЛИЧНЫЕ МЕТОДЫ (продолжение) ===
+
+    function getChainCities() { 
+        return chainCities; 
+    }
+
+    // Функция завершения текущего этапа цепочки
+    // Вызывается из game.js после успешной сдачи квеста
+    function completeCurrentQuest() {
+        // В данной архитектуре прогресс вычисляется детерминированно 
+        // через getExpectedIndex() на основе completedQuestIds в GameModule.
+        // Эта функция нужна для совместимости и потенциальной будущей логики 
+        // (например, спец. эффектов при завершении этапа).
+        console.log("✅ Сюжетный этап завершен. Ожидание следующего города...");
+    }
 
     // Генерация лора для книг
     function getLoreFragment() {
@@ -279,6 +293,7 @@ const QuestChainModule = (function() {
         getChainCities,
         getLoreFragment,
         getExpectedIndex,
+        completeCurrentQuest, // <--- ДОБАВИТЬ ЭТУ СТРОКУ
         isInitialized: () => isInitialized
     };
 })();
