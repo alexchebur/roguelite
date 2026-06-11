@@ -237,6 +237,7 @@
         <!-- Кнопка отказа (справа) -->
         <div id="btn-abandon-quest" 
             style="color: #f85149; font-size: 11px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; user-select: none;"
+            onclick="if(typeof GameModule !== 'undefined') GameModule.abandonCurrentQuest();"
             onmouseover="this.style.opacity='1'" 
             onmouseout="this.style.opacity='0.6'">
             ❌ Отказаться
