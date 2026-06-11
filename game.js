@@ -1462,7 +1462,8 @@ function updateQuestCompass() {
         init,
         getPlayer,
         getActiveQuests,
-        getCompletedQuestIds // >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
+        getCompletedQuestIds,
+        abandonCurrentQuest// >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
     };
 })();
 
