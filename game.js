@@ -818,34 +818,48 @@ function updateQuestCompass() {
      
 
     // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
+    // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
     function spawnQuestItem(quest) {
         if (!quest || quest.type !== 'FETCH') return;
         
-        // Ищем шаблон предмета в data.js по типу
-        const template = DataModule.ITEM_TYPES.find(t => t.type === quest.target.itemType);
-        if (!template) return;
+        let template = null;
 
-        // Создаем уникальный объект предмета
+        // 1. ПРИОРИТЕТ: Ищем шаблон по точному базовому имени (например, "Шлем")
+        if (quest.target.itemName) {
+            template = DataModule.ITEM_TYPES.find(t => t.baseName === quest.target.itemName);
+        }
+        
+        // 2. ФОЛБЭК: Если по имени не нашли, ищем по широкому типу (weapon/armor)
+        if (!template && quest.target.itemType) {
+            template = DataModule.ITEM_TYPES.find(t => t.type === quest.target.itemType);
+        }
+
+        if (!template) {
+            console.warn(`⚠️ Не удалось найти шаблон для квестового предмета: ${quest.target.itemName}`);
+            return;
+        }
+
+        // Создаем уникальный объект предмета с множителем силы 1.0 (стандартный)
         const questItem = EntityModule.createItem(template, 0, 0, 1.0);
         
-        // Делаем его уникальным (добавляем пометку в имя)
+        // Делаем его визуально уникальным
         questItem.name = `✨ ${questItem.name} (Квест)`;
-        questItem.isQuestItem = true; // Флаг, чтобы случайно не продать/выкинуть (опционально)
+        questItem.isQuestItem = true; 
 
-        // Ищем безопасное место для спавна (рядом со стартом или лестницей)
+        // Ищем безопасное место для спавна
         let spawnPos = null;
         
-        // Пробуем найти место рядом с лестницей вверх (входом)
+        // Стратегия А: Рядом с лестницей вверх (входом), чтобы игрок сразу увидел
         if (MapModule.stairsUp) {
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(MapModule.stairsUp, 5) : null;
         }
         
-        // Если не вышло, ищем рядом с игроком
+        // Стратегия Б: Рядом с текущей позицией игрока (если он уже внутри)
         if (!spawnPos && player) {
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : null;
         }
 
-        // Если совсем беда, берем случайную свободную клетку
+        // Стратегия В: Любая свободная клетка пола
         if (!spawnPos) {
             spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : {x: player.x+1, y: player.y};
         }
@@ -855,7 +869,7 @@ function updateQuestCompass() {
             questItem.y = spawnPos.y;
             items.push(questItem);
             
-            RenderModule.log(`🔮 Вы чувствуете присутствие нужного артефакта где-то рядом...`, "event");
+            RenderModule.log(`🔮 Вы чувствуете присутствие ${quest.target.itemName} где-то рядом...`, "event");
         }
     }
 
@@ -1249,7 +1263,12 @@ function updateQuestCompass() {
 
                         // === ЛОГИКА ДЛЯ FETCH (Найти 1 предмет) ===
                         if (q.type === 'FETCH') {
-                            if (item.type === q.target.itemType) {
+                            // Сравниваем тип И проверяем, что в названии подобранного предмета есть искомое базовое имя
+                            // Например, item.name может быть "Ржавый Шлем", а мы ищем "Шлем"
+                            const isCorrectItem = (item.type === q.target.itemType) && 
+                                                  (!q.target.itemName || item.name.includes(q.target.itemName));
+                            
+                            if (isCorrectItem) {
                                 RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
                                 
                                 q.progress = q.maxProgress;
