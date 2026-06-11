@@ -1339,10 +1339,16 @@ function updateQuestCompass() {
         return activeQuests;
     }
 
+    // >>> ДОБАВИТЬ ЭТУ ФУНКЦИЮ <<<
+    function getCompletedQuestIds() {
+        return completedQuestIds;
+    }
+
     return {
         init,
         getPlayer,
-        getActiveQuests
+        getActiveQuests,
+        getCompletedQuestIds // >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
     };
 })();
 
