@@ -661,6 +661,17 @@ function updateQuestCompass() {
                     spawnQuestItem(q);
                 }
 
+
+                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ SCHOLAR (НОВОЕ)
+                if (q.isActive && !q.isCompleted && 
+                    q.type === 'SCHOLAR' && 
+                    q.target.targetX === gx && 
+                    q.target.targetY === gy) {
+                    
+                    spawnScholarBook(q);
+                }
+
+                
                 // 2. Проверка прогресса для DIGGER (Глубинный разведчик)
                 if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
                     // Проверяем координаты подземелья и глубину
@@ -872,7 +883,45 @@ function updateQuestCompass() {
             RenderModule.log(`🔮 Вы чувствуете присутствие ${quest.target.itemName} где-то рядом...`, "event");
         }
     }
+    // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
+    function spawnScholarBook(quest) {
+        // Ищем шаблон книги в data.js
+        const bookTemplate = DataModule.ITEM_TYPES.find(t => t.type === 'book');
+        if (!bookTemplate) return;
 
+        // Создаем объект книги
+        const questBook = EntityModule.createItem(bookTemplate, 0, 0, 1.0);
+        
+        // Помечаем её как квестовую (для визуала и логики)
+        questBook.name = `✨ ${questBook.name} (Квест)`;
+        questBook.isQuestItem = true;
+
+        // Ищем безопасное место для спавна
+        let spawnPos = null;
+        
+        // Стратегия А: Рядом с лестницей вверх (входом)
+        if (MapModule.stairsUp) {
+            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(MapModule.stairsUp, 5) : null;
+        }
+        
+        // Стратегия Б: Рядом с игроком
+        if (!spawnPos && player) {
+            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : null;
+        }
+
+        // Стратегия В: Любая свободная клетка
+        if (!spawnPos) {
+            spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : {x: player.x+1, y: player.y};
+        }
+
+        if (spawnPos) {
+            questBook.x = spawnPos.x;
+            questBook.y = spawnPos.y;
+            items.push(questBook);
+            
+            RenderModule.log(`📚 Вы замечаете древний фолиант, лежащий на видном месте...`, "event");
+        }
+    }
     // === СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ПОКИДАНИИ УРОВНЯ ===
     function saveCurrentDungeonState() {
         if (gameMode === 'dungeon' && currentDepth >= 0) {
