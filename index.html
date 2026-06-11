@@ -228,11 +228,20 @@
     </div>
 
     <!-- В index.html -->
-    <footer class="panel" style="grid-column: 2 / 4; grid-row: 3; display: flex; align-items: center; justify-content: center; text-align: center;">
-        <div id="ui-quest-briefing" style="color: var(--gold); font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
-            <!-- Сюда будет выводиться суть квеста -->
+    <footer class="panel" style="grid-column: 2 / 4; grid-row: 3; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; text-align: center;">
+        <!-- Описание квеста (слева/центр) -->
+        <div id="ui-quest-briefing" style="color: var(--gold); font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">
+            <!-- Сюда выводится суть квеста -->
         </div>
-    </footer>
+
+        <!-- Кнопка отказа (справа) -->
+        <div id="btn-abandon-quest" 
+            style="color: #f85149; font-size: 11px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; user-select: none;"
+            onmouseover="this.style.opacity='1'" 
+            onmouseout="this.style.opacity='0.6'">
+            ❌ Отказаться
+        </div>
+     </footer>
 </div>
 
 </body>
