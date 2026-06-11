@@ -1281,12 +1281,19 @@ function updateQuestCompass() {
                         }
                         
                         // === ЛОГИКА ДЛЯ COLLECT (Собрать N предметов) ===
+                        // === ЛОГИКА ДЛЯ COLLECT (Собрать N предметов) ===
                         else if (q.type === 'COLLECT') {
                             // Проверяем тип предмета и локацию (если квест привязан к подземелью)
                             const isInLocation = (!q.target.targetX || 
                                                  (dungeonX === q.target.targetX && dungeonY === q.target.targetY));
                             
-                            if (item.type === q.target.itemType && isInLocation) {
+                            // >>> ИСПРАВЛЕННАЯ ПРОВЕРКА <<<
+                            // 1. Совпадение типа (например, 'book')
+                            // 2. Если в квесте указано конкретное имя (itemName), оно должно содержаться в названии подобранного предмета
+                            const isCorrectType = (item.type === q.target.itemType);
+                            const isCorrectName = !q.target.itemName || item.name.includes(q.target.itemName);
+                            
+                            if (isCorrectType && isCorrectName && isInLocation) {
                                 // Используем checkProgress для увеличения счетчика
                                 QuestSystemModule.checkProgress(q, { 
                                     type: 'pickup', 
