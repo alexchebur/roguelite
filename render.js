@@ -69,43 +69,44 @@ const RenderModule = (function() {
         console.log("🚀 RenderModule полностью инициализирован.");
     }
     // === ОБНОВЛЕНИЕ ТЕКУЩЕГО КВЕСТА В ФУТЕРЕ ===
-function updateQuestBriefing(quest) {
-    const el = document.getElementById("ui-quest-briefing");
-    if (!el) return;
+    // === ОБНОВЛЕНИЕ ТЕКУЩЕГО КВЕСТА В ФУТЕРЕ ===
+    function updateQuestBriefing(quest) {
+        const el = document.getElementById("ui-quest-briefing");
+        if (!el) return;
 
-    if (!quest) {
-        el.textContent = "";
-        return;
-    }
+        if (!quest) {
+            el.textContent = " ";
+            return;
+        }
 
-    let statusIcon = "📜 ";
-    if (quest.isCompleted && !quest.isTurnedIn) statusIcon = "🏆 ";
-    
-    let goalText = "";
-    if (quest.type === 'FETCH') {
-        goalText = `Найти: ${quest.target.itemName}`;
-    } 
-    else if (quest.type === 'COLLECT') {
-        goalText = `Собрать: ${quest.target.itemName} (${quest.progress}/${quest.maxProgress})`;
-    }
-    else if (quest.type === 'HUNT') {
-        goalText = `Убить: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
-    }
-    else if (quest.type === 'BOUNTY') {
-        goalText = `Охота: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
-    }
-    else if (quest.type === 'EXPLORE') {
-        goalText = `Исследовать: ${quest.target.locationName}`;
-    }
-    else if (quest.type === 'DIGGER') {
-        goalText = `Спуститься: ${quest.target.locationName}, ур. ${quest.target.targetDepth}`;
-    }
-    else if (quest.type === 'SCHOLAR') {
-        goalText = `Прочитать книг: (${quest.progress}/${quest.maxProgress})`;
-    }
+        let statusIcon = "📜 ";
+        if (quest.isCompleted && !quest.isTurnedIn) statusIcon = "🏆 ";
+        
+        // Формируем краткое описание цели
+        let goalText = " ";
+        
+        if (quest.type === 'FETCH') {
+            goalText = `Найти: ${quest.target.itemName}`;
+        } 
+        else if (quest.type === 'HUNT' || quest.type === 'BOUNTY') {
+            // Для BOUNTY и HUNT показываем счетчик убитых
+            goalText = `Убить: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
+        }
+        else if (quest.type === 'COLLECT') {
+            goalText = `Собрать: ${quest.target.itemName} (${quest.progress}/${quest.maxProgress})`;
+        }
+        else if (quest.type === 'SCHOLAR') {
+            goalText = `Прочитать книг: (${quest.progress}/${quest.maxProgress})`;
+        }
+        else if (quest.type === 'EXPLORE') {
+            goalText = `Исследовать: ${quest.target.locationName}`;
+        }
+        else if (quest.type === 'DIGGER') {
+            goalText = `Глубина: ${quest.target.targetDepth} в ${quest.target.locationName}`;
+        }
 
-    el.innerHTML = `<span style="color:${statusIcon === '🏆' ? '#00ff00' : 'var(--gold)'}">${statusIcon} ${goalText}</span>`;
-}
+        el.innerHTML = `<span style="color:${statusIcon === '🏆' ? '#00ff00' : 'var(--gold)'}">${statusIcon} ${goalText}</span>`;
+    }
 
 
     
