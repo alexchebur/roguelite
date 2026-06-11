@@ -1136,9 +1136,29 @@ function updateQuestCompass() {
             gainXp(10 + (currentDepth * 5));
 
             // 3. Проверка квестов
+            // 3. Проверка квестов
             if (typeof QuestSystemModule !== 'undefined') {
-                // Используем копию массива, так как grantReward может изменить activeQuests
                 [...activeQuests].forEach(q => {
+                    
+                    // >>> СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ СЮЖЕТНОГО BOUNTY <<<
+                    if (q.isChainQuest && q.type === 'BOUNTY' && !q.isCompleted) {
+                        if (enemy.name === q.target.enemyName) {
+                            q.progress++;
+                            RenderModule.log(`🏹 Охота: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
+                            
+                            // >>> ДОБАВИТЬ ЭТУ СТРОКУ ДЛЯ ОБНОВЛЕНИЯ ФУТЕРА <<<
+                            RenderModule.updateQuestBriefing(q); 
+                            
+                            if (q.progress >= q.maxProgress) {
+                                q.isCompleted = true;
+                                RenderModule.log(`🏆 Сюжетная охота завершена! Вернитесь в город за наградой.`, "event");
+                                updateQuestCompass();
+                            }
+                            return; // Прерываем итерацию для этого квеста
+                        }
+                    }
+
+                    // Стандартная проверка для остальных квестов
                     const eventData = {
                         type: 'kill',
                         enemyName: enemy.name,
@@ -1148,8 +1168,6 @@ function updateQuestCompass() {
 
                     const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
-                    // Если квест только что завершился, обновляем данные компаса
-                    // (Само сообщение уже выведено внутри quest_system.js)
                     if (progressUpdated && q.isCompleted) {
                         updateQuestCompass(); 
                     }
