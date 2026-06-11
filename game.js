@@ -1438,26 +1438,32 @@ function updateQuestCompass() {
     }
 
     // === ОТКАЗ ОТ КВЕСТА ===
+    // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ КНОПКИ ОТКАЗА ===
+    function updateAbandonButton(hasActiveQuest) {
+        const btn = document.getElementById("btn-abandon-quest");
+        if (btn) {
+            btn.style.display = hasActiveQuest ? "block" : "none";
+        }
+    }
+
+    // === ОТКАЗ ОТ КВЕСТА ===
     function abandonCurrentQuest() {
         if (activeQuests.length === 0) return;
 
-        // Берем первый активный квест (обычно он один, но на всякий случай)
         const quest = activeQuests[0];
         
         RenderModule.log("После долгих раздумий герой отрекся от задания.", "info");
         
-        // Удаляем из активных
         activeQuests = []; 
         
-        // Очищаем UI
         RenderModule.updateQuestBriefing(null);
         updateQuestCompass();
+        updateAbandonButton(false); // Скрываем кнопку
         
-        // Если был инспектор, тоже очищаем
         if (typeof RenderModule.updateInspector === 'function') {
             RenderModule.updateInspector("Квест отменен", "Герой сменил свои планы.", "neutral");
         }
-    }    
+    }   
     return {
         init,
         getPlayer,
