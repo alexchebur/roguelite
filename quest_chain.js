@@ -148,7 +148,18 @@ const QuestChainModule = (function() {
             chainCities.push({ ...nextCity, questIndex: i, isFinal });
             currentCity = nextCity;
         }
-        
+        // === БЛОК ОТЛАДКИ: ВЫВОД В КОНСОЛЬ ===
+        console.group("🗺️ СЮЖЕТНАЯ ЦЕПОЧКА КВЕСТОВ (DEBUG)");
+        console.log(`Стартовая точка игрока: X=${startX}, Y=${startY}`);
+        console.table(chainCities.map((city, index) => ({
+            "Этап": index + 1,
+            "Город": city.name,
+            "Координаты": `(${city.x}, ${city.y})`,
+            "Финал": city.isFinal ? "✅ ДА" : "❌ НЕТ",
+            "ID Квеста": `chain_${city.x}_${city.y}`
+        })));
+        console.groupEnd();
+        // ======================================        
         isInitialized = true;
         console.log(`✅ Сюжетная цепочка сгенерирована (${chainCities.length} городов).`);
     }
