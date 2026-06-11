@@ -993,21 +993,25 @@ function updateQuestCompass() {
     
     // === СИСТЕМА ПРОКАЧКИ ===
     function gainXp(amount) {
-        if (!player) return;
         player.xp += amount;
-        
         const xpNeeded = player.level * 50;
-        
         if (player.xp >= xpNeeded) {
             player.level++;
             player.xp -= xpNeeded;
-            
             player.maxHp = WorldCurveModule.getPlayerBaseHP(player.level);
             player.hp = player.maxHp;
-            player.atk = WorldCurveModule.getPlayerBaseAtk(player.level);
-            player.def = WorldCurveModule.getPlayerBaseDef(player.level);
-            
-            RenderModule.log(`🎉 УРОВЕНЬ ПОВЫШЕН! Теперь вы ${player.level} уровня!`, "event");
+        
+            // Пересчёт с учётом бонусов
+            const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
+            const baseDef = WorldCurveModule.getPlayerBaseDef(player.level);
+            player.atk = baseAtk + player.bonusAtk;
+            player.def = baseDef + player.bonusDef;
+        
+            // Защита от отрицательных (на всякий случай)
+            if (player.atk < 1) player.atk = 1;
+            if (player.def < 0) player.def = 0;
+        
+            RenderModule.log(`🎉 УРОВЕНЬ ПОВЫШЕН!`, "event");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         }
     }
