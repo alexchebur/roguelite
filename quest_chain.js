@@ -191,31 +191,34 @@ const QuestChainModule = (function() {
         if (idx > 0) types.push('DIGGER');
         const type = types[Math.floor(rng.next() * types.length)];
         
-        // === ИСПРАВЛЕНИЕ: Генерация цели с правильным поиском POI ===
-        let targetData = {};
-        
-        // Проверяем наличие модуля и функции
-        if (typeof QuestSystemModule !== 'undefined' && QuestSystemModule.calculateTargetParams) {
-            // Мы передаем параметры, но calculateTargetParams внутри себя использует 
-            // findRealPOI, который ищет 'dungeon'. Нам нужно это обойти или исправить.
-            
-            // Временный хак: подменяем поиск POI, если он не находит нужного типа
-            // Но лучше просто вызвать нашу локальную функцию поиска, так как она надежнее
-            
-            // 1. Сначала попробуем найти подземелье рядом с текущим городом цепочки
-            const candidates = findCitiesInRing(cityData.x, cityData.y, 5, 40); // Ищем в радиусе 5-40
-            
-            // Фильтруем только подземелья (в globalMap они называются dungeon_entrance, но в POI хранятся как объекты)
-            // Нам нужно использовать GlobalMapModule.getPOI для проверки типа
+        // === ГЕНЕРАЦИЯ ЦЕЛИ (TARGET DATA) ===
+        let targetData = {
+            locationName: "неизвестных землях",
+            targetX: null,
+            targetY: null,
+            enemyName: "монстров",
+            itemName: "артефакт",
+            itemType: "weapon",
+            count: 1,
+            targetDepth: 1
+        };
+
+        // 1. Поиск локации (Подземелья)
+        // Для BOUNTY и SCHOLAR локация не важна, поэтому пропускаем поиск
+        if (type !== 'BOUNTY' && type !== 'SCHOLAR') {
             const dungeons = [];
+            // Ищем в кольце от 5 до 40 клеток от города выдачи
             for (let dy = -40; dy <= 40; dy++) {
                 for (let dx = -40; dx <= 40; dx++) {
-                    if (Math.abs(dx) + Math.abs(dy) < 5 || Math.abs(dx) + Math.abs(dy) > 40) continue;
+                    const dist = Math.abs(dx) + Math.abs(dy);
+                    if (dist < 5 || dist > 40) continue;
+                    
                     const tx = cityData.x + dx;
                     const ty = cityData.y + dy;
+                    
                     if (typeof GlobalMapModule !== 'undefined') {
                         const poi = GlobalMapModule.getPOI(tx, ty);
-                        // ВАЖНО: Тип должен совпадать с тем, что в globalMap.js (dungeon_entrance)
+                        // Ищем именно входы в подземелья
                         if (poi && (poi.type === 'dungeon' || poi.type === 'dungeon_entrance')) {
                             dungeons.push(poi);
                         }
@@ -228,37 +231,46 @@ const QuestChainModule = (function() {
                 targetData.targetX = targetPoi.x;
                 targetData.targetY = targetPoi.y;
                 targetData.locationName = targetPoi.name;
-                
-                // Добавляем специфичные данные в зависимости от типа квеста
-                if (type === 'HUNT' || type === 'BOUNTY') {
-                    const enemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень", "Бандит", "Скелет"].includes(e.name));
-                    const enemy = enemies[Math.floor(rng.next() * enemies.length)];
-                    targetData.enemyName = enemy.name;
-                    targetData.count = rng.int(3, 6);
-                } else if (type === 'FETCH') {
-                    const items = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
-                    const item = items[Math.floor(rng.next() * items.length)];
-                    targetData.itemName = item.baseName;
-                    targetData.itemType = item.type;
-                } else if (type === 'DIGGER') {
-                    targetData.targetDepth = rng.int(2, 5);
-                } else if (type === 'COLLECT') {
-                    targetData.itemName = "древних книг";
-                    targetData.itemType = "book";
-                    targetData.count = rng.int(2, 4);
-                }
             } else {
-                // Если подземелий нет рядом, ставим заглушку
+                // Заглушка, если подземелий совсем нет рядом
                 targetData.locationName = "Забытых руинах";
                 targetData.targetX = cityData.x + 10;
                 targetData.targetY = cityData.y + 10;
             }
         } else {
-            // Фолбэк, если метод не экспортирован
-            targetData = { locationName: "древних руинах", targetX: cityData.x, targetY: cityData.y };
+            // Для глобальных квестов
+            targetData.locationName = "любом опасном месте";
         }
 
-        // Формируем брифинг (текст при получении)
+        // 2. Заполнение специфичных параметров в зависимости от типа
+        if (type === 'HUNT' || type === 'BOUNTY') {
+            const enemies = DataModule.ENEMY_TYPES.filter(e => 
+                ["Гоблин", "Крыса", "Волк", "Слизень", "Бандит", "Скелет", "Орк-разведчик"].includes(e.name)
+            );
+            const enemy = enemies[Math.floor(rng.next() * enemies.length)];
+            targetData.enemyName = enemy.name;
+            // Для BOUNTY меньше целей, для HUNT больше
+            targetData.count = (type === 'BOUNTY') ? rng.int(1, 3) : rng.int(3, 6);
+        } 
+        else if (type === 'FETCH') {
+            const items = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
+            const item = items[Math.floor(rng.next() * items.length)];
+            targetData.itemName = item.baseName;
+            targetData.itemType = item.type;
+        } 
+        else if (type === 'DIGGER') {
+            targetData.targetDepth = rng.int(2, 5);
+        } 
+        else if (type === 'COLLECT') {
+            targetData.itemName = "древних книг";
+            targetData.itemType = "book";
+            targetData.count = rng.int(2, 4);
+        }
+        else if (type === 'SCHOLAR') {
+            targetData.count = rng.int(1, 3);
+        }
+
+        // === ФОРМИРОВАНИЕ БРИФИНГА ===
         let templatePool = CHAIN_TEMPLATES[type] || CHAIN_TEMPLATES.FETCH;
         let template = templatePool[Math.floor(rng.next() * templatePool.length)];
         
@@ -269,13 +281,13 @@ const QuestChainModule = (function() {
         const briefing = template
             .replace(/{city}/g, cityData.name)
             .replace(/{nextCity}/g, nextCity ? nextCity.name : 'дальних земель')
-            .replace(/{item}/g, targetData.itemName || 'древний артефакт')
-            .replace(/{enemy}/g, targetData.enemyName || 'монстров')
-            .replace(/{count}/g, targetData.count || 1)
-            .replace(/{location}/g, targetData.locationName || 'забытых руинах')
-            .replace(/{depth}/g, targetData.targetDepth || targetData.recommendedDepth || 1);
+            .replace(/{item}/g, targetData.itemName)
+            .replace(/{enemy}/g, targetData.enemyName)
+            .replace(/{count}/g, targetData.count)
+            .replace(/{location}/g, targetData.locationName)
+            .replace(/{depth}/g, targetData.targetDepth);
 
-        // === ГЕНЕРАЦИЯ ТЕКСТА СДАЧИ (НОВОЕ) ===
+        // === ГЕНЕРАЦИЯ ТЕКСТА СДАЧИ ===
         let turnInPool;
         if (cityData.isFinal) {
             turnInPool = TURN_IN_TEMPLATES.FINAL;
@@ -284,12 +296,11 @@ const QuestChainModule = (function() {
         }
         
         let turnInText = turnInPool[Math.floor(rng.next() * turnInPool.length)];
-        // Заменяем переменные в тексте сдачи
         turnInText = turnInText
             .replace(/{city}/g, cityData.name)
             .replace(/{nextCity}/g, nextCity ? nextCity.name : 'дальних земель')
-            .replace(/{item}/g, targetData.itemName || 'артефакт')
-            .replace(/{enemy}/g, targetData.enemyName || 'тварей');
+            .replace(/{item}/g, targetData.itemName)
+            .replace(/{enemy}/g, targetData.enemyName);
 
         // Награда растет с каждым этапом
         const baseGold = 100 + (idx * 50);
@@ -300,10 +311,10 @@ const QuestChainModule = (function() {
             type: type,
             target: targetData, 
             progress: 0,
-            maxProgress: (type === 'HUNT' || type === 'COLLECT' || type === 'BOUNTY' || type === 'SCHOLAR') ? (targetData.count || 1) : 1,
+            maxProgress: (type === 'HUNT' || type === 'COLLECT' || type === 'BOUNTY' || type === 'SCHOLAR') ? targetData.count : 1,
             rewardGold: finalGold,
             briefing: briefing,
-            turnInText: turnInText, // <--- ДОБАВЛЯЕМ ТЕКСТ СДАЧИ В ОБЪЕКТ
+            turnInText: turnInText,
             isCompleted: false,
             isTurnedIn: false, 
             isActive: false,
