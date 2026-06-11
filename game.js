@@ -78,6 +78,7 @@ const GameModule = (function() {
         
         RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
         RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
+        updateAbandonButton(false); // <--- ДОБАВИТЬ
     }
 
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
@@ -208,7 +209,7 @@ function tryGiveQuest(npc) {
 
                         activeQuests = activeQuests.filter(aq => aq.id !== questId);
                         completedQuestIds.add(questId);
-                        
+                        updateAbandonButton(activeQuests.length > 0);
                         // Обновляем прогресс цепочки (для внутреннего состояния модуля, если нужно)
                         QuestChainModule.completeCurrentQuest();
                         updateQuestCompass();
@@ -229,7 +230,7 @@ function tryGiveQuest(npc) {
                     chainQuest.originX = cityGx;
                     chainQuest.originY = cityGy;
                     activeQuests.push(chainQuest);
-                    
+                    updateAbandonButton(true); // <--- ДОБАВИТЬ
                     RenderModule.log(`📜 СЮЖЕТНЫЙ КВЕСТ от ${npc.name}:`, "event");
                     RenderModule.log(chainQuest.briefing, "info");
                     
@@ -283,6 +284,7 @@ function tryGiveQuest(npc) {
 
             activeQuests = activeQuests.filter(aq => aq.id !== questId);
             completedQuestIds.add(questId);
+            updateAbandonButton(activeQuests.length > 0);
             updateQuestCompass();
             
             if (typeof RenderModule.updateInspector === 'function') {
@@ -300,7 +302,7 @@ function tryGiveQuest(npc) {
         newQuest.originX = cityGx;
         newQuest.originY = cityGy;
         activeQuests.push(newQuest);
-        
+        updateAbandonButton(true); // <--- ДОБАВИТЬ
         RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
         RenderModule.log(newQuest.briefing, "info");
         
