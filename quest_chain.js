@@ -191,10 +191,68 @@ const QuestChainModule = (function() {
         if (idx > 0) types.push('DIGGER');
         const type = types[Math.floor(rng.next() * types.length)];
         
-        // Генерация цели (переиспользуем логику из QuestSystemModule)
+        // === ИСПРАВЛЕНИЕ: Генерация цели с правильным поиском POI ===
         let targetData = {};
+        
+        // Проверяем наличие модуля и функции
         if (typeof QuestSystemModule !== 'undefined' && QuestSystemModule.calculateTargetParams) {
-            targetData = QuestSystemModule.calculateTargetParams(cityData.x, cityData.y, type, idx + 1);
+            // Мы передаем параметры, но calculateTargetParams внутри себя использует 
+            // findRealPOI, который ищет 'dungeon'. Нам нужно это обойти или исправить.
+            
+            // Временный хак: подменяем поиск POI, если он не находит нужного типа
+            // Но лучше просто вызвать нашу локальную функцию поиска, так как она надежнее
+            
+            // 1. Сначала попробуем найти подземелье рядом с текущим городом цепочки
+            const candidates = findCitiesInRing(cityData.x, cityData.y, 5, 40); // Ищем в радиусе 5-40
+            
+            // Фильтруем только подземелья (в globalMap они называются dungeon_entrance, но в POI хранятся как объекты)
+            // Нам нужно использовать GlobalMapModule.getPOI для проверки типа
+            const dungeons = [];
+            for (let dy = -40; dy <= 40; dy++) {
+                for (let dx = -40; dx <= 40; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) < 5 || Math.abs(dx) + Math.abs(dy) > 40) continue;
+                    const tx = cityData.x + dx;
+                    const ty = cityData.y + dy;
+                    if (typeof GlobalMapModule !== 'undefined') {
+                        const poi = GlobalMapModule.getPOI(tx, ty);
+                        // ВАЖНО: Тип должен совпадать с тем, что в globalMap.js (dungeon_entrance)
+                        if (poi && (poi.type === 'dungeon' || poi.type === 'dungeon_entrance')) {
+                            dungeons.push(poi);
+                        }
+                    }
+                }
+            }
+
+            if (dungeons.length > 0) {
+                const targetPoi = dungeons[Math.floor(rng.next() * dungeons.length)];
+                targetData.targetX = targetPoi.x;
+                targetData.targetY = targetPoi.y;
+                targetData.locationName = targetPoi.name;
+                
+                // Добавляем специфичные данные в зависимости от типа квеста
+                if (type === 'HUNT' || type === 'BOUNTY') {
+                    const enemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень", "Бандит", "Скелет"].includes(e.name));
+                    const enemy = enemies[Math.floor(rng.next() * enemies.length)];
+                    targetData.enemyName = enemy.name;
+                    targetData.count = rng.int(3, 6);
+                } else if (type === 'FETCH') {
+                    const items = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
+                    const item = items[Math.floor(rng.next() * items.length)];
+                    targetData.itemName = item.baseName;
+                    targetData.itemType = item.type;
+                } else if (type === 'DIGGER') {
+                    targetData.targetDepth = rng.int(2, 5);
+                } else if (type === 'COLLECT') {
+                    targetData.itemName = "древних книг";
+                    targetData.itemType = "book";
+                    targetData.count = rng.int(2, 4);
+                }
+            } else {
+                // Если подземелий нет рядом, ставим заглушку
+                targetData.locationName = "Забытых руинах";
+                targetData.targetX = cityData.x + 10;
+                targetData.targetY = cityData.y + 10;
+            }
         } else {
             // Фолбэк, если метод не экспортирован
             targetData = { locationName: "древних руинах", targetX: cityData.x, targetY: cityData.y };
