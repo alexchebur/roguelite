@@ -1437,6 +1437,27 @@ function updateQuestCompass() {
         return completedQuestIds;
     }
 
+    // === ОТКАЗ ОТ КВЕСТА ===
+    function abandonCurrentQuest() {
+        if (activeQuests.length === 0) return;
+
+        // Берем первый активный квест (обычно он один, но на всякий случай)
+        const quest = activeQuests[0];
+        
+        RenderModule.log("После долгих раздумий герой отрекся от задания.", "info");
+        
+        // Удаляем из активных
+        activeQuests = []; 
+        
+        // Очищаем UI
+        RenderModule.updateQuestBriefing(null);
+        updateQuestCompass();
+        
+        // Если был инспектор, тоже очищаем
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector("Квест отменен", "Герой сменил свои планы.", "neutral");
+        }
+    }    
     return {
         init,
         getPlayer,
