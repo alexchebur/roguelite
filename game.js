@@ -158,8 +158,7 @@ const GameModule = (function() {
         }
     }
 
-    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
-// === ЛОГИКА ВЫДАЧИ КВЕСТОВ ===
+// === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule) ===
 function tryGiveQuest(npc) {
     if (typeof QuestSystemModule === 'undefined') return false;
     if (!npc.isQuestGiver) return false;
@@ -167,7 +166,91 @@ function tryGiveQuest(npc) {
     if (!entrancePos) return false;
     const cityGx = entrancePos.x;
     const cityGy = entrancePos.y;
-    
+
+    // ==========================================
+    // 1. ПРОВЕРКА СЮЖЕТНОЙ ЦЕПОЧКИ (Приоритет №1)
+    // ==========================================
+    if (typeof QuestChainModule !== 'undefined' && QuestChainModule.isInitialized()) {
+        if (QuestChainModule.isChainCity(cityGx, cityGy)) {
+            const chainQuest = QuestChainModule.getQuestForCity(cityGx, cityGy);
+            
+            if (chainQuest) {
+                const questId = chainQuest.id;
+                const alreadyActive = activeQuests.some(q => q.id === questId);
+                const alreadyDone = completedQuestIds.has(questId);
+
+                // Сценарий А: Сюжетный квест выполнен, сдаем награду
+                if (alreadyActive) {
+                    const q = activeQuests.find(q => q.id === questId);
+                    if (q.isCompleted && !q.isTurnedIn) {
+                        player.gold += q.rewardGold;
+                        q.isTurnedIn = true; 
+                        
+                        RenderModule.log(`🏆 СЮЖЕТНЫЙ КВЕСТ СДАН! Получено: ${q.rewardGold} золотых.`, "loot");
+                        
+                        // >>> КАСТОМНЫЙ ТЕКСТ СДАЧИ <<<
+                        if (q.turnInText) {
+                            RenderModule.log(`🗣️ ${npc.name}: "${q.turnInText}"`, "event");
+                        } else {
+                            RenderModule.log(`${npc.name}: "Отличная работа. Вот твоя награда."`, "info");
+                        }
+
+                        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+                        RenderModule.updateQuestBriefing(null); 
+
+                        activeQuests = activeQuests.filter(aq => aq.id !== questId);
+                        completedQuestIds.add(questId);
+                        
+                        // Обновляем прогресс цепочки (для внутреннего состояния модуля, если нужно)
+                        QuestChainModule.completeCurrentQuest();
+                        updateQuestCompass();
+                        
+                        if (typeof RenderModule.updateInspector === 'function') {
+                            RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
+                        }
+                        return true;
+                    } else {
+                        // Квест активен, но не выполнен
+                        RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение. Ищи ${q.target.locationName}."`, "info");
+                        return true;
+                    }
+                } 
+                // Сценарий Б: Выдача нового сюжетного квеста
+                else if (!alreadyDone) {
+                    chainQuest.isActive = true;
+                    chainQuest.originX = cityGx;
+                    chainQuest.originY = cityGy;
+                    activeQuests.push(chainQuest);
+                    
+                    RenderModule.log(`📜 СЮЖЕТНЫЙ КВЕСТ от ${npc.name}:`, "event");
+                    RenderModule.log(chainQuest.briefing, "info");
+                    
+                    RenderModule.updateQuestBriefing(chainQuest);
+                    
+                    if (typeof RenderModule.updateInspector === 'function') {
+                        RenderModule.updateInspector(`📜 Квест принят!`, chainQuest.briefing, "npc");
+                    }
+                    return true; 
+                }
+            } else {
+                // Город из цепочки, но квест для него уже сдан или еще не время
+                // Проверяем, был ли это предыдущий город цепочки (чтобы дать подсказку)
+                const expectedIdx = QuestChainModule.getExpectedIndex();
+                const cityIdx = QuestChainModule.getChainCities().findIndex(c => c.x === cityGx && c.y === cityGy);
+                
+                if (cityIdx < expectedIdx) {
+                     RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Твой путь лежит дальше."`, "info");
+                } else {
+                     RenderModule.log(`${npc.name}: "Я чувствую, ты еще не готов к моей просьбе. Сначала заверши дела в других землях."`, "info");
+                }
+                return true; // Блокируем выдачу случайного квеста
+            }
+        }
+    }
+
+    // ==========================================
+    // 2. СТАНДАРТНЫЕ СЛУЧАЙНЫЕ КВЕСТЫ (Fallback)
+    // ==========================================
     let npcIndex = 0;
     for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
 
@@ -213,7 +296,6 @@ function tryGiveQuest(npc) {
         RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
         RenderModule.log(newQuest.briefing, "info");
         
-        // >>> ЗАМЕНИТЬ НА ЭТО <<<
         RenderModule.updateQuestBriefing(newQuest);
         
         if (typeof RenderModule.updateInspector === 'function') {
@@ -245,6 +327,8 @@ function tryGiveQuest(npc) {
     
     return false;
 }
+
+    
     // === НАГРАДА ЗА КВЕСТ ===
     function grantReward(quest) {
         if (!player) return;
