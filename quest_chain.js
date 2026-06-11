@@ -253,7 +253,7 @@ const QuestChainModule = (function() {
             chainIndex: idx,
             isFinal: cityData.isFinal
         };
-
+    }
     function getChainCities() { return chainCities; }
 
     // Генерация лора для книг
