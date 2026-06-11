@@ -262,7 +262,7 @@ const QuestChainModule = (function() {
             targetData.targetDepth = rng.int(2, 5);
         } 
         else if (type === 'COLLECT') {
-            targetData.itemName = "древних книг";
+            targetData.itemName = "Книга"; // Или "Свиток", смотря что в data.js
             targetData.itemType = "book";
             targetData.count = rng.int(2, 4);
         }
