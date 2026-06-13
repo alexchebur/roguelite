@@ -751,7 +751,8 @@ function updateQuestCompass() {
                 availableEnemies,
                 enemyCount,
                 enemyMult,
-                3
+                3,
+                depth
             );
         } else {
             enemies = []; // Гарантируем пустой массив для зачищенного уровня
