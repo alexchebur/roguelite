@@ -654,7 +654,7 @@ function updateQuestCompass() {
         // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
         if (typeof QuestSystemModule !== 'undefined') {
             activeQuests.forEach(q => {
-                // 1. Спавн предмета для FETCH (как было)
+                // 1. Спавн предмета для FETCH
                 if (q.isActive && !q.isCompleted && 
                     q.type === 'FETCH' && 
                     q.target.targetX === gx && 
@@ -662,30 +662,44 @@ function updateQuestCompass() {
                     spawnQuestItem(q);
                 }
 
-                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT (ИСПРАВЛЕНО)
-                // Спавним книги в ЛЮБОМ подземелье, если квест активен
+                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
                 if (q.isActive && !q.isCompleted && 
                    (q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
                     q.target.itemType === 'book') {
-                    
-                    // Спавним столько книг, сколько нужно для квеста (или хотя бы 1-2, чтобы не захламлять)
                     const booksToSpawn = Math.min(q.maxProgress, 3); 
                     for(let i=0; i<booksToSpawn; i++) {
                         spawnScholarBook(q);
                     }
                 }
 
-                // 3. Проверка прогресса для DIGGER (как было)
+                // 3. ПРОВЕРКА DIGGER (Глубинный разведчик)
                 if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
+                    // Проверяем координаты подземелья и глубину
                     if (q.target.targetX === gx && 
                         q.target.targetY === gy && 
                         depth >= q.target.targetDepth) {
+                        
+                        // Завершаем квест
                         q.progress = q.maxProgress;
                         q.isCompleted = true;
+                        
                         RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${depth} в ${dungeonName}!`, "event");
+                        RenderModule.updateQuestBriefing(q); // Обновляем футер
+                        updateQuestCompass(); // Переключаем стрелку на "Награда"
+                    }
+                }
+
+                // 4. ПРОВЕРКА EXPLORE (Исследователь)
+                // Для EXPLORE цель - просто добраться до определенного подземелья (любой глубины)
+                if (q.isActive && !q.isCompleted && q.type === 'EXPLORE') {
+                     if (q.target.targetX === gx && q.target.targetY === gy) {
+                        q.progress = q.maxProgress;
+                        q.isCompleted = true;
+                        
+                        RenderModule.log(`🏆 Квест выполнен: Вы исследовали ${dungeonName}!`, "event");
                         RenderModule.updateQuestBriefing(q);
                         updateQuestCompass();
-                    }
+                     }
                 }
             });
         }
