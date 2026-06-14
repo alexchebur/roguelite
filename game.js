@@ -1400,7 +1400,19 @@ function updateQuestCompass() {
             return;
         }
 
+        // Внутри processTurn, после проверки стен (MapModule.isWall), но до движения
+        // ...
         if (MapModule.isWall(nx, ny)) return;
+
+        // === ПРОВЕРКА ВХОДА В МАГАЗИН ===
+        if (window.currentShopCoords && window.currentShopCoords.length > 0) {
+            const inShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
+            if (inShop && !isShopOpen) {
+                openShop();
+                return; // Прерываем ход, открываем окно
+            }
+        }
+        // ... далее стандартная проверка врагов и движение
         
         // Проверка столкновения с боссом (учитываем его размер 2x2)
         const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
