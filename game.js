@@ -247,7 +247,72 @@ const GameModule = (function() {
             closeShop();
         }
     }
-    
+    // === ПОКУПКА ПРЕДМЕТА ===
+    function buyItem(index) {
+        if (!currentMerchantInv || !player) return;
+        const item = currentMerchantInv.items[index];
+        
+        if (!item) {
+            RenderModule.log("Этот слот пуст.", "info");
+            return;
+        }
+
+        if (player.gold >= item.price) {
+            player.gold -= item.price;
+            currentMerchantInv.gold += item.price;
+            
+            // Удаляем у торговца, добавляем игроку
+            currentMerchantInv.items.splice(index, 1);
+            player.inventory.push(item);
+            
+            RenderModule.log(`Куплено: ${item.name} за ${item.price} золотых.`, "loot");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
+        } else {
+            RenderModule.log("Недостаточно золота!", "combat");
+        }
+    }
+
+    // === ПРОДАЖА ПРЕДМЕТА ===
+    function sellItem(index) {
+        if (!player) return;
+        const item = player.inventory[index];
+        
+        if (!item) {
+            RenderModule.log("Этот слот пуст.", "info");
+            return;
+        }
+
+        // Нельзя продавать квестовые предметы
+        if (item.isQuestItem) {
+            RenderModule.log("Это квестовый предмет, его нельзя продать!", "combat");
+            return;
+        }
+
+        // Цена продажи: 50% от цены покупки или базовая оценка
+        const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
+
+        if (currentMerchantInv.gold >= sellPrice) {
+            player.gold += sellPrice;
+            currentMerchantInv.gold -= sellPrice;
+            
+            player.inventory.splice(index, 1);
+            
+            RenderModule.log(`Продано: ${item.name} за ${sellPrice} золотых.`, "loot");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
+        } else {
+            RenderModule.log("У торговца недостаточно золота!", "combat");
+        }
+    }
+
+    // === ЗАКРЫТИЕ МАГАЗИНА ===
+    function closeShop() {
+        isShopOpen = false;
+        currentMerchantInv = null;
+        RenderModule.requestRedraw(); // Вернуть обычную отрисовку карты
+        RenderModule.log("Вы покинули лавку.", "info");
+    }    
 // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule) ===
 function tryGiveQuest(npc) {
     if (typeof QuestSystemModule === 'undefined') return false;
@@ -1067,6 +1132,13 @@ function updateQuestCompass() {
 
     function handleInput(e) {
         // === ЧИТ-КОД: ENTER для восстановления HP ===
+        // === ЧИТ-КОД И ESCAPE ===
+        if (e.key === "Escape") {
+            if (isShopOpen) {
+                closeShop();
+                return;
+            }
+        }
         if (e.key === "Enter") {
             e.preventDefault();
             if (player && player.hp > 0) {
