@@ -30,6 +30,8 @@ const GameModule = (function() {
     // === Глобальные координаты ===
     let currentLocData = null;
     let currentWorldTrend = null;
+    let isShopOpen = false;
+    let currentMerchantInv = null;
 
     async function init() {
         try {
@@ -83,6 +85,12 @@ const GameModule = (function() {
 
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
+        // 1. Если открыт магазин, обрабатываем клик по товарам
+        if (isShopOpen) {
+            handleShopClick(clientX, clientY);
+            return;
+        }
+
         if (!player || gameMode !== 'dungeon') return;
 
         const canvas = document.querySelector("#map-container canvas");
@@ -105,7 +113,7 @@ const GameModule = (function() {
         const wx = sx + cam.x;
         const wy = sy + cam.y;
 
-        // 1. Враги
+        // 2. Враги
         const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
             const weapon = player.equipment.weapon;
@@ -134,7 +142,7 @@ const GameModule = (function() {
             return;
         }
 
-        // 2. NPC (Диалог или Квест)
+        // 3. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
             if (npc.isQuestGiver) {
@@ -148,7 +156,7 @@ const GameModule = (function() {
             return;
         }
 
-        // 3. Предметы
+        // 4. Предметы
         const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
              let details = " ";
@@ -167,6 +175,137 @@ const GameModule = (function() {
         }
     }
 
+    // === ЛОГИКА МАГАЗИНА ===
+
+    // === ОТКРЫТИЕ МАГАЗИНА ===
+    function openShop() {
+        if (isShopOpen) return;
+        
+        // Генерируем инвентарь торговца на основе текущей глубины/уровня мира
+        // Если мы в городе (depth 0), используем 1 для баланса, иначе текущую глубину
+        const depth = currentDepth > 0 ? currentDepth : 1;
+        const merchantGold = 500 + (depth * 100);
+        
+        currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
+        isShopOpen = true;
+        
+        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+        RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
+    }
+
+    // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
+    function handleShopClick(clientX, clientY) {
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        const winW = canvas.width * 0.9;
+        const winH = canvas.height * 0.8;
+        const winX = (canvas.width - winW) / 2;
+        const winY = (canvas.height - winH) / 2;
+
+        // Проверка: клик вне окна закрывает магазин
+        if (clickX < winX || clickX > winX + winW || clickY < winY || clickY > winY + winH) {
+            closeShop();
+            return;
+        }
+
+        const midX = canvas.width / 2;
+        const lineHeight = 20;
+        const startY = winY + 100;
+
+        // Определяем индекс предмета по Y
+        const relativeY = clickY - startY;
+        const index = Math.floor(relativeY / (lineHeight + 5));
+
+        if (index < 0 || index >= 15) return; // Клик вне списка предметов
+
+        // Левая колонка (Покупка)
+        if (clickX < midX) {
+            buyItem(index);
+        } 
+        // Правая колонка (Продажа)
+        else {
+            sellItem(index);
+        }
+    }
+
+    // === ПОКУПКА ПРЕДМЕТА ===
+    function buyItem(index) {
+        if (!currentMerchantInv || !player) return;
+        const item = currentMerchantInv.items[index];
+        
+        if (!item) {
+            RenderModule.log("Этот слот пуст.", "info");
+            return;
+        }
+
+        if (player.gold >= item.price) {
+            player.gold -= item.price;
+            currentMerchantInv.gold += item.price;
+            
+            // Удаляем у торговца, добавляем игроку
+            currentMerchantInv.items.splice(index, 1);
+            player.inventory.push(item);
+            
+            RenderModule.log(`Куплено: ${item.name} за ${item.price} золотых.`, "loot");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
+        } else {
+            RenderModule.log("Недостаточно золота!", "combat");
+        }
+    }
+
+    // === ПРОДАЖА ПРЕДМЕТА ===
+    function sellItem(index) {
+        if (!player) return;
+        const item = player.inventory[index];
+        
+        if (!item) {
+            RenderModule.log("Этот слот пуст.", "info");
+            return;
+        }
+
+        // Нельзя продавать квестовые предметы
+        if (item.isQuestItem) {
+            RenderModule.log("Это квестовый предмет, его нельзя продать!", "combat");
+            return;
+        }
+
+        // Цена продажи: 50% от цены покупки или базовая оценка
+        const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
+
+        if (currentMerchantInv.gold >= sellPrice) {
+            player.gold += sellPrice;
+            currentMerchantInv.gold -= sellPrice;
+            
+            player.inventory.splice(index, 1);
+            // Можно добавить предмет обратно торговцу, если хотим экономику замкнутого цикла
+            // currentMerchantInv.items.push(item); 
+            
+            RenderModule.log(`Продано: ${item.name} за ${sellPrice} золотых.`, "loot");
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
+        } else {
+            RenderModule.log("У торговца недостаточно золота!", "combat");
+        }
+    }
+
+    // === ЗАКРЫТИЕ МАГАЗИНА ===
+    function closeShop() {
+        isShopOpen = false;
+        currentMerchantInv = null;
+        RenderModule.requestRedraw(); // Вернуть обычную отрисовку карты
+        RenderModule.log("Вы покинули лавку.", "info");
+    }
+
+    
 // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule) ===
 function tryGiveQuest(npc) {
     if (typeof QuestSystemModule === 'undefined') return false;
