@@ -685,6 +685,7 @@ function updateQuestCompass() {
 
                 // 3. ПРОВЕРКА DIGGER (Глубинный разведчик)
                 if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
+                    console.log(`DEBUG DIGGER: QuestTarget(${q.target.targetX}, ${q.target.targetY}) vs Current(${gx}, ${gy}), Depth: ${depth} >= ${q.target.targetDepth}`);
                     // Проверяем координаты подземелья и глубину
                     if (q.target.targetX === gx && 
                         q.target.targetY === gy && 
