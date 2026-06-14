@@ -685,17 +685,18 @@ function updateQuestCompass() {
 
                 // 3. ПРОВЕРКА DIGGER (Глубинный разведчик)
                 if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
-                    console.log(`DEBUG DIGGER: QuestTarget(${q.target.targetX}, ${q.target.targetY}) vs Current(${gx}, ${gy}), Depth: ${depth} >= ${q.target.targetDepth}`);
                     // Проверяем координаты подземелья и глубину
+                    // ВАЖНО: currentDepth начинается с 0, а targetDepth - это "Уровень" (с 1)
+                    // Поэтому сравниваем (currentDepth + 1)
                     if (q.target.targetX === gx && 
                         q.target.targetY === gy && 
-                        depth >= q.target.targetDepth) {
+                        (currentDepth + 1) >= q.target.targetDepth) { 
                         
                         // Завершаем квест
                         q.progress = q.maxProgress;
                         q.isCompleted = true;
                         
-                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${depth} в ${dungeonName}!`, "event");
+                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${currentDepth + 1} в ${dungeonName}!`, "event");
                         RenderModule.updateQuestBriefing(q); // Обновляем футер
                         updateQuestCompass(); // Переключаем стрелку на "Награда"
                     }
