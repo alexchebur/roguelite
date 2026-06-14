@@ -617,6 +617,7 @@ const RenderModule = (function() {
         }
     }
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
+    // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -685,7 +686,6 @@ const RenderModule = (function() {
 
 
         // === ПРАВАЯ КОЛОНКА (Инвентарь игрока) ===
-        // Получаем игрока через GameModule, так как render не хранит состояние
         if (typeof GameModule !== 'undefined') {
             const player = GameModule.getPlayer();
             if (player) {
@@ -698,7 +698,6 @@ const RenderModule = (function() {
                     ctx.fillStyle = item.color;
                     ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 20, y);
                     
-                    // Цена продажи (50% от цены покупки или базовая оценка)
                     const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
                     ctx.fillStyle = '#aaa';
                     ctx.fillText(`Продать: ${sellPrice} зл.`, ctx.canvas.width - winX - 20, y + 12);
@@ -706,19 +705,34 @@ const RenderModule = (function() {
                     y += lineHeight + 5;
                 });
 
-                // Золото игрока
                 ctx.fillStyle = '#ffd700';
                 ctx.font = 'bold 14px Consolas, monospace';
                 ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 20, winY + winH - 20);
             }
         }
 
-        // Подсказка
-        ctx.fillStyle = '#8b949e';
-        ctx.font = '12px Consolas, monospace';
+        // === КНОПКА "ВЫЙТИ" (Внизу по центру) ===
+        const btnText = "❌ ВЫЙТИ";
+        ctx.font = 'bold 14px Consolas, monospace';
+        const textMetrics = ctx.measureText(btnText);
+        const btnW = textMetrics.width + 20;
+        const btnH = 30;
+        const btnX = (ctx.canvas.width - btnW) / 2;
+        const btnY = winY + winH - 40; // Чуть выше самого низа окна
+
+        // Фон кнопки
+        ctx.fillStyle = '#da3633'; // Красный цвет опасности/выхода
+        ctx.fillRect(btnX, btnY, btnW, btnH);
+        
+        // Текст кнопки
+        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
-        ctx.fillText("Кликните на предмет для покупки/продажи. ESC или клик вне окна для выхода.", ctx.canvas.width / 2, winY + winH - 5);
-    }    
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btnText, ctx.canvas.width / 2, btnY + btnH / 2);
+
+        // Сохраняем координаты кнопки в глобальную переменную для обработки клика
+        window.shopExitButton = { x: btnX, y: btnY, w: btnW, h: btnH };
+    }
     
     return {
         init,
