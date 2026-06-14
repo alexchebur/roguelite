@@ -251,6 +251,7 @@ const RenderModule = (function() {
         });
 
         // 1. РИСУЕМ ТАЙЛЫ
+        // 1. РИСУЕМ ТАЙЛЫ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
@@ -261,12 +262,23 @@ const RenderModule = (function() {
                 const isVisible = visible.has(`${wx},${wy}`);
                 let ch, fg;
 
+                // === НОВОЕ: ПРОВЕРКА НА МАГАЗИН ===
+                // Проверяем, есть ли глобальный массив координат магазина и входит ли текущая клетка в него
+                const isShopTile = window.currentShopCoords && window.currentShopCoords.some(pos => pos.x === wx && pos.y === wy);
+
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
                     fg = isVisible ? dtype.wallColor : '#222';
                 } else {
-                    ch = dtype.floorChar;
-                    fg = isVisible ? dtype.floorColor : '#111';
+                    // Если это пол магазина, меняем цвет
+                    if (isShopTile) {
+                        ch = dtype.floorChar;
+                        // Используем насыщенный бордовый/коричневый цвет для пола лавки
+                        fg = isVisible ? '#8B4513' : '#3e1f09'; 
+                    } else {
+                        ch = dtype.floorChar;
+                        fg = isVisible ? dtype.floorColor : '#111';
+                    }
                 }
 
                 if (MapModule.stairsUp && wx === MapModule.stairsUp.x && wy === MapModule.stairsUp.y) {
@@ -280,7 +292,6 @@ const RenderModule = (function() {
                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
-
         // 2. ПРЕДМЕТЫ
         if (items) {
             items.forEach(i => {
@@ -605,7 +616,110 @@ const RenderModule = (function() {
             redrawCallback();
         }
     }
+    // === ОТРИСОВКА ОКНА МАГАЗИНА ===
+    function drawShopWindow(merchantInv, playerGold) {
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
 
+        // Затемнение фона
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Параметры окна
+        const winW = ctx.canvas.width * 0.9;
+        const winH = ctx.canvas.height * 0.8;
+        const winX = (ctx.canvas.width - winW) / 2;
+        const winY = (ctx.canvas.height - winH) / 2;
+        
+        // Фон окна
+        ctx.fillStyle = '#161b22';
+        ctx.strokeStyle = '#d29922'; // Золотая рамка
+        ctx.lineWidth = 2;
+        ctx.fillRect(winX, winY, winW, winH);
+        ctx.strokeRect(winX, winY, winW, winH);
+
+        // Заголовок
+        ctx.fillStyle = '#d29922';
+        ctx.font = 'bold 20px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText("🏪 ЛАВКА ТОРГОВЦА", ctx.canvas.width / 2, winY + 30);
+
+        // Разделительная линия
+        const midX = ctx.canvas.width / 2;
+        ctx.beginPath();
+        ctx.moveTo(midX, winY + 50);
+        ctx.lineTo(midX, winY + winH - 50);
+        ctx.strokeStyle = '#30363d';
+        ctx.stroke();
+
+        // Заголовки колонок
+        ctx.font = '14px Consolas, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#fff';
+        ctx.fillText("ТОВАРЫ", winX + 20, winY + 70);
+        ctx.textAlign = 'right';
+        ctx.fillText("ВАШ ИНВЕНТАРЬ", ctx.canvas.width - winX - 20, winY + 70);
+
+        // === ЛЕВАЯ КОЛОНКА (Товары торговца) ===
+        ctx.textAlign = 'left';
+        let y = winY + 100;
+        const lineHeight = 20;
+        const maxItemsPerCol = 15;
+
+        merchantInv.items.slice(0, maxItemsPerCol).forEach((item, index) => {
+            if (y > winY + winH - 60) return;
+            
+            ctx.fillStyle = item.color;
+            ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 20, y);
+            
+            ctx.fillStyle = '#aaa';
+            ctx.fillText(`${item.price} зл.`, winX + 20, y + 12);
+            
+            y += lineHeight + 5;
+        });
+
+        // Золото торговца
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 14px Consolas, monospace';
+        ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 20, winY + winH - 20);
+
+
+        // === ПРАВАЯ КОЛОНКА (Инвентарь игрока) ===
+        // Получаем игрока через GameModule, так как render не хранит состояние
+        if (typeof GameModule !== 'undefined') {
+            const player = GameModule.getPlayer();
+            if (player) {
+                ctx.textAlign = 'right';
+                y = winY + 100;
+                
+                player.inventory.slice(0, maxItemsPerCol).forEach((item, index) => {
+                    if (y > winY + winH - 60) return;
+
+                    ctx.fillStyle = item.color;
+                    ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 20, y);
+                    
+                    // Цена продажи (50% от цены покупки или базовая оценка)
+                    const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
+                    ctx.fillStyle = '#aaa';
+                    ctx.fillText(`Продать: ${sellPrice} зл.`, ctx.canvas.width - winX - 20, y + 12);
+                    
+                    y += lineHeight + 5;
+                });
+
+                // Золото игрока
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 14px Consolas, monospace';
+                ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 20, winY + winH - 20);
+            }
+        }
+
+        // Подсказка
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '12px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText("Кликните на предмет для покупки/продажи. ESC или клик вне окна для выхода.", ctx.canvas.width / 2, winY + winH - 5);
+    }    
+    
     return {
         init,
         draw,
