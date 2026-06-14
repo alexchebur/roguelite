@@ -624,23 +624,28 @@ const RenderModule = (function() {
     }
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
+    // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
+
+        // === СБРАСЫВАЕМ ЗОНЫ КЛИКА ПЕРЕД ОТРИСОВКОЙ ===
+        window.shopClickAreas = []; 
 
         // Затемнение фона
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Параметры окна (УВЕЛИЧИЛИ ВЫСОТУ ДО 0.9)
-        const winW = ctx.canvas.width * 0.95; // Чуть шире
-        const winH = ctx.canvas.height * 0.9; 
+        // Параметры окна
+        const winW = ctx.canvas.width * 0.95;
+        const winH = ctx.canvas.height * 0.9;
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
+        const midX = ctx.canvas.width / 2;
         
-        // Фон окна
+        // Фон окна и рамка
         ctx.fillStyle = '#161b22';
-        ctx.strokeStyle = '#d29922'; // Золотая рамка
+        ctx.strokeStyle = '#d29922';
         ctx.lineWidth = 2;
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
@@ -648,82 +653,79 @@ const RenderModule = (function() {
         // === ЗАГОЛОВОК И КНОПКА ВЫХОДА ===
         ctx.font = 'bold 16px Consolas, monospace';
         ctx.textBaseline = 'middle';
-        
-        // Текст заголовка
         const titleText = "🏪 ЛАВКА ТОРГОВЦА";
         const titleWidth = ctx.measureText(titleText).width;
         
-        // Рисуем заголовок по центру (с учетом места под кнопку)
         ctx.fillStyle = '#d29922';
         ctx.textAlign = 'center';
         ctx.fillText(titleText, ctx.canvas.width / 2, winY + 25);
 
-        // Кнопка "ВЫЙТИ" (справа от заголовка)
+        // Кнопка "ВЫЙТИ"
         const btnText = "❌ ВЫЙТИ";
         ctx.font = 'bold 12px Consolas, monospace';
         const btnWidth = ctx.measureText(btnText).width + 16;
         const btnHeight = 24;
-        
-        // Координаты кнопки: правее центра, на той же высоте что и заголовок
         const btnX = (ctx.canvas.width / 2) + (titleWidth / 2) + 20;
-        const btnY = winY + 13; // Центрируем относительно строки заголовка
+        const btnY = winY + 13;
 
-        // Рисуем кнопку
         ctx.fillStyle = '#da3633';
         ctx.fillRect(btnX, btnY - btnHeight/2, btnWidth, btnHeight);
-        
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(btnText, btnX + btnWidth / 2, btnY);
 
-        // Сохраняем координаты кнопки для клика
-        window.shopExitButton = { 
-            x: btnX, 
-            y: btnY - btnHeight/2, 
-            w: btnWidth, 
-            h: btnHeight 
-        };
+        window.shopExitButton = { x: btnX, y: btnY - btnHeight/2, w: btnWidth, h: btnHeight };
 
-        // Разделительная линия под заголовком
-        const midX = ctx.canvas.width / 2;
+        // Разделительная линия
         ctx.beginPath();
         ctx.moveTo(midX, winY + 45);
         ctx.lineTo(midX, winY + winH - 40);
         ctx.strokeStyle = '#30363d';
         ctx.stroke();
 
-        // Заголовки колонок (ШРИФТ 12px)
-        ctx.font = '12px Consolas, monospace';
+        // Заголовки колонок
+        ctx.font = 'bold 12px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#fff';
-        ctx.fillText("ТОВАРЫ", winX + 15, winY + 65);
+        ctx.fillText("ТОВАРЫ", winX + 15, winY + 60);
         ctx.textAlign = 'right';
-        ctx.fillText("ВАШ ИНВЕНТАРЬ", ctx.canvas.width - winX - 15, winY + 65);
+        ctx.fillText("ВАШ ИНВЕНТАРЬ", ctx.canvas.width - winX - 15, winY + 60);
+
+        // === НАСТРОЙКИ СПИСКА (Уменьшили шрифт до 11px, как в UI) ===
+        ctx.font = '11px Consolas, monospace';
+        ctx.textBaseline = 'alphabetic'; // Стандартное поведение
+        let y = winY + 85; // Стартовая позиция (базовая линия первого текста)
+        const itemHeight = 18; // Высота строки (11px шрифт + 7px отступ)
+        const maxItemsPerCol = 25; 
 
         // === ЛЕВАЯ КОЛОНКА (Товары торговца) ===
         ctx.textAlign = 'left';
-        let y = winY + 85; // Стартовая позиция списка
-        const lineHeight = 18; // Высота строки чуть меньше
-        const maxItemsPerCol = 25; // Увеличили лимит отображения
-
         merchantInv.items.slice(0, maxItemsPerCol).forEach((item, index) => {
             if (y > winY + winH - 50) return;
             
             ctx.fillStyle = item.color;
             ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 15, y);
-            
             ctx.fillStyle = '#aaa';
             ctx.fillText(`${item.price} зл.`, winX + 15, y + 12);
             
-            y += lineHeight + 4;
+            // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА (y - 12, так как y это базовая линия, а не верх текста)
+            window.shopClickAreas.push({
+                x: winX,
+                y: y - 14, 
+                w: midX - winX, 
+                h: itemHeight,
+                action: 'buy',
+                index: index
+            });
+            
+            y += itemHeight;
         });
 
-        // Золото торговца (внизу слева)
+        // Золото торговца
         ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 12px Consolas, monospace';
+        ctx.font = 'bold 11px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 15, winY + winH - 15);
-
 
         // === ПРАВАЯ КОЛОНКА (Инвентарь игрока) ===
         if (typeof GameModule !== 'undefined') {
@@ -738,17 +740,25 @@ const RenderModule = (function() {
                     ctx.fillStyle = item.color;
                     ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
                     
-                    // Цена продажи (БЕЗ слова "Продать")
                     const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
                     ctx.fillStyle = '#aaa';
                     ctx.fillText(`${sellPrice} зл.`, ctx.canvas.width - winX - 15, y + 12);
                     
-                    y += lineHeight + 4;
+                    // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА
+                    window.shopClickAreas.push({
+                        x: midX,
+                        y: y - 14,
+                        w: ctx.canvas.width - winX - midX,
+                        h: itemHeight,
+                        action: 'sell',
+                        index: index
+                    });
+                    
+                    y += itemHeight;
                 });
 
-                // Золото игрока (внизу справа)
                 ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 12px Consolas, monospace';
+                ctx.font = 'bold 11px Consolas, monospace';
                 ctx.textAlign = 'right';
                 ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 15, winY + winH - 15);
             }
