@@ -393,16 +393,15 @@ function updateQuestCompass() {
     const activeQuest = !turnInQuest ? activeQuests.find(q => !q.isCompleted) : null;
 
     let targetX, targetY, color;
+    let isGlobalQuest = false; // Флаг для квестов без конкретной локации (BOUNTY/SCHOLAR)
 
     if (turnInQuest) {
-        // Цель: Город, где взят квест (используем originX/originY из объекта квеста)
+        // Цель: Город, где взят квест
         if (turnInQuest.originX !== undefined && turnInQuest.originY !== undefined) {
             targetX = turnInQuest.originX;
             targetY = turnInQuest.originY;
             color = "#00ff00"; // Зеленый для награды
         } else {
-            console.warn("⚠️ Ошибка: Квест на сдачу есть, но originX/originY отсутствуют!");
-            // Показываем обычные координаты, чтобы интерфейс не ломался
             coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
             return;
         }
@@ -411,18 +410,30 @@ function updateQuestCompass() {
         targetX = activeQuest.target.targetX;
         targetY = activeQuest.target.targetY;
         
-        if (activeQuest.type === 'HUNT') color = "#ff5555";
-        else if (activeQuest.type === 'FETCH') color = "#ffd700";
-        else color = "#58a6ff";
+        // Проверка: если это квест типа BOUNTY или SCHOLAR (координат нет)
+        if (targetX === null || targetY === null) {
+            isGlobalQuest = true;
+        } else {
+            // Обычные квесты с локацией
+            if (activeQuest.type === 'HUNT') color = "#ff5555";
+            else if (activeQuest.type === 'FETCH') color = "#ffd700";
+            else color = "#58a6ff";
+        }
     }
 
-    if (targetX !== undefined && targetY !== undefined) {
+    if (isGlobalQuest) {
+        // Для BOUNTY/SCHOLAR показываем статус выполнения вместо стрелки
+        const label = activeQuest.type === 'BOUNTY' ? "🏹 Охота" : "📚 Чтение";
+        coordsEl.innerHTML = `<span style="color:#58a6ff">${label}: ${activeQuest.progress}/${activeQuest.maxProgress}</span>`;
+    } 
+    else if (targetX !== undefined && targetY !== undefined) {
+        // Для квестов с локацией рисуем стрелку
         const arrow = getQuestArrow(targetX, targetY, playerPos.x, playerPos.y);
         const label = turnInQuest ? "🏆 Награда" : "📜 Квест";
         
         coordsEl.innerHTML = `<span style="color:${color}">${label}: ${arrow}</span>`;
     } else {
-        // Если квестов нет или ошибка данных, показываем координаты
+        // Если квестов нет
         coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
     }
 }
