@@ -216,13 +216,17 @@ const MapModule = (function() {
     function generateCityLayout(rand, width, height, density = 0.7) {
         const grid = Array(height).fill().map(() => Array(width).fill(1));
         const interiorCoords = []; 
+        const shopCoords = []; // <--- НОВОЕ: Координаты пола магазина
 
+        // 1. Очищаем карту (делаем все полом)
         for (let y = 1; y < height - 1; y++) {
             for (let x = 1; x < width - 1; x++) {
                 grid[y][x] = 0;
             }
         }
 
+        // 2. Генерируем здания и собираем их список, чтобы потом выбрать одно под магазин
+        const buildings = [];
         const STREET_W = 2;
         let y = 2; 
 
@@ -233,37 +237,68 @@ const MapModule = (function() {
             let x = 2; 
             while (x < width - 6) {
                 const bw = rand.int(5, 9); 
+                
+                // Пропускаем здание, если не хватает места или выпал шанс пропуска
                 if (rand.next() > density) {
                     x += bw + STREET_W;
                     continue;
                 }
                 if (x + bw + STREET_W >= width - 1) break;
 
-                for (let dy = 0; dy < bh; dy++) {
-                    for (let dx = 0; dx < bw; dx++) {
-                        const isPerimeter = (dy === 0 || dy === bh - 1 || dx === 0 || dx === bw - 1);
-                        const val = isPerimeter ? 1 : 0;
-                        grid[y + dy][x + dx] = val;
-                        if (val === 0) {
-                            interiorCoords.push({ x: x + dx, y: y + dy });
-                        }
-                    }
-                }
+                // Сохраняем параметры здания для последующей отрисовки
+                buildings.push({ x, y, w: bw, h: bh });
 
-                const side = rand.int(0, 3); 
-                let doorX = 0, doorY = 0;
-                if (side === 0) { doorX = x + rand.int(1, bw - 2); doorY = y; }
-                else if (side === 1) { doorX = x + bw - 1; doorY = y + rand.int(1, bh - 2); }
-                else if (side === 2) { doorX = x + rand.int(1, bw - 2); doorY = y + bh - 1; }
-                else { doorX = x; doorY = y + rand.int(1, bh - 2); }
-                
-                grid[doorY][doorX] = 0; 
                 x += bw + STREET_W;
             }
             y += bh + STREET_W;
         }
+
+        // 3. Выбираем ОДНО случайное здание под МАГАЗИН
+        let shopBuildingIndex = -1;
+        if (buildings.length > 0) {
+            shopBuildingIndex = rand.int(0, buildings.length - 1);
+        }
+
+        // 4. Отрисовываем стены зданий и заполняем списки координат
+        buildings.forEach((b, index) => {
+            const isShop = (index === shopBuildingIndex);
+
+            for (let dy = 0; dy < b.h; dy++) {
+                for (let dx = 0; dx < b.w; dx++) {
+                    const isPerimeter = (dy === 0 || dy === b.h - 1 || dx === 0 || dx === b.w - 1);
+                    const val = isPerimeter ? 1 : 0; // 1 = стена, 0 = пол
+                    
+                    const wx = b.x + dx;
+                    const wy = b.y + dy;
+                    
+                    grid[wy][wx] = val;
+
+                    // Если это пол (внутренность)
+                    if (val === 0) {
+                        if (isShop) {
+                            // Если это магазин, добавляем в shopCoords
+                            shopCoords.push({ x: wx, y: wy });
+                        } else {
+                            // Иначе в обычный interiorCoords
+                            interiorCoords.push({ x: wx, y: wy });
+                        }
+                    }
+                }
+            }
+
+            // 5. Делаем дверь (как в оригинале)
+            const side = rand.int(0, 3); 
+            let doorX = 0, doorY = 0;
+            if (side === 0) { doorX = b.x + rand.int(1, b.w - 2); doorY = b.y; }
+            else if (side === 1) { doorX = b.x + b.w - 1; doorY = b.y + rand.int(1, b.h - 2); }
+            else if (side === 2) { doorX = b.x + rand.int(1, b.w - 2); doorY = b.y + b.h - 1; }
+            else { doorX = b.x; doorY = b.y + rand.int(1, b.h - 2); }
+            
+            grid[doorY][doorX] = 0; 
+        });
         
-        return { grid, interiorCoords };
+        // Возвращаем shopCoords вместе с остальными данными
+        return { grid, interiorCoords, shopCoords };
     }
 
     function generateCity(gx, gy, depth) {
@@ -271,11 +306,15 @@ const MapModule = (function() {
         const rand = new SeededRandom(seedVal);
         const density = rand.next() * 0.3 + 0.3; 
         
+        // 1. Генерируем планировку (здания, улицы, магазин)
         const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
         
         currentMapData = layoutResult.grid;
         currentMapInteriorCoords = layoutResult.interiorCoords || [];
         
+        // === НОВОЕ: Сохраняем координаты магазина для отрисовки ===
+        window.currentShopCoords = layoutResult.shopCoords || [];
+
         currentDungeonType = { 
             name: 'city',
             wallChar: getChar('WALL_CITY'),
@@ -284,6 +323,7 @@ const MapModule = (function() {
             floorColor: '#374151' 
         };
     
+        // 2. Определяем точку входа/выхода (лестницу вверх)
         const upSeed = `up_city_${gx}_${gy}_${depth}`;
         const rng = new Math.seedrandom(upSeed);
         const w = DataModule.MAP_WIDTH;
