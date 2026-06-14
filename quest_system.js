@@ -61,7 +61,8 @@ const QuestSystemModule = (function() {
                 const ty = gy + dy;
                 if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
                     const poi = GlobalMapModule.getPOI(tx, ty);
-                    if (poi && poi.type === poiType) candidates.push(poi);
+                    // Ищем и 'dungeon', и 'dungeon_entrance'
+                    if (poi && (poi.type === 'dungeon' || poi.type === 'dungeon_entrance')) candidates.push(poi);
                 }
             }
         }
@@ -74,8 +75,6 @@ const QuestSystemModule = (function() {
         let targetData = {};
 
         // 1. Определение локации (Подземелья)
-        // Для большинства квестов нужна конкретная локация. 
-        // Для BOUNTY и SCHOLAR локация может быть не так важна, но мы её зададим для единообразия UI.
         const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
         let targetPoi = null;
         
@@ -123,34 +122,26 @@ const QuestSystemModule = (function() {
             targetData.count = Math.max(1, Math.floor(baseCount * Math.sqrt(multiplier)));
         }
         else if (type === 'DIGGER') {
-            // Цель: добраться до определенной глубины
-            // Глубина зависит от сложности/уровня игрока, но не слишком высокая
             targetData.targetDepth = rng.int(2, 5); 
         }
         else if (type === 'COLLECT') {
-            // Цель: собрать предметы (зелья, книги, еда)
             const collectibleTypes = ['potion_hp', 'book', 'food'];
-            // Фильтруем типы предметов, которые существуют в игре
             const possibleItems = DataModule.ITEM_TYPES.filter(i => collectibleTypes.includes(i.type));
             const itemTemplate = pickRandom(rng, possibleItems);
             
             targetData.itemName = itemTemplate.baseName;
             targetData.itemType = itemTemplate.type;
-            targetData.count = rng.int(2, 4); // Нужно собрать 2-4 шт.
+            targetData.count = rng.int(2, 4);
         }
         else if (type === 'BOUNTY') {
-            // Цель: убить конкретных врагов (в любом месте или в указанном подземелье)
             const enemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
             const enemyTemplate = pickRandom(rng, enemies);
             
             targetData.enemyName = enemyTemplate.name;
-            // Для Bounty количество обычно меньше, чем для Hunt, так как это "элитная" цель
             targetData.count = rng.int(1, 3); 
         }
         else if (type === 'SCHOLAR') {
-            // Цель: прочитать книги
             targetData.count = rng.int(1, 3);
-            // Локация не важна, но оставим для отображения в UI
             targetData.locationName = "древних библиотеках";
         }
 
@@ -158,7 +149,6 @@ const QuestSystemModule = (function() {
     }
 
     function createQuest(gx, gy, questIndex) {
-        // Добавляем новые типы квестов
         const types = ['FETCH', 'HUNT', 'EXPLORE', 'DIGGER', 'COLLECT', 'BOUNTY', 'SCHOLAR'];
         const rng = new SeededRandom(createSeed(gx, gy, questIndex));
         const type = pickRandom(rng, types);
@@ -190,12 +180,11 @@ const QuestSystemModule = (function() {
             locationName: targetData.locationName,
             count: targetData.count,
             gold: finalGold,
-            depth: targetData.targetDepth || recommendedDepth // Используем targetDepth для DIGGER, если он есть
+            depth: targetData.targetDepth || recommendedDepth
         };
         
         const briefing = formatBriefing(template, briefingData);
 
-        // Определяем максимальный прогресс в зависимости от типа квеста
         let maxProg = 1;
         if (type === 'HUNT' || type === 'COLLECT' || type === 'BOUNTY' || type === 'SCHOLAR') {
             maxProg = targetData.count || 1;
@@ -221,18 +210,20 @@ const QuestSystemModule = (function() {
 
         let updated = false;
 
-        // Проверка локации (для DIGGER, COLLECT, HUNT с привязкой)
+        // Проверка локации
         const isInCorrectLocation = (
-            !quest.target.targetX || // Если targetX нет (BOUNTY), считаем что мы "везде"
+            !quest.target.targetX || 
             (eventData.locX !== undefined && eventData.locX === quest.target.targetX && 
              eventData.locY !== undefined && eventData.locY === quest.target.targetY)
         );
 
         // === DIGGER (Глубинный разведчик) ===
-        if (quest.type === 'DIGGER' && eventData.type === 'depth') {
-            // Проверяем, что мы в том же подземелье
-            if (eventData.locX === quest.target.targetX && eventData.locY === quest.target.targetY) {
-                if (eventData.currentDepth >= quest.target.targetDepth) {
+        // Поддерживаем два типа событий: 'depth' (явное) и 'move' (если передали глубину)
+        if (quest.type === 'DIGGER') {
+            const currentDepth = eventData.currentDepth !== undefined ? eventData.currentDepth : (eventData.depth !== undefined ? eventData.depth : 0);
+            
+            if (eventData.type === 'depth' || eventData.type === 'move') {
+                 if (isInCorrectLocation && currentDepth >= quest.target.targetDepth) {
                     quest.progress = quest.maxProgress;
                     quest.isCompleted = true;
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
@@ -243,23 +234,20 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // === HUNT (Охота в конкретной локации) ===
+        // === HUNT ===
         if (quest.type === 'HUNT' && eventData.type === 'kill') {
-            if (eventData.enemyName === quest.target.enemyName) {
-                if (isInCorrectLocation) {
-                    quest.progress++;
-                    updated = true;
-                    if (typeof RenderModule !== 'undefined' && RenderModule.log) {
-                        RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
-                    }
+            if (eventData.enemyName === quest.target.enemyName && isInCorrectLocation) {
+                quest.progress++;
+                updated = true;
+                if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                    RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
                 }
             }
         }
 
-        // === BOUNTY (Охота за головами - в любом месте) ===
+        // === BOUNTY ===
         if (quest.type === 'BOUNTY' && eventData.type === 'kill') {
             if (eventData.enemyName === quest.target.enemyName) {
-                // Для BOUNTY локация не важна, убиваем где нашли
                 quest.progress++;
                 updated = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
@@ -268,16 +256,28 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // === FETCH (Найти один предмет) ===
+        // === FETCH ===
         if (quest.type === 'FETCH' && eventData.type === 'pickup') {
-            if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
-                updated = true; 
+            // Проверяем тип предмета и имя (для точности)
+            const isCorrectItem = (eventData.itemType === quest.target.itemType) && 
+                                  (!quest.target.itemName || (eventData.itemName && eventData.itemName.includes(quest.target.itemName)));
+            
+            if (isCorrectItem && isInCorrectLocation) {
+                quest.progress = quest.maxProgress; // Сразу ставим максимум
+                quest.isCompleted = true; // Сразу завершаем
+                updated = true;
+                if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                    RenderModule.log(`📦 Предмет для квеста найден!`, "info");
+                }
             }
         }
 
-        // === COLLECT (Собрать N предметов) ===
+        // === COLLECT ===
         if (quest.type === 'COLLECT' && eventData.type === 'pickup') {
-            if (eventData.itemType === quest.target.itemType && isInCorrectLocation) {
+            const isCorrectItem = (eventData.itemType === quest.target.itemType) && 
+                                  (!quest.target.itemName || (eventData.itemName && eventData.itemName.includes(quest.target.itemName)));
+                                  
+            if (isCorrectItem && isInCorrectLocation) {
                 quest.progress++;
                 updated = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
@@ -286,7 +286,7 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // === SCHOLAR (Прочитать книги) ===
+        // === SCHOLAR ===
         if (quest.type === 'SCHOLAR' && eventData.type === 'read_book') {
             quest.progress++;
             updated = true;
@@ -295,7 +295,7 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // === EXPLORE (Исследование локации) ===
+        // === EXPLORE ===
         if (quest.type === 'EXPLORE' && eventData.type === 'move') {
             const dist = Math.abs(eventData.x - quest.target.targetX) + Math.abs(eventData.y - quest.target.targetY);
             if (dist <= 1) { 
@@ -305,8 +305,8 @@ const QuestSystemModule = (function() {
             }
         }
 
-        // Финальная проверка завершения для типов с накопительным прогрессом
-        if ((quest.type === 'HUNT' || quest.type === 'FETCH' || quest.type === 'COLLECT' || quest.type === 'BOUNTY' || quest.type === 'SCHOLAR') && updated) {
+        // Финальная проверка завершения для накопительных квестов
+        if (updated && !quest.isCompleted) {
             if (quest.progress >= quest.maxProgress) {
                 quest.isCompleted = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
@@ -321,6 +321,7 @@ const QuestSystemModule = (function() {
     return {
         createQuest: createQuest,
         checkProgress: checkProgress,
+        calculateTargetParams: calculateTargetParams, // Экспортируем для использования в других модулях
         MAX_RADIUS: MAX_QUEST_RADIUS
     };
 
