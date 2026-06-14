@@ -363,15 +363,3 @@ const EntityModule = (function() {
         createMerchantInventory // <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
-    return {
-        createPlayer,
-        createEnemy,
-        createItem,
-        spawnEnemies,
-        spawnItems,
-        spawnGold,
-        spawnItemsInCity,
-        createBoss// <--- ДОБАВИТЬ ЭКСПОРТ
-    };
-})();
-
