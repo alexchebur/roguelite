@@ -626,9 +626,9 @@ const RenderModule = (function() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Параметры окна
-        const winW = ctx.canvas.width * 0.9;
-        const winH = ctx.canvas.height * 0.8;
+        // Параметры окна (УВЕЛИЧИЛИ ВЫСОТУ ДО 0.9)
+        const winW = ctx.canvas.width * 0.95; // Чуть шире
+        const winH = ctx.canvas.height * 0.9; 
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
         
@@ -639,50 +639,84 @@ const RenderModule = (function() {
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
 
-        // Заголовок
+        // === ЗАГОЛОВОК И КНОПКА ВЫХОДА ===
+        ctx.font = 'bold 16px Consolas, monospace';
+        ctx.textBaseline = 'middle';
+        
+        // Текст заголовка
+        const titleText = "🏪 ЛАВКА ТОРГОВЦА";
+        const titleWidth = ctx.measureText(titleText).width;
+        
+        // Рисуем заголовок по центру (с учетом места под кнопку)
         ctx.fillStyle = '#d29922';
-        ctx.font = 'bold 20px Consolas, monospace';
         ctx.textAlign = 'center';
-        ctx.fillText("🏪 ЛАВКА ТОРГОВЦА", ctx.canvas.width / 2, winY + 30);
+        ctx.fillText(titleText, ctx.canvas.width / 2, winY + 25);
 
-        // Разделительная линия
+        // Кнопка "ВЫЙТИ" (справа от заголовка)
+        const btnText = "❌ ВЫЙТИ";
+        ctx.font = 'bold 12px Consolas, monospace';
+        const btnWidth = ctx.measureText(btnText).width + 16;
+        const btnHeight = 24;
+        
+        // Координаты кнопки: правее центра, на той же высоте что и заголовок
+        const btnX = (ctx.canvas.width / 2) + (titleWidth / 2) + 20;
+        const btnY = winY + 13; // Центрируем относительно строки заголовка
+
+        // Рисуем кнопку
+        ctx.fillStyle = '#da3633';
+        ctx.fillRect(btnX, btnY - btnHeight/2, btnWidth, btnHeight);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(btnText, btnX + btnWidth / 2, btnY);
+
+        // Сохраняем координаты кнопки для клика
+        window.shopExitButton = { 
+            x: btnX, 
+            y: btnY - btnHeight/2, 
+            w: btnWidth, 
+            h: btnHeight 
+        };
+
+        // Разделительная линия под заголовком
         const midX = ctx.canvas.width / 2;
         ctx.beginPath();
-        ctx.moveTo(midX, winY + 50);
-        ctx.lineTo(midX, winY + winH - 50);
+        ctx.moveTo(midX, winY + 45);
+        ctx.lineTo(midX, winY + winH - 40);
         ctx.strokeStyle = '#30363d';
         ctx.stroke();
 
-        // Заголовки колонок
-        ctx.font = '14px Consolas, monospace';
+        // Заголовки колонок (ШРИФТ 12px)
+        ctx.font = '12px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#fff';
-        ctx.fillText("ТОВАРЫ", winX + 20, winY + 70);
+        ctx.fillText("ТОВАРЫ", winX + 15, winY + 65);
         ctx.textAlign = 'right';
-        ctx.fillText("ВАШ ИНВЕНТАРЬ", ctx.canvas.width - winX - 20, winY + 70);
+        ctx.fillText("ВАШ ИНВЕНТАРЬ", ctx.canvas.width - winX - 15, winY + 65);
 
         // === ЛЕВАЯ КОЛОНКА (Товары торговца) ===
         ctx.textAlign = 'left';
-        let y = winY + 100;
-        const lineHeight = 20;
-        const maxItemsPerCol = 15;
+        let y = winY + 85; // Стартовая позиция списка
+        const lineHeight = 18; // Высота строки чуть меньше
+        const maxItemsPerCol = 25; // Увеличили лимит отображения
 
         merchantInv.items.slice(0, maxItemsPerCol).forEach((item, index) => {
-            if (y > winY + winH - 60) return;
+            if (y > winY + winH - 50) return;
             
             ctx.fillStyle = item.color;
-            ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 20, y);
+            ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 15, y);
             
             ctx.fillStyle = '#aaa';
-            ctx.fillText(`${item.price} зл.`, winX + 20, y + 12);
+            ctx.fillText(`${item.price} зл.`, winX + 15, y + 12);
             
-            y += lineHeight + 5;
+            y += lineHeight + 4;
         });
 
-        // Золото торговца
+        // Золото торговца (внизу слева)
         ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 14px Consolas, monospace';
-        ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 20, winY + winH - 20);
+        ctx.font = 'bold 12px Consolas, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 15, winY + winH - 15);
 
 
         // === ПРАВАЯ КОЛОНКА (Инвентарь игрока) ===
@@ -690,48 +724,29 @@ const RenderModule = (function() {
             const player = GameModule.getPlayer();
             if (player) {
                 ctx.textAlign = 'right';
-                y = winY + 100;
+                y = winY + 85;
                 
                 player.inventory.slice(0, maxItemsPerCol).forEach((item, index) => {
-                    if (y > winY + winH - 60) return;
+                    if (y > winY + winH - 50) return;
 
                     ctx.fillStyle = item.color;
-                    ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 20, y);
+                    ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
                     
+                    // Цена продажи (БЕЗ слова "Продать")
                     const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
                     ctx.fillStyle = '#aaa';
-                    ctx.fillText(`Продать: ${sellPrice} зл.`, ctx.canvas.width - winX - 20, y + 12);
+                    ctx.fillText(`${sellPrice} зл.`, ctx.canvas.width - winX - 15, y + 12);
                     
-                    y += lineHeight + 5;
+                    y += lineHeight + 4;
                 });
 
+                // Золото игрока (внизу справа)
                 ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 14px Consolas, monospace';
-                ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 20, winY + winH - 20);
+                ctx.font = 'bold 12px Consolas, monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 15, winY + winH - 15);
             }
         }
-
-        // === КНОПКА "ВЫЙТИ" (Внизу по центру) ===
-        const btnText = "❌ ВЫЙТИ";
-        ctx.font = 'bold 14px Consolas, monospace';
-        const textMetrics = ctx.measureText(btnText);
-        const btnW = textMetrics.width + 20;
-        const btnH = 30;
-        const btnX = (ctx.canvas.width - btnW) / 2;
-        const btnY = winY + winH - 40; // Чуть выше самого низа окна
-
-        // Фон кнопки
-        ctx.fillStyle = '#da3633'; // Красный цвет опасности/выхода
-        ctx.fillRect(btnX, btnY, btnW, btnH);
-        
-        // Текст кнопки
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(btnText, ctx.canvas.width / 2, btnY + btnH / 2);
-
-        // Сохраняем координаты кнопки в глобальную переменную для обработки клика
-        window.shopExitButton = { x: btnX, y: btnY, w: btnW, h: btnH };
     }
     
     return {
