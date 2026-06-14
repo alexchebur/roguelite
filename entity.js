@@ -305,6 +305,64 @@ const EntityModule = (function() {
             lootType: 'boss_loot'
         };
     }
+
+        // === НОВАЯ ФУНКЦИЯ: Создание инвентаря торговца ===
+    function createMerchantInventory(depth, goldAmount) {
+        const items = [];
+        // Используем детерминированный сид на основе глубины и текущего времени (чтобы ассортимент менялся при перезаходе, но был стабилен в рамках сессии)
+        // Если хочешь полностью статичный магазин для каждой глубины, убери Date.now()
+        const rng = new Math.seedrandom(`merchant_${depth}_${Math.floor(Date.now() / 60000)}`); 
+        
+        // 1. Оружие и Броня (Экипировка)
+        const equipTemplates = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
+        // Количество зависит от глубины: минимум 5 предметов
+        const equipCount = 5 + Math.floor(depth / 2);
+        
+        for (let i = 0; i < equipCount; i++) {
+            const template = equipTemplates[Math.floor(rng() * equipTemplates.length)];
+            // Сила предмета растет с глубиной
+            const powerMult = 1.0 + (depth * 0.15);
+            const item = EntityModule.createItem(template, 0, 0, powerMult);
+            
+            // Расчет цены продажи: (Базовая ценность * 10) + (Глубина * 5)
+            // Это гарантирует, что крутые вещи стоят дорого
+            item.price = Math.floor((item.val * 10) + (depth * 10)); 
+            items.push(item);
+        }
+
+        // 2. Зелья и Еда (Расходники)
+        const consumableTemplates = DataModule.ITEM_TYPES.filter(i => 
+            i.type.includes('potion') || i.type === 'food'
+        );
+        const consumableCount = 8 + Math.floor(depth / 3);
+        
+        for (let i = 0; i < consumableCount; i++) {
+            const template = consumableTemplates[Math.floor(rng() * consumableTemplates.length)];
+            const item = EntityModule.createItem(template, 0, 0, 1.0);
+            
+            // Цена расходников зависит от их лечебной/боевой силы (val)
+            item.price = Math.floor(item.val * 3); 
+            items.push(item);
+        }
+
+        return {
+            items: items,
+            gold: goldAmount
+        };
+    }
+
+    return {
+        createPlayer,
+        createEnemy,
+        createItem,
+        spawnEnemies,
+        spawnItems,
+        spawnGold,
+        spawnItemsInCity,
+        createBoss,
+        createMerchantInventory // <--- ДОБАВИТЬ ЭКСПОРТ
+    };
+})();
     return {
         createPlayer,
         createEnemy,
