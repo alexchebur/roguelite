@@ -194,6 +194,7 @@ const GameModule = (function() {
     }
 
     // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
+    // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
     function handleShopClick(clientX, clientY) {
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
@@ -205,12 +206,22 @@ const GameModule = (function() {
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
 
+        // 1. ПРОВЕРКА КНОПКИ "ВЫЙТИ"
+        if (window.shopExitButton) {
+            const btn = window.shopExitButton;
+            if (clickX >= btn.x && clickX <= btn.x + btn.w && 
+                clickY >= btn.y && clickY <= btn.y + btn.h) {
+                closeShop();
+                return;
+            }
+        }
+
         const winW = canvas.width * 0.9;
         const winH = canvas.height * 0.8;
         const winX = (canvas.width - winW) / 2;
         const winY = (canvas.height - winH) / 2;
 
-        // Проверка: клик вне окна закрывает магазин
+        // Если клик вне окна магазина — тоже закрываем (как раньше)
         if (clickX < winX || clickX > winX + winW || clickY < winY || clickY > winY + winH) {
             closeShop();
             return;
