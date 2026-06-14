@@ -262,18 +262,24 @@ const RenderModule = (function() {
                 const isVisible = visible.has(`${wx},${wy}`);
                 let ch, fg;
 
-                // === НОВОЕ: ПРОВЕРКА НА МАГАЗИН ===
-                // Проверяем, есть ли глобальный массив координат магазина и входит ли текущая клетка в него
-                const isShopTile = window.currentShopCoords && window.currentShopCoords.some(pos => pos.x === wx && pos.y === wy);
+                // === ПРОВЕРКА НА МАГАЗИН ===
+                let shopDecor = null;
+                if (window.currentShopCoords) {
+                    const shopTile = window.currentShopCoords.find(pos => pos.x === wx && pos.y === wy);
+                    if (shopTile) {
+                        shopDecor = shopTile.decor;
+                    }
+                }
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
                     fg = isVisible ? dtype.wallColor : '#222';
                 } else {
-                    // Если это пол магазина, меняем цвет
-                    if (isShopTile) {
-                        ch = dtype.floorChar;
-                        // Используем насыщенный бордовый/коричневый цвет для пола лавки
+                    // Если это пол магазина
+                    if (shopDecor) {
+                        // Рисуем декоративный спрайт вместо обычного пола
+                        ch = shopDecor;
+                        // Делаем его чуть тусклее, чтобы он выглядел как часть пола/узора
                         fg = isVisible ? '#8B4513' : '#3e1f09'; 
                     } else {
                         ch = dtype.floorChar;
