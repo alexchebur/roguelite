@@ -216,7 +216,10 @@ const MapModule = (function() {
     function generateCityLayout(rand, width, height, density = 0.7) {
         const grid = Array(height).fill().map(() => Array(width).fill(1));
         const interiorCoords = []; 
-        const shopCoords = []; // <--- НОВОЕ: Координаты пола магазина
+        const shopCoords = []; // Теперь это массив объектов {x, y, decor}
+
+        // Список символов для декора магазина (оружие, броня, зелья из sprite_registry)
+        const shopDecorSymbols = ['/', 'P', ')', '*', 'Y', '(', '=', '|', ']', '[', '}', '{', 'H', '!', '+', '%', '~', '?'];
 
         // 1. Очищаем карту (делаем все полом)
         for (let y = 1; y < height - 1; y++) {
@@ -276,8 +279,10 @@ const MapModule = (function() {
                     // Если это пол (внутренность)
                     if (val === 0) {
                         if (isShop) {
-                            // Если это магазин, добавляем в shopCoords
-                            shopCoords.push({ x: wx, y: wy });
+                            // Если это магазин, выбираем случайный декоративный символ
+                            const decorChar = shopDecorSymbols[Math.floor(rand.next() * shopDecorSymbols.length)];
+                            // Добавляем в shopCoords вместе с символом
+                            shopCoords.push({ x: wx, y: wy, decor: decorChar });
                         } else {
                             // Иначе в обычный interiorCoords
                             interiorCoords.push({ x: wx, y: wy });
