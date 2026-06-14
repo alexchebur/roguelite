@@ -218,16 +218,15 @@ const QuestSystemModule = (function() {
         );
 
         // === DIGGER (Глубинный разведчик) ===
-        // Поддерживаем два типа событий: 'depth' (явное) и 'move' (если передали глубину)
-        if (quest.type === 'DIGGER') {
-            const currentDepth = eventData.currentDepth !== undefined ? eventData.currentDepth : (eventData.depth !== undefined ? eventData.depth : 0);
-            
-            if (eventData.type === 'depth' || eventData.type === 'move') {
-                 if (isInCorrectLocation && currentDepth >= quest.target.targetDepth) {
+        if (quest.type === 'DIGGER' && eventData.type === 'depth') {
+            // Проверяем, что мы в том же подземелье
+            if (eventData.locX === quest.target.targetX && eventData.locY === quest.target.targetY) {
+                // eventData.currentDepth приходит из game.js, он тоже начинается с 0
+                if ((eventData.currentDepth + 1) >= quest.target.targetDepth) {
                     quest.progress = quest.maxProgress;
                     quest.isCompleted = true;
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
-                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${quest.target.targetDepth}!`, "event");
+                        RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${eventData.currentDepth + 1}!`, "event");
                     }
                     return true;
                 }
