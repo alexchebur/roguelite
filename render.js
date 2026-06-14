@@ -735,6 +735,7 @@ const RenderModule = (function() {
         addBlinkEffect,
         addProjectileEffect,
         updateQuestBriefing,
+        drawShopWindow, // <--- ДОБАВИТЬ ЭТУ СТРОКУ
         COLS,
         ROWS,
         _ctx: null, 
