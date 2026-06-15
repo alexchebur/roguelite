@@ -735,6 +735,8 @@ function updateQuestCompass() {
         npcs = [];
         window.currentCityNpcs = [];
         explored.clear();
+        isShopOpen = false; 
+        currentMerchantInv = null;
         
         // 1. Генерируем город
         const startPos = MapModule.generateCity(gx, gy, 0);
@@ -744,8 +746,8 @@ function updateQuestCompass() {
         // но для надежности продублируем или убедимся, что они доступны.
         // Если в map.js вы используете window.currentShopCoords, то здесь все ок.
         // Но давайте сбросим флаг магазина, чтобы он точно открылся при входе.
-        isShopOpen = false; 
-        currentMerchantInv = null;
+        //isShopOpen = false; 
+        //currentMerchantInv = null;
 
         if (!player) player = EntityModule.createPlayer(startPos.x, startPos.y);
         else {
