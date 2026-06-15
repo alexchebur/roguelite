@@ -1421,15 +1421,15 @@ function updateQuestCompass() {
         if (MapModule.isWall(nx, ny)) return;
 
         // === ИСПРАВЛЕННАЯ ПРОВЕРКА ВХОДА В МАГАЗИН ===
-        // Мы проверяем, является ли ЦЕЛЕВАЯ клетка (nx, ny) частью магазина.
-        // И самое главное: мы открываем его, если он сейчас ЗАКРЫТ.
-        // Это позволяет "перезапускать" магазин, если игрок вышел из него и сделал шаг.
+        // Логика: Если ЦЕЛЕВАЯ клетка (куда мы хотим шагнуть) является магазином
+        // И окно магазина сейчас ЗАКРЫТО -> Открываем окно и прерываем ход.
+        // Игрок не двигается, так как мы делаем return.
         if (window.currentShopCoords && window.currentShopCoords.length > 0) {
             const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
             
             if (isTargetShop && !isShopOpen) {
                 openShop();
-                return; // Прерываем ход, открываем окно
+                return; 
             }
         }
         
