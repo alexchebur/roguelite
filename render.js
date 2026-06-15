@@ -628,7 +628,11 @@ const RenderModule = (function() {
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
-
+        // === ОТКЛЮЧАЕМ СГЛАЖИВАНИЕ ДЛЯ ЧЕТКОСТИ ТЕКСТА ===
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
         // === СБРАСЫВАЕМ ЗОНЫ КЛИКА ПЕРЕД ОТРИСОВКОЙ ===
         window.shopClickAreas = []; 
 
