@@ -691,11 +691,11 @@ const RenderModule = (function() {
         ctx.textAlign = 'right';
         ctx.fillText("ВАШ ИНВЕНТАРЬ", ctx.canvas.width - winX - 15, winY + 60);
 
-        // === НАСТРОЙКИ СПИСКА (Уменьшили шрифт до 11px, как в UI) ===
+        // === НАСТРОЙКИ СПИСКА ===
         ctx.font = '11px Consolas, monospace';
-        ctx.textBaseline = 'alphabetic'; // Стандартное поведение
-        let y = winY + 85; // Стартовая позиция (базовая линия первого текста)
-        const itemHeight = 18; // Высота строки (11px шрифт + 7px отступ)
+        ctx.textBaseline = 'alphabetic'; 
+        let y = winY + 85; 
+        const itemHeight = 16; // Уменьшили высоту строки, так как теперь одна строка на предмет
         const maxItemsPerCol = 25; 
 
         // === ЛЕВАЯ КОЛОНКА (Товары торговца) ===
@@ -703,15 +703,20 @@ const RenderModule = (function() {
         merchantInv.items.slice(0, maxItemsPerCol).forEach((item, index) => {
             if (y > winY + winH - 50) return;
             
+            // 1. Название предмета слева
             ctx.fillStyle = item.color;
             ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 15, y);
-            ctx.fillStyle = '#aaa';
-            ctx.fillText(`${item.price} зл.`, winX + 15, y + 12);
             
-            // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА (y - 12, так как y это базовая линия, а не верх текста)
+            // 2. Цена справа (в той же строке, у разделителя)
+            ctx.fillStyle = '#ffd700'; // Золотой цвет для цены
+            ctx.textAlign = 'right';
+            ctx.fillText(`${item.price}$`, midX - 15, y);
+            ctx.textAlign = 'left'; // Возвращаем выравнивание
+            
+            // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА
             window.shopClickAreas.push({
                 x: winX,
-                y: y - 14, 
+                y: y - 12, // Чуть выше базовой линии шрифта
                 w: midX - winX, 
                 h: itemHeight,
                 action: 'buy',
@@ -737,17 +742,21 @@ const RenderModule = (function() {
                 player.inventory.slice(0, maxItemsPerCol).forEach((item, index) => {
                     if (y > winY + winH - 50) return;
 
+                    // 1. Название предмета справа
                     ctx.fillStyle = item.color;
                     ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
                     
+                    // 2. Цена продажи слева (в той же строке, у разделителя)
                     const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
-                    ctx.fillStyle = '#aaa';
-                    ctx.fillText(`${sellPrice} зл.`, ctx.canvas.width - winX - 15, y + 12);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${sellPrice}$`, midX + 15, y);
+                    ctx.textAlign = 'right'; // Возвращаем выравнивание
                     
                     // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА
                     window.shopClickAreas.push({
                         x: midX,
-                        y: y - 14,
+                        y: y - 12,
                         w: ctx.canvas.width - winX - midX,
                         h: itemHeight,
                         action: 'sell',
@@ -756,7 +765,6 @@ const RenderModule = (function() {
                     
                     y += itemHeight;
                 });
-
                 ctx.fillStyle = '#ffd700';
                 ctx.font = 'bold 11px Consolas, monospace';
                 ctx.textAlign = 'right';
