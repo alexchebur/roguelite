@@ -134,6 +134,8 @@ const MapModule = (function() {
         const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
         currentDungeonType = result.dungeonType;
+        window.currentShopCoords = []; 
+
         
         generateStaircase(gx, gy, depth);
         
