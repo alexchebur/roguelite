@@ -1409,11 +1409,14 @@ function updateQuestCompass() {
         if (MapModule.isWall(nx, ny)) return;
 
         // === ПРОВЕРКА ВХОДА В МАГАЗИН ===
+        // Проверяем, является ли целевая клетка (nx, ny) частью магазина
         if (window.currentShopCoords && window.currentShopCoords.length > 0) {
-            const inShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
-            if (inShop && !isShopOpen) {
+            const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
+            
+            // Если мы шагаем на клетку магазина и окно закрыто -> открываем
+            if (isTargetShop && !isShopOpen) {
                 openShop();
-                return; // Прерываем ход, открываем окно
+                return; 
             }
         }
         // ... далее стандартная проверка врагов и движение
