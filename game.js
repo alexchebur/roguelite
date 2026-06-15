@@ -1146,7 +1146,17 @@ function updateQuestCompass() {
             // Чтобы закрыть магазин, нужно кликнуть мышкой/тапом по кнопке "Выйти" или вне окна
             return; 
         }
-
+        // === ЧИТ-КОД: ENTER для восстановления HP ===
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (player && player.hp > 0) {
+                const healAmount = 100;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
+                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            }
+            return;
+        }
 
         if (busy || (player && player.hp <= 0)) return;
         
