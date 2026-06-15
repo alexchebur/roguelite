@@ -728,6 +728,7 @@ function updateQuestCompass() {
     }
     
     // === ЗАГРУЗКА ГОРОДА ===
+    // === ЗАГРУЗКА ГОРОДА ===
     function loadCityLevel(gx, gy, cityName) {
         enemies = []; 
         items = [];
@@ -735,8 +736,17 @@ function updateQuestCompass() {
         window.currentCityNpcs = [];
         explored.clear();
         
+        // 1. Генерируем город
         const startPos = MapModule.generateCity(gx, gy, 0);
         
+        // 2. === ВАЖНОЕ ИСПРАВЛЕНИЕ: Сохраняем координаты магазина ===
+        // MapModule.generateCity уже записывает их в window.currentShopCoords внутри себя,
+        // но для надежности продублируем или убедимся, что они доступны.
+        // Если в map.js вы используете window.currentShopCoords, то здесь все ок.
+        // Но давайте сбросим флаг магазина, чтобы он точно открылся при входе.
+        isShopOpen = false; 
+        currentMerchantInv = null;
+
         if (!player) player = EntityModule.createPlayer(startPos.x, startPos.y);
         else {
             player.x = startPos.x;
@@ -1408,17 +1418,18 @@ function updateQuestCompass() {
         // ...
         if (MapModule.isWall(nx, ny)) return;
 
-        // === ПРОВЕРКА ВХОДА В МАГАЗИН ===
-        // Проверяем, является ли целевая клетка (nx, ny) частью магазина
+        // === ПРОВЕРКА ВХОДА В МАГАЗИН (ИСПРАВЛЕННАЯ ЛОГИКА) ===
         if (window.currentShopCoords && window.currentShopCoords.length > 0) {
+            const isCurrentShop = window.currentShopCoords.some(pos => pos.x === player.x && pos.y === player.y);
             const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
             
-            // Если мы шагаем на клетку магазина и окно закрыто -> открываем
-            if (isTargetShop && !isShopOpen) {
+            // Открываем магазин ТОЛЬКО если мы входим в него снаружи
+            if (isTargetShop && !isCurrentShop && !isShopOpen) {
                 openShop();
                 return; 
             }
         }
+        
         // ... далее стандартная проверка врагов и движение
         
         // Проверка столкновения с боссом (учитываем его размер 2x2)
