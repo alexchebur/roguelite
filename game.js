@@ -701,6 +701,8 @@ function updateQuestCompass() {
     
     function exitToGlobal() {
         saveCurrentDungeonState();
+        isShopOpen = false;
+        currentMerchantInv = null;
         gameMode = 'global';
         updateQuestCompass(); 
         renderGlobalMap();
