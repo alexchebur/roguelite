@@ -592,8 +592,19 @@ function updateQuestCompass() {
 
         canvas.addEventListener("touchstart", (e) => {
             e.preventDefault();
-            if (busy || (player && player.hp <= 0)) return;
             
+            // 1. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
+            if (busy || (player && player.hp <= 0)) return;
+
+            // 2. 🎯 ПРОВЕРКА МАГАЗИНА (ПРИОРИТЕТ №1)
+            // Если открыт магазин, любой тап по экрану обрабатывается как клик по интерфейсу магазина
+            if (isShopOpen) {
+                const touch = e.touches[0];
+                handleShopClick(touch.clientX, touch.clientY);
+                return; // Прерываем выполнение, чтобы не сработала логика движения
+            }
+
+            // 3. ЛОГИКА ДВИЖЕНИЯ (если магазин закрыт)
             const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0];
             const touchX = touch.clientX - rect.left;
@@ -606,39 +617,18 @@ function updateQuestCompass() {
             const offsetX = touchX - centerX;
             const offsetY = touchY - centerY;
             
+            // Определяем направление тапа относительно центра экрана
             if (Math.abs(offsetX) > Math.abs(offsetY)) {
                 dx = offsetX > 0 ? 1 : -1;
             } else {
                 dy = offsetY > 0 ? 1 : -1;
             }
             
+            // Выполняем ход
             if (gameMode === 'global') {
                 processGlobalTurn(dx, dy);
             } else {
                 processTurn(dx, dy);
-            }
-
-            // Параллельная инспекция
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const clickX = (touch.clientX - rect.left) * scaleX;
-            const clickY = (touch.clientY - rect.top) * scaleY;
-            
-            const cellW = canvas.width / RenderModule.COLS;
-            const cellH = canvas.height / RenderModule.ROWS;
-            
-            const sx = Math.floor(clickX / cellW);
-            const sy = Math.floor(clickY / cellH);
-            
-            const cam = RenderModule.getCameraOffset(player);
-            const wx = sx + cam.x;
-            const wy = sy + cam.y;
-
-            const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
-            if (enemy) {
-                if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}`, "enemy");
-                }
             }
             
         }, { passive: false });
