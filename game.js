@@ -1414,19 +1414,18 @@ function updateQuestCompass() {
             return;
         }
 
-        // Внутри processTurn, после проверки стен (MapModule.isWall), но до движения
-        // ...
         if (MapModule.isWall(nx, ny)) return;
 
-        // === ПРОВЕРКА ВХОДА В МАГАЗИН (ИСПРАВЛЕННАЯ ЛОГИКА) ===
+        // === ИСПРАВЛЕННАЯ ПРОВЕРКА ВХОДА В МАГАЗИН ===
+        // Мы проверяем, является ли ЦЕЛЕВАЯ клетка (nx, ny) частью магазина.
+        // И самое главное: мы открываем его, если он сейчас ЗАКРЫТ.
+        // Это позволяет "перезапускать" магазин, если игрок вышел из него и сделал шаг.
         if (window.currentShopCoords && window.currentShopCoords.length > 0) {
-            const isCurrentShop = window.currentShopCoords.some(pos => pos.x === player.x && pos.y === player.y);
             const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
             
-            // Открываем магазин ТОЛЬКО если мы входим в него снаружи
-            if (isTargetShop && !isCurrentShop && !isShopOpen) {
+            if (isTargetShop && !isShopOpen) {
                 openShop();
-                return; 
+                return; // Прерываем ход, открываем окно
             }
         }
         
