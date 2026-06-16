@@ -87,16 +87,23 @@ const EntityModule = (function() {
             
             // Выбираем словарь в зависимости от типа предмета
             let adjList = null;
-            if (template.type === 'weapon') {
+
+            // === ИСКЛЮЧЕНИЕ: СВИТКИ, КНИГИ И ОСОБЫЕ ПРЕДМЕТЫ БЕЗ ПРИЛАГАТЕЛЬНЫХ ===
+            if (template.type === 'book' || template.type === 'scroll_teleport' || template.type === 'scroll') {
+                adjList = null; // Прилагательное не добавляется
+            }
+            else if (template.type === 'weapon') {
                 adjList = DataModule.ADJECTIVE_TIERS?.weapon[tier];
-            } else if (template.type === 'armor') {
+            } 
+            else if (template.type === 'armor') {
                 adjList = DataModule.ADJECTIVE_TIERS?.armor[tier];
-            } else if (template.type !== 'book' && template.type !== 'scroll_teleport') {
-                // Для зелий, еды и прочего используем общий список 'item'
-                adjList = DataModule.ADJECTIVE_TIERS?.item[tier];
+            } 
+            else {
+                // Для зелий, еды и прочего используем общий список 'consumable' или 'item'
+                adjList = DataModule.ADJECTIVE_TIERS?.consumable?.[tier] || DataModule.ADJECTIVE_TIERS?.item?.[tier];
             }
 
-            // Формируем имя
+            // Формируем имя только если прилагательное нашлось
             if (adjList && adjList.length > 0) {
                 const adjObj = adjList[Math.floor(Math.random() * adjList.length)];
                 const adj = getAdjectiveForm(adjObj, template.gender, template.plural);
