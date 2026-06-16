@@ -1,7 +1,6 @@
 // =========================== Модуль данных ===========================
-// =========================== Модуль данных ===========================
 const DataModule = (function() {
-    // Расширенные прилагательные с формами для согласования
+    
     // === СИСТЕМА ТИРОВ ПРИЛАГАТЕЛЬНЫХ (РАЗДЕЛЬНАЯ) ===
     const ADJECTIVE_TIERS = {
         // Общие пороги силы (val) для определения тира
@@ -72,7 +71,7 @@ const DataModule = (function() {
         },
 
         // Списки слов для ОБЫЧНЫХ ПРЕДМЕТОВ (зелья, еда, свитки)
-        item: {
+        consumable: {
             trash: [
                 { base: "Старый", she: "Старая", it: "Старое", plural: "Старые" },
                 { base: "Выцветший", she: "Выцветшая", it: "Выцветшее", plural: "Выцветшие" }
@@ -95,9 +94,6 @@ const DataModule = (function() {
             ]
         }
     };
-
-    // Экспортируем новый объект
-    // Не забудьте добавить ADJECTIVE_TIERS в return DataModule
 
     const ENEMY_TYPES = [
         // === УРОВЕНЬ 1-3 ===
@@ -137,8 +133,6 @@ const DataModule = (function() {
         { type: "weapon", char: getChar('ITEM_CROSSBOW'), color: "#FF9800", baseName: "Арбалет", stat: "atk", val: [5, 9], gender: "he", plural: false, meleeType: false, range: 10, maxAmmo: 15 },
         { type: "weapon", char: getChar('ITEM_STAFF'), color: "#B39DDB", baseName: "Посох огня", stat: "atk", val: [2, 4], gender: "he", plural: false, meleeType: false, range: 16, maxAmmo: 50 },
         
-        // ... остальные предметы ...
-        
         // === БРОНЯ ===
         { type: "armor", char: getChar('ITEM_ARMOR_LEATHER'), color: "#9E9E9E", baseName: "Кожаная броня", stat: "def", val: [1, 3], gender: "she", plural: false },
         { type: "armor", char: getChar('ITEM_ARMOR_CHAIN'), color: "#9E9E9E", baseName: "Кольчуга", stat: "def", val: [3, 6], gender: "she", plural: false },
@@ -150,32 +144,28 @@ const DataModule = (function() {
     
 
         // === КНИГИ (ЛОР) ===
-        // type: 'book' - специальный тип, который не кладется в инвентарь, а читается сразу
         { 
             type: "book", 
             char: getChar('ITEM_BOOK'), 
-            color: "#A67C52", // Цвет старой бумаги/кожи
+            color: "#A67C52", 
             baseName: "Старая книга", 
             gender: "she", 
             plural: false,
             val: [0, 0] 
         },
-    // ... (другие предметы) ...
 
-    // === СВИТОК ТЕЛЕПОРТАЦИИ ===
-    { 
-        type: "scroll_teleport", 
-        char: getChar('ITEM_SCROLL'), 
-        color: "#E0FFFF", // Светло-голубой, магический цвет
-        baseName: "Свиток телепортации", 
-        effect: "teleport_exit", 
-        val: [0, 0], 
-        gender: "he", 
-        plural: false 
-    },
+        // === СВИТОК ТЕЛЕПОРТАЦИИ ===
+        { 
+            type: "scroll_teleport", 
+            char: getChar('ITEM_SCROLL'), 
+            color: "#E0FFFF", 
+            baseName: "Свиток телепортации", 
+            effect: "teleport_exit", 
+            val: [0, 0], 
+            gender: "he", 
+            plural: false 
+        },
 
-
-   
         // === ЗОЛОТО ===
         { type: "gold", char: getChar('ITEM_GOLD'), color: "#FFD700", baseName: "Монеты", val: [5, 15] },
         
@@ -187,8 +177,8 @@ const DataModule = (function() {
             baseName: "Зелье лечения", 
             effect: "heal", 
             val: [10, 20],
-            gender: "it",    // Оно (зелье)
-            plural: false 
+            gender: "it",
+            plural: false
         },
         { 
             type: "potion_hp", 
@@ -197,8 +187,8 @@ const DataModule = (function() {
             baseName: "Эликсир жизни", 
             effect: "heal", 
             val: [25, 40],
-            gender: "he",    // Он (эликсир)
-            plural: false 
+            gender: "he",
+            plural: false
         },
         { 
             type: "food", 
@@ -207,8 +197,8 @@ const DataModule = (function() {
             baseName: "Хлеб и сыр", 
             effect: "heal", 
             val: [5, 10],
-            gender: "he",    // Он (хлеб)
-            plural: false 
+            gender: "he",
+            plural: false
         },
         { 
             type: "food", 
@@ -217,8 +207,8 @@ const DataModule = (function() {
             baseName: "Жареная крыса", 
             effect: "heal", 
             val: [8, 12],
-            gender: "she",   // Она (крыса)
-            plural: false 
+            gender: "she",
+            plural: false
         },
         { 
             type: "potion_str", 
@@ -227,8 +217,8 @@ const DataModule = (function() {
             baseName: "Зелье силы", 
             effect: "buff_atk", 
             val: [1, 2],
-            gender: "it",    // Оно (зелье)
-            plural: false 
+            gender: "it",
+            plural: false
         },
         { 
             type: "potion_str", 
@@ -237,19 +227,19 @@ const DataModule = (function() {
             baseName: "Настой берсерка", 
             effect: "buff_atk", 
             val: [3, 5],
-            gender: "he",    // Он (настой)
-            plural: false 
+            gender: "he",
+            plural: false
         }
+    ];
 
     const MAP_WIDTH = 100;
     const MAP_HEIGHT = 100;
 
     return {
-        ADJECTIVE_TIERS,
+        ADJECTIVE_TIERS, // <--- ВАЖНО: Экспортируем новый объект
         ENEMY_TYPES,
         ITEM_TYPES,
         MAP_WIDTH,
-        MAP_HEIGHT,
-        ADJECTIVE_TIERS
+        MAP_HEIGHT
     };
 })();
