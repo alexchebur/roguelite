@@ -218,6 +218,38 @@ const GameModule = (function() {
             }
         }
 
+        // 2. 🎯 ПРОВЕРКА НАВИГАЦИИ ПО СТРАНИЦАМ
+        if (window.shopClickAreas) {
+            for (const area of window.shopClickAreas) {
+                if (clickX >= area.x && clickX <= area.x + area.w &&
+                    clickY >= area.y && clickY <= area.y + area.h) {
+                    
+                    if (area.action === 'prev_m') {
+                        window.shopPageMerchant--;
+                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+                        return;
+                    }
+                    if (area.action === 'next_m') {
+                        window.shopPageMerchant++;
+                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+                        return;
+                    }
+                    if (area.action === 'prev_p') {
+                        window.shopPagePlayer--;
+                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+                        return;
+                    }
+                    if (area.action === 'next_p') {
+                        window.shopPagePlayer++;
+                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 3. 🎯 ПРОВЕРКА ПОПАДАНИЯ В ПРЕДМЕТЫ (остальной код без изменений)
+        // ...
         // 2. 🎯 ЖЕЛЕЗОБЕТОННАЯ ПРОВЕРКА ПОПАДАНИЯ В ПРЕДМЕТЫ
         // Мы используем массив зон, который был создан при отрисовке окна
         if (window.shopClickAreas && window.shopClickAreas.length > 0) {
