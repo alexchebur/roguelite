@@ -72,18 +72,39 @@ const EntityModule = (function() {
         } 
         // 2. Логика для ОБЫЧНЫХ ПРЕДМЕТОВ
         else {
-            // === ИЗМЕНЕНИЕ: Если это книга или свиток, прилагательное не добавляем ===
-            if (template.type !== 'book' && template.type !== 'scroll_teleport') {
-                const adjTemplate = DataModule.ITEM_ADJECTIVES[Math.floor(Math.random() * DataModule.ITEM_ADJECTIVES.length)];
-                const adj = getAdjectiveForm(adjTemplate, template.gender, template.plural);
-                name = `${adj} ${template.baseName}`;
-            } else {
-                // Для книг и свитков имя остается как baseName
-                name = template.baseName;
-            }
-
+            // Расчет финального значения для определения Тира
             const baseVal = Math.floor(template.val[0] + Math.random() * (template.val[1] - template.val[0]));
             finalVal = Math.max(1, Math.floor(baseVal * itemPowerMult));
+
+            // === ОПРЕДЕЛЕНИЕ ТИРА И ВЫБОР СЛОВАРЯ ===
+            let tier = 'trash';
+            // Получаем пороги из data.js (если их нет, используем дефолтные)
+            const thresholds = DataModule.ADJECTIVE_TIERS?.thresholds || { trash: 3, common: 8, rare: 15, epic: 25 };
+
+            if (finalVal > thresholds.epic) tier = 'epic';
+            else if (finalVal > thresholds.rare) tier = 'rare';
+            else if (finalVal > thresholds.common) tier = 'common';
+            
+            // Выбираем словарь в зависимости от типа предмета
+            let adjList = null;
+            if (template.type === 'weapon') {
+                adjList = DataModule.ADJECTIVE_TIERS?.weapon[tier];
+            } else if (template.type === 'armor') {
+                adjList = DataModule.ADJECTIVE_TIERS?.armor[tier];
+            } else if (template.type !== 'book' && template.type !== 'scroll_teleport') {
+                // Для зелий, еды и прочего используем общий список 'item'
+                adjList = DataModule.ADJECTIVE_TIERS?.item[tier];
+            }
+
+            // Формируем имя
+            if (adjList && adjList.length > 0) {
+                const adjObj = adjList[Math.floor(Math.random() * adjList.length)];
+                const adj = getAdjectiveForm(adjObj, template.gender, template.plural);
+                name = `${adj} ${template.baseName}`;
+            } else {
+                // Если списка нет или это книга/свиток
+                name = template.baseName;
+            }
         }
 
         // 3. Создание объекта предмета
