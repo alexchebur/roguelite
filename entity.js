@@ -332,7 +332,7 @@ const EntityModule = (function() {
 
         // 2. Зелья и Еда (Расходники)
         const consumableTemplates = DataModule.ITEM_TYPES.filter(i => 
-            i.type.includes('potion') || i.type === 'food'
+            i.type.includes('potion') || i.type === 'food' || i.type === 'scroll_teleport'
         );
         const consumableCount = 8 + Math.floor(depth / 3);
         
