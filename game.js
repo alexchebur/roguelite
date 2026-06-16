@@ -194,14 +194,12 @@ const GameModule = (function() {
     }
 
     // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
-    // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
-    // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО ОКНУ МАГАЗИНА ===
     function handleShopClick(clientX, clientY) {
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
-        // Этот перевод координат учитывает CSS scale и работает идеально
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         
@@ -218,12 +216,13 @@ const GameModule = (function() {
             }
         }
 
-        // 2. 🎯 ПРОВЕРКА НАВИГАЦИИ ПО СТРАНИЦАМ
+        // 2. ПРОВЕРКА НАВИГАЦИИ (СТРЕЛКИ)
         if (window.shopClickAreas) {
             for (const area of window.shopClickAreas) {
                 if (clickX >= area.x && clickX <= area.x + area.w &&
                     clickY >= area.y && clickY <= area.y + area.h) {
                     
+                    // Обработка переключения страниц
                     if (area.action === 'prev_m') {
                         window.shopPageMerchant--;
                         RenderModule.drawShopWindow(currentMerchantInv, player.gold);
@@ -244,32 +243,21 @@ const GameModule = (function() {
                         RenderModule.drawShopWindow(currentMerchantInv, player.gold);
                         return;
                     }
-                }
-            }
-        }
-
-        // 3. 🎯 ПРОВЕРКА ПОПАДАНИЯ В ПРЕДМЕТЫ (остальной код без изменений)
-        // ...
-        // 2. 🎯 ЖЕЛЕЗОБЕТОННАЯ ПРОВЕРКА ПОПАДАНИЯ В ПРЕДМЕТЫ
-        // Мы используем массив зон, который был создан при отрисовке окна
-        if (window.shopClickAreas && window.shopClickAreas.length > 0) {
-            for (const area of window.shopClickAreas) {
-                // Проверяем, находится ли клик внутри сохраненного прямоугольника
-                if (clickX >= area.x && clickX <= area.x + area.w &&
-                    clickY >= area.y && clickY <= area.y + area.h) {
                     
+                    // Обработка покупки/продажи
                     if (area.action === 'buy') {
                         buyItem(area.index);
-                    } else if (area.action === 'sell') {
-                        sellItem(area.index);
+                        return;
                     }
-                    return; // Предмет куплен/продан, выходим из функции
+                    if (area.action === 'sell') {
+                        sellItem(area.index);
+                        return;
+                    }
                 }
             }
         }
 
-        // 3. Если клик не попал ни в кнопку, ни в товары — закрываем магазин
-        // (опционально, можно убрать, если хотите закрывать только по кнопке)
+        // 3. Если клик вне окна — закрываем магазин
         const winW = canvas.width * 0.95;
         const winH = canvas.height * 0.9;
         const winX = (canvas.width - winW) / 2;
