@@ -693,7 +693,7 @@ const RenderModule = (function() {
         ctx.textBaseline = 'alphabetic';
         let y = winY + 85;
         const itemHeight = 16; 
-        const maxItemsPerCol = 25; 
+        const maxItemsPerCol = 10; 
 
         // === РАСЧЕТ СТРАНИЦ (ПЕРЕНЕСЕНО СЮДА ДЛЯ ДОСТУПНОСТИ) ===
         const totalMerchantPages = Math.ceil(merchantInv.items.length / maxItemsPerCol) || 1;
