@@ -180,13 +180,66 @@ const DataModule = (function() {
         { type: "gold", char: getChar('ITEM_GOLD'), color: "#FFD700", baseName: "Монеты", val: [5, 15] },
         
         // === ЗЕЛЬЯ И ЕДА ===
-        { type: "potion_hp", char: getChar('ITEM_POTION_HP'), color: "#f44336", baseName: "Зелье лечения", effect: "heal", val: [10, 20] },
-        { type: "potion_hp", char: getChar('ITEM_ELIXIR'), color: "#f44336", baseName: "Эликсир жизни", effect: "heal", val: [25, 40] },
-        { type: "food", char: getChar('ITEM_FOOD_BREAD'), color: "#8BC34A", baseName: "Хлеб и сыр", effect: "heal", val: [5, 10] },
-        { type: "food", char: getChar('ITEM_FOOD_MEAT'), color: "#8BC34A", baseName: "Жареная крыса", effect: "heal", val: [8, 12] },
-        { type: "potion_str", char: getChar('ITEM_POTION_STR'), color: "#ff9800", baseName: "Зелье силы", effect: "buff_atk", val: [1, 2] },
-        { type: "potion_str", char: getChar('ITEM_BERSERK'), color: "#ff9800", baseName: "Настой берсерка", effect: "buff_atk", val: [3, 5] }
-    ];
+        { 
+            type: "potion_hp", 
+            char: getChar('ITEM_POTION_HP'), 
+            color: "#f44336", 
+            baseName: "Зелье лечения", 
+            effect: "heal", 
+            val: [10, 20],
+            gender: "it",    // Оно (зелье)
+            plural: false 
+        },
+        { 
+            type: "potion_hp", 
+            char: getChar('ITEM_ELIXIR'), 
+            color: "#f44336", 
+            baseName: "Эликсир жизни", 
+            effect: "heal", 
+            val: [25, 40],
+            gender: "he",    // Он (эликсир)
+            plural: false 
+        },
+        { 
+            type: "food", 
+            char: getChar('ITEM_FOOD_BREAD'), 
+            color: "#8BC34A", 
+            baseName: "Хлеб и сыр", 
+            effect: "heal", 
+            val: [5, 10],
+            gender: "he",    // Он (хлеб)
+            plural: false 
+        },
+        { 
+            type: "food", 
+            char: getChar('ITEM_FOOD_MEAT'), 
+            color: "#8BC34A", 
+            baseName: "Жареная крыса", 
+            effect: "heal", 
+            val: [8, 12],
+            gender: "she",   // Она (крыса)
+            plural: false 
+        },
+        { 
+            type: "potion_str", 
+            char: getChar('ITEM_POTION_STR'), 
+            color: "#ff9800", 
+            baseName: "Зелье силы", 
+            effect: "buff_atk", 
+            val: [1, 2],
+            gender: "it",    // Оно (зелье)
+            plural: false 
+        },
+        { 
+            type: "potion_str", 
+            char: getChar('ITEM_BERSERK'), 
+            color: "#ff9800", 
+            baseName: "Настой берсерка", 
+            effect: "buff_atk", 
+            val: [3, 5],
+            gender: "he",    // Он (настой)
+            plural: false 
+        }
 
     const MAP_WIDTH = 100;
     const MAP_HEIGHT = 100;
