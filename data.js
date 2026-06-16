@@ -192,7 +192,7 @@ const DataModule = (function() {
     const MAP_HEIGHT = 100;
 
     return {
-        ITEM_ADJECTIVES,
+        ADJECTIVE_TIERS,
         ENEMY_TYPES,
         ITEM_TYPES,
         MAP_WIDTH,
