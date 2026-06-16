@@ -1708,7 +1708,8 @@ function updateQuestCompass() {
         getPlayer,
         getActiveQuests,
         getCompletedQuestIds,
-        abandonCurrentQuest// >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
+        abandonCurrentQuest,
+        exitToGlobal // >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
     };
 })();
 
