@@ -74,6 +74,20 @@ const DataModule = (function() {
             plural: false,
             val: [0, 0] 
         },
+    // ... (другие предметы) ...
+
+    // === СВИТОК ТЕЛЕПОРТАЦИИ ===
+    { 
+        type: "scroll_teleport", 
+        char: getChar('ITEM_SCROLL'), 
+        color: "#E0FFFF", // Светло-голубой, магический цвет
+        baseName: "Свиток телепортации", 
+        effect: "teleport_exit", 
+        val: [0, 0], 
+        gender: "he", 
+        plural: false 
+    },
+
 
    
         // === ЗОЛОТО ===
