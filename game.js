@@ -281,13 +281,16 @@ const GameModule = (function() {
             player.gold -= item.price;
             currentMerchantInv.gold += item.price;
             
-            // Удаляем у торговца, добавляем игроку
             currentMerchantInv.items.splice(index, 1);
             player.inventory.push(item);
             
+            // === СБРОС СТРАНИЦ ПРИ ИЗМЕНЕНИИ СПИСКА ===
+            window.shopPageMerchant = 0;
+            window.shopPagePlayer = 0;
+            
             RenderModule.log(`Куплено: ${item.name} за ${item.price} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         } else {
             RenderModule.log("Недостаточно золота!", "combat");
         }
@@ -303,13 +306,11 @@ const GameModule = (function() {
             return;
         }
 
-        // Нельзя продавать квестовые предметы
         if (item.isQuestItem) {
             RenderModule.log("Это квестовый предмет, его нельзя продать!", "combat");
             return;
         }
 
-        // Цена продажи: 50% от цены покупки или базовая оценка
         const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
 
         if (currentMerchantInv.gold >= sellPrice) {
@@ -318,14 +319,17 @@ const GameModule = (function() {
             
             player.inventory.splice(index, 1);
             
+            // === СБРОС СТРАНИЦ ПРИ ИЗМЕНЕНИИ СПИСКА ===
+            window.shopPageMerchant = 0;
+            window.shopPagePlayer = 0;
+            
             RenderModule.log(`Продано: ${item.name} за ${sellPrice} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         } else {
             RenderModule.log("У торговца недостаточно золота!", "combat");
         }
     }
-
     // === ЗАКРЫТИЕ МАГАЗИНА ===
     function closeShop() {
         isShopOpen = false;
