@@ -625,20 +625,19 @@ const RenderModule = (function() {
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
     // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
+    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
         window.shopClickAreas = []; 
 
-        // === ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ СТРАНИЦ (ИСПРАВЛЕНИЕ БАГА 1/1) ===
+        // === ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ СТРАНИЦ ===
         if (typeof window.shopPageMerchant === 'undefined') window.shopPageMerchant = 0;
         if (typeof window.shopPagePlayer === 'undefined') window.shopPagePlayer = 0;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        // ... остальной код отрисовки без изменений ...
 
         const winW = ctx.canvas.width * 0.95;
         const winH = ctx.canvas.height * 0.9;
@@ -695,9 +694,20 @@ const RenderModule = (function() {
         const itemHeight = 16; 
         const maxItemsPerCol = 25; 
 
-        // === ЛЕВАЯ КОЛОНКА (Торговец) ===
-        if (window.shopPageMerchant === undefined) window.shopPageMerchant = 0;
+        // === РАСЧЕТ СТРАНИЦ (ПЕРЕНЕСЕНО СЮДА ДЛЯ ДОСТУПНОСТИ) ===
         const totalMerchantPages = Math.ceil(merchantInv.items.length / maxItemsPerCol) || 1;
+        
+        // Получаем игрока заранее, чтобы рассчитать страницы
+        let player = null;
+        let totalPlayerPages = 1;
+        if (typeof GameModule !== 'undefined') {
+            player = GameModule.getPlayer();
+            if (player) {
+                totalPlayerPages = Math.ceil(player.inventory.length / maxItemsPerCol) || 1;
+            }
+        }
+
+        // === ЛЕВАЯ КОЛОНКА (Торговец) ===
         const startIdxM = window.shopPageMerchant * maxItemsPerCol;
         const endIdxM = startIdxM + maxItemsPerCol;
 
@@ -721,43 +731,36 @@ const RenderModule = (function() {
         });
 
         // === ПРАВАЯ КОЛОНКА (Игрок) ===
-        if (typeof GameModule !== 'undefined') {
-            const player = GameModule.getPlayer();
-            if (player) {
-                if (window.shopPagePlayer === undefined) window.shopPagePlayer = 0;
-                const totalPlayerPages = Math.ceil(player.inventory.length / maxItemsPerCol) || 1;
-                const startIdxP = window.shopPagePlayer * maxItemsPerCol;
-                const endIdxP = startIdxP + maxItemsPerCol;
+        if (player) {
+            const startIdxP = window.shopPagePlayer * maxItemsPerCol;
+            const endIdxP = startIdxP + maxItemsPerCol;
 
-                ctx.textAlign = 'right';
-                y = winY + 85;
+            ctx.textAlign = 'right';
+            y = winY + 85;
+            
+            player.inventory.slice(startIdxP, endIdxP).forEach((item, i) => {
+                const index = startIdxP + i;
+                if (y > winY + winH - 50) return;
+
+                ctx.fillStyle = item.color;
+                ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
                 
-                player.inventory.slice(startIdxP, endIdxP).forEach((item, i) => {
-                    const index = startIdxP + i;
-                    if (y > winY + winH - 50) return;
-
-                    ctx.fillStyle = item.color;
-                    ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
-                    
-                    const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
-                    ctx.fillStyle = '#ffd700';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`${sellPrice}$`, midX + 15, y);
-                    ctx.textAlign = 'right';
-                    
-                    window.shopClickAreas.push({
-                        x: midX, y: y - 12, w: ctx.canvas.width - winX - midX, h: itemHeight,
-                        action: 'sell', index: index
-                    });
-                    y += itemHeight;
+                const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
+                ctx.fillStyle = '#ffd700';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${sellPrice}$`, midX + 15, y);
+                ctx.textAlign = 'right';
+                
+                window.shopClickAreas.push({
+                    x: midX, y: y - 12, w: ctx.canvas.width - winX - midX, h: itemHeight,
+                    action: 'sell', index: index
                 });
-            }
+                y += itemHeight;
+            });
         }
 
         // === НИЖНЯЯ ПАНЕЛЬ: ЗОЛОТО И НАВИГАЦИЯ ===
-        // Мы рисуем это в самом низу, чтобы ничего не накладывалось
-        
-        const bottomY = winY + winH - 15; // Базовая линия для текста внизу
+        const bottomY = winY + winH - 15; 
 
         // 1. Золото торговца (слева)
         ctx.fillStyle = '#ffd700';
@@ -769,7 +772,7 @@ const RenderModule = (function() {
         ctx.textAlign = 'right';
         ctx.fillText(`💰 Вы: ${playerGold}`, ctx.canvas.width - winX - 15, bottomY);
 
-        // 3. Навигация торговца (слева, чуть выше золота)
+        // 3. Навигация торговца
         ctx.fillStyle = '#8b949e';
         ctx.font = '11px Consolas, monospace';
         ctx.textAlign = 'center';
@@ -786,8 +789,8 @@ const RenderModule = (function() {
             window.shopClickAreas.push({ x: midX - 50, y: bottomY - 25, w: 40, h: 20, action: 'next_m' });
         }
 
-        // 4. Навигация игрока (справа, чуть выше золота)
-        if (typeof GameModule !== 'undefined' && GameModule.getPlayer()) {
+        // 4. Навигация игрока (теперь totalPlayerPages точно определена)
+        if (player) {
             ctx.fillStyle = '#8b949e';
             ctx.textAlign = 'center';
             ctx.fillText(`Стр. ${window.shopPagePlayer + 1}/${totalPlayerPages}`, (midX + ctx.canvas.width - winX)/2, bottomY - 15);
