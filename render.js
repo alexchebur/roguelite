@@ -623,9 +623,7 @@ const RenderModule = (function() {
         }
     }
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
-    // === ОТРИСОВКА ОКНА МАГАЗИНА ===
-    // === ОТРИСОВКА ОКНА МАГАЗИНА ===
-    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ) ===
+    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -647,7 +645,7 @@ const RenderModule = (function() {
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
 
-        // Заголовок и кнопка выхода (без изменений)
+        // Заголовок и кнопка выхода
         ctx.font = 'bold 16px Consolas, monospace';
         ctx.textBaseline = 'middle';
         const titleText = "🏪 ЛАВКА ТОРГОВЦА";
@@ -687,20 +685,18 @@ const RenderModule = (function() {
         ctx.font = '11px Consolas, monospace';
         ctx.textBaseline = 'alphabetic';
         let y = winY + 85;
-        const itemHeight = 16;
-        const maxItemsPerCol = 25; // Количество предметов на одной странице
+        const itemHeight = 16; 
+        const maxItemsPerCol = 25; 
 
         // === ЛЕВАЯ КОЛОНКА (Торговец) ===
-        // Инициализируем страницу, если её нет
         if (window.shopPageMerchant === undefined) window.shopPageMerchant = 0;
-        
         const totalMerchantPages = Math.ceil(merchantInv.items.length / maxItemsPerCol) || 1;
         const startIdxM = window.shopPageMerchant * maxItemsPerCol;
         const endIdxM = startIdxM + maxItemsPerCol;
 
         ctx.textAlign = 'left';
         merchantInv.items.slice(startIdxM, endIdxM).forEach((item, i) => {
-            const index = startIdxM + i; // Глобальный индекс в массиве
+            const index = startIdxM + i;
             if (y > winY + winH - 50) return;
             
             ctx.fillStyle = item.color;
@@ -717,31 +713,11 @@ const RenderModule = (function() {
             y += itemHeight;
         });
 
-        // Навигация торговца
-        ctx.fillStyle = '#8b949e';
-        ctx.textAlign = 'center';
-        ctx.fillText(`Стр. ${window.shopPageMerchant + 1}/${totalMerchantPages}`, (winX + midX)/2, winY + winH - 15);
-        
-        // Кнопка ВЛЕВО
-        if (window.shopPageMerchant > 0) {
-            ctx.fillStyle = '#58a6ff';
-            ctx.fillText("<", winX + 30, winY + winH - 15);
-            window.shopClickAreas.push({ x: winX + 10, y: winY + winH - 25, w: 40, h: 20, action: 'prev_m' });
-        }
-        // Кнопка ВПРАВО
-        if (window.shopPageMerchant < totalMerchantPages - 1) {
-            ctx.fillStyle = '#58a6ff';
-            ctx.fillText(">", midX - 30, winY + winH - 15);
-            window.shopClickAreas.push({ x: midX - 50, y: winY + winH - 25, w: 40, h: 20, action: 'next_m' });
-        }
-
-
         // === ПРАВАЯ КОЛОНКА (Игрок) ===
         if (typeof GameModule !== 'undefined') {
             const player = GameModule.getPlayer();
             if (player) {
                 if (window.shopPagePlayer === undefined) window.shopPagePlayer = 0;
-                
                 const totalPlayerPages = Math.ceil(player.inventory.length / maxItemsPerCol) || 1;
                 const startIdxP = window.shopPagePlayer * maxItemsPerCol;
                 const endIdxP = startIdxP + maxItemsPerCol;
@@ -768,35 +744,58 @@ const RenderModule = (function() {
                     });
                     y += itemHeight;
                 });
-
-                // Навигация игрока
-                ctx.fillStyle = '#8b949e';
-                ctx.textAlign = 'center';
-                ctx.fillText(`Стр. ${window.shopPagePlayer + 1}/${totalPlayerPages}`, (midX + ctx.canvas.width - winX)/2, winY + winH - 15);
-
-                if (window.shopPagePlayer > 0) {
-                    ctx.fillStyle = '#58a6ff';
-                    ctx.fillText("<", midX + 30, winY + winH - 15);
-                    window.shopClickAreas.push({ x: midX + 10, y: winY + winH - 25, w: 40, h: 20, action: 'prev_p' });
-                }
-                if (window.shopPagePlayer < totalPlayerPages - 1) {
-                    ctx.fillStyle = '#58a6ff';
-                    ctx.fillText(">", ctx.canvas.width - winX - 30, winY + winH - 15);
-                    window.shopClickAreas.push({ x: ctx.canvas.width - winX - 50, y: winY + winH - 25, w: 40, h: 20, action: 'next_p' });
-                }
-
-                ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 11px Consolas, monospace';
-                ctx.textAlign = 'right';
-                ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 15, winY + winH - 15);
             }
         }
+
+        // === НИЖНЯЯ ПАНЕЛЬ: ЗОЛОТО И НАВИГАЦИЯ ===
+        // Мы рисуем это в самом низу, чтобы ничего не накладывалось
         
-        // Золото торговца
+        const bottomY = winY + winH - 15; // Базовая линия для текста внизу
+
+        // 1. Золото торговца (слева)
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 11px Consolas, monospace';
         ctx.textAlign = 'left';
-        ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 15, winY + winH - 15);
+        ctx.fillText(`💰 Торговец: ${merchantInv.gold}`, winX + 15, bottomY);
+
+        // 2. Золото игрока (справа)
+        ctx.textAlign = 'right';
+        ctx.fillText(`💰 Вы: ${playerGold}`, ctx.canvas.width - winX - 15, bottomY);
+
+        // 3. Навигация торговца (слева, чуть выше золота)
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '11px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Стр. ${window.shopPageMerchant + 1}/${totalMerchantPages}`, (winX + midX)/2, bottomY - 15);
+        
+        if (window.shopPageMerchant > 0) {
+            ctx.fillStyle = '#58a6ff';
+            ctx.fillText("<", winX + 30, bottomY - 15);
+            window.shopClickAreas.push({ x: winX + 10, y: bottomY - 25, w: 40, h: 20, action: 'prev_m' });
+        }
+        if (window.shopPageMerchant < totalMerchantPages - 1) {
+            ctx.fillStyle = '#58a6ff';
+            ctx.fillText(">", midX - 30, bottomY - 15);
+            window.shopClickAreas.push({ x: midX - 50, y: bottomY - 25, w: 40, h: 20, action: 'next_m' });
+        }
+
+        // 4. Навигация игрока (справа, чуть выше золота)
+        if (typeof GameModule !== 'undefined' && GameModule.getPlayer()) {
+            ctx.fillStyle = '#8b949e';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Стр. ${window.shopPagePlayer + 1}/${totalPlayerPages}`, (midX + ctx.canvas.width - winX)/2, bottomY - 15);
+
+            if (window.shopPagePlayer > 0) {
+                ctx.fillStyle = '#58a6ff';
+                ctx.fillText("<", midX + 30, bottomY - 15);
+                window.shopClickAreas.push({ x: midX + 10, y: bottomY - 25, w: 40, h: 20, action: 'prev_p' });
+            }
+            if (window.shopPagePlayer < totalPlayerPages - 1) {
+                ctx.fillStyle = '#58a6ff';
+                ctx.fillText(">", ctx.canvas.width - winX - 30, bottomY - 15);
+                window.shopClickAreas.push({ x: ctx.canvas.width - winX - 50, y: bottomY - 25, w: 40, h: 20, action: 'next_p' });
+            }
+        }
     }
     
     return {
