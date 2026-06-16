@@ -306,26 +306,38 @@ const GameModule = (function() {
             return;
         }
 
+        // Нельзя продавать квестовые предметы
         if (item.isQuestItem) {
             RenderModule.log("Это квестовый предмет, его нельзя продать!", "combat");
             return;
         }
 
+        // Цена продажи игроку (50% от стоимости)
         const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
 
         if (currentMerchantInv.gold >= sellPrice) {
+            // 1. Игрок получает золото
             player.gold += sellPrice;
             currentMerchantInv.gold -= sellPrice;
             
+            // 2. Удаляем предмет у игрока
             player.inventory.splice(index, 1);
+
+            // 3. === НОВОЕ: Добавляем предмет торговцу с наценкой ===
+            // Увеличиваем цену предмета на 20% перед возвратом в продажу
+            const buyBackPrice = Math.floor(sellPrice * 1.2); 
+            item.price = buyBackPrice;
             
-            // === СБРОС СТРАНИЦ ПРИ ИЗМЕНЕНИИ СПИСКА ===
+            // Добавляем в начало списка, чтобы игрок сразу видел свой товар
+            currentMerchantInv.items.unshift(item);
+            
+            // Сбрасываем страницы, так как списки изменились
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
             RenderModule.log(`Продано: ${item.name} за ${sellPrice} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+            RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Перерисовка окна
         } else {
             RenderModule.log("У торговца недостаточно золота!", "combat");
         }
