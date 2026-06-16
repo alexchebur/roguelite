@@ -1032,6 +1032,19 @@ function updateQuestCompass() {
         }
         const totalEnemies = enemies.length;
         console.log(`🕷️ [DEBUG] Уровень ${depth}: Создано врагов: ${totalEnemies}`, enemies.map(e => e.name));
+        // === НОВОЕ: ОТЛАДКА ПРЕДМЕТОВ И ЗОЛОТА ===
+        if (items.length > 0) {
+            // Группируем предметы по типам для компактного вывода
+            const itemSummary = items.reduce((acc, item) => {
+                acc[item.name] = (acc[item.name] || 0) + 1;
+                return acc;
+            }, {});
+            
+            console.log(`🎒 [DEBUG] Уровень ${depth}: Сгенерировано предметов: ${items.length}`, itemSummary);
+        } else {
+            console.log(`🎒 [DEBUG] Уровень ${depth}: Предметы не сгенерированы.`);
+        }
+        
     }
      
 
