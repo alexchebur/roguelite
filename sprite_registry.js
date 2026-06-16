@@ -78,6 +78,7 @@ const SPRITE_REGISTRY = {
     // Ресурсы и прочее
     'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
     'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' },
+    'ITEM_SCROLL':          { char: '~',   tile: { file: 'item_sprites', x: 0, y: 4 }, desc: 'Свиток' },
 
     // === БОССЫ (2x2 спрайта) ===
     // Древний Дракон (начинается с x:0, y:18)
