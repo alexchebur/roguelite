@@ -625,46 +625,37 @@ const RenderModule = (function() {
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
+    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ) ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
-        // === ОТКЛЮЧАЕМ СГЛАЖИВАНИЕ ДЛЯ ЧЕТКОСТИ ТЕКСТА ===
-        ctx.imageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.webkitImageSmoothingEnabled = false;
-        ctx.msImageSmoothingEnabled = false;
-        // === СБРАСЫВАЕМ ЗОНЫ КЛИКА ПЕРЕД ОТРИСОВКОЙ ===
+
         window.shopClickAreas = []; 
 
-        // Затемнение фона
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Параметры окна
         const winW = ctx.canvas.width * 0.95;
         const winH = ctx.canvas.height * 0.9;
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
         const midX = ctx.canvas.width / 2;
         
-        // Фон окна и рамка
         ctx.fillStyle = '#161b22';
         ctx.strokeStyle = '#d29922';
         ctx.lineWidth = 2;
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
 
-        // === ЗАГОЛОВОК И КНОПКА ВЫХОДА ===
+        // Заголовок и кнопка выхода (без изменений)
         ctx.font = 'bold 16px Consolas, monospace';
         ctx.textBaseline = 'middle';
         const titleText = "🏪 ЛАВКА ТОРГОВЦА";
         const titleWidth = ctx.measureText(titleText).width;
-        
         ctx.fillStyle = '#d29922';
         ctx.textAlign = 'center';
         ctx.fillText(titleText, ctx.canvas.width / 2, winY + 25);
 
-        // Кнопка "ВЫЙТИ"
         const btnText = "❌ ВЫЙТИ";
         ctx.font = 'bold 12px Consolas, monospace';
         const btnWidth = ctx.measureText(btnText).width + 16;
@@ -677,17 +668,14 @@ const RenderModule = (function() {
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(btnText, btnX + btnWidth / 2, btnY);
-
         window.shopExitButton = { x: btnX, y: btnY - btnHeight/2, w: btnWidth, h: btnHeight };
 
-        // Разделительная линия
         ctx.beginPath();
         ctx.moveTo(midX, winY + 45);
         ctx.lineTo(midX, winY + winH - 40);
         ctx.strokeStyle = '#30363d';
         ctx.stroke();
 
-        // Заголовки колонок
         ctx.font = 'bold 12px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#fff';
@@ -697,84 +685,118 @@ const RenderModule = (function() {
 
         // === НАСТРОЙКИ СПИСКА ===
         ctx.font = '11px Consolas, monospace';
-        ctx.textBaseline = 'alphabetic'; 
-        let y = winY + 85; 
-        const itemHeight = 16; // Уменьшили высоту строки, так как теперь одна строка на предмет
-        const maxItemsPerCol = 25; 
+        ctx.textBaseline = 'alphabetic';
+        let y = winY + 85;
+        const itemHeight = 16;
+        const maxItemsPerCol = 25; // Количество предметов на одной странице
 
-        // === ЛЕВАЯ КОЛОНКА (Товары торговца) ===
+        // === ЛЕВАЯ КОЛОНКА (Торговец) ===
+        // Инициализируем страницу, если её нет
+        if (window.shopPageMerchant === undefined) window.shopPageMerchant = 0;
+        
+        const totalMerchantPages = Math.ceil(merchantInv.items.length / maxItemsPerCol) || 1;
+        const startIdxM = window.shopPageMerchant * maxItemsPerCol;
+        const endIdxM = startIdxM + maxItemsPerCol;
+
         ctx.textAlign = 'left';
-        merchantInv.items.slice(0, maxItemsPerCol).forEach((item, index) => {
+        merchantInv.items.slice(startIdxM, endIdxM).forEach((item, i) => {
+            const index = startIdxM + i; // Глобальный индекс в массиве
             if (y > winY + winH - 50) return;
             
-            // 1. Название предмета слева
             ctx.fillStyle = item.color;
             ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 15, y);
-            
-            // 2. Цена справа (в той же строке, у разделителя)
-            ctx.fillStyle = '#ffd700'; // Золотой цвет для цены
+            ctx.fillStyle = '#ffd700';
             ctx.textAlign = 'right';
             ctx.fillText(`${item.price}$`, midX - 15, y);
-            ctx.textAlign = 'left'; // Возвращаем выравнивание
+            ctx.textAlign = 'left';
             
-            // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА
             window.shopClickAreas.push({
-                x: winX,
-                y: y - 12, // Чуть выше базовой линии шрифта
-                w: midX - winX, 
-                h: itemHeight,
-                action: 'buy',
-                index: index
+                x: winX, y: y - 12, w: midX - winX, h: itemHeight,
+                action: 'buy', index: index
             });
-            
             y += itemHeight;
         });
 
-        // Золото торговца
-        ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 11px Consolas, monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 15, winY + winH - 15);
+        // Навигация торговца
+        ctx.fillStyle = '#8b949e';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Стр. ${window.shopPageMerchant + 1}/${totalMerchantPages}`, (winX + midX)/2, winY + winH - 15);
+        
+        // Кнопка ВЛЕВО
+        if (window.shopPageMerchant > 0) {
+            ctx.fillStyle = '#58a6ff';
+            ctx.fillText("<", winX + 30, winY + winH - 15);
+            window.shopClickAreas.push({ x: winX + 10, y: winY + winH - 25, w: 40, h: 20, action: 'prev_m' });
+        }
+        // Кнопка ВПРАВО
+        if (window.shopPageMerchant < totalMerchantPages - 1) {
+            ctx.fillStyle = '#58a6ff';
+            ctx.fillText(">", midX - 30, winY + winH - 15);
+            window.shopClickAreas.push({ x: midX - 50, y: winY + winH - 25, w: 40, h: 20, action: 'next_m' });
+        }
 
-        // === ПРАВАЯ КОЛОНКА (Инвентарь игрока) ===
+
+        // === ПРАВАЯ КОЛОНКА (Игрок) ===
         if (typeof GameModule !== 'undefined') {
             const player = GameModule.getPlayer();
             if (player) {
+                if (window.shopPagePlayer === undefined) window.shopPagePlayer = 0;
+                
+                const totalPlayerPages = Math.ceil(player.inventory.length / maxItemsPerCol) || 1;
+                const startIdxP = window.shopPagePlayer * maxItemsPerCol;
+                const endIdxP = startIdxP + maxItemsPerCol;
+
                 ctx.textAlign = 'right';
                 y = winY + 85;
                 
-                player.inventory.slice(0, maxItemsPerCol).forEach((item, index) => {
+                player.inventory.slice(startIdxP, endIdxP).forEach((item, i) => {
+                    const index = startIdxP + i;
                     if (y > winY + winH - 50) return;
 
-                    // 1. Название предмета справа
                     ctx.fillStyle = item.color;
                     ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
                     
-                    // 2. Цена продажи слева (в той же строке, у разделителя)
                     const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
                     ctx.fillStyle = '#ffd700';
                     ctx.textAlign = 'left';
                     ctx.fillText(`${sellPrice}$`, midX + 15, y);
-                    ctx.textAlign = 'right'; // Возвращаем выравнивание
+                    ctx.textAlign = 'right';
                     
-                    // 🎯 СОХРАНЯЕМ ЗОНУ КЛИКА
                     window.shopClickAreas.push({
-                        x: midX,
-                        y: y - 12,
-                        w: ctx.canvas.width - winX - midX,
-                        h: itemHeight,
-                        action: 'sell',
-                        index: index
+                        x: midX, y: y - 12, w: ctx.canvas.width - winX - midX, h: itemHeight,
+                        action: 'sell', index: index
                     });
-                    
                     y += itemHeight;
                 });
+
+                // Навигация игрока
+                ctx.fillStyle = '#8b949e';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Стр. ${window.shopPagePlayer + 1}/${totalPlayerPages}`, (midX + ctx.canvas.width - winX)/2, winY + winH - 15);
+
+                if (window.shopPagePlayer > 0) {
+                    ctx.fillStyle = '#58a6ff';
+                    ctx.fillText("<", midX + 30, winY + winH - 15);
+                    window.shopClickAreas.push({ x: midX + 10, y: winY + winH - 25, w: 40, h: 20, action: 'prev_p' });
+                }
+                if (window.shopPagePlayer < totalPlayerPages - 1) {
+                    ctx.fillStyle = '#58a6ff';
+                    ctx.fillText(">", ctx.canvas.width - winX - 30, winY + winH - 15);
+                    window.shopClickAreas.push({ x: ctx.canvas.width - winX - 50, y: winY + winH - 25, w: 40, h: 20, action: 'next_p' });
+                }
+
                 ctx.fillStyle = '#ffd700';
                 ctx.font = 'bold 11px Consolas, monospace';
                 ctx.textAlign = 'right';
                 ctx.fillText(`💰 Ваше золото: ${player.gold}`, ctx.canvas.width - winX - 15, winY + winH - 15);
             }
         }
+        
+        // Золото торговца
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 11px Consolas, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`💰 Золото торговца: ${merchantInv.gold}`, winX + 15, winY + winH - 15);
     }
     
     return {
