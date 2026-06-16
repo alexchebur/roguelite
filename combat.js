@@ -215,7 +215,7 @@ const CombatModule = (function() {
         }
     }
 
-    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТА (ОБНОВЛЕННОЕ С УЧЕТОМ БОНУСОВ) ===
+    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТА (ОБНОВЛЕННОЕ С УЧЕТОМ БОНУСОВ И ТЕЛЕПОРТАЦИЕЙ) ===
     function useItem(player, index, logFn, updateUiFn) {
         const item = player.inventory[index];
         if (!item) return;
@@ -284,6 +284,19 @@ const CombatModule = (function() {
              
             logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
             used = true;
+        }
+        // 5. === НОВОЕ: Свиток телепортации ===
+        else if (item.effect === "teleport_exit") {
+            // Проверяем, доступен ли модуль игры и функция выхода
+            if (typeof GameModule !== 'undefined' && typeof GameModule.exitToGlobal === 'function') {
+                logFn(`Вы разломали ${item.name} и вспышка света перенесла вас на поверхность!`, "event");
+                used = true;
+                
+                // Вызываем выход из подземелья
+                GameModule.exitToGlobal();
+            } else {
+                logFn(`Здесь нельзя использовать свиток телепортации.`, "info");
+            }
         }
 
         if (used) {
