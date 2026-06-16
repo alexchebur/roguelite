@@ -624,14 +624,21 @@ const RenderModule = (function() {
     }
     // === ОТРИСОВКА ОКНА МАГАЗИНА ===
     // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
+    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
         window.shopClickAreas = []; 
 
+        // === ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ СТРАНИЦ (ИСПРАВЛЕНИЕ БАГА 1/1) ===
+        if (typeof window.shopPageMerchant === 'undefined') window.shopPageMerchant = 0;
+        if (typeof window.shopPagePlayer === 'undefined') window.shopPagePlayer = 0;
+
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // ... остальной код отрисовки без изменений ...
 
         const winW = ctx.canvas.width * 0.95;
         const winH = ctx.canvas.height * 0.9;
