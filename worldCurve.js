@@ -71,36 +71,32 @@ const WorldCurveModule = (function() {
         },
 
         /**
-         * Получить множитель сложности врагов для данной глубины (координаты x, y)
-         */
-        /**
-         * Получить множитель сложности врагов для данной глубины (координаты x, y)
+         * Получить множитель сложности врагов для данной глубины/расстояния
          */
         getEnemyMultiplier: function(x, y) {
-            const depth = Math.abs(x) + Math.abs(y);
-            // Более плавный рост: 1.08 вместо 1.15. 
-            // На глубине 0 множитель будет ~1.15, на глубине 10 ~2.5 (вместо 4.0)
-            return 1.0 * Math.pow(1.02, depth) + 0.0; 
+            const dist = Math.abs(x) + Math.abs(y);
+            // Замедленный рост через квадратный корень.
+            // На 100 клетках множитель будет всего 1.5 (вместо 7.3 раньше)
+            return 1 + (Math.sqrt(dist) * 0.05); 
         },
 
-    
         /**
-         * Множитель силы предметов (качества) от глубины
+         * Множитель силы предметов (качества) от расстояния
          */
         getItemPowerMultiplier: function(x, y) {
-            const depth = Math.abs(x) + Math.abs(y);
-            // Линейный рост качества предметов
-            return calculate(CURVES.LINEAR, depth, { a: 0.1, b: 1.0 });
+            const dist = Math.abs(x) + Math.abs(y);
+            // Очень плавный рост: +2% характеристик за каждую клетку от центра
+            return calculate(CURVES.LINEAR, dist, { a: 0.02, b: 1.0 });
         },
 
         /**
          * Множитель золота
          */
         getGoldMultiplier: function(x, y) {
-            const depth = Math.abs(x) + Math.abs(y);
-            return calculate(CURVES.LINEAR, depth, { a: 1.2, b: 1 });
+            const dist = Math.abs(x) + Math.abs(y);
+            // Умеренный рост золота
+            return calculate(CURVES.LINEAR, dist, { a: 0.1, b: 1 });
         },
-
         /**
          * Проверка: является ли этот уровень "Хабом" (безопасной зоной)
          * Хабы появляются каждые 5 уровней глубины
