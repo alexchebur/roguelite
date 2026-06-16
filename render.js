@@ -718,7 +718,7 @@ const RenderModule = (function() {
             if (y > winY + winH - 50) return;
             
             ctx.fillStyle = item.color;
-            ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, winX + 15, y);
+            ctx.fillText(`${index + 1}. ${item.name}`, winX + 15, y);
             ctx.fillStyle = '#ffd700';
             ctx.textAlign = 'right';
             ctx.fillText(`${item.price}$`, midX - 15, y);
@@ -741,10 +741,11 @@ const RenderModule = (function() {
             
             player.inventory.slice(startIdxP, endIdxP).forEach((item, i) => {
                 const index = startIdxP + i;
-                if (y > winY + winH - 50) return;
-
+                if (y > winY + winH - 50) return;                    
                 ctx.fillStyle = item.color;
-                ctx.fillText(`${index + 1}. ${item.char} ${item.name}`, ctx.canvas.width - winX - 15, y);
+                ctx.fillText(`${index + 1}. ${item.name}`, ctx.canvas.width - winX - 15, y);
+
+
                 
                 const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
                 ctx.fillStyle = '#ffd700';
