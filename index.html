@@ -2,9 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Roguelike: Подземелье Координат</title>
     
-    <!-- ... ваши скрипты ... -->
+    <!-- Скрипты -->
     <script src="rot.min.js"></script>
     <script src="seedrandom.min.js"></script>
     <script src="sprite_registry.js"></script>
@@ -26,11 +27,9 @@
     <script src="game.js"></script>
 
     <style>
-        /* ... ваши стили ... */
         :root {
-            --bg-color: #0d1117;
-            --panel-bg: #161b22;
-            --border-color: #30363d;
+            --bg-overlay: rgba(13, 17, 23, 0.85); /* Полупрозрачный темный фон */
+            --border-color: rgba(48, 54, 61, 0.5);
             --text-main: #c9d1d9;
             --text-dim: #8b949e;
             --accent: #58a6ff;
@@ -38,211 +37,269 @@
             --gold: #d29922;
             --font-stack: 'Consolas', 'Monaco', monospace;
         }
+
         body {
-            background-color: var(--bg-color);
+            background-color: #000;
             color: var(--text-main);
             font-family: var(--font-stack);
             margin: 0;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            width: 100vw;
+            overflow: hidden; /* Убираем скролл страницы */
+            position: relative;
         }
-        #game-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr 260px;
-            grid-template-rows: 100px 1fr 140px; /* Вернул стандартную высоту */
+
+        /* Канвас на весь экран */
+        #map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
-            gap: 4px;
-            padding: 4px;
-            box-sizing: border-box;
+            z-index: 0; /* Самый нижний слой */
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .panel {
-            background: var(--panel-bg);
+
+        #map-container canvas {
+            display: block;
+            image-rendering: pixelated;
+            /* Трансформация будет применяться скриптом render.js для масштабирования */
+        }
+
+        /* Общий стиль для всех плавающих панелей */
+        .ui-panel {
+            position: absolute;
+            background: var(--bg-overlay);
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            padding: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            padding: 8px;
+            z-index: 10; /* Поверх канваса */
+            pointer-events: auto; /* Чтобы клики работали */
+            backdrop-filter: blur(2px); /* Легкое размытие фона под панелью */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
+
         h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
+            margin: 0 0 6px 0;
+            font-size: 11px;
             text-transform: uppercase;
             color: var(--text-dim);
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 4px;
+            padding-bottom: 2px;
             letter-spacing: 1px;
+            opacity: 0.8;
         }
-        header {
-            grid-column: 1 / -1;
-            display: flex;
-            flex-direction: column; 
-            justify-content: center;
-            align-items: center;
+
+        /* --- ВЕРХНЯЯ ПАНЕЛЬ (Инфо о локации) --- */
+        #header-panel {
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             text-align: center;
-            padding: 5px 15px; 
+            min-width: 200px;
+            max-width: 80%;
         }
-        .loc-info { 
-            text-align: center; 
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
+        .loc-name { color: var(--accent); font-weight: bold; font-size: 14px; }
+        .loc-coords { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+
+        /* --- ЛЕВАЯ ВЕРХНЯЯ ПАНЕЛЬ (Статы) --- */
+        #stats-panel {
+            top: 10px;
+            left: 10px;
+            width: 160px;
         }
-        .loc-name { 
-            color: var(--accent); 
-            font-weight: bold; 
-            font-size: 1.1em; 
-            line-height: 1.2;
-        }
-        .loc-coords { 
-            color: var(--text-dim); 
-            font-size: 0.9em; 
-            min-height: 1.2em; /* Чтобы текст не прыгал */
-        }
-        
-        #map-container {
-            grid-column: 2;
-            grid-row: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-            border: 1px solid var(--border-color);
-            position: relative;
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-        }
-        #map-container canvas {
-            display: block;
-            transform-origin: center center;
-            image-rendering: pixelated;
-        }
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; }
         .val-hp { color: var(--danger); }
         .val-atk { color: var(--gold); }
         .val-def { color: var(--accent); }
-        .equip-slot { font-size: 12px; margin-bottom: 4px; color: #aaa; }
+        
+        .equip-slot { font-size: 11px; margin-bottom: 2px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .equip-item { color: var(--gold); }
-        #inventory-list { overflow-y: auto; flex: 0 0 auto; max-height: 30%; margin-bottom: 5px; }
-        .inv-item {
-            padding: 3px 5px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 3px;
-            cursor: pointer;
+
+        /* --- ИНСПЕКТОР (под статами) --- */
+        #inspector-panel {
+            top: 180px; /* Подгоняется под высоту stats-panel */
+            left: 10px;
+            width: 160px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #ui-inspector { font-size: 11px; color: var(--text-dim); }
+
+        /* --- ПРАВАЯ ВЕРХНЯЯ ПАНЕЛЬ (Инвентарь) --- */
+        #inventory-panel {
+            top: 10px;
+            right: 10px;
+            width: 180px;
+            max-height: 40vh; /* Не больше 40% высоты экрана */
+            display: flex;
+            flex-direction: column;
+        }
+        #inventory-list { 
+            overflow-y: auto; 
+            flex: 1; 
             font-size: 11px;
+            margin-bottom: 5px;
+            padding-right: 2px;
+        }
+        /* Скроллбар для инвентаря */
+        #inventory-list::-webkit-scrollbar { width: 4px; }
+        #inventory-list::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+        .inv-item {
+            padding: 2px 4px;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 2px;
+            cursor: pointer;
             border-radius: 3px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .inv-item:hover { background: rgba(255,255,255,0.1); }
-        #log-list {
-            overflow-y: auto;
-            flex: 1;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column-reverse;
-        }
-        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; }
-        .log-combat { color: var(--danger); }
-        .log-loot { color: var(--gold); }
-        .log-info { color: var(--accent); }
-        .log-lore { 
-            color: #d2b48c;
-            font-style: italic;
-            border-left: 3px solid #8b7355;
-            padding-left: 8px;
-            background: rgba(139, 115, 85, 0.1);
-            margin-top: 4px;
-            margin-bottom: 4px;
-            font-family: 'Georgia', serif;
-            font-size: 12px;
-            line-height: 1.4;
-        }
+        .inv-item:hover { background: rgba(255,255,255,0.15); }
+
+        /* --- НИЖНЯЯ ЛЕВАЯ ПАНЕЛЬ (Миникарта) --- */
         #minimap-panel {
-            grid-column: 1;
-            grid-row: 3;
+            bottom: 10px;
+            left: 10px;
+            width: 150px;
+            height: 150px;
             display: flex;
             flex-direction: column;
         }
         #minimap { 
             width: 100%; 
             height: 100%; 
-            background: #000; 
+            background: rgba(0,0,0,0.5); 
             border-radius: 4px;
             image-rendering: pixelated;
         }
-        footer {
-            grid-column: 2 / 4;
-            grid-row: 3;
+
+        /* --- НИЖНЯЯ ПРАВАЯ ПАНЕЛЬ (Лог событий) --- */
+        #log-panel {
+            bottom: 10px;
+            right: 10px;
+            width: 250px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+        }
+        #log-list {
+            overflow-y: auto;
+            flex: 1;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column-reverse; /* Новые сообщения снизу */
+            padding-right: 2px;
+        }
+        #log-list::-webkit-scrollbar { width: 4px; }
+        #log-list::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+        .log-msg { margin-bottom: 2px; line-height: 1.2; word-wrap: break-word; opacity: 0.9; }
+        .log-combat { color: var(--danger); }
+        .log-loot { color: var(--gold); }
+        .log-info { color: var(--accent); }
+        .log-lore { 
+            color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; 
+            padding-left: 6px; background: rgba(139, 115, 85, 0.1); margin-top: 2px;
+        }
+
+        /* --- НИЖНЯЯ ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Квесты) --- */
+        #quest-bar {
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
+            gap: 15px;
+            padding: 6px 15px;
         }
-        kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #fff; border: 1px solid #444; }
+        #ui-quest-briefing { 
+            color: var(--gold); 
+            font-weight: bold; 
+            font-size: 12px; 
+            white-space: nowrap; 
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #btn-abandon-quest {
+            color: #f85149; 
+            font-size: 11px; 
+            cursor: pointer; 
+            opacity: 0.6;
+            user-select: none;
+        }
+        #btn-abandon-quest:hover { opacity: 1; text-decoration: underline; }
+
+        /* Адаптация под мобильные (если экран очень узкий) */
+        @media (max-width: 600px) {
+            #stats-panel, #inspector-panel { width: 130px; font-size: 10px; }
+            #inventory-panel { width: 140px; }
+            #log-panel { width: 180px; height: 120px; }
+            #minimap-panel { width: 100px; height: 100px; }
+            #quest-bar { max-width: 90%; }
+        }
     </style>
 </head>
 <body>
 
-<div id="game-layout">
-    <header class="panel">
-        <div style="font-weight:bold; font-size:16px;">👾 Roguelike JS</div>
-        <div class="loc-info">
-            <div id="ui-loc-name" class="loc-name">Инициализация...</div>
-            <!-- ОДИН ЭЛЕМЕНТ ДЛЯ ВСЕГО -->
-            <div id="ui-loc-coords" class="loc-coords">Выход: —</div>
-        </div>
-    </header>
-
-    <div class="panel" style="grid-row: 2;">
-        <h3>Персонаж</h3>
-        <div id="ui-stats"></div>
-        <h3 style="margin-top: 15px;">Экипировка</h3>
-        <div id="ui-equip"></div>
-        <h3 style="margin-top: 15px; color: var(--accent);">👁️ Инспектор</h3>
-        <div id="ui-inspector" style="font-size: 12px; color: var(--text-dim); min-height: 40px;">
-            <div style="font-style: italic; opacity: 0.7;">Кликните по объекту на карте...</div>
-        </div>
-    </div>
-
+    <!-- Игровое окно (Канвас) -->
     <div id="map-container"></div>
 
-    <div class="panel" style="grid-row: 2;">
+    <!-- UI Слои -->
+    
+    <!-- Верх Центр: Локация -->
+    <div id="header-panel" class="ui-panel">
+        <div id="ui-loc-name" class="loc-name">Инициализация...</div>
+        <div id="ui-loc-coords" class="loc-coords">Выход: —</div>
+    </div>
+
+    <!-- Верх Лево: Статы -->
+    <div id="stats-panel" class="ui-panel">
+        <h3>Персонаж</h3>
+        <div id="ui-stats"></div>
+        <h3 style="margin-top: 8px;">Экипировка</h3>
+        <div id="ui-equip"></div>
+    </div>
+
+    <!-- Лево Середина: Инспектор -->
+    <div id="inspector-panel" class="ui-panel">
+        <h3>👁️ Инспектор</h3>
+        <div id="ui-inspector">
+            <div style="font-style: italic; opacity: 0.7;">Кликните по объекту...</div>
+        </div>
+    </div>
+
+    <!-- Верх Право: Инвентарь -->
+    <div id="inventory-panel" class="ui-panel">
         <h3>Инвентарь</h3>
         <div id="inventory-list"></div>
-        <h3 style="margin-top: 10px;">Журнал событий</h3>
-        <div id="log-list"></div>
     </div>
-    
-    <div id="minimap-panel" class="panel">
-        <h3>Карта мира</h3>
+
+    <!-- Низ Лево: Миникарта -->
+    <div id="minimap-panel" class="ui-panel">
+        <h3>Карта</h3>
         <canvas id="minimap"></canvas>
     </div>
 
-     <!-- В index.html -->
-     <footer class="panel" style="grid-column: 2 / 4; grid-row: 3; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 20px;">
-         <div id="ui-quest-briefing" style="color: var(--gold); font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
-             <!-- Сюда будет выводиться суть квеста -->
-         </div>
-         
-         <!-- Кнопка отказа (скрыта по умолчанию) -->
-         <div id="btn-abandon-quest" 
-              style="display: none; color: #f85149; font-size: 11px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; user-select: none; margin-left: 15px;"
-              onclick="if(typeof GameModule !== 'undefined') GameModule.abandonCurrentQuest();"
-              onmouseover="this.style.opacity='1'" 
-              onmouseout="this.style.opacity='0.6'">
+    <!-- Низ Право: Лог -->
+    <div id="log-panel" class="ui-panel">
+        <h3>События</h3>
+        <div id="log-list"></div>
+    </div>
+
+    <!-- Низ Центр: Квесты -->
+    <div id="quest-bar" class="ui-panel">
+        <div id="ui-quest-briefing"></div>
+        <div id="btn-abandon-quest" 
+             onclick="if(typeof GameModule !== 'undefined') GameModule.abandonCurrentQuest();"
+             style="display: none;">
              ❌ Отказаться
-         </div>
-     </footer>
-</div>
+        </div>
+    </div>
 
 </body>
 </html>
