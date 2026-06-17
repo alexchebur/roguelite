@@ -49,11 +49,9 @@
             position: relative;
             user-select: none; 
             -webkit-user-select: none;
-            /* Исправление бага с исчезновением элементов на iOS */
             -webkit-transform: translateZ(0); 
         }
 
-        /* Канвас на весь экран */
         #map-container {
             position: absolute;
             top: 0;
@@ -71,7 +69,6 @@
             image-rendering: pixelated;
         }
 
-        /* Общий стиль панелей */
         .ui-panel {
             position: absolute;
             background: var(--bg-overlay);
@@ -104,11 +101,14 @@
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
-            min-width: 150px;
-            max-width: 60%;
+            /* Убираем min-width/max-width, чтобы ширина зависела от контента и ограничений right */
             padding: 2px 8px;
-            z-index: 20; /* Выше остальных */
-            position: relative; /* Для корректного отображения на iOS */
+            z-index: 20;
+            position: relative;
+            
+            /* === РЕШЕНИЕ ПРОБЛЕМЫ ПЕРЕКРЫТИЯ === */
+            /* На ПК инвентарь имеет ширину 130px + отступ 5px = 135px */
+            right: 140px; 
         }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 12px; line-height: 1.2; }
         .loc-coords { color: var(--text-dim); font-size: 10px; margin-top: 1px; }
@@ -131,7 +131,7 @@
         #inventory-panel {
             top: 5px;
             right: 5px;
-            width: 130px;
+            width: 130px; /* Эта ширина используется для расчета right у header-panel */
             max-height: 40vh;
             display: flex;
             flex-direction: column;
@@ -171,11 +171,11 @@
             image-rendering: pixelated;
         }
 
-        /* --- ИНСПЕКТОР (ПЕРЕМЕЩЕН ВНИЗ, НАД МИНИКАРТОЙ) --- */
+        /* --- ИНСПЕКТОР (над миникартой) --- */
         #inspector-panel {
-            bottom: 110px; /* Над миникартой (100px высота + 5px отступ + 5px зазор) */
+            bottom: 110px;
             left: 5px;
-            width: 100px; /* Ширина как у миникарты */
+            width: 100px;
             max-height: 120px;
             overflow-y: auto;
             font-size: 9px;
@@ -241,13 +241,14 @@
                 border-width: 1px;
             }
             
-            /* Скрываем заголовки на телефоне */
             h3 { display: none; }
 
             #header-panel {
                 top: 2px;
                 padding: 1px 5px;
-                min-width: 120px;
+                /* === МОБИЛЬНОЕ РЕШЕНИЕ === */
+                /* Инвентарь на мобильном 100px + отступ 2px = 102px. Ставим 105px для запаса */
+                right: 105px; 
             }
             .loc-name { font-size: 11px; }
             .loc-coords { font-size: 9px; }
@@ -261,8 +262,8 @@
             .equip-slot { font-size: 7px; }
 
             #inventory-panel {
-                width: 100px;
-                right: 2px;
+                width: 100px; /* Ширина уменьшена */
+                right: 2px;   /* Отступ уменьшен */
                 top: 2px;
                 max-height: 35vh;
             }
@@ -275,9 +276,8 @@
                 left: 2px;
             }
 
-            /* Инспектор теперь прямо над миникартой */
             #inspector-panel {
-                bottom: 85px; /* 80px карта + 2px отступ + 3px зазор */
+                bottom: 85px;
                 left: 2px;
                 width: 80px;
                 max-height: 100px;
