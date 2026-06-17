@@ -273,10 +273,19 @@ const QuestSystemModule = (function() {
 
         // === COLLECT ===
         if (quest.type === 'COLLECT' && eventData.type === 'pickup') {
-            const isCorrectItem = (eventData.itemType === quest.target.itemType) && 
-                                  (!quest.target.itemName || (eventData.itemName && eventData.itemName.includes(quest.target.itemName)));
+            const isCorrectType = (eventData.itemType === quest.target.itemType);
+            
+            // Проверяем имя или уникальный ID
+            let isCorrectIdentity = false;
+            if (quest.target.uniqueId) {
+                isCorrectIdentity = (eventData.uniqueId === quest.target.uniqueId);
+            } else if (quest.target.itemName) {
+                isCorrectIdentity = (eventData.itemName && eventData.itemName.includes(quest.target.itemName));
+            } else {
+                isCorrectIdentity = true; // Если ничего не указано, считаем любой предмет этого типа верным
+            }
                                   
-            if (isCorrectItem && isInCorrectLocation) {
+            if (isCorrectType && isCorrectIdentity && isInCorrectLocation) {
                 quest.progress++;
                 updated = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
