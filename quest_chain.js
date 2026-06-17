@@ -200,7 +200,8 @@ const QuestChainModule = (function() {
             itemName: "артефакт",
             itemType: "weapon",
             count: 1,
-            targetDepth: 1
+            targetDepth: 1,
+            uniqueId: null // <-- НОВОЕ ПОЛЕ: для хранения ID уникального предмета
         };
 
         // 1. Поиск локации (Подземелья)
@@ -252,29 +253,51 @@ const QuestChainModule = (function() {
             // Для BOUNTY меньше целей, для HUNT больше
             targetData.count = (type === 'BOUNTY') ? rng.int(1, 3) : rng.int(3, 6);
         } 
+        
+        // === ИЗМЕНЕНИЯ ЗДЕСЬ: ЛОГИКА УНИКАЛЬНЫХ ПРЕДМЕТОВ ===
         else if (type === 'FETCH') {
-            const items = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
-            const item = items[Math.floor(rng.next() * items.length)];
-            targetData.itemName = item.baseName;
-            targetData.itemType = item.type;
+            // Шанс 50% получить уникальный квестовый предмет, если реестр существует
+            const hasUniqueItems = DataModule.UNIQUE_ITEM_TEMPLATES && DataModule.UNIQUE_ITEM_TEMPLATES.length > 0;
+            const isUniqueRoll = hasUniqueItems && (rng.next() > 0.5);
+
+            if (isUniqueRoll) {
+                // Выбираем случайный уникальный шаблон
+                const uniquePool = DataModule.UNIQUE_ITEM_TEMPLATES;
+                const uniqueItem = uniquePool[Math.floor(rng.next() * uniquePool.length)];
+                
+                targetData.itemName = `${uniqueItem.uniquePrefix} ${uniqueItem.baseName}`;
+                targetData.itemType = uniqueItem.baseType;
+                targetData.uniqueId = uniqueItem.id; // Сохраняем ID для спавнера
+            } else {
+                // Стандартная генерация обычного предмета
+                const items = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
+                const item = items[Math.floor(rng.next() * items.length)];
+                targetData.itemName = item.baseName;
+                targetData.itemType = item.type;
+            }
         } 
+        
         else if (type === 'DIGGER') {
             targetData.targetDepth = rng.int(2, 5);
         } 
+        
         else if (type === 'COLLECT') {
-            targetData.itemName = "Книга"; // Или "Свиток", смотря что в data.js
+            // Для COLLECT тоже можно использовать уникальные предметы, но чаще это книги/ресурсы
+            // Оставим пока стандартную логику для книг, но можно расширить аналогично FETCH
+            targetData.itemName = "Книга"; 
             targetData.itemType = "book";
             targetData.count = rng.int(2, 4);
         }
+        
         else if (type === 'SCHOLAR') {
             targetData.count = rng.int(1, 3);
         }
 
-        // ... (код заполнения targetData) ...
-
-        // === РАСЧЕТ НАГРАДЫ (ПЕРЕНЕСЕНО СЮДА, ПЕРЕД БРИФИНГОМ) ===
+        // === РАСЧЕТ НАГРАДЫ ===
         const baseGold = 100 + (idx * 50);
-        const finalGold = Math.floor(baseGold * (1 + idx * 0.2));
+        // Если квест на уникальный предмет, награда может быть выше
+        const goldMult = targetData.uniqueId ? 1.5 : 1.0; 
+        const finalGold = Math.floor(baseGold * (1 + idx * 0.2) * goldMult);
 
         // === ФОРМИРОВАНИЕ БРИФИНГА ===
         let templatePool = CHAIN_TEMPLATES[type] || CHAIN_TEMPLATES.FETCH;
@@ -292,7 +315,7 @@ const QuestChainModule = (function() {
             .replace(/{count}/g, targetData.count || 1)
             .replace(/{location}/g, targetData.locationName || 'забытых руинах')
             .replace(/{depth}/g, targetData.targetDepth || targetData.recommendedDepth || 1)
-            .replace(/{gold}/g, finalGold); // <--- ТЕПЕРЬ ЭТО РАБОТАЕТ
+            .replace(/{gold}/g, finalGold);
 
         // === ГЕНЕРАЦИЯ ТЕКСТА СДАЧИ ===
         let turnInPool;
@@ -309,8 +332,6 @@ const QuestChainModule = (function() {
             .replace(/{item}/g, targetData.itemName)
             .replace(/{enemy}/g, targetData.enemyName);
 
-        // Удалите старый расчет baseGold/finalGold отсюда, он теперь выше
-        
         return {
             id: `chain_${cityData.x}_${cityData.y}`,
             type: type,
