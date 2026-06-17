@@ -365,11 +365,34 @@ function tryGiveQuest(npc) {
                 const alreadyDone = completedQuestIds.has(questId);
 
                 // Сценарий А: Сюжетный квест выполнен, сдаем награду
+                // Сценарий А: Сюжетный квест выполнен, сдаем награду
                 if (alreadyActive) {
                     const q = activeQuests.find(q => q.id === questId);
                     if (q.isCompleted && !q.isTurnedIn) {
+                        
+                        // === ИСПРАВЛЕНИЕ 2: УДАЛЕНИЕ КВЕСТОВЫХ ПРЕДМЕТОВ ===
+                        // Удаляем предметы, которые нужны для этого квеста
+                        player.inventory = player.inventory.filter(invItem => {
+                            // Если это обычный квестовый предмет
+                            if (invItem.isQuestItem) {
+                                // Для FETCH удаляем всё, что совпадает по типу/имени
+                                if (q.type === 'FETCH') {
+                                    return !(invItem.type === q.target.itemType && 
+                                             (!q.target.itemName || invItem.name.includes(q.target.itemName)));
+                                }
+                                // Для COLLECT удаляем только если совпадает тип и (если есть) uniqueId
+                                if (q.type === 'COLLECT') {
+                                    const isSameType = invItem.type === q.target.itemType;
+                                    const isSameUnique = q.target.uniqueId ? invItem.uniqueId === q.target.uniqueId : true;
+                                    return !(isSameType && isSameUnique);
+                                }
+                            }
+                            return true; // Оставляем остальные предметы
+                        });
+
                         player.gold += q.rewardGold;
                         q.isTurnedIn = true; 
+                        // ... (остальной код выдачи награды)
                         
                         RenderModule.log(`🏆 СЮЖЕТНЫЙ КВЕСТ СДАН! Получено: ${q.rewardGold} золотых.`, "loot");
                         
