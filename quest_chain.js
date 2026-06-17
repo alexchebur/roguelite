@@ -287,15 +287,16 @@ const QuestChainModule = (function() {
             const isUniqueRoll = hasUniqueItems && (rng.next() > 0.7);
 
             if (isUniqueRoll) {
-                // Фильтруем только книги или свитки из уникальных шаблонов
-                const bookUniques = uniquePool.filter(u => u.baseType === 'book' || u.baseType === 'scroll_teleport');
+                // ИСПРАВЛЕНИЕ: Используем полное имя массива вместо неопределенной uniquePool
+                const bookUniques = DataModule.UNIQUE_ITEM_TEMPLATES.filter(u => u.baseType === 'book' || u.baseType === 'scroll_teleport');
+                
                 if (bookUniques.length > 0) {
                     const uniqueBook = bookUniques[Math.floor(rng.next() * bookUniques.length)];
                     targetData.itemName = `${uniqueBook.uniquePrefix} ${uniqueBook.baseName}`;
                     targetData.itemType = uniqueBook.baseType;
                     targetData.uniqueId = uniqueBook.id;
                 } else {
-                    // Фолбэк на обычные книги
+                    // Фолбэк на обычные книги, если уникальных книг нет в реестре
                     targetData.itemName = "Книга";
                     targetData.itemType = "book";
                 }
