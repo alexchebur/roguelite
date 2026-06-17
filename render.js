@@ -546,19 +546,35 @@ const RenderModule = (function() {
                         grouped[key].indices.push(originalIndex);
                     });
 
+// В render.js, внутри updateUI, в цикле отрисовки инвентаря:
+
                     order.forEach(key => {
                         const group = grouped[key];
                         const item = group.item;
                         const div = document.createElement("div");
                         div.className = "inv-item";
-                        div.style.color = item.color;
-                        let html = `${item.char} ${item.name}`;
-                        if (item.val) html += ` (+${item.val})`;
+                        
+                        // Уникальные предметы выделяем фиолетовым или золотым, игнорируя их базовый цвет
+                        div.style.color = item.isUnique ? "#d29922" : item.color; 
+                        div.style.fontWeight = item.isUnique ? "bold" : "normal";
+
+                        let html = `${item.char} ${item.isUnique ? '🌟 ' : ''}${item.name}`;
+                        
+                        if (item.val && !item.isUnique) html += ` (+${item.val})`;
+                        if (item.isUnique) {
+                            // Показываем реальные статы уникального предмета в инвентаре
+                            const stats = [];
+                            if (item.uniqueAtk) stats.push(`Атк:${item.uniqueAtk}`);
+                            if (item.uniqueDef) stats.push(`Защ:${item.uniqueDef}`);
+                            if (stats.length > 0) html += ` <span style="opacity:0.8;font-size:10px">[${stats.join(', ')}]</span>`;
+                        }
+
                         if (group.count > 1) {
                             html += ` <span style="opacity:0.7">(${group.count})</span>`;
                         } else if (item.maxAmmo > 0) {
                             html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
                         }
+                        
                         div.innerHTML = html;
                         div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
                         invDiv.appendChild(div);
