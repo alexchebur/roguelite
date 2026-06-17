@@ -1584,70 +1584,56 @@ function updateQuestCompass() {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
             }  
+            // ... (предыдущий код подбора)
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
-                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH) - ОБНОВЛЕННАЯ
-                // ПРОВЕРКА КВЕСТОВ НА ПОДБОР ПРЕДМЕТА (FETCH и COLLECT)
+                // === ИСПРАВЛЕНИЕ 1: ПОМЕТКА УНИКАЛЬНЫХ ПРЕДМЕТОВ ===
                 if (typeof QuestSystemModule !== 'undefined') {
                     [...activeQuests].forEach(q => {
-                        if (q.isCompleted) return; // Пропускаем уже выполненные
+                        if (q.isCompleted) return;
 
-                        // === ЛОГИКА ДЛЯ FETCH (Найти 1 предмет) ===
-                        if (q.type === 'FETCH') {
-                            // Сравниваем тип И проверяем, что в названии подобранного предмета есть искомое базовое имя
-                            // Например, item.name может быть "Ржавый Шлем", а мы ищем "Шлем"
-                            const isCorrectItem = (item.type === q.target.itemType) && 
-                                                  (!q.target.itemName || item.name.includes(q.target.itemName));
-                            
-                            if (isCorrectItem) {
-                                RenderModule.log(`📦 Это тот самый предмет для квеста!`, "info");
-                                
-                                q.progress = q.maxProgress;
-                                q.isCompleted = true;
-                                
-                                RenderModule.updateQuestBriefing(q);
-                                RenderModule.log(`Теперь нужно вернуться к заказчику за наградой.`, "event");
-                                updateQuestCompass();
+                        // Проверка для FETCH и COLLECT
+                        if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                            let isMatch = false;
+
+                            // 1. Проверка по уникальному ID (для цепочных квестов)
+                            if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
+                                isMatch = true;
+                            } 
+                            // 2. Стандартная проверка по типу и имени
+                            else if ((item.type === q.target.itemType) && 
+                                     (!q.target.itemName || item.name.includes(q.target.itemName))) {
+                                isMatch = true;
                             }
-                        }
-                        
-                        // === ЛОГИКА ДЛЯ COLLECT (Собрать N предметов) ===
-                        // === ЛОГИКА ДЛЯ COLLECT (Собрать N предметов) ===
-                        else if (q.type === 'COLLECT') {
-                            // Проверяем тип предмета и локацию (если квест привязан к подземелью)
-                            const isInLocation = (!q.target.targetX || 
-                                                 (dungeonX === q.target.targetX && dungeonY === q.target.targetY));
-                            
-                            // >>> ИСПРАВЛЕННАЯ ПРОВЕРКА <<<
-                            // 1. Совпадение типа (например, 'book')
-                            // 2. Если в квесте указано конкретное имя (itemName), оно должно содержаться в названии подобранного предмета
-                            const isCorrectType = (item.type === q.target.itemType);
-                            const isCorrectName = !q.target.itemName || item.name.includes(q.target.itemName);
-                            
-                            if (isCorrectType && isCorrectName && isInLocation) {
-                                // Используем checkProgress для увеличения счетчика
-                                QuestSystemModule.checkProgress(q, { 
-                                    type: 'pickup', 
-                                    itemType: item.type,
-                                    locX: dungeonX,
-                                    locY: dungeonY
-                                });
 
-                                // Если после подбора квест завершился
-                                if (q.isCompleted) {
-                                    RenderModule.log(`🏆 Вы собрали все ${q.target.itemName}!`, "event");
+                            if (isMatch) {
+                                item.isQuestItem = true; // Помечаем предмет как квестовый
+                                
+                                if (q.type === 'FETCH') {
+                                    q.progress = q.maxProgress;
+                                    q.isCompleted = true;
                                     RenderModule.updateQuestBriefing(q);
-                                    updateQuestCompass();
-                                } else {
-                                    RenderModule.log(`📦 Подобрано для квеста: ${q.target.itemName} (${q.progress}/${q.maxProgress})`, "info");
+                                    RenderModule.log(`📦 Это тот самый уникальный предмет!`, "info");
+                                } else if (q.type === 'COLLECT') {
+                                    // Для COLLECT используем стандартный checkProgress
+                                    QuestSystemModule.checkProgress(q, { 
+                                        type: 'pickup', 
+                                        itemType: item.type,
+                                        itemName: item.name,
+                                        uniqueId: item.uniqueId, // Передаем ID
+                                        locX: dungeonX,
+                                        locY: dungeonY
+                                    });
+                                    RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info");
                                 }
+                                updateQuestCompass();
                             }
                         }
                     });
                 }
-            }        
+            }
             items.splice(itemIdx, 1);
         }
 
