@@ -1050,19 +1050,28 @@ function updateQuestCompass() {
 
     // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
     // === ГАРАНТИРОВАННЫЙ СПАВН КВЕСТОВОГО ПРЕДМЕТА ===
+// В game.js, замените функцию spawnQuestItem на эту обновленную версию:
+
     function spawnQuestItem(quest) {
-        if (!quest || quest.type !== 'FETCH') return;
+        if (!quest || (quest.type !== 'FETCH' && quest.type !== 'COLLECT')) return;
         
         let template = null;
+        let isUnique = false;
 
-        // 1. ПРИОРИТЕТ: Ищем шаблон по точному базовому имени (например, "Шлем")
-        if (quest.target.itemName) {
-            template = DataModule.ITEM_TYPES.find(t => t.baseName === quest.target.itemName);
+        // 1. ПРОВЕРКА НА УНИКАЛЬНЫЙ ПРЕДМЕТ (Приоритет №1)
+        if (quest.target.uniqueId && typeof DataModule.UNIQUE_ITEM_TEMPLATES !== 'undefined') {
+            template = DataModule.UNIQUE_ITEM_TEMPLATES.find(t => t.id === quest.target.uniqueId);
+            if (template) isUnique = true;
         }
         
-        // 2. ФОЛБЭК: Если по имени не нашли, ищем по широкому типу (weapon/armor)
-        if (!template && quest.target.itemType) {
-            template = DataModule.ITEM_TYPES.find(t => t.type === quest.target.itemType);
+        // 2. ФОЛБЭК: Обычные предметы (если uniqueId нет или не найден)
+        if (!template) {
+            if (quest.target.itemName) {
+                template = DataModule.ITEM_TYPES.find(t => t.baseName === quest.target.itemName);
+            }
+            if (!template && quest.target.itemType) {
+                template = DataModule.ITEM_TYPES.find(t => t.type === quest.target.itemType);
+            }
         }
 
         if (!template) {
@@ -1070,27 +1079,46 @@ function updateQuestCompass() {
             return;
         }
 
-        // Создаем уникальный объект предмета с множителем силы 1.0 (стандартный)
-        const questItem = EntityModule.createItem(template, 0, 0, 1.0);
-        
-        // Делаем его визуально уникальным
-        questItem.name = `✨ ${questItem.name} (Квест)`;
-        questItem.isQuestItem = true; 
+        // 3. СОЗДАНИЕ ОБЪЕКТА ПРЕДМЕТА
+        let questItem;
+        if (isUnique) {
+            // Ручное создание для сохранения уникальных статов и имени
+            const baseTemplate = DataModule.ITEM_TYPES.find(t => t.type === template.baseType);
+            const char = template.char || (baseTemplate ? baseTemplate.char : '?');
+            
+            // Вычисляем среднее значение стата для совместимости с UI
+            const statVal = template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 
+                            (template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0);
 
-        // Ищем безопасное место для спавна
+            questItem = {
+                x: 0, y: 0,
+                name: `${template.uniquePrefix} ${template.baseName}`,
+                char: char,
+                color: template.color || '#FFD700',
+                type: template.baseType,
+                val: statVal,
+                isItem: true,
+                isQuestItem: true,
+                isUnique: true, // Флаг для рендера и логики
+                uniqueAtk: template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0,
+                uniqueDef: template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 0,
+                desc: template.desc || ""
+            };
+        } else {
+            // Стандартная процедурная генерация
+            questItem = EntityModule.createItem(template, 0, 0, 1.0);
+            questItem.name = `✨ ${questItem.name} (Квест)`;
+            questItem.isQuestItem = true;
+        }
+
+        // 4. ПОИСК МЕСТА ДЛЯ СПАВНА (без изменений)
         let spawnPos = null;
-        
-        // Стратегия А: Рядом с лестницей вверх (входом), чтобы игрок сразу увидел
         if (MapModule.stairsUp) {
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(MapModule.stairsUp, 5) : null;
         }
-        
-        // Стратегия Б: Рядом с текущей позицией игрока (если он уже внутри)
         if (!spawnPos && player) {
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : null;
         }
-
-        // Стратегия В: Любая свободная клетка пола
         if (!spawnPos) {
             spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : {x: player.x+1, y: player.y};
         }
@@ -1099,8 +1127,7 @@ function updateQuestCompass() {
             questItem.x = spawnPos.x;
             questItem.y = spawnPos.y;
             items.push(questItem);
-            
-            RenderModule.log(`🔮 Вы чувствуете присутствие ${quest.target.itemName} где-то рядом...`, "event");
+            RenderModule.log(`🔮 Вы чувствуете присутствие артефакта "${questItem.name}" где-то рядом...`, "event");
         }
     }
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
