@@ -573,8 +573,18 @@ const RenderModule = (function() {
         const div = document.createElement("div");
         div.className = `log-msg log-${type}`;
         div.textContent = `> ${msg}`;
+        
+        // Добавляем сообщение в начало списка (так как у нас column-reverse)
         list.prepend(div);
+        
         if (list.children.length > 50) list.lastChild.remove();
+
+        // === ИСПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ БРАУЗЕРОВ ===
+        // Принудительная прокрутка к началу контейнера (который визуально является низом лога)
+        // Используем setTimeout, чтобы дать браузеру время пересчитать высоту после prepend
+        setTimeout(() => {
+            list.scrollTop = 0; 
+        }, 10);
     }
 
     function drawMinimap(player, explored) {
