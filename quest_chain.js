@@ -282,10 +282,27 @@ const QuestChainModule = (function() {
         } 
         
         else if (type === 'COLLECT') {
-            // Для COLLECT тоже можно использовать уникальные предметы, но чаще это книги/ресурсы
-            // Оставим пока стандартную логику для книг, но можно расширить аналогично FETCH
-            targetData.itemName = "Книга"; 
-            targetData.itemType = "book";
+            // Шанс 30% на уникальную книгу/свиток
+            const hasUniqueItems = DataModule.UNIQUE_ITEM_TEMPLATES && DataModule.UNIQUE_ITEM_TEMPLATES.length > 0;
+            const isUniqueRoll = hasUniqueItems && (rng.next() > 0.7);
+
+            if (isUniqueRoll) {
+                // Фильтруем только книги или свитки из уникальных шаблонов
+                const bookUniques = uniquePool.filter(u => u.baseType === 'book' || u.baseType === 'scroll_teleport');
+                if (bookUniques.length > 0) {
+                    const uniqueBook = bookUniques[Math.floor(rng.next() * bookUniques.length)];
+                    targetData.itemName = `${uniqueBook.uniquePrefix} ${uniqueBook.baseName}`;
+                    targetData.itemType = uniqueBook.baseType;
+                    targetData.uniqueId = uniqueBook.id;
+                } else {
+                    // Фолбэк на обычные книги
+                    targetData.itemName = "Книга";
+                    targetData.itemType = "book";
+                }
+            } else {
+                targetData.itemName = "Книга"; 
+                targetData.itemType = "book";
+            }
             targetData.count = rng.int(2, 4);
         }
         
