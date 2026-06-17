@@ -239,50 +239,48 @@ const CombatModule = (function() {
             logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
             used = true;
         }
+// В combat.js, внутри функции useItem, в блоках экипировки:
+
         // 3. Экипировка Оружия
         else if (item.type === "weapon") {
-            // Снимаем старое оружие (если есть)
             if (player.equipment.weapon) {
-                player.bonusAtk -= player.equipment.weapon.val;
-                // Возвращаем старое оружие в инвентарь
+                player.bonusAtk -= player.equipment.weapon.isUnique ? player.equipment.weapon.uniqueAtk : player.equipment.weapon.val;
                 player.inventory.push(player.equipment.weapon); 
             }
             
-            // Надеваем новое оружие
             player.equipment.weapon = item;
-            player.bonusAtk += item.val;
+            // ИСПРАВЛЕНИЕ: используем уникальный стат, если он есть
+            const atkBonus = item.isUnique ? item.uniqueAtk : item.val;
+            player.bonusAtk += atkBonus;
             
-            // Логика боеприпасов
             if (item.maxAmmo > 0 && item.currentAmmo === 0) {
                 item.currentAmmo = item.maxAmmo;
             }
             
-            // Пересчитываем итоговую атаку
             const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
             player.atk = baseAtk + player.bonusAtk;
             if (player.atk < 1) player.atk = 1;
             
-            logFn(`Вы взяли в руки ${item.name}. Атака +${item.val}.`, "loot");
+            logFn(`Вы взяли в руки ${item.name}. Атака +${atkBonus}.`, "loot");
             used = true;
         } 
         // 4. Экипировка Брони
         else if (item.type === "armor") {
-            // Снимаем старую броню (если есть)
             if (player.equipment.armor) {
-                player.bonusDef -= player.equipment.armor.val;
+                player.bonusDef -= player.equipment.armor.isUnique ? player.equipment.armor.uniqueDef : player.equipment.armor.val;
                 player.inventory.push(player.equipment.armor);
             }
             
-            // Надеваем новую броню
             player.equipment.armor = item;
-            player.bonusDef += item.val;
+            // ИСПРАВЛЕНИЕ: используем уникальный стат, если он есть
+            const defBonus = item.isUnique ? item.uniqueDef : item.val;
+            player.bonusDef += defBonus;
             
-            // Пересчитываем итоговую защиту
             const baseDef = WorldCurveModule.getPlayerBaseDef(player.level);
             player.def = baseDef + player.bonusDef;
             if (player.def < 0) player.def = 0;
              
-            logFn(`Вы надели ${item.name}. Защита +${item.val}.`, "loot");
+            logFn(`Вы надели ${item.name}. Защита +${defBonus}.`, "loot");
             used = true;
         }
         // 5. === НОВОЕ: Свиток телепортации ===
