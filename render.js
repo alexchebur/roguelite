@@ -570,20 +570,25 @@ const RenderModule = (function() {
 
     function log(msg, type = "info") {
         const list = document.getElementById("log-list");
+        if (!list) return;
+
         const div = document.createElement("div");
         div.className = `log-msg log-${type}`;
         div.textContent = `> ${msg}`;
         
-        // Добавляем сообщение в начало списка (так как у нас column-reverse)
-        list.prepend(div);
+        // 1. Добавляем новое сообщение в КОНЕЦ списка (стандартный поток)
+        list.appendChild(div);
         
-        if (list.children.length > 50) list.lastChild.remove();
+        // 2. Ограничиваем историю (удаляем самые СТАРЫЕ сообщения сверху)
+        if (list.children.length > 50) {
+            list.removeChild(list.firstChild);
+        }
 
-        // === ИСПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ БРАУЗЕРОВ ===
-        // Принудительная прокрутка к началу контейнера (который визуально является низом лога)
-        // Используем setTimeout, чтобы дать браузеру время пересчитать высоту после prepend
+        // 3. Железобетонная прокрутка вниз для мобильных браузеров
+        // setTimeout дает браузеру 10 мс на то, чтобы физически отрисовать новый div 
+        // и корректно пересчитать list.scrollHeight
         setTimeout(() => {
-            list.scrollTop = 0; 
+            list.scrollTop = list.scrollHeight;
         }, 10);
     }
 
