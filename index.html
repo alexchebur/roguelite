@@ -43,35 +43,21 @@
             color: var(--text-main);
             font-family: var(--font-stack);
             margin: 0;
-            /* ИСПРАВЛЕНИЕ МОБИЛЬНОГО БАГА: dynamic viewport height */
-            height: 100dvh; 
-            height: 100vh; 
+            height: 100dvh; height: 100vh;
             width: 100vw;
             overflow: hidden;
             position: relative;
             user-select: none; 
             -webkit-user-select: none;
-            /* ИСПРАВЛЕНИЕ МОБИЛЬНОГО БАГА: принудительное аппаратное ускорение */
             -webkit-transform: translate3d(0, 0, 0);
             transform: translate3d(0, 0, 0);
         }
 
         #map-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; display: flex; justify-content: center; align-items: center;
         }
-
-        #map-container canvas {
-            display: block;
-            image-rendering: pixelated;
-        }
+        #map-container canvas { display: block; image-rendering: pixelated; }
 
         .ui-panel {
             position: absolute;
@@ -82,18 +68,20 @@
             z-index: 10;
             pointer-events: auto;
             backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            /* ИСПРАВЛЕНИЕ МОБИЛЬНОГО БАГА: анимация "будит" рендерер */
             opacity: 0;
             animation: fadeInUI 0.3s ease-out forwards;
+            /* Принудительное выделение в отдельный слой GPU */
+            transform: translate3d(0, 0, 0);
+            will-change: opacity, transform;
         }
 
         @keyframes fadeInUI {
-            from { opacity: 0; transform: translateY(-2px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translate3d(0, 0, 0) scale(0.98); }
+            to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
         }
 
-        /* Задержка анимации для плавного появления */
         #header-panel { animation-delay: 0.05s; }
         #stats-panel { animation-delay: 0.1s; }
         #inventory-panel { animation-delay: 0.15s; }
@@ -103,155 +91,79 @@
         #quest-bar { animation-delay: 0.35s; }
 
         h3 {
-            margin: 0 0 4px 0;
-            font-size: 10px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 2px;
-            letter-spacing: 0.5px;
-            opacity: 0.7;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            margin: 0 0 4px 0; font-size: 10px; text-transform: uppercase;
+            color: var(--text-dim); border-bottom: 1px solid var(--border-color);
+            padding-bottom: 2px; letter-spacing: 0.5px; opacity: 0.7;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        /* === РЕШЕНИЕ ПРОБЛЕМЫ ЦЕНТРОВКИ И СТЫКОВКИ === */
+        /* === ВЕРХНЯЯ ПАНЕЛЬ (УЖЕ И СТРОГО ПО ЦЕНТРУ) === */
         #header-panel {
             top: 5px;
-            /* Растягиваем панель между левой и правой панелями */
-            /* 110px (ширина статов) + 5px (отступ статов) + 5px (зазор) = 120px */
-            left: calc(110px + 5px + 5px); 
-            /* 130px (ширина инвентаря) + 5px (отступ инвентаря) + 5px (зазор) = 140px */
-            right: calc(130px + 5px + 5px); 
-            
+            /* Увеличили боковые зазоры до 15px, чтобы гарантированно не наезжать */
+            left: calc(110px + 5px + 15px); 
+            right: calc(130px + 5px + 15px);
             text-align: center;
             padding: 2px 8px;
             z-index: 20;
-            /* Используем flex для идеального центрирования содержимого внутри растянутой панели */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
         }
-        .loc-name { color: var(--accent); font-weight: bold; font-size: 12px; line-height: 1.2; }
+        .loc-name { color: var(--accent); font-weight: bold; font-size: 11px; line-height: 1.2; }
         .loc-coords { color: var(--text-dim); font-size: 10px; margin-top: 1px; }
 
-        /* --- ЛЕВАЯ ВЕРХНЯЯ ПАНЕЛЬ (Статы) --- */
-        #stats-panel {
-            top: 5px;
-            left: 5px;
-            width: 110px;
-        }
+        /* --- ЛЕВАЯ ВЕРХНЯЯ (Статы) --- */
+        #stats-panel { top: 5px; left: 5px; width: 110px; }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 10px; line-height: 1.2; }
-        .val-hp { color: var(--danger); }
-        .val-atk { color: var(--gold); }
-        .val-def { color: var(--accent); }
+        .val-hp { color: var(--danger); } .val-atk { color: var(--gold); } .val-def { color: var(--accent); }
         .equip-slot { font-size: 9px; margin-bottom: 1px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .equip-item { color: var(--gold); }
 
-        /* --- ПРАВАЯ ВЕРХНЯЯ ПАНЕЛЬ (Инвентарь) --- */
-        #inventory-panel {
-            top: 5px;
-            right: 5px;
-            width: 130px;
-            max-height: 40vh;
-            display: flex;
-            flex-direction: column;
-        }
+        /* --- ПРАВАЯ ВЕРХНЯЯ (Инвентарь) --- */
+        #inventory-panel { top: 5px; right: 5px; width: 130px; max-height: 40vh; display: flex; flex-direction: column; }
         #inventory-list { overflow-y: auto; flex: 1; font-size: 10px; margin-bottom: 2px; }
-        .inv-item {
-            padding: 2px 3px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 2px;
-            cursor: pointer;
-            border-radius: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 10px;
-        }
+        .inv-item { padding: 2px 3px; background: rgba(255,255,255,0.05); margin-bottom: 2px; cursor: pointer; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
 
-        /* --- НИЖНЯЯ ЛЕВАЯ ПАНЕЛЬ (Миникарта) --- */
-        #minimap-panel {
-            bottom: 5px;
-            left: 5px;
-            width: 100px;
-            height: 100px;
-            display: flex;
-            flex-direction: column;
-        }
-        #minimap { 
-            width: 100%; height: 100%; background: rgba(0,0,0,0.5); border-radius: 2px; image-rendering: pixelated;
-        }
+        /* --- НИЖНЯЯ ЛЕВАЯ (Миникарта) --- */
+        #minimap-panel { bottom: 5px; left: 5px; width: 100px; height: 100px; display: flex; flex-direction: column; }
+        #minimap { width: 100%; height: 100%; background: rgba(0,0,0,0.5); border-radius: 2px; image-rendering: pixelated; }
 
         /* --- ИНСПЕКТОР (над миникартой) --- */
-        #inspector-panel {
-            bottom: 110px;
-            left: 5px;
-            width: 100px;
-            max-height: 120px;
-            overflow-y: auto;
-            font-size: 9px;
-        }
+        #inspector-panel { bottom: 110px; left: 5px; width: 100px; max-height: 120px; overflow-y: auto; font-size: 9px; }
         #ui-inspector { font-size: 9px; color: var(--text-dim); line-height: 1.1; }
 
-        /* --- НИЖНЯЯ ПРАВАЯ ПАНЕЛЬ (Лог событий) --- */
-        #log-panel {
-            bottom: 5px;
-            right: 5px;
-            width: 180px;
-            height: 100px;
-            display: flex;
-            flex-direction: column;
-        }
-        #log-list {
-            overflow-y: auto; flex: 1; font-size: 9px; display: flex; flex-direction: column-reverse; line-height: 1.1;
-        }
+        /* --- НИЖНЯЯ ПРАВАЯ (Лог) --- */
+        #log-panel { bottom: 5px; right: 5px; width: 180px; height: 100px; display: flex; flex-direction: column; }
+        #log-list { overflow-y: auto; flex: 1; font-size: 9px; display: flex; flex-direction: column-reverse; line-height: 1.1; }
         .log-msg { margin-bottom: 1px; word-wrap: break-word; opacity: 0.9; }
-        .log-combat { color: var(--danger); }
-        .log-loot { color: var(--gold); }
-        .log-info { color: var(--accent); }
-        .log-lore { 
-            color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; 
-            padding-left: 4px; background: rgba(139, 115, 85, 0.1); margin-top: 2px;
-        }
+        .log-combat { color: var(--danger); } .log-loot { color: var(--gold); } .log-info { color: var(--accent); }
+        .log-lore { color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; padding-left: 4px; background: rgba(139, 115, 85, 0.1); margin-top: 2px; }
 
-        /* --- НИЖНЯЯ ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Квесты) --- */
-        #quest-bar {
-            bottom: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 4px 10px;
-            max-width: 50%;
-        }
-        #ui-quest-briefing { 
-            color: var(--gold); font-weight: bold; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
+        /* --- НИЖНЯЯ ЦЕНТРАЛЬНАЯ (Квесты) --- */
+        #quest-bar { bottom: 5px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 4px 10px; max-width: 50%; }
+        #ui-quest-briefing { color: var(--gold); font-weight: bold; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #btn-abandon-quest { color: #f85149; font-size: 9px; cursor: pointer; opacity: 0.6; }
 
         /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
         @media (max-width: 600px) {
-            .ui-panel { background: rgba(13, 17, 23, 0.75); border-width: 1px; }
+            .ui-panel {
+                background: rgba(13, 17, 23, 0.85); /* Убрали тяжелый blur для мобильных */
+                backdrop-filter: none; -webkit-backdrop-filter: none;
+                border-width: 1px;
+            }
             h3 { display: none; }
 
             #header-panel {
-                top: 2px;
-                /* Мобильный расчет: 90px (статы) + 2px (отступ) + 2px (зазор) = 94px */
-                left: calc(90px + 2px + 2px);
-                /* Мобильный расчет: 100px (инвентарь) + 2px (отступ) + 2px (зазор) = 104px */
-                right: calc(100px + 2px + 2px);
-                padding: 1px 5px;
+                top: 2px; padding: 1px 5px;
+                /* Мобильные зазоры +12px для гарантированного отсутствия наложений */
+                left: calc(90px + 2px + 12px);
+                right: calc(100px + 2px + 12px);
             }
-            .loc-name { font-size: 11px; }
+            .loc-name { font-size: 10px; } /* Уменьшили шрифт */
             .loc-coords { font-size: 9px; }
 
             #stats-panel { width: 90px; top: 2px; left: 2px; }
-            .stat-row { font-size: 8px; }
-            .equip-slot { font-size: 7px; }
+            .stat-row { font-size: 8px; } .equip-slot { font-size: 7px; }
 
             #inventory-panel { width: 100px; right: 2px; top: 2px; max-height: 35vh; }
             .inv-item { font-size: 8px; }
