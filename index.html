@@ -43,15 +43,15 @@
             color: var(--text-main);
             font-family: var(--font-stack);
             margin: 0;
-            /* ИСПРАВЛЕНИЕ 1: Используем dvh (dynamic viewport height) для мобильных */
+            /* ИСПРАВЛЕНИЕ МОБИЛЬНОГО БАГА: dynamic viewport height */
             height: 100dvh; 
-            height: 100vh; /* Фолбэк для старых браузеров */
+            height: 100vh; 
             width: 100vw;
             overflow: hidden;
             position: relative;
             user-select: none; 
             -webkit-user-select: none;
-            /* ИСПРАВЛЕНИЕ 2: Гарантируем аппаратное ускорение для всего body */
+            /* ИСПРАВЛЕНИЕ МОБИЛЬНОГО БАГА: принудительное аппаратное ускорение */
             -webkit-transform: translate3d(0, 0, 0);
             transform: translate3d(0, 0, 0);
         }
@@ -83,12 +83,17 @@
             pointer-events: auto;
             backdrop-filter: blur(2px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            /* ИСПРАВЛЕНИЕ 3: Легкая анимация появления "будит" рендерер мобильного браузера */
+            /* ИСПРАВЛЕНИЕ МОБИЛЬНОГО БАГА: анимация "будит" рендерер */
             opacity: 0;
             animation: fadeInUI 0.3s ease-out forwards;
         }
 
-        /* Задержка анимации для разных панелей, чтобы избежать лагов при старте */
+        @keyframes fadeInUI {
+            from { opacity: 0; transform: translateY(-2px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Задержка анимации для плавного появления */
         #header-panel { animation-delay: 0.05s; }
         #stats-panel { animation-delay: 0.1s; }
         #inventory-panel { animation-delay: 0.15s; }
@@ -96,11 +101,6 @@
         #minimap-panel { animation-delay: 0.25s; }
         #log-panel { animation-delay: 0.3s; }
         #quest-bar { animation-delay: 0.35s; }
-
-        @keyframes fadeInUI {
-            from { opacity: 0; transform: translateY(-2px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
 
         h3 {
             margin: 0 0 4px 0;
@@ -116,16 +116,23 @@
             text-overflow: ellipsis;
         }
 
-        /* --- ВЕРХНЯЯ ПАНЕЛЬ (Инфо) --- */
+        /* === РЕШЕНИЕ ПРОБЛЕМЫ ЦЕНТРОВКИ И СТЫКОВКИ === */
         #header-panel {
             top: 5px;
-            left: 50%;
-            transform: translateX(-50%);
+            /* Растягиваем панель между левой и правой панелями */
+            /* 110px (ширина статов) + 5px (отступ статов) + 5px (зазор) = 120px */
+            left: calc(110px + 5px + 5px); 
+            /* 130px (ширина инвентаря) + 5px (отступ инвентаря) + 5px (зазор) = 140px */
+            right: calc(130px + 5px + 5px); 
+            
             text-align: center;
             padding: 2px 8px;
             z-index: 20;
-            /* ИСПРАВЛЕНИЕ 4: Отвязка от правого края на очень узких экранах, если нужно */
-            right: 140px; 
+            /* Используем flex для идеального центрирования содержимого внутри растянутой панели */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 12px; line-height: 1.2; }
         .loc-coords { color: var(--text-dim); font-size: 10px; margin-top: 1px; }
@@ -233,8 +240,11 @@
 
             #header-panel {
                 top: 2px;
+                /* Мобильный расчет: 90px (статы) + 2px (отступ) + 2px (зазор) = 94px */
+                left: calc(90px + 2px + 2px);
+                /* Мобильный расчет: 100px (инвентарь) + 2px (отступ) + 2px (зазор) = 104px */
+                right: calc(100px + 2px + 2px);
                 padding: 1px 5px;
-                right: 105px; /* Привязка к инвентарю */
             }
             .loc-name { font-size: 11px; }
             .loc-coords { font-size: 9px; }
