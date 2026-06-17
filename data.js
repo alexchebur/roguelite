@@ -231,7 +231,50 @@ const DataModule = (function() {
             plural: false
         }
     ];
+// В data.js, после ADJECTIVE_TIERS и ITEM_TYPES
 
+    const UNIQUE_ITEM_TEMPLATES = [
+        {
+            id: "unique_armor_dark_lord",
+            baseType: "armor",
+            baseName: "Броня Повелителя Тьмы",
+            uniquePrefix: "Сверхредкая Ультрадревняя",
+            def: [15, 20], // Значительно выше обычных значений
+            color: "#9b59b6", // Фиолетовый (эпический)
+            desc: "Излучает холодную ауру власти."
+        },
+        {
+            id: "unique_weapon_excalibur",
+            baseType: "weapon",
+            baseName: "Святой Меч",
+            uniquePrefix: "Благословенный Светом",
+            atk: [18, 25],
+            color: "#f1c40f", // Золотой
+            desc: "Клинок, рассекающий тьму."
+        },
+        {
+            id: "unique_item_ring_power",
+            baseType: "armor", // Кольца часто идут как броня/аксессуар
+            baseName: "Кольцо Всевластия",
+            uniquePrefix: "Проклятое",
+            def: [2, 2],
+            color: "#e74c3c", // Красный
+            desc: "Дает силу, но требует жертв."
+        },
+        {
+            id: "unique_scroll_teleport_ancient",
+            baseType: "scroll_teleport",
+            baseName: "Свиток Возврата",
+            uniquePrefix: "Изначальный",
+            color: "#00ffff", // Циан
+            desc: "Пахнет озоном и древней магией."
+        }
+    ];
+
+    // Не забудьте добавить UNIQUE_ITEM_TEMPLATES в return модуля DataModule:
+    // return { ADJECTIVE_TIERS, ENEMY_TYPES, ITEM_TYPES, UNIQUE_ITEM_TEMPLATES, MAP_WIDTH, MAP_HEIGHT };
+
+    
     const MAP_WIDTH = 100;
     const MAP_HEIGHT = 100;
 
@@ -239,6 +282,7 @@ const DataModule = (function() {
         ADJECTIVE_TIERS, // <--- ВАЖНО: Экспортируем новый объект
         ENEMY_TYPES,
         ITEM_TYPES,
+        UNIQUE_ITEM_TEMPLATES,
         MAP_WIDTH,
         MAP_HEIGHT
     };
