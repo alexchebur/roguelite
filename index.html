@@ -132,12 +132,32 @@
         #inspector-panel { bottom: 110px; left: 5px; width: 100px; max-height: 120px; overflow-y: auto; font-size: 9px; }
         #ui-inspector { font-size: 9px; color: var(--text-dim); line-height: 1.1; }
 
-        /* --- НИЖНЯЯ ПРАВАЯ (Лог) --- */
-        #log-panel { bottom: 5px; right: 5px; width: 180px; height: 100px; display: flex; flex-direction: column;  scroll-behavior: smooth; }
-        #log-list { overflow-y: auto; flex: 1; font-size: 9px; display: flex; line-height: 1.1; }
+        /* --- НИЖНЯЯ ПРАВАЯ ПАНЕЛЬ (Лог событий) --- */
+        #log-panel {
+            bottom: 5px;
+            right: 5px;
+            width: 180px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+        }
+        #log-list {
+            overflow-y: auto;
+            flex: 1;
+            font-size: 9px;
+            line-height: 1.1;
+            /* === ИСПРАВЛЕНИЕ: Заставляет контент прижиматься к низу === */
+            justify-content: flex-end; 
+            scroll-behavior: smooth;
+        }
         .log-msg { margin-bottom: 1px; word-wrap: break-word; opacity: 0.9; }
-        .log-combat { color: var(--danger); } .log-loot { color: var(--gold); } .log-info { color: var(--accent); }
-        .log-lore { color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; padding-left: 4px; background: rgba(139, 115, 85, 0.1); margin-top: 2px; }
+        .log-combat { color: var(--danger); }
+        .log-loot { color: var(--gold); }
+        .log-info { color: var(--accent); }
+        .log-lore { 
+            color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; 
+            padding-left: 4px; background: rgba(139, 115, 85, 0.1); margin-top: 2px;
+        }
 
         /* --- НИЖНЯЯ ЦЕНТРАЛЬНАЯ (Квесты) --- */
         #quest-bar { bottom: 5px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 4px 10px; max-width: 50%; }
