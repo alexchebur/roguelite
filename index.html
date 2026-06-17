@@ -47,9 +47,10 @@
             width: 100vw;
             overflow: hidden;
             position: relative;
-            /* Запрет выделения текста при тапах */
             user-select: none; 
             -webkit-user-select: none;
+            /* Исправление бага с исчезновением элементов на iOS */
+            -webkit-transform: translateZ(0); 
         }
 
         /* Канвас на весь экран */
@@ -76,12 +77,11 @@
             background: var(--bg-overlay);
             border: 1px solid var(--border-color);
             border-radius: 4px;
-            padding: 4px; /* Минимальный отступ */
+            padding: 4px;
             z-index: 10;
             pointer-events: auto;
             backdrop-filter: blur(2px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            transition: opacity 0.3s;
         }
 
         h3 {
@@ -107,6 +107,8 @@
             min-width: 150px;
             max-width: 60%;
             padding: 2px 8px;
+            z-index: 20; /* Выше остальных */
+            position: relative; /* Для корректного отображения на iOS */
         }
         .loc-name { color: var(--accent); font-weight: bold; font-size: 12px; line-height: 1.2; }
         .loc-coords { color: var(--text-dim); font-size: 10px; margin-top: 1px; }
@@ -115,7 +117,7 @@
         #stats-panel {
             top: 5px;
             left: 5px;
-            width: 110px; /* Узкая */
+            width: 110px;
         }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 10px; line-height: 1.2; }
         .val-hp { color: var(--danger); }
@@ -124,17 +126,6 @@
         
         .equip-slot { font-size: 9px; margin-bottom: 1px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .equip-item { color: var(--gold); }
-
-        /* --- ИНСПЕКТОР (под статами) --- */
-        #inspector-panel {
-            top: 130px; /* Жестко под статами */
-            left: 5px;
-            width: 110px;
-            max-height: 100px;
-            overflow-y: auto;
-            font-size: 9px;
-        }
-        #ui-inspector { font-size: 9px; color: var(--text-dim); line-height: 1.1; }
 
         /* --- ПРАВАЯ ВЕРХНЯЯ ПАНЕЛЬ (Инвентарь) --- */
         #inventory-panel {
@@ -167,7 +158,7 @@
         #minimap-panel {
             bottom: 5px;
             left: 5px;
-            width: 100px; /* Квадратная и маленькая */
+            width: 100px;
             height: 100px;
             display: flex;
             flex-direction: column;
@@ -180,19 +171,30 @@
             image-rendering: pixelated;
         }
 
+        /* --- ИНСПЕКТОР (ПЕРЕМЕЩЕН ВНИЗ, НАД МИНИКАРТОЙ) --- */
+        #inspector-panel {
+            bottom: 110px; /* Над миникартой (100px высота + 5px отступ + 5px зазор) */
+            left: 5px;
+            width: 100px; /* Ширина как у миникарты */
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 9px;
+        }
+        #ui-inspector { font-size: 9px; color: var(--text-dim); line-height: 1.1; }
+
         /* --- НИЖНЯЯ ПРАВАЯ ПАНЕЛЬ (Лог событий) --- */
         #log-panel {
             bottom: 5px;
             right: 5px;
-            width: 180px; /* Уже, чем на ПК */
-            height: 100px; /* Ниже, чтобы не лезть на инвентарь */
+            width: 180px;
+            height: 100px;
             display: flex;
             flex-direction: column;
         }
         #log-list {
             overflow-y: auto;
             flex: 1;
-            font-size: 9px; /* Очень мелкий шрифт для лога */
+            font-size: 9px;
             display: flex;
             flex-direction: column-reverse;
             line-height: 1.1;
@@ -215,7 +217,7 @@
             align-items: center;
             gap: 10px;
             padding: 4px 10px;
-            max-width: 50%; /* Ограничиваем ширину, чтобы не наезжать на углы */
+            max-width: 50%;
         }
         #ui-quest-briefing { 
             color: var(--gold); 
@@ -232,32 +234,31 @@
             opacity: 0.6;
         }
 
-        /* === МОБИЛЬНАЯ АДАПТАЦИЯ (Media Queries) === */
+        /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
         @media (max-width: 600px) {
-            /* Делаем панели еще уже и прозрачнее */
             .ui-panel {
-                background: rgba(13, 17, 23, 0.75); /* Более прозрачные */
+                background: rgba(13, 17, 23, 0.75);
                 border-width: 1px;
             }
             
-            /* Статы: скрываем заголовки, оставляем только цифры */
-            #stats-panel h3, #inspector-panel h3, #inventory-panel h3, #minimap-panel h3, #log-panel h3 {
-                display: none; /* Убираем заголовки на телефоне для экономии места */
+            /* Скрываем заголовки на телефоне */
+            h3 { display: none; }
+
+            #header-panel {
+                top: 2px;
+                padding: 1px 5px;
+                min-width: 120px;
             }
+            .loc-name { font-size: 11px; }
+            .loc-coords { font-size: 9px; }
 
             #stats-panel {
                 width: 90px;
                 top: 2px;
                 left: 2px;
             }
-            .stat-row { font-size: 9px; }
-            .equip-slot { font-size: 8px; }
-
-            #inspector-panel {
-                top: 100px; /* Поднимаем выше, так как статы компактнее */
-                width: 90px;
-                max-height: 80px;
-            }
+            .stat-row { font-size: 8px; }
+            .equip-slot { font-size: 7px; }
 
             #inventory-panel {
                 width: 100px;
@@ -265,7 +266,7 @@
                 top: 2px;
                 max-height: 35vh;
             }
-            .inv-item { font-size: 9px; }
+            .inv-item { font-size: 8px; }
 
             #minimap-panel {
                 width: 80px;
@@ -273,6 +274,16 @@
                 bottom: 2px;
                 left: 2px;
             }
+
+            /* Инспектор теперь прямо над миникартой */
+            #inspector-panel {
+                bottom: 85px; /* 80px карта + 2px отступ + 3px зазор */
+                left: 2px;
+                width: 80px;
+                max-height: 100px;
+                font-size: 8px;
+            }
+            #ui-inspector { font-size: 8px; }
 
             #log-panel {
                 width: 140px;
@@ -287,7 +298,7 @@
                 padding: 2px 5px;
                 max-width: 40%;
             }
-            #ui-quest-briefing { font-size: 9px; }
+            #ui-quest-briefing { font-size: 8px; }
         }
     </style>
 </head>
