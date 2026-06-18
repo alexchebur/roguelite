@@ -196,6 +196,7 @@ const GameModule = (function() {
 
     // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
     // === ОБРАБОТКА КЛИКА/ТАПА ПО ОКНУ МАГАЗИНА ===
+    // === ОБРАБОТКА КЛИКА/ТАПА ПО ОКНУ МАГАЗИНА ===
     function handleShopClick(clientX, clientY) {
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
@@ -206,6 +207,23 @@ const GameModule = (function() {
         
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
+
+        // 0. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
+        // Если открыто окно квеста, обрабатываем клик как его закрытие
+        if (isReadingQuest) {
+            // Проверяем клик по кнопке закрытия квеста
+            if (window.questCloseButton) {
+                const btn = window.questCloseButton;
+                if (clickX >= btn.x && clickX <= btn.x + btn.w && 
+                    clickY >= btn.y && clickY <= btn.y + btn.h) {
+                    closeQuestWindow();
+                    return;
+                }
+            }
+            // Клик вне кнопки тоже закрывает окно квеста
+            closeQuestWindow();
+            return;
+        }
 
         // 1. ПРОВЕРКА КНОПКИ "ВЫЙТИ"
         if (window.shopExitButton) {
@@ -671,22 +689,48 @@ function updateQuestCompass() {
         canvas.addEventListener("touchstart", (e) => {
             e.preventDefault();
             
+            // Получаем координаты тапа один раз для всех проверок
+            const touch = e.touches[0];
+            const clientX = touch.clientX;
+            const clientY = touch.clientY;
+
+            // 0. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
+            if (isReadingQuest) {
+                // Логика закрытия окна квеста аналогична мышке
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                const clickX = (clientX - rect.left) * scaleX;
+                const clickY = (clientY - rect.top) * scaleY;
+
+                // Проверяем клик по кнопке закрытия
+                if (window.questCloseButton) {
+                    const btn = window.questCloseButton;
+                    if (clickX >= btn.x && clickX <= btn.x + btn.w && 
+                        clickY >= btn.y && clickY <= btn.y + btn.h) {
+                        closeQuestWindow();
+                        return;
+                    }
+                }
+                // Клик вне кнопки тоже закрывает окно
+                closeQuestWindow();
+                return;
+            }
+
             // 1. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
             if (busy || (player && player.hp <= 0)) return;
 
-            // 2. 🎯 ПРОВЕРКА МАГАЗИНА (ПРИОРИТЕТ №1)
-            // Если открыт магазин, любой тап по экрану обрабатывается как клик по интерфейсу магазина
+            // 2. 🎯 ПРОВЕРКА МАГАЗИНА (Приоритет №1 после сюжета)
             if (isShopOpen) {
-                const touch = e.touches[0];
-                handleShopClick(touch.clientX, touch.clientY);
-                return; // Прерываем выполнение, чтобы не сработала логика движения
+                handleShopClick(clientX, clientY);
+                return; 
             }
 
-            // 3. ЛОГИКА ДВИЖЕНИЯ (если магазин закрыт)
+            // 3. ЛОГИКА ДВИЖЕНИЯ (если все окна закрыты)
             const rect = canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
+            const touchX = clientX - rect.left;
+            const touchY = clientY - rect.top;
             
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
@@ -714,7 +758,7 @@ function updateQuestCompass() {
         if (isMobileDevice()) {
             RenderModule.log("💡 Коснитесь части экрана для движения", "info");
         }
-    }    
+    }
     
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1252,31 +1296,28 @@ function updateQuestCompass() {
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
 
+    // === ОБРАБОТКА ВВОДА С КЛАВИАТУРЫ ===
     function handleInput(e) {
-
-
+        // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
         if (isReadingQuest) {
-            if (e.key === "Escape") closeQuestWindow();
-            return;
+            if (e.key === "Escape") {
+                closeQuestWindow();
+            }
+            // Блокируем все остальные клавиши, пока игрок читает
+            return; 
         }
-        
-        // ... остальной код handleInput (проверка магазина и т.д.)
-        
-        // === БЛОКИРОВКА ДВИЖЕНИЯ ПРИ ОТКРЫТОМ МАГАЗИНЕ ===
 
-
-        
+        // 2. ПРОВЕРКА МАГАЗИНА (Приоритет №1)
         if (isShopOpen) {
-            // Если нажат Escape - закрываем магазин
             if (e.key === "Escape") {
                 closeShop();
                 return;
             }
-            // Игнорируем все остальные клавиши (стрелки, пробел и т.д.)
-            // Чтобы закрыть магазин, нужно кликнуть мышкой/тапом по кнопке "Выйти" или вне окна
+            // Игнорируем движение и другие команды, пока открыт магазин
             return; 
         }
-        // === ЧИТ-КОД: ENTER для восстановления HP ===
+
+        // 3. ЧИТ-КОД: Восстановление здоровья (Enter)
         if (e.key === "Enter") {
             e.preventDefault();
             if (player && player.hp > 0) {
@@ -1288,18 +1329,26 @@ function updateQuestCompass() {
             return;
         }
 
+        // 4. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
         if (busy || (player && player.hp <= 0)) return;
         
         let dx = 0, dy = 0;
+        
+        // Определение направления
         if (e.key === "ArrowUp") dy = -1;
         if (e.key === "ArrowDown") dy = 1;
         if (e.key === "ArrowLeft") dx = -1;
         if (e.key === "ArrowRight") dx = 1;
         
+        // Обработка движения или пропуска хода (Space)
         if (dx !== 0 || dy !== 0 || e.key === " ") {
             e.preventDefault();
-            if (gameMode === 'global') processGlobalTurn(dx, dy);
-            else processTurn(dx, dy);
+            
+            if (gameMode === 'global') {
+                processGlobalTurn(dx, dy);
+            } else {
+                processTurn(dx, dy);
+            }
         }
     }
 
