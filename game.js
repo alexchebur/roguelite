@@ -9,6 +9,8 @@ const GameModule = (function() {
     let explored = new Set();
     let busy = false;
     let isReadingQuest = false; // Флаг: открыто ли окно сюжета
+
+
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
     // Хранит количество живых врагов для каждого уровня: "gx_gy_depth" -> count
     let dungeonClearState = new Map(); 
@@ -33,7 +35,24 @@ const GameModule = (function() {
     let currentWorldTrend = null;
     let isShopOpen = false;
     let currentMerchantInv = null;
+        // === ОТКРЫТИЕ ОКНА СЮЖЕТА ===
+    function openQuestWindow(quest, isCompleted) {
+        isReadingQuest = true;
+        // Проверка существования функции перед вызовом предотвращает краш
+        if (typeof RenderModule.drawQuestWindow === 'function') {
+            RenderModule.drawQuestWindow(quest, isCompleted);
+        } else {
+            console.error("RenderModule.drawQuestWindow не найден!");
+            closeQuestWindow(); // Если окна нет, сразу закрываем режим чтения
+        }
+    }
 
+    // === ЗАКРЫТИЕ ОКНА СЮЖЕТА ===
+    function closeQuestWindow() {
+        isReadingQuest = false;
+        window.questCloseButton = null;
+        RenderModule.requestRedraw(); // Вернуть отрисовку карты
+    }
     async function init() {
         try {
             if (typeof RenderModule === 'undefined') {
@@ -363,24 +382,7 @@ const GameModule = (function() {
         RenderModule.log("Вы покинули лавку.", "info");
     }   
 
-    // === ОТКРЫТИЕ ОКНА СЮЖЕТА ===
-    function openQuestWindow(quest, isCompleted) {
-        isReadingQuest = true;
-        // Проверка существования функции перед вызовом предотвращает краш
-        if (typeof RenderModule.drawQuestWindow === 'function') {
-            RenderModule.drawQuestWindow(quest, isCompleted);
-        } else {
-            console.error("RenderModule.drawQuestWindow не найден!");
-            closeQuestWindow(); // Если окна нет, сразу закрываем режим чтения
-        }
-    }
 
-    // === ЗАКРЫТИЕ ОКНА СЮЖЕТА ===
-    function closeQuestWindow() {
-        isReadingQuest = false;
-        window.questCloseButton = null;
-        RenderModule.requestRedraw(); // Вернуть отрисовку карты
-    }
 
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule и Окном Сюжета) ===
     function tryGiveQuest(npc) {
@@ -685,7 +687,6 @@ function updateQuestCompass() {
         coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
     }
 }
-    // === ОБРАБОТКА СЕНСОРНОГО УПРАВЛЕНИЯ ===
     function addTouchControls() {
         const mapContainer = document.getElementById("map-container");
         const canvas = mapContainer.querySelector("canvas");
@@ -702,7 +703,6 @@ function updateQuestCompass() {
 
             // 0. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
             if (isReadingQuest) {
-                // Логика закрытия окна квеста аналогична мышке
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
@@ -733,8 +733,8 @@ function updateQuestCompass() {
                 return; 
             }
 
-            // 3. ЛОГИКА ДВИЖЕНИЯ (если все окна закрыты)
-            const rect = canvas.getBoundingClientRect();
+            // ... остальной код движения ...
+             const rect = canvas.getBoundingClientRect();
             const touchX = clientX - rect.left;
             const touchY = clientY - rect.top;
             
@@ -745,14 +745,12 @@ function updateQuestCompass() {
             const offsetX = touchX - centerX;
             const offsetY = touchY - centerY;
             
-            // Определяем направление тапа относительно центра экрана
             if (Math.abs(offsetX) > Math.abs(offsetY)) {
                 dx = offsetX > 0 ? 1 : -1;
             } else {
                 dy = offsetY > 0 ? 1 : -1;
             }
             
-            // Выполняем ход
             if (gameMode === 'global') {
                 processGlobalTurn(dx, dy);
             } else {
@@ -764,8 +762,7 @@ function updateQuestCompass() {
         if (isMobileDevice()) {
             RenderModule.log("💡 Коснитесь части экрана для движения", "info");
         }
-    }
-    
+    }    
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
@@ -1302,7 +1299,6 @@ function updateQuestCompass() {
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
 
-    // === ОБРАБОТКА ВВОДА С КЛАВИАТУРЫ ===
     function handleInput(e) {
         // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
         if (isReadingQuest) {
@@ -1357,7 +1353,6 @@ function updateQuestCompass() {
             }
         }
     }
-
     // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
     function getRandomDirection() {
         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
