@@ -8,6 +8,7 @@ const GameModule = (function() {
     let npcs = []; 
     let explored = new Set();
     let busy = false;
+    let isReadingQuest = false; // Флаг: открыто ли окно сюжета
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
     // Хранит количество живых врагов для каждого уровня: "gx_gy_depth" -> count
     let dungeonClearState = new Map(); 
