@@ -343,119 +343,143 @@ const GameModule = (function() {
         currentMerchantInv = null;
         RenderModule.requestRedraw(); // Вернуть обычную отрисовку карты
         RenderModule.log("Вы покинули лавку.", "info");
-    }    
-// === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule) ===
-function tryGiveQuest(npc) {
-    if (typeof QuestSystemModule === 'undefined') return false;
-    if (!npc.isQuestGiver) return false;
+    }   
 
-    if (!entrancePos) return false;
-    const cityGx = entrancePos.x;
-    const cityGy = entrancePos.y;
+    // === ОТКРЫТИЕ ОКНА СЮЖЕТА ===
+    function openQuestWindow(quest, isCompleted) {
+        isReadingQuest = true;
+        RenderModule.drawQuestWindow(quest, isCompleted);
+    }
 
-    // ==========================================
-    // 1. ПРОВЕРКА СЮЖЕТНОЙ ЦЕПОЧКИ (Приоритет №1)
-    // ==========================================
-    if (typeof QuestChainModule !== 'undefined' && QuestChainModule.isInitialized()) {
-        if (QuestChainModule.isChainCity(cityGx, cityGy)) {
-            const chainQuest = QuestChainModule.getQuestForCity(cityGx, cityGy);
-            
-            if (chainQuest) {
-                const questId = chainQuest.id;
-                const alreadyActive = activeQuests.some(q => q.id === questId);
-                const alreadyDone = completedQuestIds.has(questId);
+    // === ЗАКРЫТИЕ ОКНА СЮЖЕТА ===
+    function closeQuestWindow() {
+        isReadingQuest = false;
+        window.questCloseButton = null;
+        RenderModule.requestRedraw(); // Вернуть отрисовку карты
+    }
 
-                // Сценарий А: Сюжетный квест выполнен, сдаем награду
-                // Сценарий А: Сюжетный квест выполнен, сдаем награду
-                if (alreadyActive) {
-                    const q = activeQuests.find(q => q.id === questId);
-                    if (q.isCompleted && !q.isTurnedIn) {
+    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule и Окном Сюжета) ===
+    function tryGiveQuest(npc) {
+        if (typeof QuestSystemModule === 'undefined') return false;
+        if (!npc.isQuestGiver) return false;
+
+        if (!entrancePos) return false;
+        const cityGx = entrancePos.x;
+        const cityGy = entrancePos.y;
+
+        // ==========================================
+        // 1. ПРОВЕРКА СЮЖЕТНОЙ ЦЕПОЧКИ (Приоритет №1)
+        // ==========================================
+        if (typeof QuestChainModule !== 'undefined' && QuestChainModule.isInitialized()) {
+            if (QuestChainModule.isChainCity(cityGx, cityGy)) {
+                const chainQuest = QuestChainModule.getQuestForCity(cityGx, cityGy);
+                
+                if (chainQuest) {
+                    const questId = chainQuest.id;
+                    const alreadyActive = activeQuests.some(q => q.id === questId);
+                    const alreadyDone = completedQuestIds.has(questId);
+
+                    // --- СЦЕНАРИЙ А: СДАЧА СЮЖЕТНОГО КВЕСТА ---
+                    if (alreadyActive) {
+                        const q = activeQuests.find(q => q.id === questId);
                         
-                        // === ИСПРАВЛЕНИЕ 2: УДАЛЕНИЕ КВЕСТОВЫХ ПРЕДМЕТОВ ===
-                        // Удаляем предметы, которые нужны для этого квеста
-                        player.inventory = player.inventory.filter(invItem => {
-                            // Если это обычный квестовый предмет
-                            if (invItem.isQuestItem) {
-                                // Для FETCH удаляем всё, что совпадает по типу/имени
-                                if (q.type === 'FETCH') {
-                                    return !(invItem.type === q.target.itemType && 
-                                             (!q.target.itemName || invItem.name.includes(q.target.itemName)));
-                                }
-                                // Для COLLECT удаляем только если совпадает тип и (если есть) uniqueId
-                                if (q.type === 'COLLECT') {
-                                    const isSameType = invItem.type === q.target.itemType;
-                                    const isSameUnique = q.target.uniqueId ? invItem.uniqueId === q.target.uniqueId : true;
-                                    return !(isSameType && isSameUnique);
+                        if (q.isCompleted && !q.isTurnedIn) {
+                            // 1. Очистка инвентаря от квестовых предметов
+                            if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                                player.inventory = player.inventory.filter(item => {
+                                    // Удаляем предмет, если он помечен как квестовый И совпадает с целью
+                                    if (item.isQuestItem) {
+                                        const isTypeMatch = (item.type === q.target.itemType);
+                                        const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
+                                        
+                                        // Для COLLECT можно добавить проверку uniqueId, если она есть
+                                        const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
+
+                                        // Если это нужный предмет - удаляем его (возвращаем false)
+                                        if (isTypeMatch && isNameMatch && isUniqueMatch) {
+                                            return false; 
+                                        }
+                                    }
+                                    return true; // Оставляем остальные предметы
+                                });
+                            }
+
+                            // 2. Выдача награды
+                            player.gold += q.rewardGold;
+                            q.isTurnedIn = true; 
+
+                            // 3. Обновление UI и логов
+                            RenderModule.log(`🏆 СЮЖЕТНЫЙ КВЕСТ СДАН! Получено: ${q.rewardGold} золотых.`, "loot");
+                            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+                            RenderModule.updateQuestBriefing(null); 
+
+                            // 4. Удаление из активных и добавление в выполненные
+                            activeQuests = activeQuests.filter(aq => aq.id !== questId);
+                            completedQuestIds.add(questId);
+                            updateAbandonButton(activeQuests.length > 0);
+                            
+                            // 5. Прогресс цепочки
+                            QuestChainModule.completeCurrentQuest();
+                            updateQuestCompass();
+
+                            // 6. ОТКРЫТИЕ ОКНА СЮЖЕТА (Сдача)
+                            if (typeof openQuestWindow === 'function') {
+                                openQuestWindow(q, true);
+                            } else {
+                                // Фолбэк, если окно еще не подключено
+                                if (q.turnInText) {
+                                    RenderModule.log(`🗣️ ${npc.name}: "${q.turnInText}"`, "event");
                                 }
                             }
-                            return true; // Оставляем остальные предметы
-                        });
-
-                        player.gold += q.rewardGold;
-                        q.isTurnedIn = true; 
-                        // ... (остальной код выдачи награды)
-                        
-                        RenderModule.log(`🏆 СЮЖЕТНЫЙ КВЕСТ СДАН! Получено: ${q.rewardGold} золотых.`, "loot");
-                        
-                        // >>> КАСТОМНЫЙ ТЕКСТ СДАЧИ <<<
-                        if (q.turnInText) {
-                            RenderModule.log(`🗣️ ${npc.name}: "${q.turnInText}"`, "event");
+                            
+                            if (typeof RenderModule.updateInspector === 'function') {
+                                RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
+                            }
+                            return true;
                         } else {
-                            RenderModule.log(`${npc.name}: "Отличная работа. Вот твоя награда."`, "info");
+                            // Квест активен, но не выполнен
+                            RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение. Ищи ${q.target.locationName}."`, "info");
+                            return true;
                         }
-
-                        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-                        RenderModule.updateQuestBriefing(null); 
-
-                        activeQuests = activeQuests.filter(aq => aq.id !== questId);
-                        completedQuestIds.add(questId);
-                        updateAbandonButton(activeQuests.length > 0);
-                        // Обновляем прогресс цепочки (для внутреннего состояния модуля, если нужно)
-                        QuestChainModule.completeCurrentQuest();
-                        updateQuestCompass();
+                    } 
+                    
+                    // --- СЦЕНАРИЙ Б: ВЫДАЧА НОВОГО СЮЖЕТНОГО КВЕСТА ---
+                    else if (!alreadyDone) {
+                        chainQuest.isActive = true;
+                        chainQuest.originX = cityGx;
+                        chainQuest.originY = cityGy;
+                        activeQuests.push(chainQuest);
+                        updateAbandonButton(true);
+                        
+                        RenderModule.log(`📜 СЮЖЕТНЫЙ КВЕСТ от ${npc.name}:`, "event");
+                        RenderModule.log(chainQuest.briefing, "info");
+                        RenderModule.updateQuestBriefing(chainQuest);
                         
                         if (typeof RenderModule.updateInspector === 'function') {
-                            RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
+                            RenderModule.updateInspector(`📜 Квест принят!`, chainQuest.briefing, "npc");
                         }
-                        return true;
-                    } else {
-                        // Квест активен, но не выполнен
-                        RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение. Ищи ${q.target.locationName}."`, "info");
-                        return true;
+
+                        // ОТКРЫТИЕ ОКНА СЮЖЕТА (Взятие)
+                        if (typeof openQuestWindow === 'function') {
+                            openQuestWindow(chainQuest, false);
+                        }
+                        
+                        return true; 
                     }
-                } 
-                // Сценарий Б: Выдача нового сюжетного квеста
-                else if (!alreadyDone) {
-                    chainQuest.isActive = true;
-                    chainQuest.originX = cityGx;
-                    chainQuest.originY = cityGy;
-                    activeQuests.push(chainQuest);
-                    updateAbandonButton(true); // <--- ДОБАВИТЬ
-                    RenderModule.log(`📜 СЮЖЕТНЫЙ КВЕСТ от ${npc.name}:`, "event");
-                    RenderModule.log(chainQuest.briefing, "info");
-                    
-                    RenderModule.updateQuestBriefing(chainQuest);
-                    
-                    if (typeof RenderModule.updateInspector === 'function') {
-                        RenderModule.updateInspector(`📜 Квест принят!`, chainQuest.briefing, "npc");
-                    }
-                    return true; 
-                }
-            } else {
-                // Город из цепочки, но квест для него уже сдан или еще не время
-                // Проверяем, был ли это предыдущий город цепочки (чтобы дать подсказку)
-                const expectedIdx = QuestChainModule.getExpectedIndex();
-                const cityIdx = QuestChainModule.getChainCities().findIndex(c => c.x === cityGx && c.y === cityGy);
-                
-                if (cityIdx < expectedIdx) {
-                     RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Твой путь лежит дальше."`, "info");
                 } else {
-                     RenderModule.log(`${npc.name}: "Я чувствую, ты еще не готов к моей просьбе. Сначала заверши дела в других землях."`, "info");
+                    // Город из цепочки, но квест для него уже сдан или еще не время
+                    const expectedIdx = QuestChainModule.getExpectedIndex();
+                    const cityIdx = QuestChainModule.getChainCities().findIndex(c => c.x === cityGx && c.y === cityGy);
+                    
+                    if (cityIdx < expectedIdx) {
+                         RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Твой путь лежит дальше."`, "info");
+                    } else {
+                         RenderModule.log(`${npc.name}: "Я чувствую, ты еще не готов к моей просьбе. Сначала заверши дела в других землях."`, "info");
+                    }
+                    return true; // Блокируем выдачу случайного квеста
                 }
-                return true; // Блокируем выдачу случайного квеста
             }
         }
-    }
 
     // ==========================================
     // 2. СТАНДАРТНЫЕ СЛУЧАЙНЫЕ КВЕСТЫ (Fallback)
@@ -1229,7 +1253,19 @@ function updateQuestCompass() {
     }
 
     function handleInput(e) {
+
+
+        if (isReadingQuest) {
+            if (e.key === "Escape") closeQuestWindow();
+            return;
+        }
+        
+        // ... остальной код handleInput (проверка магазина и т.д.)
+        
         // === БЛОКИРОВКА ДВИЖЕНИЯ ПРИ ОТКРЫТОМ МАГАЗИНЕ ===
+
+
+        
         if (isShopOpen) {
             // Если нажат Escape - закрываем магазин
             if (e.key === "Escape") {
