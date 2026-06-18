@@ -843,7 +843,92 @@ const RenderModule = (function() {
             }
         }
     }
-    
+    // === ОТРИСОВКА ОКНА КВЕСТА (СЮЖЕТНОГО) ===
+    function drawQuestWindow(quest, isCompleted) {
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        // Очищаем экран и рисуем затемнение
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Параметры окна
+        const winW = ctx.canvas.width * 0.8;
+        const winH = ctx.canvas.height * 0.6;
+        const winX = (ctx.canvas.width - winW) / 2;
+        const winY = (ctx.canvas.height - winH) / 2;
+        
+        // Фон и рамка
+        ctx.fillStyle = '#161b22';
+        ctx.strokeStyle = quest.isChainQuest ? '#d29922' : '#58a6ff'; // Золото для сюжета, синий для обычного
+        ctx.lineWidth = 2;
+        ctx.fillRect(winX, winY, winW, winH);
+        ctx.strokeRect(winX, winY, winW, winH);
+
+        // Заголовок
+        ctx.font = 'bold 16px Consolas, monospace';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = quest.isChainQuest ? '#d29922' : '#fff';
+        
+        const titleText = isCompleted ? "🏆 КВЕСТ ВЫПОЛНЕН" : "📜 НОВЫЙ КВЕСТ";
+        ctx.fillText(titleText, ctx.canvas.width / 2, winY + 30);
+
+        // Текст описания (с переносом строк)
+        ctx.font = '14px Consolas, monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#c9d1d9';
+
+        const text = isCompleted ? (quest.turnInText || "Награда получена!") : quest.briefing;
+        const maxWidth = winW - 40;
+        const lineHeight = 20;
+        let y = winY + 60;
+
+        // Простой алгоритм переноса слов
+        const words = text.split(' ');
+        let line = '';
+        
+        for(let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            
+            if (metrics.width > maxWidth && n > 0) {
+                ctx.fillText(line, winX + 20, y);
+                line = words[n] + ' ';
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, winX + 20, y);
+
+        // Награда (если есть)
+        if (quest.rewardGold) {
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 14px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(`💰 Награда: ${quest.rewardGold} золотых`, ctx.canvas.width / 2, winY + winH - 60);
+        }
+
+        // Кнопка "ЗАКРЫТЬ"
+        const btnText = "❌ ЗАКРЫТЬ";
+        ctx.font = 'bold 14px Consolas, monospace';
+        const btnWidth = 120;
+        const btnHeight = 30;
+        const btnX = (ctx.canvas.width - btnWidth) / 2;
+        const btnY = winY + winH - 40;
+
+        ctx.fillStyle = '#da3633';
+        ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btnText, ctx.canvas.width / 2, btnY + btnHeight / 2);
+
+        // Сохраняем зону клика для кнопки
+        window.questCloseButton = { x: btnX, y: btnY, w: btnWidth, h: btnHeight };
+    }    
     return {
         init,
         draw,
