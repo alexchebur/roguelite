@@ -366,7 +366,13 @@ const GameModule = (function() {
     // === ОТКРЫТИЕ ОКНА СЮЖЕТА ===
     function openQuestWindow(quest, isCompleted) {
         isReadingQuest = true;
-        RenderModule.drawQuestWindow(quest, isCompleted);
+        // Проверка существования функции перед вызовом предотвращает краш
+        if (typeof RenderModule.drawQuestWindow === 'function') {
+            RenderModule.drawQuestWindow(quest, isCompleted);
+        } else {
+            console.error("RenderModule.drawQuestWindow не найден!");
+            closeQuestWindow(); // Если окна нет, сразу закрываем режим чтения
+        }
     }
 
     // === ЗАКРЫТИЕ ОКНА СЮЖЕТА ===
@@ -1589,11 +1595,15 @@ function updateQuestCompass() {
     }
 
 
-    // === ОСНОВНОЙ ХОД ИГРЫ ===
+    // === ОСНОВНОЙ ХОД ИГРЫ (ИСПРАВЛЕННЫЙ) ===
     function processTurn(dx, dy) {
+        // БЛОКИРОВКА: Если игрок мертв, ничего не делаем
+        if (player.hp <= 0) return; 
+
         const nx = player.x + dx;
         const ny = player.y + dy;
 
+        // Пропуск хода
         if (dx === 0 && dy === 0) {
             moveNpcs(); 
             moveEnemies();
@@ -1601,22 +1611,17 @@ function updateQuestCompass() {
             return;
         }
 
+        // Проверка стен
         if (MapModule.isWall(nx, ny)) return;
 
-        // === ИСПРАВЛЕННАЯ ПРОВЕРКА ВХОДА В МАГАЗИН ===
-        // Логика: Если ЦЕЛЕВАЯ клетка (куда мы хотим шагнуть) является магазином
-        // И окно магазина сейчас ЗАКРЫТО -> Открываем окно и прерываем ход.
-        // Игрок не двигается, так как мы делаем return.
+        // === ПРОВЕРКА ВХОДА В МАГАЗИН ===
         if (window.currentShopCoords && window.currentShopCoords.length > 0) {
             const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
-            
             if (isTargetShop && !isShopOpen) {
                 openShop();
                 return; 
             }
         }
-        
-        // ... далее стандартная проверка врагов и движение
         
         // Проверка столкновения с боссом (учитываем его размер 2x2)
         const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
@@ -1625,19 +1630,11 @@ function updateQuestCompass() {
             (nx === e.x && ny === e.y + 1) || 
             (nx === e.x + 1 && ny === e.y + 1)
         ));
+        
         if (bossInWay) {
             CombatModule.attack(player, bossInWay, (m, t) => RenderModule.log(m, t));
             checkDeath();
-            moveNpcs();
-            moveEnemies();
-            renderFrame();
-            return;
-        }
-
-        const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
-        if (enemy) {
-            CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
-            checkDeath();
+            // ВАЖНО: Если после атаки игрок умер, прерываем ход
             if (player.hp <= 0) {
                 RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
                 renderFrame();
@@ -1649,6 +1646,24 @@ function updateQuestCompass() {
             return;
         }
 
+        // Атака обычного врага
+        const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
+        if (enemy) {
+            CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
+            checkDeath();
+            // ВАЖНО: Если после атаки игрок умер, прерываем ход
+            if (player.hp <= 0) {
+                RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+                renderFrame();
+                return;
+            }
+            moveNpcs();
+            moveEnemies();
+            renderFrame();
+            return;
+        }
+
+        // Взаимодействие с NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
             let questHandled = false;
@@ -1666,9 +1681,11 @@ function updateQuestCompass() {
             return; 
         }
 
+        // Движение игрока
         player.x = nx;
         player.y = ny;
 
+        // Подбор предметов
         const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
         if (itemIdx !== -1) {
             const item = items[itemIdx];
@@ -1683,7 +1700,6 @@ function updateQuestCompass() {
                     RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
                     RenderModule.log(fragment, "event");
                     
-                    // === ТРИГГЕР ДЛЯ КВЕСТА SCHOLAR ===
                     if (typeof QuestSystemModule !== 'undefined') {
                         activeQuests.forEach(q => {
                             QuestSystemModule.checkProgress(q, { type: 'read_book' });
@@ -1693,45 +1709,36 @@ function updateQuestCompass() {
                     RenderModule.log(`Вы нашли "${item.name}", но не можете прочитать.`, "info");
                 }
             }  
-            // ... (предыдущий код подбора)
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot");
                 
-                // === ИСПРАВЛЕНИЕ 1: ПОМЕТКА УНИКАЛЬНЫХ ПРЕДМЕТОВ ===
+                // Проверка квестов на подбор
                 if (typeof QuestSystemModule !== 'undefined') {
                     [...activeQuests].forEach(q => {
                         if (q.isCompleted) return;
-
-                        // Проверка для FETCH и COLLECT
                         if (q.type === 'FETCH' || q.type === 'COLLECT') {
                             let isMatch = false;
-
-                            // 1. Проверка по уникальному ID (для цепочных квестов)
                             if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
                                 isMatch = true;
-                            } 
-                            // 2. Стандартная проверка по типу и имени
-                            else if ((item.type === q.target.itemType) && 
+                            } else if ((item.type === q.target.itemType) && 
                                      (!q.target.itemName || item.name.includes(q.target.itemName))) {
                                 isMatch = true;
                             }
 
                             if (isMatch) {
-                                item.isQuestItem = true; // Помечаем предмет как квестовый
-                                
+                                item.isQuestItem = true;
                                 if (q.type === 'FETCH') {
                                     q.progress = q.maxProgress;
                                     q.isCompleted = true;
                                     RenderModule.updateQuestBriefing(q);
-                                    RenderModule.log(`📦 Это тот самый уникальный предмет!`, "info");
+                                    RenderModule.log(`📦 Это тот самый предмет!`, "info");
                                 } else if (q.type === 'COLLECT') {
-                                    // Для COLLECT используем стандартный checkProgress
                                     QuestSystemModule.checkProgress(q, { 
                                         type: 'pickup', 
                                         itemType: item.type,
                                         itemName: item.name,
-                                        uniqueId: item.uniqueId, // Передаем ID
+                                        uniqueId: item.uniqueId,
                                         locX: dungeonX,
                                         locY: dungeonY
                                     });
@@ -1746,6 +1753,7 @@ function updateQuestCompass() {
             items.splice(itemIdx, 1);
         }
 
+        // Лестницы
         if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
             const nextDepth = currentDepth + 1;
             RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
@@ -1765,6 +1773,7 @@ function updateQuestCompass() {
             return; 
         }
 
+        // Ход врагов в конце хода игрока
         if (player.hp > 0) {
             moveNpcs();
             moveEnemies();
