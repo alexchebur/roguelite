@@ -661,7 +661,10 @@ const RenderModule = (function() {
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
-
+        // === НАСТРОЙКИ ДЛЯ ЧЕТКОГО ТЕКСТА ===
+        // Отключаем сглаживание шрифтов (делает края жесткими)
+        ctx.fontKerning = 'none'; 
+        ctx.textRendering = 'geometricPrecision'; // Помогает сохранить геометрию букв
         window.shopClickAreas = []; 
 
         // === ИНИЦИАЛИЗАЦИЯ ПЕРЕМЕННЫХ СТРАНИЦ ===
