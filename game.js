@@ -46,16 +46,17 @@ const GameModule = (function() {
     }
 
     // === ОКНО СЮЖЕТНОГО КВЕСТА ===
-    function openQuestWindow(quest, isCompleted) {
-        isReadingQuest = true;
-        toggleUI(false); // Скрываем боковые панели
-        
-        if (typeof RenderModule.drawQuestWindow === 'function') {
-            RenderModule.drawQuestWindow(quest, isCompleted);
-        } else {
-            console.error("RenderModule.drawQuestWindow не найден!");
-            closeQuestWindow();
-        }
+    // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ UI ===
+    function toggleUI(isVisible) {
+        // Находим все элементы с классом ui-panel
+        const panels = document.querySelectorAll('.ui-panel');
+        panels.forEach(panel => {
+            if (isVisible) {
+                panel.classList.remove('hidden-ui');
+            } else {
+                panel.classList.add('hidden-ui');
+            }
+        });
     }
 
     function closeQuestWindow() {
@@ -105,16 +106,18 @@ const GameModule = (function() {
     }
 
     // === МАГАЗИН ===
+    // === МАГАЗИН ===
     function openShop() {
         if (isShopOpen) return;
-        
+    
         const depth = currentDepth > 0 ? currentDepth : 1;
         const merchantGold = 500 + (depth * 100);
-        
+    
         currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
         isShopOpen = true;
-        
-        toggleUI(false); // Скрываем боковые панели
+    
+        toggleUI(false); // <--- СКРЫВАЕМ ПАНЕЛИ
+    
         RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
     }
@@ -122,7 +125,7 @@ const GameModule = (function() {
     function closeShop() {
         isShopOpen = false;
         currentMerchantInv = null;
-        toggleUI(true); // Возвращаем боковые панели
+        toggleUI(true); // <--- ВОЗВРАЩАЕМ ПАНЕЛИ
         RenderModule.requestRedraw();
         RenderModule.log("Вы покинули лавку.", "info");
     }
