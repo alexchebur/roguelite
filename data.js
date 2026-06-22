@@ -210,26 +210,45 @@ const DataModule = (function() {
             gender: "she",
             plural: false
         },
+    // ... внутри ITEM_TYPES ...
+
         { 
-            type: "potion_str", 
+            type:  "potion_str ", 
             char: getChar('ITEM_POTION_STR'), 
-            color: "#ff9800", 
-            baseName: "Зелье силы", 
-            effect: "buff_atk", 
+            color:  "#ff9800 ", 
+            baseName:  "Зелье силы ", 
+            effect:  "buff_atk ", 
             val: [1, 2],
-            gender: "it",
+            duration: 100, // <--- ДОБАВИТЬ: Длительность эффекта в ходах (например, 10 ходов)
+            gender:  "it ",
             plural: false
         },
         { 
-            type: "potion_str", 
+            type:  "potion_str ", 
             char: getChar('ITEM_BERSERK'), 
-            color: "#ff9800", 
-            baseName: "Настой берсерка", 
-            effect: "buff_atk", 
+            color:  "#ff9800 ", 
+            baseName:  "Настой берсерка ", 
+            effect:  "buff_atk ", 
             val: [3, 5],
-            gender: "he",
+            duration: 100, // <--- ДОБАВИТЬ: Более сильный эффект, но короче (5 ходов)
+            gender:  "he ",
             plural: false
-        }
+        },
+        
+        // Если захотите добавить зелье защиты:
+      
+        { 
+            type:  "potion_def ", 
+            char: '!', // Выберите свой символ
+            color:  "#00bcd4 ", 
+            baseName:  "Зелье защиты ", 
+            effect:  "buff_def ", 
+            val: [2, 4],
+            duration: 100,
+            gender:  "it ",
+            plural: false
+        },
+        
     ];
 // В data.js, после ADJECTIVE_TIERS и ITEM_TYPES
 
