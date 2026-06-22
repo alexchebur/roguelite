@@ -328,6 +328,14 @@
         #quest-bar { bottom: 2px; padding: 3px 8px; max-width: 55%; }
         #ui-quest-briefing { font-size: 9px; }
     }
+
+    /* Класс для скрытия панелей при открытых окнах */
+    .ui-panel.hidden-ui {
+        opacity: 0;
+        pointer-events: none; /* Чтобы нельзя было случайно кликнуть по скрытой панели */
+        transition: opacity 0.2s ease-in-out;
+    }
+
 </style>
 </head>
 <body>
