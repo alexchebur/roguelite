@@ -507,10 +507,30 @@ const RenderModule = (function() {
         
         // === СТАТИСТИКА И ИНВЕНТАРЬ ===
         if (player && player.hp !== undefined) {
+            
+            // === ПОЛУЧЕНИЕ ДАННЫХ ОБ ЭФФЕКТАХ ===
+            let atkText = `${player.atk}`;
+            let defText = `${player.def}`;
+
+            // Проверяем наличие модуля эффектов и активных баффов
+            if (typeof EffectSystemModule !== 'undefined') {
+                const atkDuration = EffectSystemModule.getEffectDuration(player, EffectSystemModule.TYPES.BUFF_ATK);
+                const defDuration = EffectSystemModule.getEffectDuration(player, EffectSystemModule.TYPES.BUFF_DEF);
+
+                if (atkDuration > 0) {
+                    // Оранжевый цвет для силы, маленький шрифт
+                    atkText += ` <span style="font-size:0.8em; color:#ff9800">(${atkDuration})</span>`;
+                }
+                if (defDuration > 0) {
+                    // Голубой цвет для защиты, маленький шрифт
+                    defText += ` <span style="font-size:0.8em; color:#00bcd4">(${defDuration})</span>`;
+                }
+            }
+
             document.getElementById("ui-stats").innerHTML = `
                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
-                <div class="stat-row"><span>Атака</span> <span class="val-atk">${player.atk}</span></div>
-                <div class="stat-row"><span>Защита</span> <span class="val-def">${player.def}</span></div>
+                <div class="stat-row"><span>Атака</span> <span class="val-atk">${atkText}</span></div>
+                <div class="stat-row"><span>Защита</span> <span class="val-def">${defText}</span></div>
                 <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
                 <div class="stat-row"><span>Золото</span> <span style="color: #FFD700">$ ${player.gold}</span></div>
             `;
@@ -545,8 +565,6 @@ const RenderModule = (function() {
                         grouped[key].count++;
                         grouped[key].indices.push(originalIndex);
                     });
-
-// В render.js, внутри updateUI, в цикле отрисовки инвентаря:
 
                     order.forEach(key => {
                         const group = grouped[key];
