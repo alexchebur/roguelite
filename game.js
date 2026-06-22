@@ -232,7 +232,255 @@ const GameModule = (function() {
         }
     }
 
+    // === ИНИЦИАЛИЗАЦИЯ ===
+    async function init() {
+        try {
+            if (typeof RenderModule === 'undefined') throw new Error("RenderModule не загружен");
+            await RenderModule.init();
+            RenderModule.setRedrawCallback(renderFrame);
+        } catch (e) {
+            console.error("Критическая ошибка при инициализации: ", e);
+            document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
+            return;
+        }
 
+        gameMode = 'global';
+        
+        if (typeof GlobalMapModule !== 'undefined') {
+            const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
+            RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
+
+            if (typeof QuestChainModule !== 'undefined') {
+                QuestChainModule.init(startPos.x, startPos.y);
+                RenderModule.log("📜 Сюжетная линия мира сгенерирована.", "info");
+            }
+        } else {
+            RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
+            return;
+        }
+        
+        renderGlobalMap();
+        
+        window.addEventListener("keydown", (e) => handleInput(e));
+        addTouchControls();
+
+        const mapContainer = document.getElementById("map-container");
+        if (mapContainer) {
+            mapContainer.addEventListener("mousedown", (e) => {
+                if (!isMobileDevice()) {
+                    handleCanvasClick(e.clientX, e.clientY);
+                }
+            });
+        }
+        
+        RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
+        updateAbandonButton(false);
+    }
+
+    // === ОБРАБОТКА ВВОДА (КЛИКИ И КЛАВИШИ) ===
+    function handleCanvasClick(clientX, clientY) {
+        // Приоритет 1: Окно квеста
+        if (isReadingQuest) {
+            handleQuestClick(clientX, clientY);
+            return;
+        }
+        // Приоритет 2: Магазин
+        if (isShopOpen) {
+            handleShopClick(clientX, clientY);
+            return;
+        }
+        // Приоритет 3: Осмотр карты (только в подземелье)
+        if (gameMode === 'dungeon') {
+            handleMapClick(clientX, clientY);
+        }
+    }
+
+    function handleInput(e) {
+        if (isReadingQuest) {
+            if (e.key === "Escape") closeQuestWindow();
+            return; 
+        }
+
+        if (isShopOpen) {
+            if (e.key === "Escape") closeShop();
+            return; 
+        }
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (player && player.hp > 0) {
+                player.hp = Math.min(player.maxHp, player.hp + 100);
+                RenderModule.log(`💊 ЧИТ: Восстановлено 100 HP!`, "event");
+                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            }
+            return;
+        }
+
+        if (busy || (player && player.hp <= 0)) return;
+        
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowUp") dy = -1;
+        if (e.key === "ArrowDown") dy = 1;
+        if (e.key === "ArrowLeft") dx = -1;
+        if (e.key === "ArrowRight") dx = 1;
+        
+        if (dx !== 0 || dy !== 0 || e.key === " ") {
+            e.preventDefault();
+            if (gameMode === 'global') processGlobalTurn(dx, dy);
+            else processTurn(dx, dy);
+        }
+    }
+
+    // === ОСНОВНОЙ ХОД ИГРЫ ===
+    function processTurn(dx, dy) {
+        if (player.hp <= 0) return; 
+
+        const nx = player.x + dx;
+        const ny = player.y + dy;
+
+        if (dx === 0 && dy === 0) {
+            moveNpcs(); moveEnemies(); renderFrame(); return;
+        }
+
+        if (MapModule.isWall(nx, ny)) return;
+
+        // Вход в магазин
+        if (window.currentShopCoords && window.currentShopCoords.length > 0) {
+            const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
+            if (isTargetShop && !isShopOpen) {
+                openShop();
+                return; 
+            }
+        }
+        
+        // Босс
+        const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
+            (nx === e.x && ny === e.y) || (nx === e.x + 1 && ny === e.y) || 
+            (nx === e.x && ny === e.y + 1) || (nx === e.x + 1 && ny === e.y + 1)
+        ));
+        
+        if (bossInWay) {
+            CombatModule.attack(player, bossInWay, (m, t) => RenderModule.log(m, t));
+            checkDeath();
+            if (player.hp <= 0) { RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat"); renderFrame(); return; }
+            moveNpcs(); moveEnemies(); renderFrame(); return;
+        }
+
+        // Обычный враг
+        const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
+        if (enemy) {
+            CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
+            checkDeath();
+            if (player.hp <= 0) { RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat"); renderFrame(); return; }
+            moveNpcs(); moveEnemies(); renderFrame(); return;
+        }
+
+        // NPC
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
+        if (npc) {
+            let questHandled = false;
+            if (npc.isQuestGiver) {
+                questHandled = tryGiveQuest(npc);
+            }
+            if (!questHandled) {
+                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            }
+            
+            // === ВАЖНО: Если открылось окно квеста, не затираем его ===
+            if (isReadingQuest) {
+                return; 
+            }
+
+            moveNpcs(); moveEnemies(); renderFrame();
+            return; 
+        }
+
+        // Движение
+        player.x = nx;
+        player.y = ny;
+
+        // Предметы
+        const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
+        if (itemIdx !== -1) {
+            const item = items[itemIdx];
+            if (item.type === 'gold') {
+                player.gold += item.val;
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+            } else if (item.type === 'book') {
+                if (typeof LoreModule !== 'undefined') {
+                    RenderModule.log(`📖 Вы нашли "${item.name}". Внутри написано:`, "info");
+                    RenderModule.log(LoreModule.getNextFragment(), "event");
+                    if (typeof QuestSystemModule !== 'undefined') {
+                        activeQuests.forEach(q => QuestSystemModule.checkProgress(q, { type: 'read_book' }));
+                    }
+                }
+            } else {
+                player.inventory.push(item);
+                RenderModule.log(`Подобрано: ${item.name}`, "loot");
+                
+                // Проверка квестов
+                if (typeof QuestSystemModule !== 'undefined') {
+                    [...activeQuests].forEach(q => {
+                        if (q.isCompleted) return;
+                        if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                            let isMatch = false;
+                            if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) isMatch = true;
+                            else if ((item.type === q.target.itemType) && (!q.target.itemName || item.name.includes(q.target.itemName))) isMatch = true;
+
+                            if (isMatch) {
+                                item.isQuestItem = true;
+                                if (q.type === 'FETCH') {
+                                    q.progress = q.maxProgress; q.isCompleted = true;
+                                    RenderModule.updateQuestBriefing(q);
+                                    RenderModule.log(`📦 Это тот самый предмет!`, "info");
+                                } else if (q.type === 'COLLECT') {
+                                    QuestSystemModule.checkProgress(q, { type: 'pickup', itemType: item.type, itemName: item.name, uniqueId: item.uniqueId, locX: dungeonX, locY: dungeonY });
+                                    RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info");
+                                }
+                                updateQuestCompass();
+                            }
+                        }
+                    });
+                }
+            }
+            items.splice(itemIdx, 1);
+        }
+
+        // Лестницы
+        if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
+            loadDungeonLevel(dungeonX, dungeonY, currentDepth + 1, currentDungeonTypeName, currentDungeonFullName, 'down');
+            return; 
+        }
+        if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
+            if (currentDepth === 0) exitToGlobal();
+            else loadDungeonLevel(dungeonX, dungeonY, currentDepth - 1, currentDungeonTypeName, currentDungeonFullName, 'up');
+            return; 
+        }
+
+        if (player.hp > 0) { moveNpcs(); moveEnemies(); }
+        if (player.hp <= 0) RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+    
+        renderFrame();
+    }
+
+    // ... (остальные функции: handleMapClick, tryGiveQuest, spawnDungeonEntities и т.д. остаются без изменений, так как они не влияют на логику окон) ...
+    
+    // Для краткости я не дублирую здесь все остальные функции (loadCityLevel, renderGlobalMap и т.д.), 
+    // но они должны остаться в коде ниже этого блока.
+
+    return {
+        init,
+        getPlayer: () => player,
+        getActiveQuests: () => activeQuests,
+        getCompletedQuestIds: () => completedQuestIds,
+        abandonCurrentQuest,
+        exitToGlobal
+    };
+})();
+
+window.onload = async () => {
+    await GameModule.init();
+};
 
 
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule и Окном Сюжета) ===
@@ -1441,7 +1689,7 @@ function updateQuestCompass() {
     }
 
 
-    // === ОСНОВНОЙ ХОД ИГРЫ (ИСПРАВЛЕННЫЙ) ===
+    // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ) ===
     function processTurn(dx, dy) {
         // БЛОКИРОВКА: Если игрок мертв, ничего не делаем
         if (player.hp <= 0) return; 
@@ -1509,7 +1757,6 @@ function updateQuestCompass() {
             return;
         }
 
-        // Взаимодействие с NPC
         // Взаимодействие с NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
