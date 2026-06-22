@@ -674,8 +674,8 @@ const RenderModule = (function() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        const winW = ctx.canvas.width * 0.95;
-        const winH = ctx.canvas.height * 0.9;
+        const winW = ctx.canvas.width * 0.65;  // Было 0.95
+        const winH = ctx.canvas.height * 0.60; // Было 0.90
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
         const midX = ctx.canvas.width / 2;
@@ -853,8 +853,10 @@ const RenderModule = (function() {
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         // Параметры окна
-        const winW = ctx.canvas.width * 0.8;
-        const winH = ctx.canvas.height * 0.6;
+        // Параметры окна
+        // === ИЗМЕНЕНИЕ РАЗМЕРОВ ДЛЯ ПК (УМЕНЬШЕНО НА ~30%) ===
+        const winW = ctx.canvas.width * 0.65;  // Было 0.80
+        const winH = ctx.canvas.height * 0.60; // Было 0.60 (оставил таким же для баланса)
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
         
