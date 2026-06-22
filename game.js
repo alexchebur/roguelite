@@ -59,11 +59,24 @@ const GameModule = (function() {
         });
     }
 
+    // === ОКНО СЮЖЕТНОГО КВЕСТА ===
+    function openQuestWindow(quest, isCompleted) {
+        isReadingQuest = true;
+        toggleUI(false); // <--- СКРЫВАЕМ ПАНЕЛИ
+    
+        if (typeof RenderModule.drawQuestWindow === 'function') {
+            RenderModule.drawQuestWindow(quest, isCompleted);
+        } else {
+            console.error("RenderModule.drawQuestWindow не найден!");
+            closeQuestWindow();
+        }
+    }
+
     function closeQuestWindow() {
         isReadingQuest = false;
         window.questCloseButton = null;
         window.questClickAreas = null; // Очистка зон клика для пагинации
-        toggleUI(true); // Возвращаем боковые панели
+        toggleUI(true); // <--- ВОЗВРАЩАЕМ ПАНЕЛИ
         RenderModule.requestRedraw();
     }
 
