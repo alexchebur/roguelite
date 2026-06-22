@@ -1575,7 +1575,6 @@ function updateQuestCompass() {
         const cam = RenderModule.getCameraOffset(player);
         
         // Вычисляем мировые координаты клетки, по которой кликнули
-        // TILE_SIZE берем из RenderModule или задаем константой (обычно 32)
         const tileSize = RenderModule.TILE_SIZE || 32; 
         const worldX = Math.floor(clickX / tileSize) + cam.x;
         const worldY = Math.floor(clickY / tileSize) + cam.y;
@@ -1616,22 +1615,17 @@ function updateQuestCompass() {
             }
         }
 
-        // 4. Проверяем стены/пол (если ничего живого нет)
+        // 4. Проверяем стены/пол
         if (MapModule.isWall(worldX, worldY)) {
             RenderModule.updateInspector("Стена", "Непроходимое препятствие.", "neutral");
         } else {
-            // Можно добавить проверку лестниц
-            if (MapModule.stairsUp && MapModule.stairsUp.x === worldX && MapModule.stairsUp.y === worldY) {
+             if (MapModule.stairsUp && MapModule.stairsUp.x === worldX && MapModule.stairsUp.y === worldY) {
                 RenderModule.updateInspector("Лестница вверх", "Ведет на предыдущий уровень или на поверхность.", "neutral");
             } else if (MapModule.stairsDown && MapModule.stairsDown.x === worldX && MapModule.stairsDown.y === worldY) {
                 RenderModule.updateInspector("Лестница вниз", "Ведет глубже в подземелье.", "neutral");
-            } else {
-                // Очищаем инспектор, если кликнули в пустой пол
-                // RenderModule.updateInspector("", "", "neutral"); 
             }
         }
     }
-
     
     // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ) ===
     function processTurn(dx, dy) {
