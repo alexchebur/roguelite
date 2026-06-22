@@ -1749,7 +1749,22 @@ function updateQuestCompass() {
         if (player.hp <= 0) {
             RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
         }
+
+
+        // === НОВОЕ: Обработка временных эффектов игрока ===
+        if (player.hp > 0) {
+            EffectSystemModule.processEffects(player, RenderModule.log);
+            // Если эффекты изменились (например, закончились), пересчитываем статы
+            // (recalculateStats вызывается внутри processEffects при удалении, 
+            // но можно вызвать явно для надежности, если были DoT/HoT)
+            EffectSystemModule.recalculateStats(player);
+        }
+
+        if (player.hp <= 0) {
+            RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+        }
     
+        
         renderFrame();
     }
 
