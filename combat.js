@@ -215,7 +215,7 @@ const CombatModule = (function() {
         }
     }
 
-    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТА (ОБНОВЛЕННОЕ) ===
+    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТА (ОБНОВЛЕННОЕ С УЧЕТОМ ВРЕМЕННЫХ ЭФФЕКТОВ) ===
     function useItem(player, index, logFn, updateUiFn) {
         const item = player.inventory[index];
         if (!item) return;
@@ -229,29 +229,45 @@ const CombatModule = (function() {
             used = true;
         } 
         
-        // 2. Временный бафф Атаки
+        // 2. Временный бафф Атаки (ПРОВЕРКА НА ДЛИТЕЛЬНОСТЬ)
         else if (item.effect === "buff_atk") {
-            // Создаем эффект: длительность из предмета, значение из предмета
-            const effect = EffectSystemModule.Effects.createBuffAtk(item.duration, item.val);
-            EffectSystemModule.addEffect(player, effect);
-            
-            // Пересчитываем статы сразу, чтобы увидеть изменение в UI
-            EffectSystemModule.recalculateStats(player);
-            
-            logFn(`Вы выпили ${item.name}. Атака +${item.val} на ${item.duration} ходов!`, "loot");
+            // Если у зелья есть длительность, используем систему эффектов
+            if (item.duration && typeof EffectSystemModule !== 'undefined') {
+                const effect = EffectSystemModule.Effects.createBuffAtk(item.duration, item.val);
+                EffectSystemModule.addEffect(player, effect);
+                
+                // Пересчитываем статы сразу, чтобы увидеть изменение в UI
+                EffectSystemModule.recalculateStats(player);
+                
+                logFn(`Вы выпили ${item.name}. Атака +${item.val} на ${item.duration} ходов!`, "loot");
+            } 
+            // Фолбэк для старых зелий без duration (если вдруг остались)
+            else {
+                player.bonusAtk += item.val;
+                const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
+                player.atk = baseAtk + player.bonusAtk;
+                logFn(`Вы выпили ${item.name}. Сила +${item.val} (навсегда).`, "loot");
+            }
             used = true;
         }
 
         // 3. Временный бафф Защиты (если добавите такие зелья)
         else if (item.effect === "buff_def") {
-            const effect = EffectSystemModule.Effects.createBuffDef(item.duration, item.val);
-            EffectSystemModule.addEffect(player, effect);
-            EffectSystemModule.recalculateStats(player);
-            logFn(`Вы выпили ${item.name}. Защита +${item.val} на ${item.duration} ходов!`, "loot");
+            if (item.duration && typeof EffectSystemModule !== 'undefined') {
+                const effect = EffectSystemModule.Effects.createBuffDef(item.duration, item.val);
+                EffectSystemModule.addEffect(player, effect);
+                EffectSystemModule.recalculateStats(player);
+                logFn(`Вы выпили ${item.name}. Защита +${item.val} на ${item.duration} ходов!`, "loot");
+            } else {
+                 player.bonusDef += item.val;
+                 const baseDef = WorldCurveModule.getPlayerBaseDef(player.level);
+                 player.def = baseDef + player.bonusDef;
+                 logFn(`Вы выпили ${item.name}. Защита +${item.val} (навсегда).`, "loot");
+            }
             used = true;
         }
 
-        // 4. Экипировка Оружия (без изменений, но убедимся, что пересчет идет)
+        // 4. Экипировка Оружия
         else if (item.type === "weapon") {
             if (player.equipment.weapon) {
                 player.bonusAtk -= player.equipment.weapon.isUnique ? player.equipment.weapon.uniqueAtk : player.equipment.weapon.val;
@@ -267,7 +283,12 @@ const CombatModule = (function() {
             }
             
             // Пересчет статов важен и здесь
-            EffectSystemModule.recalculateStats(player);
+            if (typeof EffectSystemModule !== 'undefined') {
+                EffectSystemModule.recalculateStats(player);
+            } else {
+                const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level); 
+                player.atk = baseAtk + player.bonusAtk;
+            }
             
             logFn(`Вы взяли в руки ${item.name}. Атака +${atkBonus}.`, "loot");
             used = true;
@@ -284,7 +305,12 @@ const CombatModule = (function() {
             const defBonus = item.isUnique ? item.uniqueDef : item.val;
             player.bonusDef += defBonus;
             
-            EffectSystemModule.recalculateStats(player);
+            if (typeof EffectSystemModule !== 'undefined') {
+                EffectSystemModule.recalculateStats(player);
+            } else {
+                const baseDef = WorldCurveModule.getPlayerBaseDef(player.level);
+                player.def = baseDef + player.bonusDef;
+            }
              
             logFn(`Вы надели ${item.name}. Защита +${defBonus}.`, "loot");
             used = true;
