@@ -229,20 +229,15 @@ const CombatModule = (function() {
             used = true;
         } 
         
-        // 2. Временный бафф Атаки (ПРОВЕРКА НА ДЛИТЕЛЬНОСТЬ)
+        // 2. Временный бафф Атаки
         else if (item.effect === "buff_atk") {
-            // Если у зелья есть длительность, используем систему эффектов
             if (item.duration && typeof EffectSystemModule !== 'undefined') {
                 const effect = EffectSystemModule.Effects.createBuffAtk(item.duration, item.val);
                 EffectSystemModule.addEffect(player, effect);
-                
-                // Пересчитываем статы сразу, чтобы увидеть изменение в UI
                 EffectSystemModule.recalculateStats(player);
-                
                 logFn(`Вы выпили ${item.name}. Атака +${item.val} на ${item.duration} ходов!`, "loot");
-            } 
-            // Фолбэк для старых зелий без duration (если вдруг остались)
-            else {
+            } else {
+                // Фолбэк для старых зелий без duration
                 player.bonusAtk += item.val;
                 const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
                 player.atk = baseAtk + player.bonusAtk;
@@ -251,7 +246,7 @@ const CombatModule = (function() {
             used = true;
         }
 
-        // 3. Временный бафф Защиты (если добавите такие зелья)
+        // 3. Временный бафф Защиты
         else if (item.effect === "buff_def") {
             if (item.duration && typeof EffectSystemModule !== 'undefined') {
                 const effect = EffectSystemModule.Effects.createBuffDef(item.duration, item.val);
@@ -282,7 +277,6 @@ const CombatModule = (function() {
                 item.currentAmmo = item.maxAmmo;
             }
             
-            // Пересчет статов важен и здесь
             if (typeof EffectSystemModule !== 'undefined') {
                 EffectSystemModule.recalculateStats(player);
             } else {
