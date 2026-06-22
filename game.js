@@ -1,4 +1,3 @@
-
 // =========================== Модуль игры (управление, ходы, загрузка уровней) ===========================
 const GameModule = (function() {
     // === Состояние игры ===
@@ -10,189 +9,124 @@ const GameModule = (function() {
     let busy = false;
     let isReadingQuest = false; // Флаг: открыто ли окно сюжета
 
-
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
-    // Хранит количество живых врагов для каждого уровня: "gx_gy_depth" -> count
     let dungeonClearState = new Map(); 
     
     // === КВЕСТЫ ===
     let activeQuests = []; 
     let completedQuestIds = new Set(); 
 
-    // === Режимы: 'global' (глобальная карта) или 'dungeon' (подземелье) ===
+    // === Режимы ===
     let gameMode = 'global';
     let entrancePos = null; 
     
-    // === Подземельные координаты (для лестниц) ===
+    // === Подземельные координаты ===
     let dungeonX = 0;
     let dungeonY = 0;
     let currentDepth = 0;  
     let currentDungeonTypeName = null; 
     let currentDungeonFullName = null; 
     
-    // === Глобальные координаты ===
+    // === Глобальные координаты и магазин ===
     let currentLocData = null;
     let currentWorldTrend = null;
     let isShopOpen = false;
     let currentMerchantInv = null;
-        // === ОТКРЫТИЕ ОКНА СЮЖЕТА ===
+
+    // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ UI ===
+    function toggleUI(isVisible) {
+        const panels = document.querySelectorAll('.ui-panel');
+        panels.forEach(panel => {
+            if (isVisible) {
+                panel.classList.remove('hidden-ui');
+            } else {
+                panel.classList.add('hidden-ui');
+            }
+        });
+    }
+
+    // === ОКНО СЮЖЕТНОГО КВЕСТА ===
     function openQuestWindow(quest, isCompleted) {
         isReadingQuest = true;
-        // Проверка существования функции перед вызовом предотвращает краш
+        toggleUI(false); // Скрываем боковые панели
+        
         if (typeof RenderModule.drawQuestWindow === 'function') {
             RenderModule.drawQuestWindow(quest, isCompleted);
         } else {
             console.error("RenderModule.drawQuestWindow не найден!");
-            closeQuestWindow(); // Если окна нет, сразу закрываем режим чтения
+            closeQuestWindow();
         }
     }
 
-    // === ЗАКРЫТИЕ ОКНА СЮЖЕТА ===
     function closeQuestWindow() {
         isReadingQuest = false;
         window.questCloseButton = null;
-        RenderModule.requestRedraw(); // Вернуть отрисовку карты
+        window.questClickAreas = null; // Очистка зон клика для пагинации
+        toggleUI(true); // Возвращаем боковые панели
+        RenderModule.requestRedraw();
     }
-    async function init() {
-        try {
-            if (typeof RenderModule === 'undefined') {
-                throw new Error("RenderModule не загружен ");
-            }
-            await RenderModule.init();
-            RenderModule.setRedrawCallback(renderFrame);
-        } catch (e) {
-            console.error("Критическая ошибка при инициализации: ", e);
-            document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
-            return;
-        }
 
-        gameMode = 'global';
+    // === ОБРАБОТКА КЛИКА В ОКНЕ КВЕСТА ===
+    function handleQuestClick(clientX, clientY) {
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
         
-        if (typeof GlobalMapModule !== 'undefined') {
-            const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
-            RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
 
-            // >>> ИНИЦИАЛИЗАЦИЯ СЮЖЕТНОЙ ЦЕПОЧКИ <<<
-            if (typeof QuestChainModule !== 'undefined') {
-                QuestChainModule.init(startPos.x, startPos.y);
-                RenderModule.log("📜 Сюжетная линия мира сгенерирована.", "info");
-            }
-            // >>> КОНЕЦ БЛОКА <<<
-
-        } else {
-            RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
-            return;
-        }
-        
-        renderGlobalMap();
-        
-        window.addEventListener("keydown", (e) => handleInput(e));
-        addTouchControls();
-
-        // Внутри init(), замените старый обработчик на этот
-        const mapContainer = document.getElementById("map-container");
-        if (mapContainer) {
-            mapContainer.addEventListener("mousedown", (e) => {
-                if (!isMobileDevice()) {
-                    // Единая точка входа для всех кликов на ПК
-                    handleCanvasClick(e.clientX, e.clientY);
-                }
-            });
-        }
-        
-        RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
-        RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
-        updateAbandonButton(false); // <--- ДОБАВИТЬ
-    }
-        // === ОБРАБОТКА ЛЮБОГО КЛИКА ПО КАНВАСУ (ПК) ===
-
-        function handleCanvasClick(clientX, clientY) {
-   
-         // 1. Проверка окна сюжетного квеста
-   
-         if (isReadingQuest) {
-       
-         handleQuestClick(clientX, clientY);
-        
-        return;
-   
-         }
-
-  
-          // 2. Проверка магазина
-  
-          if (isShopOpen) {
-      
-          handleShopClick(clientX, clientY);
-       
-         return;
-  
-          }
-
-
-            // 3. Стандартный осмотр/взаимодействие (только в подземелье/городе)
-  
-          if (gameMode === 'dungeon') {
-      
-          handleMapClick(clientX, clientY);
-   
-         }
-
-        }
-
-        // === ОБРАБОТКА КЛИКА В ОКНЕ СЮЖЕТНОГО КВЕСТА ===
-        function handleQuestClick(clientX, clientY) {
-            const canvas = document.querySelector("#map-container canvas");
-            if (!canvas) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-    
-            const clickX = (clientX - rect.left) * scaleX;
-            const clickY = (clientY - rect.top) * scaleY;
-
-            // Проверяем клик по кнопке закрытия
-            if (window.questCloseButton) {
-                const btn = window.questCloseButton;
-                if (clickX >= btn.x && clickX <= btn.x + btn.w && 
-                    clickY >= btn.y && clickY <= btn.y + btn.h) {
-                    closeQuestWindow();
-                    return;
+        // Проверка зон клика (кнопки пагинации и закрытия)
+        if (window.questClickAreas) {
+            for (const area of window.questClickAreas) {
+                if (clickX >= area.x && clickX <= area.x + area.w && 
+                    clickY >= area.y && clickY <= area.y + area.h) {
+                    
+                    if (area.action === 'close') {
+                        closeQuestWindow();
+                        return;
+                    }
+                    if (area.action === 'prev_q' || area.action === 'next_q') {
+                        // Перерисовка окна с новой страницей
+                        // Данные берутся из глобальной переменной, сохраненной при открытии
+                        if (window.currentQuestWindowData) {
+                            RenderModule.drawQuestWindow(window.currentQuestWindowData.quest, window.currentQuestWindowData.isCompleted);
+                        }
+                        return;
+                    }
                 }
             }
-            // Клик вне кнопки тоже закрывает окно
-            closeQuestWindow();
         }
+        
+        // Клик вне активных зон закрывает окно
+        closeQuestWindow();
+    }
 
-
-
-    
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
-    function handleMapClick(clientX, clientY) {
-}
-
-    // === ЛОГИКА МАГАЗИНА ===
-
-    // === ОТКРЫТИЕ МАГАЗИНА ===
+    // === МАГАЗИН ===
     function openShop() {
         if (isShopOpen) return;
         
-        // Генерируем инвентарь торговца на основе текущей глубины/уровня мира
-        // Если мы в городе (depth 0), используем 1 для баланса, иначе текущую глубину
         const depth = currentDepth > 0 ? currentDepth : 1;
         const merchantGold = 500 + (depth * 100);
         
         currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
         isShopOpen = true;
         
+        toggleUI(false); // Скрываем боковые панели
         RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
     }
 
-    // === ОБРАБОТКА КЛИКА ПО ОКНУ МАГАЗИНА ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО ОКНУ МАГАЗИНА ===
-    // === ОБРАБОТКА КЛИКА/ТАПА ПО ОКНУ МАГАЗИНА ===
+    function closeShop() {
+        isShopOpen = false;
+        currentMerchantInv = null;
+        toggleUI(true); // Возвращаем боковые панели
+        RenderModule.requestRedraw();
+        RenderModule.log("Вы покинули лавку.", "info");
+    }
+
     function handleShopClick(clientX, clientY) {
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
@@ -204,24 +138,7 @@ const GameModule = (function() {
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
 
-        // 0. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
-        // Если открыто окно квеста, обрабатываем клик как его закрытие
-        if (isReadingQuest) {
-            // Проверяем клик по кнопке закрытия квеста
-            if (window.questCloseButton) {
-                const btn = window.questCloseButton;
-                if (clickX >= btn.x && clickX <= btn.x + btn.w && 
-                    clickY >= btn.y && clickY <= btn.y + btn.h) {
-                    closeQuestWindow();
-                    return;
-                }
-            }
-            // Клик вне кнопки тоже закрывает окно квеста
-            closeQuestWindow();
-            return;
-        }
-
-        // 1. ПРОВЕРКА КНОПКИ "ВЫЙТИ"
+        // 1. Кнопка выхода
         if (window.shopExitButton) {
             const btn = window.shopExitButton;
             if (clickX >= btn.x && clickX <= btn.x + btn.w && 
@@ -231,50 +148,30 @@ const GameModule = (function() {
             }
         }
 
-        // 2. ПРОВЕРКА НАВИГАЦИИ (СТРЕЛКИ)
+        // 2. Навигация и товары
         if (window.shopClickAreas) {
             for (const area of window.shopClickAreas) {
                 if (clickX >= area.x && clickX <= area.x + area.w &&
                     clickY >= area.y && clickY <= area.y + area.h) {
                     
-                    // Обработка переключения страниц
-                    if (area.action === 'prev_m') {
-                        window.shopPageMerchant--;
-                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
-                        return;
-                    }
-                    if (area.action === 'next_m') {
-                        window.shopPageMerchant++;
-                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
-                        return;
-                    }
-                    if (area.action === 'prev_p') {
-                        window.shopPagePlayer--;
-                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
-                        return;
-                    }
-                    if (area.action === 'next_p') {
-                        window.shopPagePlayer++;
+                    if (area.action.startsWith('prev_') || area.action.startsWith('next_')) {
+                        if (area.action === 'prev_m') window.shopPageMerchant--;
+                        if (area.action === 'next_m') window.shopPageMerchant++;
+                        if (area.action === 'prev_p') window.shopPagePlayer--;
+                        if (area.action === 'next_p') window.shopPagePlayer++;
                         RenderModule.drawShopWindow(currentMerchantInv, player.gold);
                         return;
                     }
                     
-                    // Обработка покупки/продажи
-                    if (area.action === 'buy') {
-                        buyItem(area.index);
-                        return;
-                    }
-                    if (area.action === 'sell') {
-                        sellItem(area.index);
-                        return;
-                    }
+                    if (area.action === 'buy') { buyItem(area.index); return; }
+                    if (area.action === 'sell') { sellItem(area.index); return; }
                 }
             }
         }
 
-        // 3. Если клик вне окна — закрываем магазин
-        const winW = canvas.width * 0.95;
-        const winH = canvas.height * 0.9;
+        // 3. Клик вне окна
+        const winW = canvas.width * 0.65; // Соответствует новому размеру в render.js
+        const winH = canvas.height * 0.60;
         const winX = (canvas.width - winW) / 2;
         const winY = (canvas.height - winH) / 2;
 
@@ -282,24 +179,18 @@ const GameModule = (function() {
             closeShop();
         }
     }
-    // === ПОКУПКА ПРЕДМЕТА ===
+
     function buyItem(index) {
         if (!currentMerchantInv || !player) return;
         const item = currentMerchantInv.items[index];
-        
-        if (!item) {
-            RenderModule.log("Этот слот пуст.", "info");
-            return;
-        }
+        if (!item) return;
 
         if (player.gold >= item.price) {
             player.gold -= item.price;
             currentMerchantInv.gold += item.price;
-            
             currentMerchantInv.items.splice(index, 1);
             player.inventory.push(item);
             
-            // === СБРОС СТРАНИЦ ПРИ ИЗМЕНЕНИИ СПИСКА ===
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
@@ -311,36 +202,25 @@ const GameModule = (function() {
         }
     }
 
-    // === ПРОДАЖА ПРЕДМЕТА ===
-    // === ПРОДАЖА ПРЕДМЕТА ===
     function sellItem(index) {
         if (!player) return;
         const item = player.inventory[index];
-        
-        if (!item) {
-            RenderModule.log("Этот слот пуст.", "info");
-            return;
-        }
-
+        if (!item) return;
         if (item.isQuestItem) {
             RenderModule.log("Это квестовый предмет, его нельзя продать!", "combat");
             return;
         }
 
         const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
-
         if (currentMerchantInv.gold >= sellPrice) {
             player.gold += sellPrice;
             currentMerchantInv.gold -= sellPrice;
-            
             player.inventory.splice(index, 1);
             
-            // Добавляем предмет торговцу
             const buyBackPrice = Math.floor(sellPrice * 1.2); 
             item.price = buyBackPrice;
             currentMerchantInv.items.unshift(item);
             
-            // === СБРОС СТРАНИЦ ===
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
@@ -351,13 +231,7 @@ const GameModule = (function() {
             RenderModule.log("У торговца недостаточно золота!", "combat");
         }
     }
-    // === ЗАКРЫТИЕ МАГАЗИНА ===
-    function closeShop() {
-        isShopOpen = false;
-        currentMerchantInv = null;
-        RenderModule.requestRedraw(); // Вернуть обычную отрисовку карты
-        RenderModule.log("Вы покинули лавку.", "info");
-    }   
+
 
 
 
