@@ -215,33 +215,43 @@ const CombatModule = (function() {
         }
     }
 
-    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТА (ОБНОВЛЕННОЕ С УЧЕТОМ БОНУСОВ И ТЕЛЕПОРТАЦИЕЙ) ===
+    // === ИСПОЛЬЗОВАНИЕ ПРЕДМЕТА (ОБНОВЛЕННОЕ) ===
     function useItem(player, index, logFn, updateUiFn) {
         const item = player.inventory[index];
         if (!item) return;
 
         let used = false;
 
-        // 1. Лечение
+        // 1. Лечение (мгновенное)
         if (item.effect === "heal") {
             player.hp = Math.min(player.maxHp, player.hp + item.val);
             logFn(`Вы использовали ${item.name}. HP +${item.val}.`, "loot");
             used = true;
         } 
-        // 2. Зелья силы (теперь добавляют в bonusAtk)
+        
+        // 2. Временный бафф Атаки
         else if (item.effect === "buff_atk") {
-            player.bonusAtk += item.val;
+            // Создаем эффект: длительность из предмета, значение из предмета
+            const effect = EffectSystemModule.Effects.createBuffAtk(item.duration, item.val);
+            EffectSystemModule.addEffect(player, effect);
             
-            // Пересчитываем итоговую атаку
-            const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
-            player.atk = baseAtk + player.bonusAtk;
+            // Пересчитываем статы сразу, чтобы увидеть изменение в UI
+            EffectSystemModule.recalculateStats(player);
             
-            logFn(`Вы выпили ${item.name}. Сила +${item.val}.`, "loot");
+            logFn(`Вы выпили ${item.name}. Атака +${item.val} на ${item.duration} ходов!`, "loot");
             used = true;
         }
-// В combat.js, внутри функции useItem, в блоках экипировки:
 
-        // 3. Экипировка Оружия
+        // 3. Временный бафф Защиты (если добавите такие зелья)
+        else if (item.effect === "buff_def") {
+            const effect = EffectSystemModule.Effects.createBuffDef(item.duration, item.val);
+            EffectSystemModule.addEffect(player, effect);
+            EffectSystemModule.recalculateStats(player);
+            logFn(`Вы выпили ${item.name}. Защита +${item.val} на ${item.duration} ходов!`, "loot");
+            used = true;
+        }
+
+        // 4. Экипировка Оружия (без изменений, но убедимся, что пересчет идет)
         else if (item.type === "weapon") {
             if (player.equipment.weapon) {
                 player.bonusAtk -= player.equipment.weapon.isUnique ? player.equipment.weapon.uniqueAtk : player.equipment.weapon.val;
@@ -249,7 +259,6 @@ const CombatModule = (function() {
             }
             
             player.equipment.weapon = item;
-            // ИСПРАВЛЕНИЕ: используем уникальный стат, если он есть
             const atkBonus = item.isUnique ? item.uniqueAtk : item.val;
             player.bonusAtk += atkBonus;
             
@@ -257,14 +266,14 @@ const CombatModule = (function() {
                 item.currentAmmo = item.maxAmmo;
             }
             
-            const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
-            player.atk = baseAtk + player.bonusAtk;
-            if (player.atk < 1) player.atk = 1;
+            // Пересчет статов важен и здесь
+            EffectSystemModule.recalculateStats(player);
             
             logFn(`Вы взяли в руки ${item.name}. Атака +${atkBonus}.`, "loot");
             used = true;
         } 
-        // 4. Экипировка Брони
+        
+        // 5. Экипировка Брони
         else if (item.type === "armor") {
             if (player.equipment.armor) {
                 player.bonusDef -= player.equipment.armor.isUnique ? player.equipment.armor.uniqueDef : player.equipment.armor.val;
@@ -272,25 +281,20 @@ const CombatModule = (function() {
             }
             
             player.equipment.armor = item;
-            // ИСПРАВЛЕНИЕ: используем уникальный стат, если он есть
             const defBonus = item.isUnique ? item.uniqueDef : item.val;
             player.bonusDef += defBonus;
             
-            const baseDef = WorldCurveModule.getPlayerBaseDef(player.level);
-            player.def = baseDef + player.bonusDef;
-            if (player.def < 0) player.def = 0;
+            EffectSystemModule.recalculateStats(player);
              
             logFn(`Вы надели ${item.name}. Защита +${defBonus}.`, "loot");
             used = true;
         }
-        // 5. === НОВОЕ: Свиток телепортации ===
+        
+        // 6. Свиток телепортации
         else if (item.effect === "teleport_exit") {
-            // Проверяем, доступен ли модуль игры и функция выхода
             if (typeof GameModule !== 'undefined' && typeof GameModule.exitToGlobal === 'function') {
                 logFn(`Вы разломали ${item.name} и вспышка света перенесла вас на поверхность!`, "event");
                 used = true;
-                
-                // Вызываем выход из подземелья
                 GameModule.exitToGlobal();
             } else {
                 logFn(`Здесь нельзя использовать свиток телепортации.`, "info");
@@ -298,10 +302,7 @@ const CombatModule = (function() {
         }
 
         if (used) {
-            // Удаляем использованный/экипированный предмет из инвентаря
             player.inventory.splice(index, 1);
-            
-            // Обновляем UI
             updateUiFn();
         }
     }
