@@ -687,7 +687,7 @@ const RenderModule = (function() {
         ctx.strokeRect(winX, winY, winW, winH);
 
         // Заголовок и кнопка выхода
-        ctx.font = 'bold 16px Consolas, monospace';
+        ctx.font = 'bold 12px Consolas, monospace';
         ctx.textBaseline = 'middle';
         const titleText = "🏪 ЛАВКА ТОРГОВЦА";
         const titleWidth = ctx.measureText(titleText).width;
@@ -877,7 +877,7 @@ const RenderModule = (function() {
         ctx.fillText(titleText, ctx.canvas.width / 2, winY + 30);
 
         // Текст описания (с переносом строк)
-        ctx.font = '14px Consolas, monospace';
+        ctx.font = '12px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillStyle = '#c9d1d9';
