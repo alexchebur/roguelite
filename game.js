@@ -89,11 +89,13 @@ const GameModule = (function() {
         window.addEventListener("keydown", (e) => handleInput(e));
         addTouchControls();
 
+        // Внутри init(), замените старый обработчик на этот
         const mapContainer = document.getElementById("map-container");
         if (mapContainer) {
             mapContainer.addEventListener("mousedown", (e) => {
-                if (!isMobileDevice() && gameMode === 'dungeon') {
-                    handleMapClick(e.clientX, e.clientY);
+                if (!isMobileDevice()) {
+                    // Единая точка входа для всех кликов на ПК
+                    handleCanvasClick(e.clientX, e.clientY);
                 }
             });
         }
@@ -102,98 +104,73 @@ const GameModule = (function() {
         RenderModule.log("Используйте стрелки для перемещения. Входите в города (C) и подземелья (D).", "info");
         updateAbandonButton(false); // <--- ДОБАВИТЬ
     }
+        // === ОБРАБОТКА ЛЮБОГО КЛИКА ПО КАНВАСУ (ПК) ===
 
+        function handleCanvasClick(clientX, clientY) {
+   
+         // 1. Проверка окна сюжетного квеста
+   
+         if (isReadingQuest) {
+       
+         handleQuestClick(clientX, clientY);
+        
+        return;
+   
+         }
+
+  
+          // 2. Проверка магазина
+  
+          if (isShopOpen) {
+      
+          handleShopClick(clientX, clientY);
+       
+         return;
+  
+          }
+
+
+            // 3. Стандартный осмотр/взаимодействие (только в подземелье/городе)
+  
+          if (gameMode === 'dungeon') {
+      
+          handleMapClick(clientX, clientY);
+   
+         }
+
+        }
+
+        // === ОБРАБОТКА КЛИКА В ОКНЕ СЮЖЕТНОГО КВЕСТА ===
+        function handleQuestClick(clientX, clientY) {
+            const canvas = document.querySelector("#map-container canvas");
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+    
+            const clickX = (clientX - rect.left) * scaleX;
+            const clickY = (clientY - rect.top) * scaleY;
+
+            // Проверяем клик по кнопке закрытия
+            if (window.questCloseButton) {
+                const btn = window.questCloseButton;
+                if (clickX >= btn.x && clickX <= btn.x + btn.w && 
+                    clickY >= btn.y && clickY <= btn.y + btn.h) {
+                    closeQuestWindow();
+                    return;
+                }
+            }
+            // Клик вне кнопки тоже закрывает окно
+            closeQuestWindow();
+        }
+
+
+
+    
     // === ОБРАБОТКА КЛИКА/ТАПА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
-        // 1. Если открыт магазин, обрабатываем клик по товарам
-        if (isShopOpen) {
-            handleShopClick(clientX, clientY);
-            return;
-        }
-
-        if (!player || gameMode !== 'dungeon') return;
-
-        const canvas = document.querySelector("#map-container canvas");
-        if (!canvas) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-
-        const clickX = (clientX - rect.left) * scaleX;
-        const clickY = (clientY - rect.top) * scaleY;
-
-        const cellW = canvas.width / RenderModule.COLS;
-        const cellH = canvas.height / RenderModule.ROWS;
-
-        const sx = Math.floor(clickX / cellW);
-        const sy = Math.floor(clickY / cellH);
-
-        const cam = RenderModule.getCameraOffset(player);
-        const wx = sx + cam.x;
-        const wy = sy + cam.y;
-
-        // 2. Враги
-        const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
-        if (enemy) {
-            const weapon = player.equipment.weapon;
-            
-            // Логика дистанционной атаки
-            if (weapon && !weapon.meleeType) {
-                const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
-                
-                if (killed) {
-                    // ВАЖНО: Не фильтруем массив вручную! checkDeath() сделает это сам,
-                    // предварительно выдав лут, опыт и проверив квесты.
-                    checkDeath(); 
-                }
-                
-                moveNpcs();
-                moveEnemies();
-                renderFrame();
-            } 
-            // Логика осмотра (если оружие ближнего боя или его нет)
-            else {
-                if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
-                }
-                RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
-            }
-            return;
-        }
-
-        // 3. NPC (Диалог или Квест)
-        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
-        if (npc) {
-            if (npc.isQuestGiver) {
-                tryGiveQuest(npc);
-            } else {
-                if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
-                }
-                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
-            }
-            return;
-        }
-
-        // 4. Предметы
-        const item = items.find(i => i.x === wx && i.y === wy);
-        if (item) {
-             let details = " ";
-             if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
-             if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
-             
-             if (typeof RenderModule.updateInspector === 'function') {
-                RenderModule.updateInspector(`🎒 ${item.name}`, details, "loot");
-             }
-            RenderModule.log(`Предмет: ${item.name}`, "loot");
-            return;
-        }
-
-        if (typeof RenderModule.updateInspector === 'function') {
-            RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
-        }
-    }
+}
 
     // === ЛОГИКА МАГАЗИНА ===
 
