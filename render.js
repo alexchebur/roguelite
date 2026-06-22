@@ -687,7 +687,7 @@ const RenderModule = (function() {
         ctx.strokeRect(winX, winY, winW, winH);
 
         // Заголовок и кнопка выхода
-        ctx.font = 'bold 12px Consolas, monospace';
+        ctx.font = 'bold 14px Consolas, monospace';
         ctx.textBaseline = 'middle';
         const titleText = "🏪 ЛАВКА ТОРГОВЦА";
         const titleWidth = ctx.measureText(titleText).width;
@@ -696,7 +696,7 @@ const RenderModule = (function() {
         ctx.fillText(titleText, ctx.canvas.width / 2, winY + 25);
 
         const btnText = "❌ ВЫЙТИ";
-        ctx.font = 'bold 12px Consolas, monospace';
+        ctx.font = 'bold 10px Consolas, monospace';
         const btnWidth = ctx.measureText(btnText).width + 16;
         const btnHeight = 24;
         const btnX = (ctx.canvas.width / 2) + (titleWidth / 2) + 20;
@@ -868,7 +868,7 @@ const RenderModule = (function() {
         ctx.strokeRect(winX, winY, winW, winH);
 
         // Заголовок
-        ctx.font = 'bold 16px Consolas, monospace';
+        ctx.font = 'bold 14px Consolas, monospace';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = quest.isChainQuest ? '#d29922' : '#fff';
@@ -877,7 +877,7 @@ const RenderModule = (function() {
         ctx.fillText(titleText, ctx.canvas.width / 2, winY + 30);
 
         // Текст описания (с переносом строк)
-        ctx.font = '12px Consolas, monospace';
+        ctx.font = '10px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillStyle = '#c9d1d9';
