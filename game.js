@@ -1636,6 +1636,7 @@ function updateQuestCompass() {
         }
 
         // Взаимодействие с NPC
+        // Взаимодействие с NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
             let questHandled = false;
@@ -1647,6 +1648,11 @@ function updateQuestCompass() {
                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             }
             
+            // === ИСПРАВЛЕНИЕ: Если открылось окно квеста, не затираем его отрисовкой карты ===
+            if (isReadingQuest) {
+                return; // Прерываем ход, окно квеста уже на экране
+            }
+
             moveNpcs(); 
             moveEnemies();
             renderFrame();
