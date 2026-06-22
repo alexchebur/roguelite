@@ -1556,7 +1556,83 @@ function updateQuestCompass() {
         enemies = enemies.filter(e => e.hp > 0);
     }
 
+    // === ОБРАБОТКА КЛИКА ПО КАРТЕ (ОСМОТР) ===
+    function handleMapClick(clientX, clientY) {
+        if (gameMode !== 'dungeon' || !player) return;
 
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        // Преобразуем экранные координаты в координаты канваса
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        // Получаем смещение камеры от RenderModule
+        const cam = RenderModule.getCameraOffset(player);
+        
+        // Вычисляем мировые координаты клетки, по которой кликнули
+        // TILE_SIZE берем из RenderModule или задаем константой (обычно 32)
+        const tileSize = RenderModule.TILE_SIZE || 32; 
+        const worldX = Math.floor(clickX / tileSize) + cam.x;
+        const worldY = Math.floor(clickY / tileSize) + cam.y;
+
+        // Проверяем границы карты
+        if (worldX < 0 || worldX >= DataModule.MAP_WIDTH || worldY < 0 || worldY >= DataModule.MAP_HEIGHT) {
+            return;
+        }
+
+        // 1. Проверяем врагов
+        const enemy = enemies.find(e => e.hp > 0 && e.x === worldX && e.y === worldY);
+        if (enemy) {
+            let details = `HP: ${enemy.hp}/${enemy.maxHp}\nАтака: ${enemy.atk}\nЗащита: ${enemy.def}`;
+            if (enemy.isBoss) details += "\n⚠️ БОСС";
+            RenderModule.updateInspector(enemy.name, details, "enemy");
+            return;
+        }
+
+        // 2. Проверяем предметы
+        const item = items.find(i => i.x === worldX && i.y === worldY);
+        if (item) {
+            let details = `Тип: ${item.type}`;
+            if (item.val) details += `\nХарактеристика: +${item.val}`;
+            if (item.effect) details += `\nЭффект: ${item.effect}`;
+            if (item.isQuestItem) details += "\n📜 Квестовый предмет";
+            RenderModule.updateInspector(item.name, details, "loot");
+            return;
+        }
+
+        // 3. Проверяем NPC (если мы в городе)
+        if (window.currentCityNpcs) {
+            const npc = window.currentCityNpcs.find(n => n.x === worldX && n.y === worldY);
+            if (npc) {
+                let details = npc.dialog;
+                if (npc.isQuestGiver) details += "\n📜 Может дать задание";
+                RenderModule.updateInspector(npc.name, details, "npc");
+                return;
+            }
+        }
+
+        // 4. Проверяем стены/пол (если ничего живого нет)
+        if (MapModule.isWall(worldX, worldY)) {
+            RenderModule.updateInspector("Стена", "Непроходимое препятствие.", "neutral");
+        } else {
+            // Можно добавить проверку лестниц
+            if (MapModule.stairsUp && MapModule.stairsUp.x === worldX && MapModule.stairsUp.y === worldY) {
+                RenderModule.updateInspector("Лестница вверх", "Ведет на предыдущий уровень или на поверхность.", "neutral");
+            } else if (MapModule.stairsDown && MapModule.stairsDown.x === worldX && MapModule.stairsDown.y === worldY) {
+                RenderModule.updateInspector("Лестница вниз", "Ведет глубже в подземелье.", "neutral");
+            } else {
+                // Очищаем инспектор, если кликнули в пустой пол
+                // RenderModule.updateInspector("", "", "neutral"); 
+            }
+        }
+    }
+
+    
     // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ) ===
     function processTurn(dx, dy) {
         // БЛОКИРОВКА: Если игрок мертв, ничего не делаем
