@@ -329,11 +329,9 @@
         #ui-quest-briefing { font-size: 9px; }
     }
 
-    /* Класс для скрытия панелей при открытых окнах */
-    .ui-panel.hidden-ui {
-        opacity: 0;
-        pointer-events: none; /* Чтобы нельзя было случайно кликнуть по скрытой панели */
-        transition: opacity 0.2s ease-in-out;
+    /* В index.html внутри тега <style> */
+    .hidden-ui {
+        display: none !important;
     }
 
 </style>
