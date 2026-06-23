@@ -739,8 +739,29 @@ function updateQuestCompass() {
         if (busy) return;
         if (dx === 0 && dy === 0) return;
         
+        // === НОВОЕ: Проверка выносливости ПЕРЕД движением ===
+        if (player && player.stamina <= 0) {
+            RenderModule.log("Вы умерли от усталости. Нажмите F5 чтобы начать сначала.", "combat");
+            busy = true; // Блокируем дальнейшие действия
+            return;
+        }
+
         if (GlobalMapModule.tryMove(dx, dy)) {
+            // === НОВОЕ: Уменьшаем выносливость при успешном шаге ===
+            if (player) {
+                player.stamina = Math.max(0, player.stamina - 1);
+                
+                // Проверка смерти ПОСЛЕ шага (если ушли в минус)
+                if (player.stamina <= 0) {
+                    RenderModule.log("Вы сделали последний шаг... Вы умерли от усталости. Нажмите F5 чтобы начать сначала.", "combat");
+                    busy = true;
+                    renderGlobalMap(); // Обновить UI перед смертью
+                    return;
+                }
+            }
+
             const playerPos = GlobalMapModule.getPlayerPosition();
+            // ... остальной код функции без изменений ...
             const poi = GlobalMapModule.getPOI(playerPos.x, playerPos.y);
             
             if (poi) {
