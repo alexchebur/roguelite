@@ -248,6 +248,17 @@ const DataModule = (function() {
             gender:  "it ",
             plural: false
         },
+
+        { 
+            type: "potion_stamina", 
+            char: getChar('ITEM_POTION_HP'), // Используем существующий спрайт зелья
+            color: "#4CAF50",                // Зеленый цвет для отличия
+            baseName: "Зелье отдыха", 
+            effect: "restore_stamina",       // Уникальный эффект
+            val: [100, 100],                 // Восстанавливает полностью
+            gender: "it",
+            plural: false
+        },
         
     ];
 // В data.js, после ADJECTIVE_TIERS и ITEM_TYPES
