@@ -124,6 +124,7 @@ const EntityModule = (function() {
             stat: template.stat,
             effect: template.effect,
             val: finalVal,
+            duration: template.duration, 
             isItem: true,
             meleeType: template.meleeType !== undefined ? template.meleeType : true,
             range: template.range || 1,
