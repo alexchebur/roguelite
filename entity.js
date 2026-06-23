@@ -1,16 +1,17 @@
 // =========================== Модуль сущностей (игрок, враги, предметы) ===========================
 const EntityModule = (function() {
     function createPlayer(x, y) {
-        return {
+         return {
             x: x, y: y,
-            char: "@", color: "#FFF",
+            char:  "@ ", color:  "#FFF ",
             hp: 20, maxHp: 20,
+            stamina: 100, maxStamina: 100, // <--- НОВОЕ: Выносливость
             atk: 2, def: 1,
             bonusAtk: 0, bonusDef: 0,
             level: 1, xp: 0,
             gold: 0,
             inventory: [],
-            equipment: { weapon: null, armor: null }
+             equipment: { weapon: null, armor: null }
         };
     }
 
