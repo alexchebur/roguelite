@@ -527,9 +527,13 @@ const RenderModule = (function() {
                 }
             }
 
+            // Цвет выносливости меняется на красный при низких значениях
+            const staminaColor = player.stamina < 20 ? 'var(--danger)' : '#4CAF50';
+
             document.getElementById("ui-stats").innerHTML = `
-                <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
-                <div class="stat-row"><span>Атака</span> <span class="val-atk">${atkText}</span></div>
+                 <div class="stat-row"><span>HP</span> <span class="val-hp">${player.hp}/${player.maxHp}</span></div>
+                 <div class="stat-row"><span>Выносл.</span> <span style="color:${staminaColor}">${player.stamina}/${player.maxStamina}</span></div>
+                 <div class="stat-row"><span>Атака</span> <span class="val-atk">${atkText}</span></div>
                 <div class="stat-row"><span>Защита</span> <span class="val-def">${defText}</span></div>
                 <div class="stat-row"><span>Уровень</span> <span>${player.level}</span></div>
                 <div class="stat-row"><span>Золото</span> <span style="color: #FFD700">$ ${player.gold}</span></div>
