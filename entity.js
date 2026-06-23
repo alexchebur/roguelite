@@ -3,7 +3,7 @@ const EntityModule = (function() {
     function createPlayer(x, y) {
          return {
             x: x, y: y,
-            char:  "@ ", color:  "#FFF ",
+            char:  "@", color:  "#FFF ",
             hp: 20, maxHp: 20,
             stamina: 100, maxStamina: 100, // <--- НОВОЕ: Выносливость
             atk: 2, def: 1,
