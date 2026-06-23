@@ -228,7 +228,12 @@ const CombatModule = (function() {
             logFn(`Вы использовали ${item.name}. HP +${item.val}.`, "loot");
             used = true;
         } 
-        
+        // === НОВОЕ: Восстановление выносливости ===
+        else if (item.effect === "restore_stamina") {
+            player.stamina = player.maxStamina;
+            logFn(`Вы выпили ${item.name}. Выносливость восстановлена!`, "loot");
+            used = true;
+        }        
         // 2. Временный бафф Атаки
         else if (item.effect === "buff_atk") {
             if (item.duration && typeof EffectSystemModule !== 'undefined') {
