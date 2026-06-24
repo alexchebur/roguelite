@@ -9,6 +9,7 @@ const GameModule = (function() {
     let busy = false;
     let isReadingQuest = false; // Флаг: открыто ли окно сюжета
 
+
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
     let dungeonClearState = new Map(); 
     
@@ -31,6 +32,7 @@ const GameModule = (function() {
     let currentLocData = null;
     let currentWorldTrend = null;
     let isShopOpen = false;
+    let isInnOpen = false;    
     let currentMerchantInv = null;
 
     // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ UI ===
@@ -118,6 +120,88 @@ const GameModule = (function() {
         closeQuestWindow();
     }
 
+    // === ПОСТОЯЛЫЙ ДВОР ===
+    function openInn() {
+        if (isInnOpen) return;
+        isInnOpen = true;
+        toggleUI(false);
+        RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+        RenderModule.log("Вы вошли в Постоялый двор. Добро пожаловать!", "info");
+    }
+
+    function closeInn() {
+        isInnOpen = false;
+        toggleUI(true);
+        RenderModule.requestRedraw();
+    }
+
+    function handleInnClick(clientX, clientY) {
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        if (window.innClickAreas) {
+            for (const area of window.innClickAreas) {
+                if (clickX >= area.x && clickX <= area.x + area.w && 
+                    clickY >= area.y && clickY <= area.y + area.h) {
+                    
+                    if (area.action === 'exit') { closeInn(); return; }
+                    if (area.action === 'rest') { innAction('rest'); return; }
+                    if (area.action === 'rumor') { innAction('rumor'); return; }
+                    if (area.action === 'dice') { innAction('dice'); return; }
+                }
+            }
+        }
+    }
+
+    function innAction(actionType) {
+        if (!player) return;
+        
+        if (actionType === 'rest') {
+            const cost = 20;
+            if (player.gold >= cost) {
+                player.gold -= cost;
+                player.stamina = player.maxStamina;
+                RenderModule.log(`Вы сняли комнату за ${cost} золотых. Выносливость полностью восстановлена!`, "loot");
+            } else {
+                RenderModule.log("Недостаточно золота для ночлега!", "combat");
+            }
+        } 
+        else if (actionType === 'rumor') {
+            if (typeof LoreModule !== 'undefined' && LoreModule.getRumor) {
+                const rumor = LoreModule.getRumor();
+                RenderModule.log(`Трактирщик шепчет: "${rumor}"`, "lore");
+            }
+        } 
+        else if (actionType === 'dice') {
+            const bet = 10;
+            if (player.gold >= bet) {
+                player.gold -= bet;
+                const roll = Math.random();
+                if (roll < 0.45) {
+                    RenderModule.log("Вы проиграли в кости. Трактирщик забирает ваше золото.", "combat");
+                } else if (roll < 0.90) {
+                    player.gold += bet * 2;
+                    RenderModule.log(`Вы выиграли! Получено ${bet * 2} золотых.`, "loot");
+                } else {
+                    player.gold += bet * 5;
+                    RenderModule.log(`ДЖЕКПОТ! Вы выиграли ${bet * 5} золотых!`, "event");
+                }
+            } else {
+                RenderModule.log("У вас нет даже 10 золотых, чтобы поставить!", "combat");
+            }
+        }
+        
+        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+    }
+    
     // === МАГАЗИН ===
     // === МАГАЗИН ===
     function openShop() {
@@ -305,6 +389,8 @@ const GameModule = (function() {
             handleShopClick(clientX, clientY);
             return;
         }
+        if (isInnOpen) { handleInnClick(clientX, clientY); return; }
+        
         // Приоритет 3: Осмотр карты (только в подземелье)
         if (gameMode === 'dungeon') {
             handleMapClick(clientX, clientY);
@@ -316,7 +402,10 @@ const GameModule = (function() {
             if (e.key === "Escape") closeQuestWindow();
             return; 
         }
-
+        if (isInnOpen) {
+            if (e.key === "Escape") closeInn();
+            return; 
+        }
         if (isShopOpen) {
             if (e.key === "Escape") closeShop();
             return; 
@@ -700,8 +789,13 @@ function updateQuestCompass() {
                 return; 
             }
 
+            if (isInnOpen) {
+                handleInnClick(clientX, clientY);
+                return; 
+            }
+
             // ... остальной код движения ...
-             const rect = canvas.getBoundingClientRect();
+            const rect = canvas.getBoundingClientRect();
             const touchX = clientX - rect.left;
             const touchY = clientY - rect.top;
             
@@ -1672,6 +1766,15 @@ function updateQuestCompass() {
             const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
             if (isTargetShop && !isShopOpen) {
                 openShop();
+                return; 
+            }
+        }
+
+        // === ПРОВЕРКА ВХОДА В ПОСТОЯЛЫЙ ДВОР ===
+        if (window.currentInnCoords && window.currentInnCoords.length > 0) {
+            const isTargetInn = window.currentInnCoords.some(pos => pos.x === nx && pos.y === ny);
+            if (isTargetInn && !isInnOpen) {
+                openInn();
                 return; 
             }
         }
