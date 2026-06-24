@@ -971,6 +971,9 @@ const RenderModule = (function() {
     function drawInnWindow(gold, stamina, maxStamina) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
+        
+        // ✅ ИСПРАВЛЕНИЕ: Получаем canvas из контекста
+        const canvas = ctx.canvas; 
         window.innClickAreas = [];
 
         // === 1. УМНОЕ ЗАТЕМНЕНИЕ ФОНА (Оставляем окно лога видимым) ===
@@ -979,7 +982,7 @@ const RenderModule = (function() {
         const logPanel = document.getElementById('log-panel');
         let logRect = null;
         if (logPanel) {
-            const canvasRect = ctx.canvas.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
             const panelRect = logPanel.getBoundingClientRect();
             
             const scaleX = canvas.width / canvasRect.width;
@@ -994,19 +997,19 @@ const RenderModule = (function() {
         }
 
         if (logRect) {
-            ctx.fillRect(0, 0, ctx.canvas.width, logRect.y);
-            ctx.fillRect(0, logRect.y, logRect.x, ctx.canvas.height - logRect.y);
-            ctx.fillRect(logRect.x + logRect.w, logRect.y, ctx.canvas.width - (logRect.x + logRect.w), ctx.canvas.height - logRect.y);
+            ctx.fillRect(0, 0, canvas.width, logRect.y);
+            ctx.fillRect(0, logRect.y, logRect.x, canvas.height - logRect.y);
+            ctx.fillRect(logRect.x + logRect.w, logRect.y, canvas.width - (logRect.x + logRect.w), canvas.height - logRect.y);
         } else {
-            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
         // === 2. НАСТРОЙКИ ОКНА (МАКСИМАЛЬНЫЙ РАЗМЕР, МИНИМАЛЬНЫЕ ОТСТУПЫ) ===
-        const winW = ctx.canvas.width * 0.92;  // Почти во всю ширину
-        const winH = ctx.canvas.height * 0.70; // Высокое окно
-        const winX = (ctx.canvas.width - winW) / 2;
-        const winY = (ctx.canvas.height - winH) / 2;
-        const padding = 12; // Очень компактные отступы
+        const winW = canvas.width * 0.92;  
+        const winH = canvas.height * 0.70; 
+        const winX = (canvas.width - winW) / 2;
+        const winY = (canvas.height - winH) / 2;
+        const padding = 12; 
 
         // Рисуем само окно
         ctx.fillStyle = '#161b22';
@@ -1020,7 +1023,7 @@ const RenderModule = (function() {
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#D2B48C';
-        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 20);
+        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', canvas.width / 2, winY + 20);
 
         // === 3. ЗОЛОТО (Желтым цветом, компактно) ===
         ctx.font = 'bold 11px Consolas, monospace';
@@ -1035,7 +1038,7 @@ const RenderModule = (function() {
         
         const statusText = window.innStatusMessage || "Выберите действие...";
         const maxWidth = winW - (padding * 2);
-        const lineHeight = 12; // Компактный интервал
+        const lineHeight = 12; 
         
         // Функция для разбивки текста на строки
         function wrapText(context, text, x, y, maxW, lineH) {
@@ -1060,12 +1063,12 @@ const RenderModule = (function() {
         }
 
         // Рисуем статус и получаем координату Y после него
-        const lastStatusY = wrapText(ctx, statusText, ctx.canvas.width / 2, winY + 65, maxWidth, lineHeight);
+        const lastStatusY = wrapText(ctx, statusText, canvas.width / 2, winY + 65, maxWidth, lineHeight);
 
         // === 4. КНОПКИ (Компактные) ===
         const btnW = winW - (padding * 2);
-        const btnH = 22; // Узкие кнопки
-        let btnY = lastStatusY + 12; // Минимальный отступ от текста
+        const btnH = 22; 
+        let btnY = lastStatusY + 12; 
 
         const buttons = [
             { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
@@ -1074,7 +1077,7 @@ const RenderModule = (function() {
             { text: '❌ Выйти', action: 'exit', color: '#da3633' }
         ];
 
-        ctx.font = 'bold 10px Consolas, monospace'; // Мелкий жирный шрифт для кнопок
+        ctx.font = 'bold 10px Consolas, monospace'; 
         ctx.textAlign = 'center';
 
         buttons.forEach(btn => {
@@ -1085,14 +1088,14 @@ const RenderModule = (function() {
             ctx.fillRect(winX + padding, btnY, btnW, btnH);
             
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(btn.text, ctx.canvas.width / 2, btnY + btnH / 2);
+            ctx.fillText(btn.text, canvas.width / 2, btnY + btnH / 2);
             
             window.innClickAreas.push({
                 x: winX + padding, y: btnY, w: btnW, h: btnH,
                 action: btn.action
             });
             
-            btnY += btnH + 4; // Минимальный зазор между кнопками (4px)
+            btnY += btnH + 4; 
         });
     }
     
