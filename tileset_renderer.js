@@ -85,7 +85,8 @@ const TilesetRenderer = (function() {
         '~': { file: 'item_sprites', x: 18, y: 0 }, // Мясо
         '?': { file: 'item_sprites', x: 3, y: 4 }, // ITEM_BOOK
         '$': { file: 'item_sprites', x: 13, y: 3 },  // Золото
-        '&': { file: 'item_sprites', x: 0, y: 4 }  // Свиток телепортации
+        '&': { file: 'item_sprites', x: 0, y: 4 },
+        '8': { file: 'item_sprites', x: 19, y: 0 } // Кровать
     };
 
     // === ИНИЦИАЛИЗАЦИЯ (Загрузка изображений) ===
