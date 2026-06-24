@@ -272,9 +272,9 @@ const MapModule = (function() {
             }
         }
 
-        const innCoords = []; // Массив координат кровати
+        const innCoords = []; // Теперь здесь будут ВСЕ клетки пола постоялого двора
 
-        // 4. Отрисовываем стены зданий
+        // 4. Отрисовываем стены зданий и заполняем списки координат
         buildings.forEach((b, index) => {
             const isShop = (index === shopBuildingIndex);
             const isInn = (index === innBuildingIndex);
@@ -291,16 +291,15 @@ const MapModule = (function() {
 
                     if (val === 0) { // Если это пол
                         if (isShop) {
+                            // Для магазина оставляем случайный декор
                             const decorChar = shopDecorSymbols[Math.floor(rand.next() * shopDecorSymbols.length)];
                             shopCoords.push({ x: wx, y: wy, decor: decorChar });
                         } else if (isInn) {
-                            // Ставим кровать в центре комнаты
-                            if (dx === Math.floor(b.w / 2) && dy === Math.floor(b.h / 2)) {
-                                innCoords.push({ x: wx, y: wy, decor: '8' });
-                            } else {
-                                interiorCoords.push({ x: wx, y: wy });
-                            }
+                            // Для постоялого двора сохраняем ВСЕ клетки пола
+                            // В качестве 'decor' используем символ кровати '8'
+                            innCoords.push({ x: wx, y: wy, decor: '8' });
                         } else {
+                            // Обычные здания
                             interiorCoords.push({ x: wx, y: wy });
                         }
                     }
@@ -319,7 +318,6 @@ const MapModule = (function() {
         });
          
         return { grid, interiorCoords, shopCoords, innCoords };
-    }
 
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
