@@ -405,41 +405,56 @@ const GameModule = (function() {
     }
 
     function handleInput(e) {
+        // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
         if (isReadingQuest) {
             if (e.key === "Escape") closeQuestWindow();
             return; 
         }
+
+        // 2. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА (Приоритет №1)
         if (isInnOpen) {
             if (e.key === "Escape") closeInn();
             return; 
         }
+
+        // 3. ПРОВЕРКА МАГАЗИНА (Приоритет №2)
         if (isShopOpen) {
             if (e.key === "Escape") closeShop();
             return; 
         }
 
+        // 4. ЧИТ-КОД: Восстановление здоровья (Enter)
         if (e.key === "Enter") {
             e.preventDefault();
             if (player && player.hp > 0) {
-                player.hp = Math.min(player.maxHp, player.hp + 100);
-                RenderModule.log(`💊 ЧИТ: Восстановлено 100 HP!`, "event");
+                const healAmount = 100;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
                 RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             }
             return;
         }
 
+        // 5. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
         if (busy || (player && player.hp <= 0)) return;
         
         let dx = 0, dy = 0;
+        
+        // Определение направления
         if (e.key === "ArrowUp") dy = -1;
         if (e.key === "ArrowDown") dy = 1;
         if (e.key === "ArrowLeft") dx = -1;
         if (e.key === "ArrowRight") dx = 1;
         
+        // Обработка движения или пропуска хода (Space)
         if (dx !== 0 || dy !== 0 || e.key === " ") {
             e.preventDefault();
-            if (gameMode === 'global') processGlobalTurn(dx, dy);
-            else processTurn(dx, dy);
+            
+            if (gameMode === 'global') {
+                processGlobalTurn(dx, dy);
+            } else {
+                processTurn(dx, dy);
+            }
         }
     }
 
@@ -1388,60 +1403,7 @@ function updateQuestCompass() {
         RenderModule.drawGlobalMinimap(playerPos.x, playerPos.y);
     }
 
-    function handleInput(e) {
-        // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
-        if (isReadingQuest) {
-            if (e.key === "Escape") {
-                closeQuestWindow();
-            }
-            // Блокируем все остальные клавиши, пока игрок читает
-            return; 
-        }
 
-        // 2. ПРОВЕРКА МАГАЗИНА (Приоритет №1)
-        if (isShopOpen) {
-            if (e.key === "Escape") {
-                closeShop();
-                return;
-            }
-            // Игнорируем движение и другие команды, пока открыт магазин
-            return; 
-        }
-
-        // 3. ЧИТ-КОД: Восстановление здоровья (Enter)
-        if (e.key === "Enter") {
-            e.preventDefault();
-            if (player && player.hp > 0) {
-                const healAmount = 100;
-                player.hp = Math.min(player.maxHp, player.hp + healAmount);
-                RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
-                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            }
-            return;
-        }
-
-        // 4. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
-        if (busy || (player && player.hp <= 0)) return;
-        
-        let dx = 0, dy = 0;
-        
-        // Определение направления
-        if (e.key === "ArrowUp") dy = -1;
-        if (e.key === "ArrowDown") dy = 1;
-        if (e.key === "ArrowLeft") dx = -1;
-        if (e.key === "ArrowRight") dx = 1;
-        
-        // Обработка движения или пропуска хода (Space)
-        if (dx !== 0 || dy !== 0 || e.key === " ") {
-            e.preventDefault();
-            
-            if (gameMode === 'global') {
-                processGlobalTurn(dx, dy);
-            } else {
-                processTurn(dx, dy);
-            }
-        }
-    }
     // === ДВИЖЕНИЕ NPC И ВРАГОВ ===
     function getRandomDirection() {
         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
