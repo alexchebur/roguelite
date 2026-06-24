@@ -79,6 +79,7 @@ const SPRITE_REGISTRY = {
     'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
     'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' },
     'ITEM_SCROLL':          { char: '&',   tile: { file: 'item_sprites', x: 0, y: 4 }, desc: 'Свиток' },
+    'ITEM_BED':            { char: '8',   tile: { file: 'item_sprites', x: 19, y: 0 }, desc: 'Кровать' }, // Если x:19 нет в вашем PNG, поменяйте на любую свободную клетку
 
     // === БОССЫ (2x2 спрайта) ===
     // Древний Дракон (начинается с x:0, y:18)
