@@ -982,8 +982,8 @@ const RenderModule = (function() {
             const canvasRect = ctx.canvas.getBoundingClientRect();
             const panelRect = logPanel.getBoundingClientRect();
             
-            const scaleX = ctx.canvas.width / canvasRect.width;
-            const scaleY = ctx.canvas.height / canvasRect.height;
+            const scaleX = canvas.width / canvasRect.width;
+            const scaleY = canvas.height / canvasRect.height;
             
             logRect = {
                 x: (panelRect.left - canvasRect.left) * scaleX,
@@ -1001,44 +1001,44 @@ const RenderModule = (function() {
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
 
-        // === 2. НАСТРОЙКИ ОКНА (МАКСИМАЛЬНЫЙ РАЗМЕР) ===
-        const winW = ctx.canvas.width * 0.85; // Было 0.60, теперь 85% ширины экрана
-        const winH = ctx.canvas.height * 0.55; // Немного выше для кнопок
+        // === 2. НАСТРОЙКИ ОКНА (МАКСИМАЛЬНЫЙ РАЗМЕР, МИНИМАЛЬНЫЕ ОТСТУПЫ) ===
+        const winW = ctx.canvas.width * 0.92;  // Почти во всю ширину
+        const winH = ctx.canvas.height * 0.70; // Высокое окно
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
-        const padding = 20; // Уменьшили отступ с 30 до 20
+        const padding = 12; // Очень компактные отступы
 
         // Рисуем само окно
         ctx.fillStyle = '#161b22';
         ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
 
-        // Заголовок
-        ctx.font = 'bold 16px Consolas, monospace';
+        // Заголовок (компактный)
+        ctx.font = 'bold 13px Consolas, monospace';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#D2B48C';
-        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 30);
+        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 20);
 
-        // === 3. ЗОЛОТО ===
-        ctx.font = 'bold 14px Consolas, monospace';
+        // === 3. ЗОЛОТО (Желтым цветом, компактно) ===
+        ctx.font = 'bold 11px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#FFD700';
-        ctx.fillText(`💰 Ваше золото: ${gold}`, winX + padding, winY + 65);
+        ctx.fillText(`💰 Золото: ${gold}`, winX + padding, winY + 45);
 
-        // Поле статуса с ПЕРЕНОСОМ СТРОК
-        ctx.font = '11px Consolas, monospace'; // Уменьшили шрифт с 12 до 11
+        // Поле статуса с ПЕРЕНОСОМ СТРОК (мелкий шрифт)
+        ctx.font = '10px Consolas, monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#c9d1d9';
         
         const statusText = window.innStatusMessage || "Выберите действие...";
         const maxWidth = winW - (padding * 2);
-        const lineHeight = 14; // Интервал между строками (было ~16-18)
+        const lineHeight = 12; // Компактный интервал
         
         // Функция для разбивки текста на строки
-        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+        function wrapText(context, text, x, y, maxW, lineH) {
             const words = text.split(' ');
             let line = '';
             let currentY = y;
@@ -1046,27 +1046,26 @@ const RenderModule = (function() {
             for(let n = 0; n < words.length; n++) {
                 const testLine = line + words[n] + ' ';
                 const metrics = context.measureText(testLine);
-                const testWidth = metrics.width;
                 
-                if (testWidth > maxWidth && n > 0) {
+                if (metrics.width > maxW && n > 0) {
                     context.fillText(line, x, currentY);
                     line = words[n] + ' ';
-                    currentY += lineHeight;
+                    currentY += lineH;
                 } else {
                     line = testLine;
                 }
             }
             context.fillText(line, x, currentY);
-            return currentY; // Возвращаем Y последней строки
+            return currentY;
         }
 
         // Рисуем статус и получаем координату Y после него
-        const lastStatusY = wrapText(ctx, statusText, ctx.canvas.width / 2, winY + 95, maxWidth, lineHeight);
+        const lastStatusY = wrapText(ctx, statusText, ctx.canvas.width / 2, winY + 65, maxWidth, lineHeight);
 
-        // === 4. КНОПКИ ===
+        // === 4. КНОПКИ (Компактные) ===
         const btnW = winW - (padding * 2);
-        const btnH = 28; // Чуть компактнее (было 32)
-        let btnY = lastStatusY + 15; // Привязываем кнопки к концу текста статуса
+        const btnH = 22; // Узкие кнопки
+        let btnY = lastStatusY + 12; // Минимальный отступ от текста
 
         const buttons = [
             { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
@@ -1075,10 +1074,13 @@ const RenderModule = (function() {
             { text: '❌ Выйти', action: 'exit', color: '#da3633' }
         ];
 
-        ctx.font = 'bold 11px Consolas, monospace'; // Шрифт кнопок тоже чуть меньше
+        ctx.font = 'bold 10px Consolas, monospace'; // Мелкий жирный шрифт для кнопок
         ctx.textAlign = 'center';
 
         buttons.forEach(btn => {
+            // Проверка: если кнопки не влезают в окно, останавливаемся
+            if (btnY + btnH > winY + winH - 5) return;
+
             ctx.fillStyle = btn.color;
             ctx.fillRect(winX + padding, btnY, btnW, btnH);
             
@@ -1090,7 +1092,7 @@ const RenderModule = (function() {
                 action: btn.action
             });
             
-            btnY += btnH + 8; // Уменьшили интервал между кнопками с 15 до 8
+            btnY += btnH + 4; // Минимальный зазор между кнопками (4px)
         });
     }
     
