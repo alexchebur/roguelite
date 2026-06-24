@@ -262,12 +262,21 @@ const RenderModule = (function() {
                 const isVisible = visible.has(`${wx},${wy}`);
                 let ch, fg;
 
-                // === ПРОВЕРКА НА МАГАЗИН ===
+                // === ПРОВЕРКА НА МАГАЗИН И ПОСТОЯЛЫЙ ДВОР ===
                 let shopDecor = null;
+                let innDecor = null;
+
                 if (window.currentShopCoords) {
                     const shopTile = window.currentShopCoords.find(pos => pos.x === wx && pos.y === wy);
                     if (shopTile) {
                         shopDecor = shopTile.decor;
+                    }
+                }
+                
+                if (window.currentInnCoords) {
+                    const innTile = window.currentInnCoords.find(pos => pos.x === wx && pos.y === wy);
+                    if (innTile) {
+                        innDecor = innTile.decor;
                     }
                 }
 
@@ -275,13 +284,19 @@ const RenderModule = (function() {
                     ch = dtype.wallChar;
                     fg = isVisible ? dtype.wallColor : '#222';
                 } else {
-                    // Если это пол магазина
-                    if (shopDecor) {
-                        // Рисуем декоративный спрайт вместо обычного пола
+                    // 1. Приоритет: Кровать в постоялом дворе
+                    if (innDecor) {
+                        ch = innDecor; 
+                        // Цвет дерева/кровати (коричневый/бежевый)
+                        fg = isVisible ? '#D2B48C' : '#3e1f09'; 
+                    } 
+                    // 2. Декор магазина (оружие, зелья на полу)
+                    else if (shopDecor) {
                         ch = shopDecor;
-                        // Делаем его чуть тусклее, чтобы он выглядел как часть пола/узора
                         fg = isVisible ? '#8B4513' : '#3e1f09'; 
-                    } else {
+                    } 
+                    // 3. Обычный пол
+                    else {
                         ch = dtype.floorChar;
                         fg = isVisible ? dtype.floorColor : '#111';
                     }
@@ -952,7 +967,67 @@ const RenderModule = (function() {
 
         // Сохраняем зону клика для кнопки
         window.questCloseButton = { x: btnX, y: btnY, w: btnWidth, h: btnHeight };
-    }    
+    }
+    function drawInnWindow(gold, stamina, maxStamina) {
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+        window.innClickAreas = [];
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        const winW = ctx.canvas.width * 0.50;
+        const winH = ctx.canvas.height * 0.40;
+        const winX = (ctx.canvas.width - winW) / 2;
+        const winY = (ctx.canvas.height - winH) / 2;
+
+        ctx.fillStyle = '#161b22';
+        ctx.strokeStyle = '#8B4513'; // Коричневая рамка
+        ctx.lineWidth = 2;
+        ctx.fillRect(winX, winY, winW, winH);
+        ctx.strokeRect(winX, winY, winW, winH);
+
+        ctx.font = 'bold 14px Consolas, monospace';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#D2B48C';
+        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 25);
+
+        ctx.font = '11px Consolas, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#c9d1d9';
+        ctx.fillText(`Ваше золото: ${gold}`, winX + 20, winY + 55);
+        ctx.fillText(`Выносливость: ${stamina}/${maxStamina}`, winX + 20, winY + 75);
+
+        // Кнопки
+        const btnW = winW - 40;
+        const btnH = 24;
+        let btnY = winY + 100;
+
+        const buttons = [
+            { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
+            { text: '🗣️ Послушать слухи (Бесплатно)', action: 'rumor', color: '#1f6feb' },
+            { text: '🎲 Сыграть в кости (Ставка 10 золотых)', action: 'dice', color: '#8b5cf6' },
+            { text: '❌ Выйти', action: 'exit', color: '#da3633' }
+        ];
+
+        ctx.font = 'bold 11px Consolas, monospace';
+        ctx.textAlign = 'center';
+
+        buttons.forEach(btn => {
+            ctx.fillStyle = btn.color;
+            ctx.fillRect(winX + 20, btnY, btnW, btnH);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(btn.text, ctx.canvas.width / 2, btnY + btnH / 2);
+            
+            window.innClickAreas.push({
+                x: winX + 20, y: btnY, w: btnW, h: btnH,
+                action: btn.action
+            });
+            btnY += btnH + 10;
+        });
+    }
+    
     return {
         init,
         draw,
@@ -969,7 +1044,8 @@ const RenderModule = (function() {
         addProjectileEffect,
         updateQuestBriefing,
         drawShopWindow,
-        drawQuestWindow,// <--- ДОБАВИТЬ ЭТУ СТРОКУ
+        drawQuestWindow,
+        drawInnWindow, // <--- НОВОЕ// <--- ДОБАВИТЬ ЭТУ СТРОКУ
         COLS,
         ROWS,
         _ctx: null, 
