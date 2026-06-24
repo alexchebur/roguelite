@@ -973,9 +973,7 @@ const RenderModule = (function() {
         if (!ctx) return;
         window.innClickAreas = [];
 
-        // === 1. ЗАТЕМНЕНИЕ ФОНА С "ОКНОМ" ДЛЯ ЛОГА ===
-        // Рисуем темный фон везде, КРОМЕ области панели лога (#log-panel)
-        // Это позволит видеть новые сообщения в журнале поверх затемнения
+        // === 1. УМНОЕ ЗАТЕМНЕНИЕ ФОНА (Оставляем окно лога видимым) ===
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         
         // Получаем координаты панели лога относительно канваса
@@ -985,7 +983,7 @@ const RenderModule = (function() {
             const canvasRect = ctx.canvas.getBoundingClientRect();
             const panelRect = logPanel.getBoundingClientRect();
             
-            // Переводим экранные координаты панели в координаты канваса
+            // Переводим экранные координаты в координаты канваса
             const scaleX = ctx.canvas.width / canvasRect.width;
             const scaleY = ctx.canvas.height / canvasRect.height;
             
@@ -997,17 +995,17 @@ const RenderModule = (function() {
             };
         }
 
-        // Если панель лога найдена, рисуем 4 прямоугольника вокруг неё
+        // Рисуем 4 полосы вокруг панели лога вместо одного сплошного фона
         if (logRect) {
             // Верхняя полоса
             ctx.fillRect(0, 0, ctx.canvas.width, logRect.y);
-            // Левая полоса (до низа экрана)
+            // Левая полоса
             ctx.fillRect(0, logRect.y, logRect.x, ctx.canvas.height - logRect.y);
-            // Правая полоса (до низа экрана)
+            // Правая полоса
             ctx.fillRect(logRect.x + logRect.w, logRect.y, ctx.canvas.width - (logRect.x + logRect.w), ctx.canvas.height - logRect.y);
-            // Нижняя полоса (если лог не доходит до низа, хотя обычно доходит)
-            // В данном случае лог обычно занимает всю высоту нижней панели, 
-            // но на всякий случай можно добавить проверку.
+            // Нижняя полоса (на случай, если лог не доходит до низа экрана)
+            // В текущей верстке лог обычно доходит до низа, но для надежности:
+            // ctx.fillRect(0, logRect.y + logRect.h, ctx.canvas.width, ctx.canvas.height - (logRect.y + logRect.h));
         } else {
             // Если панель не найдена (редкий случай), затемняем всё
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
