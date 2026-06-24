@@ -1978,10 +1978,19 @@ function updateQuestCompass() {
 
     function renderFrame() {
         if (!player) return;
+        
+        // Стандартная отрисовка подземелья/города
         const vis = RenderModule.draw(player, enemies, items, npcs);
         vis.forEach(k => explored.add(k));
+        
+        // Обновление UI панелей
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawMinimap(player, explored);
+
+        // === НОВОЕ: Если открыт постоялый двор, рисуем его поверх всего ===
+        if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
+            RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+        }
     }
     
     function getPlayer() {
