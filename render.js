@@ -978,13 +978,13 @@ const RenderModule = (function() {
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         // === НАСТРОЙКИ РАЗМЕРОВ ОКНА ===
-        const winW = ctx.canvas.width * 0.60;  // Увеличили ширину с 0.50 до 0.60
+        const winW = ctx.canvas.width * 0.90;  // Увеличили ширину с 0.50 до 0.60
         const winH = ctx.canvas.height * 0.60; // Немного увеличили высоту
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
         
         // Внутренние отступы
-        const padding = 10; 
+        const padding = 5; 
 
         // Рисуем окно
         ctx.fillStyle = '#161b22';
@@ -1001,7 +1001,7 @@ const RenderModule = (function() {
         ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 35);
 
         // Инфо о золоте и стамине
-        ctx.font = '12px Consolas, monospace';
+        ctx.font = '10px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#c9d1d9';
         ctx.fillText(`Ваше золото: ${gold}`, winX + padding, winY + 70);
@@ -1019,7 +1019,7 @@ const RenderModule = (function() {
             { text: '❌ Выйти', action: 'exit', color: '#da3633' }
         ];
 
-        ctx.font = 'bold 12px Consolas, monospace';
+        ctx.font = 'bold 10px Consolas, monospace';
         ctx.textAlign = 'center';
 
         buttons.forEach(btn => {
