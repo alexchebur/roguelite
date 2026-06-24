@@ -159,7 +159,18 @@ const GameModule = (function() {
             }
         }
     }
-
+    // Вспомогательная функция для вывода статуса в окно И в лог одновременно
+    function innLog(msg, type) {
+        // 1. Пишем в основной лог игры
+        RenderModule.log(msg, type);
+        
+        // 2. Сохраняем сообщение для отображения внутри окна постоялого двора
+        window.innStatusMessage = msg;
+        
+        // 3. Обновляем UI и перерисовываем окно, чтобы текст появился мгновенно
+        if (player) RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+    }
     function innAction(actionType) {
         if (!player) return;
         
@@ -168,15 +179,15 @@ const GameModule = (function() {
             if (player.gold >= cost) {
                 player.gold -= cost;
                 player.stamina = player.maxStamina;
-                RenderModule.log(`Вы сняли комнату за ${cost} золотых. Выносливость полностью восстановлена!`, "loot");
+                innLog(`Вы сняли комнату за ${cost} золотых. Выносливость восстановлена!`, "loot");
             } else {
-                RenderModule.log("Недостаточно золота для ночлега!", "combat");
+                innLog("Недостаточно золота для ночлега!", "combat");
             }
         } 
         else if (actionType === 'rumor') {
             if (typeof LoreModule !== 'undefined' && LoreModule.getRumor) {
                 const rumor = LoreModule.getRumor();
-                RenderModule.log(`Трактирщик шепчет: "${rumor}"`, "lore");
+                innLog(`Трактирщик шепчет: "${rumor}"`, "lore");
             }
         } 
         else if (actionType === 'dice') {
@@ -185,20 +196,20 @@ const GameModule = (function() {
                 player.gold -= bet;
                 const roll = Math.random();
                 if (roll < 0.45) {
-                    RenderModule.log("Вы проиграли в кости. Трактирщик забирает ваше золото.", "combat");
+                    innLog("Вы проиграли в кости. Трактирщик забирает ваше золото.", "combat");
                 } else if (roll < 0.90) {
                     player.gold += bet * 2;
-                    RenderModule.log(`Вы выиграли! Получено ${bet * 2} золотых.`, "loot");
+                    innLog(`Вы выиграли! Получено ${bet * 2} золотых.`, "loot");
                 } else {
                     player.gold += bet * 5;
-                    RenderModule.log(`ДЖЕКПОТ! Вы выиграли ${bet * 5} золотых!`, "event");
+                    innLog(`ДЖЕКПОТ! Вы выиграли ${bet * 5} золотых!`, "event");
                 }
             } else {
-                RenderModule.log("У вас нет даже 10 золотых, чтобы поставить!", "combat");
+                innLog("У вас нет даже 10 золотых, чтобы поставить!", "combat");
             }
         }
         
-        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        // Обновление данных в окне после изменения золота
         RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
     }
     
