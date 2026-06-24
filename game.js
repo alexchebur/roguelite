@@ -126,11 +126,12 @@ const GameModule = (function() {
         isInnOpen = true;
         toggleUI(false);
         RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
-        RenderModule.log("Вы вошли в Постоялый двор. Добро пожаловать!", "info");
+        innLog("Вы вошли в Постоялый двор. Добро пожаловать!", "info");
     }
 
     function closeInn() {
         isInnOpen = false;
+        window.innStatusMessage = ""; // Очищаем статус при выходе
         toggleUI(true);
         RenderModule.requestRedraw();
     }
@@ -159,9 +160,10 @@ const GameModule = (function() {
             }
         }
     }
+
     // Вспомогательная функция для вывода статуса в окно И в лог одновременно
     function innLog(msg, type) {
-        // 1. Пишем в основной лог игры
+        // 1. Пишем в основной лог игры (он теперь виден сквозь фон!)
         RenderModule.log(msg, type);
         
         // 2. Сохраняем сообщение для отображения внутри окна постоялого двора
@@ -171,6 +173,7 @@ const GameModule = (function() {
         if (player) RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
     }
+
     function innAction(actionType) {
         if (!player) return;
         
