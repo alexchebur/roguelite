@@ -318,7 +318,7 @@ const MapModule = (function() {
         });
          
         return { grid, interiorCoords, shopCoords, innCoords };
-
+    }
     function generateCity(gx, gy, depth) {
         const seedVal = createSeed(gx, gy, depth);
         const rand = new SeededRandom(seedVal);
