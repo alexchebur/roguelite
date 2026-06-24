@@ -32,7 +32,7 @@ const GameModule = (function() {
     let currentLocData = null;
     let currentWorldTrend = null;
     let isShopOpen = false;
-    let isInnOpen = false;    
+    let isInnOpen = false;
     let currentMerchantInv = null;
 
     // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ UI ===
@@ -131,7 +131,7 @@ const GameModule = (function() {
 
     function closeInn() {
         isInnOpen = false;
-        window.innStatusMessage = ""; // Очищаем статус при выходе
+        window.innStatusMessage = "";
         toggleUI(true);
         RenderModule.requestRedraw();
     }
@@ -161,15 +161,9 @@ const GameModule = (function() {
         }
     }
 
-    // Вспомогательная функция для вывода статуса в окно И в лог одновременно
     function innLog(msg, type) {
-        // 1. Пишем в основной лог игры (он теперь виден сквозь фон!)
         RenderModule.log(msg, type);
-        
-        // 2. Сохраняем сообщение для отображения внутри окна постоялого двора
         window.innStatusMessage = msg;
-        
-        // 3. Обновляем UI и перерисовываем окно, чтобы текст появился мгновенно
         if (player) RenderModule.updateUI(player, currentLocData, currentWorldTrend);
         RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
     }
@@ -212,7 +206,6 @@ const GameModule = (function() {
             }
         }
         
-        // Обновление данных в окне после изменения золота
         RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
     }
     
@@ -1784,7 +1777,7 @@ function updateQuestCompass() {
             }
         }
 
-        // === ПРОВЕРКА ВХОДА В ПОСТОЯЛЫЙ ДВОР ===
+        // === ПРОВЕРКА ВХОДА В ПОСТОЯЛЫЙ ДВОР (НОВОЕ) ===
         if (window.currentInnCoords && window.currentInnCoords.length > 0) {
             const isTargetInn = window.currentInnCoords.some(pos => pos.x === nx && pos.y === ny);
             if (isTargetInn && !isInnOpen) {
@@ -1976,6 +1969,7 @@ function updateQuestCompass() {
         renderFrame();
     }
 
+    // === ОТРИСОВКА КАДРА (Исправленная renderFrame) ===
     function renderFrame() {
         if (!player) return;
         
