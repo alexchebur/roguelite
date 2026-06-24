@@ -973,44 +973,85 @@ const RenderModule = (function() {
         if (!ctx) return;
         window.innClickAreas = [];
 
-        // Затемнение фона
+        // === 1. ЗАТЕМНЕНИЕ ФОНА С "ОКНОМ" ДЛЯ ЛОГА ===
+        // Рисуем темный фон везде, КРОМЕ области панели лога (#log-panel)
+        // Это позволит видеть новые сообщения в журнале поверх затемнения
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // Получаем координаты панели лога относительно канваса
+        const logPanel = document.getElementById('log-panel');
+        let logRect = null;
+        if (logPanel) {
+            const canvasRect = ctx.canvas.getBoundingClientRect();
+            const panelRect = logPanel.getBoundingClientRect();
+            
+            // Переводим экранные координаты панели в координаты канваса
+            const scaleX = ctx.canvas.width / canvasRect.width;
+            const scaleY = ctx.canvas.height / canvasRect.height;
+            
+            logRect = {
+                x: (panelRect.left - canvasRect.left) * scaleX,
+                y: (panelRect.top - canvasRect.top) * scaleY,
+                w: panelRect.width * scaleX,
+                h: panelRect.height * scaleY
+            };
+        }
 
-        // === НАСТРОЙКИ РАЗМЕРОВ ОКНА ===
-        const winW = ctx.canvas.width * 0.90;  // Увеличили ширину с 0.50 до 0.60
-        const winH = ctx.canvas.height * 0.60; // Немного увеличили высоту
+        // Если панель лога найдена, рисуем 4 прямоугольника вокруг неё
+        if (logRect) {
+            // Верхняя полоса
+            ctx.fillRect(0, 0, ctx.canvas.width, logRect.y);
+            // Левая полоса (до низа экрана)
+            ctx.fillRect(0, logRect.y, logRect.x, ctx.canvas.height - logRect.y);
+            // Правая полоса (до низа экрана)
+            ctx.fillRect(logRect.x + logRect.w, logRect.y, ctx.canvas.width - (logRect.x + logRect.w), ctx.canvas.height - logRect.y);
+            // Нижняя полоса (если лог не доходит до низа, хотя обычно доходит)
+            // В данном случае лог обычно занимает всю высоту нижней панели, 
+            // но на всякий случай можно добавить проверку.
+        } else {
+            // Если панель не найдена (редкий случай), затемняем всё
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
+
+        // === 2. НАСТРОЙКИ ОКНА ===
+        const winW = ctx.canvas.width * 0.60;
+        const winH = ctx.canvas.height * 0.45;
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
-        
-        // Внутренние отступы
-        const padding = 5; 
+        const padding = 30; 
 
-        // Рисуем окно
+        // Рисуем само окно постоялого двора
         ctx.fillStyle = '#161b22';
-        ctx.strokeStyle = '#8B4513'; // Коричневая рамка
+        ctx.strokeStyle = '#8B4513';
         ctx.lineWidth = 3;
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
 
         // Заголовок
-        ctx.font = 'bold 14px Consolas, monospace';
+        ctx.font = 'bold 16px Consolas, monospace';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#D2B48C';
         ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 35);
 
-        // Инфо о золоте и стамине
-        ctx.font = '10px Consolas, monospace';
+        // === 3. ЗОЛОТО (Желтым цветом и выше) ===
+        ctx.font = 'bold 14px Consolas, monospace';
         ctx.textAlign = 'left';
-        ctx.fillStyle = '#c9d1d9';
-        ctx.fillText(`Ваше золото: ${gold}`, winX + padding, winY + 70);
-        ctx.fillText(`Выносливость: ${stamina}/${maxStamina}`, winX + padding, winY + 95);
+        ctx.fillStyle = '#FFD700'; // Ярко-желтый
+        ctx.fillText(`💰 Ваше золото: ${gold}`, winX + padding, winY + 75);
 
-        // Кнопки
-        const btnW = winW - (padding * 2); // Кнопка во всю ширину минус отступы
-        const btnH = 32; // Сделали кнопки повыше
-        let btnY = winY + 130; // Стартовая позиция первой кнопки
+        // Поле статуса (для вывода сообщений о слухах/нехватке денег прямо в окне)
+        ctx.font = '12px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#c9d1d9';
+        // Используем глобальную переменную для хранения текущего статуса окна
+        const statusText = window.innStatusMessage || "Выберите действие...";
+        ctx.fillText(statusText, ctx.canvas.width / 2, winY + 105);
+
+        // === 4. КНОПКИ ===
+        const btnW = winW - (padding * 2);
+        const btnH = 32;
+        let btnY = winY + 130;
 
         const buttons = [
             { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
@@ -1019,25 +1060,21 @@ const RenderModule = (function() {
             { text: '❌ Выйти', action: 'exit', color: '#da3633' }
         ];
 
-        ctx.font = 'bold 10px Consolas, monospace';
+        ctx.font = 'bold 12px Consolas, monospace';
         ctx.textAlign = 'center';
 
         buttons.forEach(btn => {
-            // Рисуем кнопку
             ctx.fillStyle = btn.color;
             ctx.fillRect(winX + padding, btnY, btnW, btnH);
             
-            // Текст на кнопке
             ctx.fillStyle = '#ffffff';
             ctx.fillText(btn.text, ctx.canvas.width / 2, btnY + btnH / 2);
             
-            // Сохраняем зону клика
             window.innClickAreas.push({
                 x: winX + padding, y: btnY, w: btnW, h: btnH,
                 action: btn.action
             });
             
-            // Смещаемся вниз для следующей кнопки
             btnY += btnH + 15; 
         });
     }
