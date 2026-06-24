@@ -979,12 +979,12 @@ const RenderModule = (function() {
 
         // === НАСТРОЙКИ РАЗМЕРОВ ОКНА ===
         const winW = ctx.canvas.width * 0.60;  // Увеличили ширину с 0.50 до 0.60
-        const winH = ctx.canvas.height * 0.45; // Немного увеличили высоту
+        const winH = ctx.canvas.height * 0.60; // Немного увеличили высоту
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
         
         // Внутренние отступы
-        const padding = 30; 
+        const padding = 10; 
 
         // Рисуем окно
         ctx.fillStyle = '#161b22';
@@ -994,7 +994,7 @@ const RenderModule = (function() {
         ctx.strokeRect(winX, winY, winW, winH);
 
         // Заголовок
-        ctx.font = 'bold 16px Consolas, monospace';
+        ctx.font = 'bold 14px Consolas, monospace';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#D2B48C';
