@@ -258,42 +258,56 @@ const MapModule = (function() {
             y += bh + STREET_W;
         }
 
-        // 3. Выбираем ОДНО случайное здание под МАГАЗИН
+        // 3. Выбираем ОДНО здание под МАГАЗИН и ОДНО под ПОСТОЯЛЫЙ ДВОР
         let shopBuildingIndex = -1;
+        let innBuildingIndex = -1;
+        
         if (buildings.length > 0) {
             shopBuildingIndex = rand.int(0, buildings.length - 1);
         }
+        if (buildings.length > 1) {
+            innBuildingIndex = rand.int(0, buildings.length - 1);
+            while (innBuildingIndex === shopBuildingIndex) {
+                innBuildingIndex = rand.int(0, buildings.length - 1);
+            }
+        }
 
-        // 4. Отрисовываем стены зданий и заполняем списки координат
+        const innCoords = []; // Массив координат кровати
+
+        // 4. Отрисовываем стены зданий
         buildings.forEach((b, index) => {
             const isShop = (index === shopBuildingIndex);
+            const isInn = (index === innBuildingIndex);
 
             for (let dy = 0; dy < b.h; dy++) {
                 for (let dx = 0; dx < b.w; dx++) {
                     const isPerimeter = (dy === 0 || dy === b.h - 1 || dx === 0 || dx === b.w - 1);
-                    const val = isPerimeter ? 1 : 0; // 1 = стена, 0 = пол
+                    const val = isPerimeter ? 1 : 0; 
                     
                     const wx = b.x + dx;
                     const wy = b.y + dy;
                     
                     grid[wy][wx] = val;
 
-                    // Если это пол (внутренность)
-                    if (val === 0) {
+                    if (val === 0) { // Если это пол
                         if (isShop) {
-                            // Если это магазин, выбираем случайный декоративный символ
                             const decorChar = shopDecorSymbols[Math.floor(rand.next() * shopDecorSymbols.length)];
-                            // Добавляем в shopCoords вместе с символом
                             shopCoords.push({ x: wx, y: wy, decor: decorChar });
+                        } else if (isInn) {
+                            // Ставим кровать в центре комнаты
+                            if (dx === Math.floor(b.w / 2) && dy === Math.floor(b.h / 2)) {
+                                innCoords.push({ x: wx, y: wy, decor: '8' });
+                            } else {
+                                interiorCoords.push({ x: wx, y: wy });
+                            }
                         } else {
-                            // Иначе в обычный interiorCoords
                             interiorCoords.push({ x: wx, y: wy });
                         }
                     }
                 }
             }
 
-            // 5. Делаем дверь (как в оригинале)
+            // 5. Делаем дверь
             const side = rand.int(0, 3); 
             let doorX = 0, doorY = 0;
             if (side === 0) { doorX = b.x + rand.int(1, b.w - 2); doorY = b.y; }
@@ -303,9 +317,8 @@ const MapModule = (function() {
             
             grid[doorY][doorX] = 0; 
         });
-        
-        // Возвращаем shopCoords вместе с остальными данными
-        return { grid, interiorCoords, shopCoords };
+         
+        return { grid, interiorCoords, shopCoords, innCoords };
     }
 
     function generateCity(gx, gy, depth) {
@@ -321,7 +334,7 @@ const MapModule = (function() {
         
         // === НОВОЕ: Сохраняем координаты магазина для отрисовки ===
         window.currentShopCoords = layoutResult.shopCoords || [];
-
+        window.currentInnCoords = layoutResult.innCoords || []; // <--- НОВОЕ
         currentDungeonType = { 
             name: 'city',
             wallChar: getChar('WALL_CITY'),
