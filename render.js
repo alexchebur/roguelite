@@ -976,14 +976,12 @@ const RenderModule = (function() {
         // === 1. УМНОЕ ЗАТЕМНЕНИЕ ФОНА (Оставляем окно лога видимым) ===
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         
-        // Получаем координаты панели лога относительно канваса
         const logPanel = document.getElementById('log-panel');
         let logRect = null;
         if (logPanel) {
             const canvasRect = ctx.canvas.getBoundingClientRect();
             const panelRect = logPanel.getBoundingClientRect();
             
-            // Переводим экранные координаты в координаты канваса
             const scaleX = ctx.canvas.width / canvasRect.width;
             const scaleY = ctx.canvas.height / canvasRect.height;
             
@@ -995,30 +993,22 @@ const RenderModule = (function() {
             };
         }
 
-        // Рисуем 4 полосы вокруг панели лога вместо одного сплошного фона
         if (logRect) {
-            // Верхняя полоса
             ctx.fillRect(0, 0, ctx.canvas.width, logRect.y);
-            // Левая полоса
             ctx.fillRect(0, logRect.y, logRect.x, ctx.canvas.height - logRect.y);
-            // Правая полоса
             ctx.fillRect(logRect.x + logRect.w, logRect.y, ctx.canvas.width - (logRect.x + logRect.w), ctx.canvas.height - logRect.y);
-            // Нижняя полоса (на случай, если лог не доходит до низа экрана)
-            // В текущей верстке лог обычно доходит до низа, но для надежности:
-            // ctx.fillRect(0, logRect.y + logRect.h, ctx.canvas.width, ctx.canvas.height - (logRect.y + logRect.h));
         } else {
-            // Если панель не найдена (редкий случай), затемняем всё
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
 
-        // === 2. НАСТРОЙКИ ОКНА ===
-        const winW = ctx.canvas.width * 0.60;
-        const winH = ctx.canvas.height * 0.45;
+        // === 2. НАСТРОЙКИ ОКНА (МАКСИМАЛЬНЫЙ РАЗМЕР) ===
+        const winW = ctx.canvas.width * 0.85; // Было 0.60, теперь 85% ширины экрана
+        const winH = ctx.canvas.height * 0.55; // Немного выше для кнопок
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
-        const padding = 30; 
+        const padding = 20; // Уменьшили отступ с 30 до 20
 
-        // Рисуем само окно постоялого двора
+        // Рисуем само окно
         ctx.fillStyle = '#161b22';
         ctx.strokeStyle = '#8B4513';
         ctx.lineWidth = 3;
@@ -1030,26 +1020,53 @@ const RenderModule = (function() {
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#D2B48C';
-        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 35);
+        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 30);
 
-        // === 3. ЗОЛОТО (Желтым цветом и выше) ===
+        // === 3. ЗОЛОТО ===
         ctx.font = 'bold 14px Consolas, monospace';
         ctx.textAlign = 'left';
-        ctx.fillStyle = '#FFD700'; // Ярко-желтый
-        ctx.fillText(`💰 Ваше золото: ${gold}`, winX + padding, winY + 75);
+        ctx.fillStyle = '#FFD700';
+        ctx.fillText(`💰 Ваше золото: ${gold}`, winX + padding, winY + 65);
 
-        // Поле статуса (для вывода сообщений о слухах/нехватке денег прямо в окне)
-        ctx.font = '12px Consolas, monospace';
+        // Поле статуса с ПЕРЕНОСОМ СТРОК
+        ctx.font = '11px Consolas, monospace'; // Уменьшили шрифт с 12 до 11
         ctx.textAlign = 'center';
         ctx.fillStyle = '#c9d1d9';
-        // Используем глобальную переменную для хранения текущего статуса окна
+        
         const statusText = window.innStatusMessage || "Выберите действие...";
-        ctx.fillText(statusText, ctx.canvas.width / 2, winY + 105);
+        const maxWidth = winW - (padding * 2);
+        const lineHeight = 14; // Интервал между строками (было ~16-18)
+        
+        // Функция для разбивки текста на строки
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            let currentY = y;
+
+            for(let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, currentY);
+                    line = words[n] + ' ';
+                    currentY += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, currentY);
+            return currentY; // Возвращаем Y последней строки
+        }
+
+        // Рисуем статус и получаем координату Y после него
+        const lastStatusY = wrapText(ctx, statusText, ctx.canvas.width / 2, winY + 95, maxWidth, lineHeight);
 
         // === 4. КНОПКИ ===
         const btnW = winW - (padding * 2);
-        const btnH = 32;
-        let btnY = winY + 130;
+        const btnH = 28; // Чуть компактнее (было 32)
+        let btnY = lastStatusY + 15; // Привязываем кнопки к концу текста статуса
 
         const buttons = [
             { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
@@ -1058,7 +1075,7 @@ const RenderModule = (function() {
             { text: '❌ Выйти', action: 'exit', color: '#da3633' }
         ];
 
-        ctx.font = 'bold 12px Consolas, monospace';
+        ctx.font = 'bold 11px Consolas, monospace'; // Шрифт кнопок тоже чуть меньше
         ctx.textAlign = 'center';
 
         buttons.forEach(btn => {
@@ -1073,7 +1090,7 @@ const RenderModule = (function() {
                 action: btn.action
             });
             
-            btnY += btnH + 15; 
+            btnY += btnH + 8; // Уменьшили интервал между кнопками с 15 до 8
         });
     }
     
