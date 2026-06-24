@@ -973,36 +973,44 @@ const RenderModule = (function() {
         if (!ctx) return;
         window.innClickAreas = [];
 
+        // Затемнение фона
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        const winW = ctx.canvas.width * 0.50;
-        const winH = ctx.canvas.height * 0.40;
+        // === НАСТРОЙКИ РАЗМЕРОВ ОКНА ===
+        const winW = ctx.canvas.width * 0.60;  // Увеличили ширину с 0.50 до 0.60
+        const winH = ctx.canvas.height * 0.45; // Немного увеличили высоту
         const winX = (ctx.canvas.width - winW) / 2;
         const winY = (ctx.canvas.height - winH) / 2;
+        
+        // Внутренние отступы
+        const padding = 30; 
 
+        // Рисуем окно
         ctx.fillStyle = '#161b22';
         ctx.strokeStyle = '#8B4513'; // Коричневая рамка
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.fillRect(winX, winY, winW, winH);
         ctx.strokeRect(winX, winY, winW, winH);
 
-        ctx.font = 'bold 14px Consolas, monospace';
+        // Заголовок
+        ctx.font = 'bold 16px Consolas, monospace';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#D2B48C';
-        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 25);
+        ctx.fillText('🏨 ПОСТОЯЛЫЙ ДВОР', ctx.canvas.width / 2, winY + 35);
 
-        ctx.font = '11px Consolas, monospace';
+        // Инфо о золоте и стамине
+        ctx.font = '12px Consolas, monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#c9d1d9';
-        ctx.fillText(`Ваше золото: ${gold}`, winX + 20, winY + 55);
-        ctx.fillText(`Выносливость: ${stamina}/${maxStamina}`, winX + 20, winY + 75);
+        ctx.fillText(`Ваше золото: ${gold}`, winX + padding, winY + 70);
+        ctx.fillText(`Выносливость: ${stamina}/${maxStamina}`, winX + padding, winY + 95);
 
         // Кнопки
-        const btnW = winW - 40;
-        const btnH = 24;
-        let btnY = winY + 100;
+        const btnW = winW - (padding * 2); // Кнопка во всю ширину минус отступы
+        const btnH = 32; // Сделали кнопки повыше
+        let btnY = winY + 130; // Стартовая позиция первой кнопки
 
         const buttons = [
             { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
@@ -1011,20 +1019,26 @@ const RenderModule = (function() {
             { text: '❌ Выйти', action: 'exit', color: '#da3633' }
         ];
 
-        ctx.font = 'bold 11px Consolas, monospace';
+        ctx.font = 'bold 12px Consolas, monospace';
         ctx.textAlign = 'center';
 
         buttons.forEach(btn => {
+            // Рисуем кнопку
             ctx.fillStyle = btn.color;
-            ctx.fillRect(winX + 20, btnY, btnW, btnH);
+            ctx.fillRect(winX + padding, btnY, btnW, btnH);
+            
+            // Текст на кнопке
             ctx.fillStyle = '#ffffff';
             ctx.fillText(btn.text, ctx.canvas.width / 2, btnY + btnH / 2);
             
+            // Сохраняем зону клика
             window.innClickAreas.push({
-                x: winX + 20, y: btnY, w: btnW, h: btnH,
+                x: winX + padding, y: btnY, w: btnW, h: btnH,
                 action: btn.action
             });
-            btnY += btnH + 10;
+            
+            // Смещаемся вниз для следующей кнопки
+            btnY += btnH + 15; 
         });
     }
     
