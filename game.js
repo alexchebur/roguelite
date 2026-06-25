@@ -2053,11 +2053,18 @@ function updateQuestCompass() {
 
         // 2. Создаем Iframe
         const iframe = document.createElement('iframe');
-        iframe.src = url;
+        
+        // === ИСПРАВЛЕНИЕ: Добавляем случайный параметр ?t=... чтобы сбросить кэш ===
+        const timestamp = new Date().getTime();
+        const separator = url.includes('?') ? '&' : '?';
+        iframe.src = `${url}${separator}t=${timestamp}`;
+        
         iframe.style.cssText = `
             width: 90%; height: 90%; border: 2px solid #58a6ff;
             background: #fff; border-radius: 8px;
         `;
+    
+        // ... остальной код функции без изменений ...
     
         // 3. Кнопка принудительного выхода (крестик)
         const closeBtn = document.createElement('button');
