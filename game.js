@@ -435,7 +435,12 @@ const GameModule = (function() {
             }
             return;
         }
-
+        // Временная клавиша для теста Twine
+        if (e.key === 'k' || e.key === 'K') {
+            e.preventDefault();
+            GameModule.openTwineQuest('Quack of Duckness.html');
+            return;
+        }
         // 5. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
         if (busy || (player && player.hp <= 0)) return;
         
