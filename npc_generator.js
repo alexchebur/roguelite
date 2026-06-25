@@ -122,7 +122,8 @@ const NpcGeneratorModule = (function() {
                     dialog: "Я спою тебе песню о героях прошлого... если у тебя есть время послушать.",
                     isNPC: true,
                     isSpecial: true,          // Флаг особого персонажа
-                    direction: { dx: 0, dy: 0 } // Стоит на месте
+                    direction: { dx: 0, dy: 0 },
+                    action: () => GameModule.openTwineQuest('Quack of Duckness.html') // Стоит на месте
                 });
             }
         }
