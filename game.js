@@ -8,6 +8,7 @@ const GameModule = (function() {
     let explored = new Set();
     let busy = false;
     let isReadingQuest = false; // Флаг: открыто ли окно сюжета
+    let isTwineActive = false; // Флаг активности Twine-окна
 
 
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
