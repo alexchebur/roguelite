@@ -2078,11 +2078,9 @@ function updateQuestCompass() {
 
         // === ЛОГИКА ОТМЕТКИ ПРОЙДЕННОГО КВЕСТА ===
         if (success && url) {
-            // Добавляем имя файла в список пройденных, если его там еще нет
-            if (!completedTextQuests.includes(url)) {
-                completedTextQuests.push(url);
-                RenderModule.log(`📜 История "${url}" завершена и сохранена в памяти.`, "info");
-            }
+            // Для Set используем .add(), он сам проверяет уникальность
+            completedTextQuests.add(url); 
+            RenderModule.log(`📜 История "${url}" завершена и сохранена в памяти.`, "info");
         }
 
         // Возвращаем фокус и перерисовываем интерфейс
@@ -2109,7 +2107,8 @@ function updateQuestCompass() {
 
     // === ПРОВЕРКА: БЫЛ ЛИ КВЕСТ УЖЕ ПРОЙДЕН? ===
     function isTextQuestCompleted(filename) {
-        return completedTextQuests.includes(filename);
+        // Используем .has() для Set вместо .includes() для Array
+        return completedTextQuests.has(filename);
     }
 
     
