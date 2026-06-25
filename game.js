@@ -2088,6 +2088,7 @@ function updateQuestCompass() {
         getActiveQuests,
         getCompletedQuestIds,
         abandonCurrentQuest,
+        openTwineQuest, // <--- ДОБАВИТЬ ЭТО
         exitToGlobal // >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
     };
 })();
