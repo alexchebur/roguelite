@@ -92,9 +92,8 @@ const NpcGeneratorModule = (function() {
         }
 
         // === ЛОГИКА ОСОБОГО ПЕРСОНАЖА (НОВОЕ) ===
-        // Шанс 30% появления особого Барда-легенды в городе
-        if (npcs.length > 5 && rng.next() < 0.3) {
-            // Ищем свободное место подальше от входа и других NPC
+        // Шанс 80% появления Барда-легенды в городе
+        if (npcs.length > 5 && rng.next() < 0.8) {
             let specialX, specialY;
             let foundSpot = false;
             let tries = 0;
@@ -116,14 +115,15 @@ const NpcGeneratorModule = (function() {
                 npcs.push({
                     x: specialX,
                     y: specialY,
-                    name: "Легендарный Бард", // Особое имя
-                    char: "♫",               // Особый символ (нота)
-                    color: "#d2a8ff",         // Особый цвет (фиолетовый/магический)
-                    dialog: "Я спою тебе песню о героях прошлого... если у тебя есть время послушать.",
+                    name: "★ Легендарный Бард [КВЕСТ] ★", // Яркое имя
+                    char: "★",               // Звезда (лучше видна)
+                    color: "#d2a8ff",         // Фиолетовый цвет
+                    dialog: "Подойди ближе, путник! Я знаю историю, которая изменит твою судьбу...",
                     isNPC: true,
-                    isSpecial: true,          // Флаг особого персонажа
+                    isSpecial: true,          
                     direction: { dx: 0, dy: 0 },
-                    action: () => GameModule.openTwineQuest('Quack of Duckness.html') // Стоит на месте
+                    // === ВОТ ЭТО ПОЛЕ ЗАПУСКАЕТ КВЕСТ ===
+                    action: () => GameModule.openTwineQuest('Quack of Duckness.html') 
                 });
             }
         }
