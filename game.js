@@ -2037,6 +2037,8 @@ function updateQuestCompass() {
 
     // === СИСТЕМА TWINE КВЕСТОВ ===
 
+    // === СИСТЕМА TWINE КВЕСТОВ ===
+
     function openTwineQuest(url) {
         if (isTwineActive) return;
     
@@ -2051,10 +2053,10 @@ function updateQuestCompass() {
             display: flex; justify-content: center; align-items: center;
         `;
 
-        // 2. Создаем Iframe
+        // 2. Создаем Iframe с уникальным параметром времени
         const iframe = document.createElement('iframe');
         
-        // === ИСПРАВЛЕНИЕ: Добавляем случайный параметр ?t=... чтобы сбросить кэш ===
+        // === ИСПРАВЛЕНИЕ: Добавляем ?t=... чтобы сбросить кэш ===
         const timestamp = new Date().getTime();
         const separator = url.includes('?') ? '&' : '?';
         iframe.src = `${url}${separator}t=${timestamp}`;
@@ -2063,8 +2065,6 @@ function updateQuestCompass() {
             width: 90%; height: 90%; border: 2px solid #58a6ff;
             background: #fff; border-radius: 8px;
         `;
-    
-        // ... остальной код функции без изменений ...
     
         // 3. Кнопка принудительного выхода (крестик)
         const closeBtn = document.createElement('button');
