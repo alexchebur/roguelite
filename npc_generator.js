@@ -115,13 +115,13 @@ const NpcGeneratorModule = (function() {
                 npcs.push({
                     x: specialX,
                     y: specialY,
-                    name: "★ Легендарный Бард [КВЕСТ] ★", // Яркое имя
-                    char: "★",               // Звезда (лучше видна)
-                    color: "#d2a8ff",         // Фиолетовый цвет
-                    dialog: "Подойди ближе, путник! Я знаю историю, которая изменит твою судьбу...",
+                    name: "Странный Странник", // Нейтральное имя
+                    char: "☺",               // Обычный символ NPC
+                    color: "#ff00ff",         // Ярко-розовый цвет (отличается от голубых и золотых)
+                    dialog: "Псс! Эй, ты! У меня есть для тебя одна история...",
                     isNPC: true,
                     isSpecial: true,          
-                    direction: { dx: 0, dy: 0 },
+                    direction: directions[rng.int(0, 3)], // Двигается как все
                     // === ВОТ ЭТО ПОЛЕ ЗАПУСКАЕТ КВЕСТ ===
                     action: () => GameModule.openTwineQuest('Quack of Duckness.html') 
                 });
