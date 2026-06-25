@@ -1792,12 +1792,18 @@ function updateQuestCompass() {
         // Взаимодействие с NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
+            // === НОВОЕ: Проверка на особое действие (например, запуск Twine-квеста) ===
+            if (npc.action) {
+                npc.action(); // Вызываем функцию действия
+                return;       // Прерываем ход, чтобы не двигаться в клетку NPC
+            }
+
             let questHandled = false;
             if (npc.isQuestGiver) {
                 questHandled = tryGiveQuest(npc);
             }
 
-            if (!questHandled) {
+             if (!questHandled) {
                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             }
             
