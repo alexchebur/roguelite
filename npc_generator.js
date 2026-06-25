@@ -6,6 +6,14 @@
 const NpcGeneratorModule = (function() {
     'use strict';
 
+    // === РОСТЕР ТЕКСТОВЫХ КВЕСТОВ ===
+    const TEXT_QUESTS_ROSTER = [
+        'Quack of Duckness.html',
+        // Сюда можно добавить другие файлы, когда они появятся:
+        // 'The_Haunted_Mansion.html',
+        // 'Lost_Caravan.html'
+    ];
+
     // Базы данных
     const NPC_DATA = {
         titles: [
@@ -112,18 +120,21 @@ const NpcGeneratorModule = (function() {
             }
 
             if (foundSpot) {
+                // Выбираем случайный квест из ростера
+                const randomQuestFile = rng.choice(TEXT_QUESTS_ROSTER);
+
                 npcs.push({
                     x: specialX,
                     y: specialY,
-                    name: "Странный Странник", // Нейтральное имя
-                    char: "☺",               // Обычный символ NPC
-                    color: "#ff00ff",         // Ярко-розовый цвет (отличается от голубых и золотых)
+                    name: "Странный Странник",
+                    char: "☺",
+                    color: "#ff00ff",
                     dialog: "Псс! Эй, ты! У меня есть для тебя одна история...",
                     isNPC: true,
-                    isSpecial: true,          
-                    direction: directions[rng.int(0, 3)], // Двигается как все
-                    // === ВОТ ЭТО ПОЛЕ ЗАПУСКАЕТ КВЕСТ ===
-                    action: () => GameModule.openTwineQuest('Quack of Duckness.html') 
+                    isSpecial: true,
+                    direction: directions[rng.int(0, 3)],
+                    // Передаем выбранный файл в action
+                    action: () => GameModule.openTwineQuest(randomQuestFile) 
                 });
             }
         }
