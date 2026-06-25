@@ -81,7 +81,7 @@ const NpcGeneratorModule = (function() {
             });
         }
 
-        // === ЛОГИКА КВЕСТОДАТЕЛЯ ===
+        // === ЛОГИКА КВЕСТОДАТЕЛЯ (СТАНДАРТНАЯ) ===
         if (npcs.length > 0) {
             // Делаем первого NPC квестодателем
             const giver = npcs[0];
@@ -89,6 +89,42 @@ const NpcGeneratorModule = (function() {
             giver.color = "#FFD700"; // Золотой цвет для выделения
             giver.name = "Капитан стражи"; // Уникальное имя
             giver.dialog = "Город нуждается в твоей помощи.";
+        }
+
+        // === ЛОГИКА ОСОБОГО ПЕРСОНАЖА (НОВОЕ) ===
+        // Шанс 30% появления особого Барда-легенды в городе
+        if (npcs.length > 5 && rng.next() < 0.3) {
+            // Ищем свободное место подальше от входа и других NPC
+            let specialX, specialY;
+            let foundSpot = false;
+            let tries = 0;
+            
+            while (!foundSpot && tries < 50) {
+                specialX = rng.int(1, w - 2);
+                specialY = rng.int(1, h - 2);
+                
+                // Проверки: не стена, далеко от входа, далеко от других NPC
+                if (mapGrid[specialY][specialX] === 0 &&
+                    Math.abs(specialX - playerStart.x) + Math.abs(specialY - playerStart.y) > 5 &&
+                    !npcs.some(n => Math.abs(n.x - specialX) + Math.abs(n.y - specialY) < 3)) {
+                    foundSpot = true;
+                }
+                tries++;
+            }
+
+            if (foundSpot) {
+                npcs.push({
+                    x: specialX,
+                    y: specialY,
+                    name: "Легендарный Бард", // Особое имя
+                    char: "♫",               // Особый символ (нота)
+                    color: "#d2a8ff",         // Особый цвет (фиолетовый/магический)
+                    dialog: "Я спою тебе песню о героях прошлого... если у тебя есть время послушать.",
+                    isNPC: true,
+                    isSpecial: true,          // Флаг особого персонажа
+                    direction: { dx: 0, dy: 0 } // Стоит на месте
+                });
+            }
         }
 
         return npcs;
