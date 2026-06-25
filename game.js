@@ -2006,7 +2006,7 @@ function updateQuestCompass() {
 
     // === ПАМЯТЬ ТЕКСТОВЫХ КВЕСТОВ ===
     // Хранит имена файлов (например, 'Quack of Duckness.html'), которые игрок уже завершил
-    let completedTextQuests = []; 
+    //let completedTextQuests = []; 
 
     // === СИСТЕМА TWINE КВЕСТОВ ===
 
