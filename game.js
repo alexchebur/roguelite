@@ -1989,7 +1989,99 @@ function updateQuestCompass() {
         if (typeof RenderModule.updateInspector === 'function') {
             RenderModule.updateInspector("Квест отменен", "Герой сменил свои планы.", "neutral");
         }
-    }   
+    }
+
+    // === СИСТЕМА TWINE КВЕСТОВ ===
+
+    function openTwineQuest(url) {
+        if (isTwineActive) return;
+    
+        isTwineActive = true;
+    
+        // 1. Создаем контейнер-затемнение
+        const overlay = document.createElement('div');
+        overlay.id = 'twine-overlay';
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); z-index: 10000;
+            display: flex; justify-content: center; align-items: center;
+        `;
+
+        // 2. Создаем Iframe
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.cssText = `
+            width: 90%; height: 90%; border: 2px solid #58a6ff;
+            background: #fff; border-radius: 8px;
+        `;
+    
+        // 3. Кнопка принудительного выхода (крестик)
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&#10006;'; // Символ крестика
+        closeBtn.style.cssText = `
+            position: absolute; top: 20px; right: 20px;
+            background: #da3633; color: white; border: none;
+            width: 40px; height: 40px; border-radius: 50%;
+            font-size: 20px; cursor: pointer; z-index: 10001;
+        `;
+    
+        // Обработчик закрытия без награды
+        closeBtn.onclick = () => closeTwineQuest(false);
+    
+        overlay.appendChild(iframe);
+        overlay.appendChild(closeBtn);
+        document.body.appendChild(overlay);
+
+        // 4. Слушатель сообщений от Iframe
+        const messageHandler = (event) => {
+            // Проверка типа сообщения
+            if (event.data && event.data.type === 'TWINE_QUEST_COMPLETE') {
+                console.log("Квест завершен! Данные:", event.data.payload);
+                applyTwineReward(event.data.payload);
+                closeTwineQuest(true);
+            }
+        };
+    
+        window.addEventListener('message', messageHandler);
+        // Сохраняем ссылку на обработчик, чтобы удалить его потом
+        overlay._msgHandler = messageHandler;
+    }
+
+    function closeTwineQuest(success) {
+        const overlay = document.getElementById('twine-overlay');
+        if (!overlay) return;
+
+        // Удаляем слушатель событий
+        if (overlay._msgHandler) {
+            window.removeEventListener('message', overlay._msgHandler);
+        }
+
+        overlay.remove();
+        isTwineActive = false;
+
+        // Возвращаем фокус и перерисовываем интерфейс
+        if (typeof RenderModule !== 'undefined') {
+            RenderModule.requestRedraw();
+            RenderModule.log(success ? "Вы вернулись из приключения." : "Вы прервали приключение.", "info");
+        }
+    }
+
+    function applyTwineReward(data) {
+        if (!player) return;
+    
+        // Пример обработки награды из Twine
+        if (data.gold) {
+            player.gold += parseInt(data.gold);
+            RenderModule.log(`💰 Получено золото: ${data.gold}`, "loot");
+        }
+    
+        // Здесь можно добавить логику выдачи предметов, если Twine передает их ID
+        // if (data.itemId) { ... }
+
+        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+    }
+
+    
     return {
         init,
         getPlayer,
