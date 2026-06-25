@@ -16,7 +16,9 @@ const GameModule = (function() {
     
     // === КВЕСТЫ ===
     let activeQuests = []; 
-    let completedQuestIds = new Set(); 
+    let completedQuestIds = new Set();
+    // В game.js, внутри GameModule, рядом с let activeQuests = [];
+    let completedTextQuests = new Set(); // Храним имена файлов, которые игрок уже завершил
 
     // === Режимы ===
     let gameMode = 'global';
@@ -2002,6 +2004,10 @@ function updateQuestCompass() {
         }
     }
 
+    // === ПАМЯТЬ ТЕКСТОВЫХ КВЕСТОВ ===
+    // Хранит имена файлов (например, 'Quack of Duckness.html'), которые игрок уже завершил
+    let completedTextQuests = []; 
+
     // === СИСТЕМА TWINE КВЕСТОВ ===
 
     function openTwineQuest(url) {
@@ -2037,7 +2043,7 @@ function updateQuestCompass() {
         `;
     
         // Обработчик закрытия без награды
-        closeBtn.onclick = () => closeTwineQuest(false);
+        closeBtn.onclick = () => closeTwineQuest(false, url);
     
         overlay.appendChild(iframe);
         overlay.appendChild(closeBtn);
@@ -2049,7 +2055,7 @@ function updateQuestCompass() {
             if (event.data && event.data.type === 'TWINE_QUEST_COMPLETE') {
                 console.log("Квест завершен! Данные:", event.data.payload);
                 applyTwineReward(event.data.payload);
-                closeTwineQuest(true);
+                closeTwineQuest(true, url); // Передаем URL для запоминания
             }
         };
     
@@ -2058,7 +2064,7 @@ function updateQuestCompass() {
         overlay._msgHandler = messageHandler;
     }
 
-    function closeTwineQuest(success) {
+    function closeTwineQuest(success, url) {
         const overlay = document.getElementById('twine-overlay');
         if (!overlay) return;
 
@@ -2069,6 +2075,15 @@ function updateQuestCompass() {
 
         overlay.remove();
         isTwineActive = false;
+
+        // === ЛОГИКА ОТМЕТКИ ПРОЙДЕННОГО КВЕСТА ===
+        if (success && url) {
+            // Добавляем имя файла в список пройденных, если его там еще нет
+            if (!completedTextQuests.includes(url)) {
+                completedTextQuests.push(url);
+                RenderModule.log(`📜 История "${url}" завершена и сохранена в памяти.`, "info");
+            }
+        }
 
         // Возвращаем фокус и перерисовываем интерфейс
         if (typeof RenderModule !== 'undefined') {
@@ -2092,6 +2107,11 @@ function updateQuestCompass() {
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
     }
 
+    // === ПРОВЕРКА: БЫЛ ЛИ КВЕСТ УЖЕ ПРОЙДЕН? ===
+    function isTextQuestCompleted(filename) {
+        return completedTextQuests.includes(filename);
+    }
+
     
     return {
         init,
@@ -2099,12 +2119,12 @@ function updateQuestCompass() {
         getActiveQuests,
         getCompletedQuestIds,
         abandonCurrentQuest,
-        openTwineQuest, // <--- ДОБАВИТЬ ЭТО
-        exitToGlobal // >>> И ДОБАВИТЬ ЕЁ СЮДА <<<
+        openTwineQuest, 
+        isTextQuestCompleted, // <--- ЭКСПОРТИРУЕМ НОВУЮ ФУНКЦИЮ
+        exitToGlobal 
     };
 })();
 
 window.onload = async () => {
     await GameModule.init();
 };
-
