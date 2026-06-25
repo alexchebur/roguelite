@@ -1648,9 +1648,15 @@ function updateQuestCompass() {
         enemies = enemies.filter(e => e.hp > 0);
     }
 
-    // === ОБРАБОТКА КЛИКА ПО КАРТЕ (ОСМОТР) ===
+    // === ОБРАБОТКА КЛИКА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
-        if (gameMode !== 'dungeon' || !player) return;
+        // 1. Если открыт магазин, обрабатываем клик по товарам
+        if (isShopOpen) {
+            handleShopClick(clientX, clientY);
+            return;
+        }
+
+        if (!player || gameMode !== 'dungeon') return;
 
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
@@ -1658,64 +1664,80 @@ function updateQuestCompass() {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        
-        // Преобразуем экранные координаты в координаты канваса
+
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
 
-        // Получаем смещение камеры от RenderModule
+        // Используем размеры сетки из RenderModule для точного попадания
+        const cellW = canvas.width / RenderModule.COLS;
+        const cellH = canvas.height / RenderModule.ROWS;
+
+        const sx = Math.floor(clickX / cellW);
+        const sy = Math.floor(clickY / cellH);
+
         const cam = RenderModule.getCameraOffset(player);
-        
-        // Вычисляем мировые координаты клетки, по которой кликнули
-        const tileSize = RenderModule.TILE_SIZE || 32; 
-        const worldX = Math.floor(clickX / tileSize) + cam.x;
-        const worldY = Math.floor(clickY / tileSize) + cam.y;
+        const wx = sx + cam.x;
+        const wy = sy + cam.y;
 
-        // Проверяем границы карты
-        if (worldX < 0 || worldX >= DataModule.MAP_WIDTH || worldY < 0 || worldY >= DataModule.MAP_HEIGHT) {
-            return;
-        }
-
-        // 1. Проверяем врагов
-        const enemy = enemies.find(e => e.hp > 0 && e.x === worldX && e.y === worldY);
+        // 2. Враги
+        const enemy = enemies.find(en => en.hp > 0 && en.x === wx && en.y === wy);
         if (enemy) {
-            let details = `HP: ${enemy.hp}/${enemy.maxHp}\nАтака: ${enemy.atk}\nЗащита: ${enemy.def}`;
-            if (enemy.isBoss) details += "\n⚠️ БОСС";
-            RenderModule.updateInspector(enemy.name, details, "enemy");
+            const weapon = player.equipment.weapon;
+            
+            // Логика дистанционной атаки
+            if (weapon && !weapon.meleeType) {
+                const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
+                
+                if (killed) {
+                    // ВАЖНО: Не фильтруем массив вручную! checkDeath() сделает это сам,
+                    // предварительно выдав лут, опыт и проверив квесты.
+                    checkDeath(); 
+                }
+                
+                moveNpcs();
+                moveEnemies();
+                renderFrame();
+            } 
+            // Логика осмотра (если оружие ближнего боя или его нет)
+            else {
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`⚔️ ${enemy.name}`, `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`, "enemy");
+                }
+                RenderModule.log(`Осмотр: ${enemy.name} [HP:${enemy.hp} ATK:${enemy.atk}]`, "info");
+            }
             return;
         }
 
-        // 2. Проверяем предметы
-        const item = items.find(i => i.x === worldX && i.y === worldY);
+        // 3. NPC (Диалог или Квест)
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+        if (npc) {
+            if (npc.isQuestGiver) {
+                tryGiveQuest(npc);
+            } else {
+                if (typeof RenderModule.updateInspector === 'function') {
+                    RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
+                }
+                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+            }
+            return;
+        }
+
+        // 4. Предметы
+        const item = items.find(i => i.x === wx && i.y === wy);
         if (item) {
-            let details = `Тип: ${item.type}`;
-            if (item.val) details += `\nХарактеристика: +${item.val}`;
-            if (item.effect) details += `\nЭффект: ${item.effect}`;
-            if (item.isQuestItem) details += "\n📜 Квестовый предмет";
-            RenderModule.updateInspector(item.name, details, "loot");
+             let details = " ";
+             if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
+             if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
+             
+             if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(`🎒 ${item.name}`, details, "loot");
+             }
+            RenderModule.log(`Предмет: ${item.name}`, "loot");
             return;
         }
 
-        // 3. Проверяем NPC (если мы в городе)
-        if (window.currentCityNpcs) {
-            const npc = window.currentCityNpcs.find(n => n.x === worldX && n.y === worldY);
-            if (npc) {
-                let details = npc.dialog;
-                if (npc.isQuestGiver) details += "\n📜 Может дать задание";
-                RenderModule.updateInspector(npc.name, details, "npc");
-                return;
-            }
-        }
-
-        // 4. Проверяем стены/пол
-        if (MapModule.isWall(worldX, worldY)) {
-            RenderModule.updateInspector("Стена", "Непроходимое препятствие.", "neutral");
-        } else {
-             if (MapModule.stairsUp && MapModule.stairsUp.x === worldX && MapModule.stairsUp.y === worldY) {
-                RenderModule.updateInspector("Лестница вверх", "Ведет на предыдущий уровень или на поверхность.", "neutral");
-            } else if (MapModule.stairsDown && MapModule.stairsDown.x === worldX && MapModule.stairsDown.y === worldY) {
-                RenderModule.updateInspector("Лестница вниз", "Ведет глубже в подземелье.", "neutral");
-            }
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
         }
     }
     
