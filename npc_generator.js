@@ -120,8 +120,25 @@ const NpcGeneratorModule = (function() {
             }
 
             if (foundSpot) {
-                // Выбираем случайный квест из ростера
-                const randomQuestFile = rng.choice(TEXT_QUESTS_ROSTER);
+                // 1. Получаем список всех доступных квестов
+                // (Предполагается, что TEXT_QUESTS_ROSTER определен выше в файле)
+                let availableQuests = TEXT_QUESTS_ROSTER;
+
+                // 2. Фильтруем список, убирая пройденные (если GameModule доступен)
+                if (typeof GameModule !== 'undefined' && typeof GameModule.isTextQuestCompleted === 'function') {
+                    availableQuests = TEXT_QUESTS_ROSTER.filter(q => !GameModule.isTextQuestCompleted(q));
+                }
+
+                // 3. Если все квесты пройдены, можно либо не создавать NPC, либо дать случайный из всех
+                if (availableQuests.length === 0) {
+                    // Вариант: Не создаем особого NPC, так как все истории услышаны
+                    // return npcs; 
+                    
+                    // Или вариант: Даем последний доступный (повтор)
+                    availableQuests = TEXT_QUESTS_ROSTER;
+                }
+
+                const randomQuestFile = rng.choice(availableQuests);
 
                 npcs.push({
                     x: specialX,
@@ -133,7 +150,6 @@ const NpcGeneratorModule = (function() {
                     isNPC: true,
                     isSpecial: true,
                     direction: directions[rng.int(0, 3)],
-                    // Передаем выбранный файл в action
                     action: () => GameModule.openTwineQuest(randomQuestFile) 
                 });
             }
