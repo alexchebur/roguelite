@@ -150,7 +150,16 @@ const NpcGeneratorModule = (function() {
                     isNPC: true,
                     isSpecial: true,
                     direction: directions[rng.int(0, 3)],
-                    action: () => GameModule.openTwineQuest(randomQuestFile) 
+                    
+                    // === ИЗМЕНЕНИЕ ЗДЕСЬ ===
+                    // Используем function(), чтобы this указывал на этого NPC
+                    action: function() { 
+                        GameModule.openTwineQuest(randomQuestFile);
+                        this.action = null; // Удаляем действие после первого запуска
+                        
+                        // Опционально: меняем диалог, чтобы было понятно, что квест уже дан
+                        this.dialog = "Я уже рассказал тебе всё, что знал. Иди с миром.";
+                    }
                 });
             }
         }
