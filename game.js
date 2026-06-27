@@ -17,6 +17,9 @@ const GameModule = (function() {
     // === КВЕСТЫ ===
     let activeQuests = []; 
     let completedQuestIds = new Set();
+    // === ПАМЯТЬ ГОРОДОВ, ВЫДАВШИХ ТЕКСТОВЫЕ КВЕСТЫ ===
+    // Хранит ключи городов вида "gx_gy", чтобы не спавнить квестодателя повторно
+    let textQuestCities = new Set(); 
     // В game.js, внутри GameModule, рядом с let activeQuests = [];
     let completedTextQuests = new Set(); // Храним имена файлов, которые игрок уже завершил
 
@@ -2144,7 +2147,15 @@ function updateQuestCompass() {
         // Используем .has() для Set вместо .includes() для Array
         return completedTextQuests.has(filename);
     }
+    // === УПРАВЛЕНИЕ ПАМЯТЬЮ ГОРОДОВ ===
+    function markCityTextQuestTaken(gx, gy) {
+        textQuestCities.add(`${gx}_${gy}`);
+        console.log(`🏙️ Город (${gx}, ${gy}) больше не выдает текстовые квесты.`);
+    }
 
+    function hasCityTakenTextQuest(gx, gy) {
+        return textQuestCities.has(`${gx}_${gy}`);
+    }
     
     return {
         init,
@@ -2153,7 +2164,9 @@ function updateQuestCompass() {
         getCompletedQuestIds,
         abandonCurrentQuest,
         openTwineQuest, 
-        isTextQuestCompleted, // <--- ЭКСПОРТИРУЕМ НОВУЮ ФУНКЦИЮ
+        isTextQuestCompleted,
+        markCityTextQuestTaken,      // <--- ДОБАВИТЬ
+        hasCityTakenTextQuest,       // <--- ДОБАВИТЬ        
         exitToGlobal 
     };
 })();
