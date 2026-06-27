@@ -2130,14 +2130,17 @@ function updateQuestCompass() {
     function applyTwineReward(data) {
         if (!player) return;
     
-        // Пример обработки награды из Twine
-        if (data.gold) {
+        // === ЗАЩИТА ОТ ОШИБКИ: Проверяем, есть ли данные и поле gold ===
+        if (data && data.gold !== undefined) {
             player.gold += parseInt(data.gold);
             RenderModule.log(`💰 Получено золото: ${data.gold}`, "loot");
+        } else {
+            // Если награды нет, просто логируем выход (опционально)
+            // RenderModule.log("Вы покинули приключение без награды.", "info");
         }
     
         // Здесь можно добавить логику выдачи предметов, если Twine передает их ID
-        // if (data.itemId) { ... }
+        // if (data && data.itemId) { ... }
 
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
     }
