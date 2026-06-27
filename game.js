@@ -415,7 +415,7 @@ const GameModule = (function() {
         }
     }
 
-    function handleInput(e) 
+    function handleInput(e) {
         // 0. БЛОКИРОВКА ПРИ СМЕРТИ (Глобальная проверка)
         if (player && player.hp <= 0) {
              // Можно добавить повторный лог, если игрок жмет кнопки после смерти
