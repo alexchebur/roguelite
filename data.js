@@ -15,7 +15,7 @@ const DataModule = (function() {
         // Списки слов для ОРУЖИЯ
         weapon: {
             trash: [
-                { base: "Ржавый", she: "Ржавая", it: "Ржавое", plural: "Ржавые" },
+                { base: "Ветхий", she: "Ветхая", it: "Ветхое", plural: "Ветхие" },
                 { base: "Погнутый", she: "Погнутая", it: "Погнутое", plural: "Погнутые" },
                 { base: "Тупой", she: "Тупая", it: "Тупое", plural: "Тупые" }
             ],
@@ -74,7 +74,7 @@ const DataModule = (function() {
         consumable: {
             trash: [
                 { base: "Старый", she: "Старая", it: "Старое", plural: "Старые" },
-                { base: "Выцветший", she: "Выцветшая", it: "Выцветшее", plural: "Выцветшие" }
+                { base: "Вонючий", she: "Вонючая", it: "Вонючее", plural: "Вонючие" }
             ],
             common: [
                 { base: "Обычный", she: "Обычная", it: "Обычное", plural: "Обычные" },
