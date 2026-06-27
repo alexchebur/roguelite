@@ -56,7 +56,7 @@ const SPRITE_REGISTRY = {
     // Оружие ближнего боя
     'ITEM_SWORD':            { char: '/',   tile: { file: 'item_sprites', x: 0, y: 0 }, desc: 'Меч' },
     'ITEM_AXE':              { char: 'P',   tile: { file: 'item_sprites', x: 5, y: 1 }, desc: 'Топор' }, // Совпадает с TILE_MOUNTAIN
-    'ITEM_MACE':             { char: ')',   tile: { file: 'item_sprites', x: 5, y: 0 }, desc: 'Булава' },
+    'ITEM_MACE':             { char: ')',   tile: { file: 'item_sprites', x: 8, y: 1 }, desc: 'Булава' },
     'ITEM_DAGGER':           { char: '*',   tile: { file: 'item_sprites', x: 0, y: 1 }, desc: 'Кинжал' }, // Совпадает с ITEM_BERSERK
     'ITEM_SPEAR':            { char: 'Y',   tile: { file: 'item_sprites', x: 7, y: 1 }, desc: 'Копье' },
 
