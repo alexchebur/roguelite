@@ -1979,6 +1979,7 @@ function updateQuestCompass() {
 
         if (player.hp <= 0) {
             RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+            busy = true; // Блокируем дальнейшие действия
         }
     
         
