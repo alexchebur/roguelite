@@ -359,8 +359,12 @@ const GameModule = (function() {
 
         gameMode = 'global';
         
+        // === ИСПРАВЛЕНИЕ: Объявляем переменную здесь, чтобы она была видна ниже ===
+        let startPos = null; 
+
         if (typeof GlobalMapModule !== 'undefined') {
-            const startPos = GlobalMapModule.initSafeStart(1, 1, 3);
+            // Теперь мы просто присваиваем значение существующей переменной
+            startPos = GlobalMapModule.initSafeStart(1, 1, 3);
             RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
 
             if (typeof QuestChainModule !== 'undefined') {
@@ -371,12 +375,14 @@ const GameModule = (function() {
             RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
             return;
         }
+
         // === ИСПРАВЛЕНИЕ 1: Создаем игрока здесь, если он еще не создан ===
-        if (!player) {
+        if (!player && startPos) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
             // Обновляем UI сразу после создания, чтобы статы появились
             RenderModule.updateUI(player, { fullName: "Глобальная карта", themeName: "Поверхность" }, null);
         }        
+        
         renderGlobalMap();
         
         window.addEventListener("keydown", (e) => handleInput(e));
