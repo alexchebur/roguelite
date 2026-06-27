@@ -66,7 +66,7 @@ const TilesetRenderer = (function() {
         // --- ПРЕДМЕТЫ ---
         '/': { file: 'item_sprites', x: 0,  y: 0 }, // Меч
         'P': { file: 'item_sprites', x: 5,  y: 1 }, // Топор
-        ')': { file: 'item_sprites', x: 5,  y: 0 }, // Булава
+        ')': { file: 'item_sprites', x: 8,  y: 1 }, // Булава
         '*': { file: 'item_sprites', x: 0,  y: 1 }, // Кинжал
         'Y': { file: 'item_sprites', x: 7,  y: 1 }, // Копье
         '(': { file: 'item_sprites', x: 9,  y: 0 }, // Лук
