@@ -371,7 +371,12 @@ const GameModule = (function() {
             RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
             return;
         }
-        
+        // === ИСПРАВЛЕНИЕ 1: Создаем игрока здесь, если он еще не создан ===
+        if (!player) {
+            player = EntityModule.createPlayer(startPos.x, startPos.y);
+            // Обновляем UI сразу после создания, чтобы статы появились
+            RenderModule.updateUI(player, { fullName: "Глобальная карта", themeName: "Поверхность" }, null);
+        }        
         renderGlobalMap();
         
         window.addEventListener("keydown", (e) => handleInput(e));
@@ -410,7 +415,12 @@ const GameModule = (function() {
         }
     }
 
-    function handleInput(e) {
+    function handleInput(e) 
+        // 0. БЛОКИРОВКА ПРИ СМЕРТИ (Глобальная проверка)
+        if (player && player.hp <= 0) {
+             // Можно добавить повторный лог, если игрок жмет кнопки после смерти
+             return; 
+        }    
         // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
         if (isReadingQuest) {
             if (e.key === "Escape") closeQuestWindow();
