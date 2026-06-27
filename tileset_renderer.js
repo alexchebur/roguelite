@@ -65,24 +65,24 @@ const TilesetRenderer = (function() {
         
         // --- ПРЕДМЕТЫ ---
         '/': { file: 'item_sprites', x: 0,  y: 0 }, // Меч
-        'P': { file: 'item_sprites', x: 1,  y: 0 }, // Топор
-        ')': { file: 'item_sprites', x: 2,  y: 0 }, // Булава
-        '*': { file: 'item_sprites', x: 3,  y: 0 }, // Кинжал
-        'Y': { file: 'item_sprites', x: 4,  y: 0 }, // Копье
-        '(': { file: 'item_sprites', x: 5,  y: 0 }, // Лук
-        '=': { file: 'item_sprites', x: 6,  y: 0 }, // Арбалет
-        '|': { file: 'item_sprites', x: 7,  y: 0 }, // Посох
-        ']': { file: 'item_sprites', x: 8,  y: 0 }, // Кожа
-        '[': { file: 'item_sprites', x: 9,  y: 0 }, // Кольчуга
-        '}': { file: 'item_sprites', x: 10, y: 0 }, // Щит
-        '"': { file: 'item_sprites', x: 11, y: 0 }, // Наголенники
-        '{': { file: 'item_sprites', x: 12, y: 0 }, // Плащ
-        'H': { file: 'item_sprites', x: 13, y: 0 }, // Шлем
-        'v': { file: 'item_sprites', x: 14, y: 0 }, // Перчатки
-        '!': { file: 'item_sprites', x: 15, y: 0 }, // Зелье
-        '+': { file: 'item_sprites', x: 16, y: 0 }, // Эликсир
-        '%': { file: 'item_sprites', x: 17, y: 0 }, // Еда
-        '~': { file: 'item_sprites', x: 18, y: 0 }, // Мясо
+        'P': { file: 'item_sprites', x: 5,  y: 1 }, // Топор
+        ')': { file: 'item_sprites', x: 5,  y: 0 }, // Булава
+        '*': { file: 'item_sprites', x: 0,  y: 1 }, // Кинжал
+        'Y': { file: 'item_sprites', x: 7,  y: 1 }, // Копье
+        '(': { file: 'item_sprites', x: 9,  y: 0 }, // Лук
+        '=': { file: 'item_sprites', x: 9,  y: 1 }, // Арбалет
+        '|': { file: 'item_sprites', x: 2,  y: 3 }, // Посох
+        ']': { file: 'item_sprites', x: 0,  y: 2 }, // Кожа
+        '[': { file: 'item_sprites', x: 1,  y: 2 }, // Кольчуга
+        '}': { file: 'item_sprites', x: 8, y: 2 }, // Щит
+        '"': { file: 'item_sprites', x: 3, y: 2 }, // Наголенники
+        '{': { file: 'item_sprites', x: 12, y: 3 }, // Плащ
+        'H': { file: 'item_sprites', x: 5, y: 2 }, // Шлем
+        'v': { file: 'item_sprites', x: 10, y: 2 }, // Перчатки
+        '!': { file: 'item_sprites', x: 1, y: 4 }, // Зелье
+        '+': { file: 'item_sprites', x: 16, y: 4 }, // Эликсир
+        '%': { file: 'item_sprites', x: 6, y: 3 }, // Еда
+        '~': { file: 'item_sprites', x: 7, y: 3 }, // Мясо
         '?': { file: 'item_sprites', x: 3, y: 4 }, // ITEM_BOOK
         '$': { file: 'item_sprites', x: 13, y: 3 },  // Золото
         '&': { file: 'item_sprites', x: 0, y: 4 },
