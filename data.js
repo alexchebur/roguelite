@@ -177,7 +177,7 @@ const DataModule = (function() {
             baseName: "Зелье лечения", 
             effect: "heal", 
             val: [10, 20],
-            gender: "it",
+            gender: "it",   // Оно (зелье)
             plural: false
         },
         { 
@@ -187,7 +187,7 @@ const DataModule = (function() {
             baseName: "Эликсир жизни", 
             effect: "heal", 
             val: [25, 40],
-            gender: "he",
+            gender: "he",   // Он (эликсир)
             plural: false
         },
         { 
@@ -197,7 +197,7 @@ const DataModule = (function() {
             baseName: "Хлеб и сыр", 
             effect: "heal", 
             val: [5, 10],
-            gender: "he",
+            gender: "he",   // Он (хлеб)
             plural: false
         },
         { 
@@ -207,56 +207,56 @@ const DataModule = (function() {
             baseName: "Жареная крыса", 
             effect: "heal", 
             val: [8, 12],
-            gender: "she",
+            gender: "she",  // Она (крыса)
             plural: false
         },
-    // ... внутри ITEM_TYPES ...
 
+        // === СИЛОВЫЕ ЗЕЛЬЯ ===
         { 
-            type:  "potion_str", 
+            type: "potion_str", 
             char: getChar('ITEM_POTION_STR'), 
-            color:  "#ff9800 ", 
-            baseName:  "Зелье силы ", 
-            effect:  "buff_atk", 
+            color: "#ff9800", 
+            baseName: "Зелье силы", 
+            effect: "buff_atk", 
             val: [1, 2],
-            duration: 100, // <--- ДОБАВИТЬ: Длительность эффекта в ходах (например, 10 ходов)
-            gender:  "it ",
+            duration: 100, 
+            gender: "it",   // Оно (зелье)
             plural: false
         },
         { 
-            type:  "potion_str", 
+            type: "potion_str", 
             char: getChar('ITEM_BERSERK'), 
-            color:  "#ff9800 ", 
-            baseName:  "Настой берсерка ", 
-            effect:  "buff_atk", 
+            color: "#ff9800", 
+            baseName: "Настой берсерка", 
+            effect: "buff_atk", 
             val: [3, 5],
-            duration: 100, // <--- ДОБАВИТЬ: Более сильный эффект, но короче (5 ходов)
-            gender:  "he ",
+            duration: 100, 
+            gender: "he",   // Он (настой)
             plural: false
         },
         
-        // Если захотите добавить зелье защиты:
-      
+        // === ЗЕЛЬЕ ЗАЩИТЫ ===
         { 
-            type:  "potion_def", 
-            char: '!', // Выберите свой символ
-            color:  "#00bcd4 ", 
-            baseName:  "Зелье защиты ", 
-            effect:  "buff_def", 
+            type: "potion_def", 
+            char: '!', 
+            color: "#00bcd4", 
+            baseName: "Зелье защиты", 
+            effect: "buff_def", 
             val: [2, 4],
             duration: 100,
-            gender:  "it ",
+            gender: "it",   // Оно (зелье)
             plural: false
         },
 
+        // === ЗЕЛЬЕ ВЫНОСЛИВОСТИ ===
         { 
             type: "potion_stamina", 
-            char: getChar('ITEM_POTION_HP'), // Используем существующий спрайт зелья
-            color: "#4CAF50",                // Зеленый цвет для отличия
+            char: getChar('ITEM_POTION_HP'), 
+            color: "#4CAF50",                
             baseName: "Зелье отдыха", 
-            effect: "restore_stamina",       // Уникальный эффект
-            val: [100, 100],                 // Восстанавливает полностью
-            gender: "it",
+            effect: "restore_stamina",       
+            val: [100, 100],                 
+            gender: "it",   // Оно (зелье)
             plural: false
         },
         
