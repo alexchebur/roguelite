@@ -186,10 +186,23 @@ const QuestChainModule = (function() {
         // Детерминированный RNG для этого конкретного квеста
         const rng = new SeededRandom(createSeed(cityData.x, cityData.y, 7777));
         
+        // === НОВОЕ: ПРОВЕРКА КАСТОМНОГО СЦЕНАРИЯ ===
+        let customBeat = null;
+        if (typeof STORY_SCRIPT !== 'undefined' && STORY_SCRIPT[idx]) {
+            customBeat = STORY_SCRIPT[idx];
+        }
+        
         // Выбор типа квеста
-        const types = ['FETCH', 'HUNT', 'EXPLORE', 'COLLECT', 'BOUNTY', 'SCHOLAR'];
-        if (idx > 0) types.push('DIGGER');
-        const type = types[Math.floor(rng.next() * types.length)];
+        let type;
+        if (customBeat && customBeat.forcedType) {
+            // Если в сценарии жестко задан тип, используем его
+            type = customBeat.forcedType;
+        } else {
+            // Иначе выбираем случайно (как было раньше)
+            const types = ['FETCH', 'HUNT', 'EXPLORE', 'COLLECT', 'BOUNTY', 'SCHOLAR'];
+            if (idx > 0) types.push('DIGGER');
+            type = types[Math.floor(rng.next() * types.length)];
+        }
         
         // === ГЕНЕРАЦИЯ ЦЕЛИ (TARGET DATA) ===
         let targetData = {
@@ -201,14 +214,12 @@ const QuestChainModule = (function() {
             itemType: "weapon",
             count: 1,
             targetDepth: 1,
-            uniqueId: null // <-- НОВОЕ ПОЛЕ: для хранения ID уникального предмета
+            uniqueId: null 
         };
 
         // 1. Поиск локации (Подземелья)
-        // Для BOUNTY и SCHOLAR локация не важна, поэтому пропускаем поиск
         if (type !== 'BOUNTY' && type !== 'SCHOLAR') {
             const dungeons = [];
-            // Ищем в кольце от 5 до 40 клеток от города выдачи
             for (let dy = -40; dy <= 40; dy++) {
                 for (let dx = -40; dx <= 40; dx++) {
                     const dist = Math.abs(dx) + Math.abs(dy);
@@ -219,7 +230,6 @@ const QuestChainModule = (function() {
                     
                     if (typeof GlobalMapModule !== 'undefined') {
                         const poi = GlobalMapModule.getPOI(tx, ty);
-                        // Ищем именно входы в подземелья
                         if (poi && (poi.type === 'dungeon' || poi.type === 'dungeon_entrance')) {
                             dungeons.push(poi);
                         }
@@ -233,43 +243,36 @@ const QuestChainModule = (function() {
                 targetData.targetY = targetPoi.y;
                 targetData.locationName = targetPoi.name;
             } else {
-                // Заглушка, если подземелий совсем нет рядом
                 targetData.locationName = "Забытых руинах";
                 targetData.targetX = cityData.x + 10;
                 targetData.targetY = cityData.y + 10;
             }
         } else {
-            // Для глобальных квестов
             targetData.locationName = "любом опасном месте";
         }
 
-        // 2. Заполнение специфичных параметров в зависимости от типа
+        // 2. Заполнение специфичных параметров
         if (type === 'HUNT' || type === 'BOUNTY') {
             const enemies = DataModule.ENEMY_TYPES.filter(e => 
                 ["Гоблин", "Крыса", "Волк", "Слизень", "Бандит", "Скелет", "Орк-разведчик"].includes(e.name)
             );
             const enemy = enemies[Math.floor(rng.next() * enemies.length)];
             targetData.enemyName = enemy.name;
-            // Для BOUNTY меньше целей, для HUNT больше
             targetData.count = (type === 'BOUNTY') ? rng.int(1, 3) : rng.int(3, 6);
         } 
         
-        // === ИЗМЕНЕНИЯ ЗДЕСЬ: ЛОГИКА УНИКАЛЬНЫХ ПРЕДМЕТОВ ===
         else if (type === 'FETCH') {
-            // Шанс 50% получить уникальный квестовый предмет, если реестр существует
             const hasUniqueItems = DataModule.UNIQUE_ITEM_TEMPLATES && DataModule.UNIQUE_ITEM_TEMPLATES.length > 0;
             const isUniqueRoll = hasUniqueItems && (rng.next() > 0.5);
 
             if (isUniqueRoll) {
-                // Выбираем случайный уникальный шаблон
                 const uniquePool = DataModule.UNIQUE_ITEM_TEMPLATES;
                 const uniqueItem = uniquePool[Math.floor(rng.next() * uniquePool.length)];
                 
                 targetData.itemName = `${uniqueItem.uniquePrefix} ${uniqueItem.baseName}`;
                 targetData.itemType = uniqueItem.baseType;
-                targetData.uniqueId = uniqueItem.id; // Сохраняем ID для спавнера
+                targetData.uniqueId = uniqueItem.id;
             } else {
-                // Стандартная генерация обычного предмета
                 const items = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
                 const item = items[Math.floor(rng.next() * items.length)];
                 targetData.itemName = item.baseName;
@@ -282,12 +285,10 @@ const QuestChainModule = (function() {
         } 
         
         else if (type === 'COLLECT') {
-            // Шанс 30% на уникальную книгу/свиток
             const hasUniqueItems = DataModule.UNIQUE_ITEM_TEMPLATES && DataModule.UNIQUE_ITEM_TEMPLATES.length > 0;
             const isUniqueRoll = hasUniqueItems && (rng.next() > 0.7);
 
             if (isUniqueRoll) {
-                // ИСПРАВЛЕНИЕ: Используем полное имя массива вместо неопределенной uniquePool
                 const bookUniques = DataModule.UNIQUE_ITEM_TEMPLATES.filter(u => u.baseType === 'book' || u.baseType === 'scroll_teleport');
                 
                 if (bookUniques.length > 0) {
@@ -296,7 +297,6 @@ const QuestChainModule = (function() {
                     targetData.itemType = uniqueBook.baseType;
                     targetData.uniqueId = uniqueBook.id;
                 } else {
-                    // Фолбэк на обычные книги, если уникальных книг нет в реестре
                     targetData.itemName = "Книга";
                     targetData.itemType = "book";
                 }
@@ -313,38 +313,42 @@ const QuestChainModule = (function() {
 
         // === РАСЧЕТ НАГРАДЫ ===
         const baseGold = 100 + (idx * 50);
-        // Если квест на уникальный предмет, награда может быть выше
         const goldMult = targetData.uniqueId ? 1.5 : 1.0; 
         const finalGold = Math.floor(baseGold * (1 + idx * 0.2) * goldMult);
 
-        // === ФОРМИРОВАНИЕ БРИФИНГА ===
-        let templatePool = CHAIN_TEMPLATES[type] || CHAIN_TEMPLATES.FETCH;
-        let template = templatePool[Math.floor(rng.next() * templatePool.length)];
-        
-        if (cityData.isFinal) {
-            template = `Ты прошел долгий путь. Финальное испытание в ${cityData.name}: ${template}`;
+        // === ФОРМИРОВАНИЕ ТЕКСТА (КАСТОМ ИЛИ ШАБЛОН) ===
+        let briefing;
+        let turnInText;
+
+        if (customBeat) {
+            // Берем тексты из сценария
+            briefing = customBeat.customBriefing || "Задание не завершено.";
+            turnInText = customBeat.customTurnIn || "Задание выполнено.";
+        } else {
+            // Фолбэк на стандартные шаблоны
+            let templatePool = CHAIN_TEMPLATES[type] || CHAIN_TEMPLATES.FETCH;
+            let template = templatePool[Math.floor(rng.next() * templatePool.length)];
+            if (cityData.isFinal) {
+                template = `Ты прошел долгий путь. Финальное испытание в ${cityData.name}: ${template}`;
+            }
+            briefing = template;
+            
+            let turnInPool = cityData.isFinal ? TURN_IN_TEMPLATES.FINAL : (TURN_IN_TEMPLATES[type] || TURN_IN_TEMPLATES.FETCH);
+            turnInText = turnInPool[Math.floor(rng.next() * turnInPool.length)];
         }
 
-        const briefing = template
+        // === ЗАМЕНА ПЛЕЙСХОЛДЕРОВ (РАБОТАЕТ ДЛЯ ЛЮБЫХ ТЕКСТОВ) ===
+        const finalBriefing = briefing
             .replace(/{city}/g, cityData.name)
             .replace(/{nextCity}/g, nextCity ? nextCity.name : 'дальних земель')
             .replace(/{item}/g, targetData.itemName || 'древний артефакт')
             .replace(/{enemy}/g, targetData.enemyName || 'монстров')
             .replace(/{count}/g, targetData.count || 1)
             .replace(/{location}/g, targetData.locationName || 'забытых руинах')
-            .replace(/{depth}/g, targetData.targetDepth || targetData.recommendedDepth || 1)
+            .replace(/{depth}/g, targetData.targetDepth || 1)
             .replace(/{gold}/g, finalGold);
 
-        // === ГЕНЕРАЦИЯ ТЕКСТА СДАЧИ ===
-        let turnInPool;
-        if (cityData.isFinal) {
-            turnInPool = TURN_IN_TEMPLATES.FINAL;
-        } else {
-            turnInPool = TURN_IN_TEMPLATES[type] || TURN_IN_TEMPLATES.FETCH;
-        }
-        
-        let turnInText = turnInPool[Math.floor(rng.next() * turnInPool.length)];
-        turnInText = turnInText
+        const finalTurnIn = turnInText
             .replace(/{city}/g, cityData.name)
             .replace(/{nextCity}/g, nextCity ? nextCity.name : 'дальних земель')
             .replace(/{item}/g, targetData.itemName)
@@ -357,8 +361,8 @@ const QuestChainModule = (function() {
             progress: 0,
             maxProgress: (type === 'HUNT' || type === 'COLLECT' || type === 'BOUNTY' || type === 'SCHOLAR') ? targetData.count : 1,
             rewardGold: finalGold,
-            briefing: briefing,
-            turnInText: turnInText,
+            briefing: finalBriefing,
+            turnInText: finalTurnIn,
             isCompleted: false,
             isTurnedIn: false, 
             isActive: false,
@@ -367,6 +371,7 @@ const QuestChainModule = (function() {
             isFinal: cityData.isFinal
         };
     }
+
     // === ПУБЛИЧНЫЕ МЕТОДЫ (продолжение) ===
 
     function getChainCities() { 
