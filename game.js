@@ -2130,18 +2130,51 @@ function updateQuestCompass() {
     function applyTwineReward(data) {
         if (!player) return;
     
-        // === ЗАЩИТА ОТ ОШИБКИ: Проверяем, есть ли данные и поле gold ===
+        // 1. Обработка золота (безопасная проверка)
         if (data && data.gold !== undefined) {
-            player.gold += parseInt(data.gold);
-            RenderModule.log(`💰 Получено золото: ${data.gold}`, "loot");
-        } else {
-            // Если награды нет, просто логируем выход (опционально)
-            // RenderModule.log("Вы покинули приключение без награды.", "info");
+            const amount = parseInt(data.gold);
+            if (amount !== 0) { // Логируем только если есть изменение
+                player.gold += amount;
+                RenderModule.log(amount > 0 ? `💰 Получено золото: ${amount}` : `💸 Потеряно золото: ${Math.abs(amount)}`, "loot");
+            }
         }
     
-        // Здесь можно добавить логику выдачи предметов, если Twine передает их ID
-        // if (data && data.itemId) { ... }
+        // 2. Обработка уникальных предметов (по ID из data.js)
+        if (data && data.itemId) {
+            const template = DataModule.UNIQUE_ITEM_TEMPLATES.find(t => t.id === data.itemId);
+            
+            if (template) {
+                // Находим базовый тип предмета, чтобы взять правильный символ
+                const baseTemplate = DataModule.ITEM_TYPES.find(t => t.type === template.baseType);
+                const char = template.char || (baseTemplate ? baseTemplate.char : '?');
+                
+                // Вычисляем среднее значение стата для отображения
+                const statVal = template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 
+                                (template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0);
 
+                const newItem = {
+                    x: 0, y: 0,
+                    name: `${template.uniquePrefix} ${template.baseName}`,
+                    char: char,
+                    color: template.color || '#FFD700',
+                    type: template.baseType,
+                    val: statVal,
+                    isItem: true,
+                    isQuestItem: false, // Это награда, а не цель квеста
+                    isUnique: true,     // Флаг уникальности
+                    uniqueAtk: template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0,
+                    uniqueDef: template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 0,
+                    desc: template.desc || ""
+                };
+                
+                player.inventory.push(newItem);
+                RenderModule.log(`🎁 Получен уникальный предмет: ${newItem.name}`, "loot");
+            } else {
+                RenderModule.log(`⚠️ Ошибка: предмет с ID "${data.itemId}" не найден в базе.`, "combat");
+            }
+        }
+
+        // 3. Обновление интерфейса
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
     }
 
