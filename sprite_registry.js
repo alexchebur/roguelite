@@ -55,25 +55,25 @@ const SPRITE_REGISTRY = {
     
     // Оружие ближнего боя
     'ITEM_SWORD':            { char: '/',   tile: { file: 'item_sprites', x: 0, y: 0 }, desc: 'Меч' },
-    'ITEM_AXE':              { char: 'P',   tile: { file: 'item_sprites', x: 1, y: 0 }, desc: 'Топор' }, // Совпадает с TILE_MOUNTAIN
-    'ITEM_MACE':             { char: ')',   tile: { file: 'item_sprites', x: 2, y: 0 }, desc: 'Булава' },
-    'ITEM_DAGGER':           { char: '*',   tile: { file: 'item_sprites', x: 3, y: 0 }, desc: 'Кинжал' }, // Совпадает с ITEM_BERSERK
-    'ITEM_SPEAR':            { char: 'Y',   tile: { file: 'item_sprites', x: 4, y: 0 }, desc: 'Копье' },
+    'ITEM_AXE':              { char: 'P',   tile: { file: 'item_sprites', x: 5, y: 1 }, desc: 'Топор' }, // Совпадает с TILE_MOUNTAIN
+    'ITEM_MACE':             { char: ')',   tile: { file: 'item_sprites', x: 5, y: 0 }, desc: 'Булава' },
+    'ITEM_DAGGER':           { char: '*',   tile: { file: 'item_sprites', x: 0, y: 1 }, desc: 'Кинжал' }, // Совпадает с ITEM_BERSERK
+    'ITEM_SPEAR':            { char: 'Y',   tile: { file: 'item_sprites', x: 7, y: 1 }, desc: 'Копье' },
 
     // Оружие дальнего боя
-    'ITEM_BOW':              { char: '(',   tile: { file: 'item_sprites', x: 5, y: 0 }, desc: 'Лук' },
-    'ITEM_CROSSBOW':         { char: '=',   tile: { file: 'item_sprites', x: 6, y: 0 }, desc: 'Арбалет' },
-    'ITEM_STAFF':            { char: '|',   tile: { file: 'item_sprites', x: 7, y: 0 }, desc: 'Посох' },
+    'ITEM_BOW':              { char: '(',   tile: { file: 'item_sprites', x: 9, y: 0 }, desc: 'Лук' },
+    'ITEM_CROSSBOW':         { char: '=',   tile: { file: 'item_sprites', x: 9, y: 1 }, desc: 'Арбалет' },
+    'ITEM_STAFF':            { char: '|',   tile: { file: 'item_sprites', x: 2, y: 3 }, desc: 'Посох' },
     
 
     // Броня
-    'ITEM_ARMOR_LEATHER':    { char: ']',   tile: { file: 'item_sprites', x: 8, y: 0 }, desc: 'Кожаная броня' },
-    'ITEM_ARMOR_CHAIN':      { char: '[',   tile: { file: 'item_sprites', x: 9, y: 0 }, desc: 'Кольчуга' },
-    'ITEM_SHIELD':           { char: '}',   tile: { file: 'item_sprites', x: 10, y: 0 }, desc: 'Щит' },
-    'ITEM_GREAVES':          { char: '"',   tile: { file: 'item_sprites', x: 11, y: 0 }, desc: 'Наголенники' }, // Совпадает с FLOOR_ORGANIC
-    'ITEM_CLOAK':            { char: '{',   tile: { file: 'item_sprites', x: 12, y: 0 }, desc: 'Плащ' },
-    'ITEM_HELMET':           { char: 'H',   tile: { file: 'item_sprites', x: 13, y: 0 }, desc: 'Шлем' },
-    'ITEM_GLOVES':           { char: 'v',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
+    'ITEM_ARMOR_LEATHER':    { char: ']',   tile: { file: 'item_sprites', x: 0, y: 2 }, desc: 'Кожаная броня' },
+    'ITEM_ARMOR_CHAIN':      { char: '[',   tile: { file: 'item_sprites', x: 1, y: 2 }, desc: 'Кольчуга' },
+    'ITEM_SHIELD':           { char: '}',   tile: { file: 'item_sprites', x: 8, y: 2 }, desc: 'Щит' },
+    'ITEM_GREAVES':          { char: '"',   tile: { file: 'item_sprites', x: 3, y: 2 }, desc: 'Наголенники' }, // Совпадает с FLOOR_ORGANIC
+    'ITEM_CLOAK':            { char: '{',   tile: { file: 'item_sprites', x: 12, y: 3 }, desc: 'Плащ' },
+    'ITEM_HELMET':           { char: 'H',   tile: { file: 'item_sprites', x: 5, y: 2 }, desc: 'Шлем' },
+    'ITEM_GLOVES':           { char: 'v',   tile: { file: 'item_sprites', x: 10, y: 2 }, desc: 'Перчатки' }, // Совпадает с ENEMY_GHOST
 
     // Ресурсы и прочее
     'ITEM_GOLD':             { char: '$',   tile: { file: 'item_sprites', x: 13, y: 3 }, desc: 'Золото' },
@@ -103,12 +103,12 @@ const SPRITE_REGISTRY = {
     // (Для остальных рас можно добавить аналогичные блоки или использовать дефолтные)
     
     // Зелья и еда
-    'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
-    'ITEM_ELIXIR':           { char: '+',   tile: { file: 'item_sprites', x: 15, y: 0 }, desc: 'Эликсир' },
-    'ITEM_FOOD_BREAD':       { char: '%',   tile: { file: 'item_sprites', x: 16, y: 0 }, desc: 'Еда' },
-    'ITEM_FOOD_MEAT':        { char: '~',   tile: { file: 'item_sprites', x: 17, y: 0 }, desc: 'Мясо' },
-    'ITEM_POTION_STR':       { char: '!',   tile: { file: 'item_sprites', x: 14, y: 0 }, desc: 'Зелье силы' },
-    'ITEM_BERSERK':          { char: '*',   tile: { file: 'item_sprites', x: 3, y: 0 }, desc: 'Настой берсерка' } // Совпадает с ITEM_DAGGER
+    'ITEM_POTION_HP':        { char: '!',   tile: { file: 'item_sprites', x: 1, y: 4 }, desc: 'Зелье лечения' }, // Совпадает с ITEM_POTION_STR
+    'ITEM_ELIXIR':           { char: '+',   tile: { file: 'item_sprites', x: 16, y: 4 }, desc: 'Эликсир' },
+    'ITEM_FOOD_BREAD':       { char: '%',   tile: { file: 'item_sprites', x: 6, y: 3 }, desc: 'Еда' },
+    'ITEM_FOOD_MEAT':        { char: '~',   tile: { file: 'item_sprites', x: 7, y: 3 }, desc: 'Мясо' },
+    'ITEM_POTION_STR':       { char: '!',   tile: { file: 'item_sprites', x: 1, y: 4 }, desc: 'Зелье силы' },
+    'ITEM_BERSERK':          { char: '*',   tile: { file: 'item_sprites', x: 1, y: 4 }, desc: 'Настой берсерка' } // Совпадает с ITEM_DAGGER
 };
 
 /**
