@@ -99,9 +99,16 @@ const NpcGeneratorModule = (function() {
             giver.dialog = "Город нуждается в твоей помощи.";
         }
 
-        // === ЛОГИКА ОСОБОГО ПЕРСОНАЖА (НОВОЕ) ===
-        // Шанс 80% появления Барда-легенды в городе
-        if (npcs.length > 5 && rng.next() < 0.8) {
+        // === ЛОГИКА ОСОБОГО ПЕРСОНАЖА (ОБНОВЛЕННАЯ С ЗАЩИТОЙ ОТ АБЬЮЗА) ===
+        
+        // 0. ПРОВЕРКА: Выдавал ли этот город уже текстовый квест?
+        let cityAlreadyGaveQuest = false;
+        if (typeof GameModule !== 'undefined' && typeof GameModule.hasCityTakenTextQuest === 'function') {
+            cityAlreadyGaveQuest = GameModule.hasCityTakenTextQuest(gx, gy);
+        }
+
+        // Шанс 80% появления Барда-легенды в городе (ТОЛЬКО если город еще не выдавал квест)
+        if (!cityAlreadyGaveQuest && npcs.length > 5 && rng.next() < 0.8) {
             let specialX, specialY;
             let foundSpot = false;
             let tries = 0;
@@ -121,43 +128,44 @@ const NpcGeneratorModule = (function() {
 
             if (foundSpot) {
                 // 1. Получаем список всех доступных квестов
-                // (Предполагается, что TEXT_QUESTS_ROSTER определен выше в файле)
                 let availableQuests = TEXT_QUESTS_ROSTER;
 
-                // 2. Фильтруем список, убирая пройденные (если GameModule доступен)
+                // 2. Фильтруем список, убирая глобально пройденные квесты
                 if (typeof GameModule !== 'undefined' && typeof GameModule.isTextQuestCompleted === 'function') {
-                    availableQuests = TEXT_QUESTS_ROSTER.filter(q => !GameModule.isTextQuestCompleted(q));
-                }
-
-                // 3. Если все квесты пройдены, можно либо не создавать NPC, либо дать случайный из всех
-                if (availableQuests.length === 0) {
-                    // Вариант: Не создаем особого NPC, так как все истории услышаны
-                    // return npcs; 
-                    
-                    // Или вариант: Даем последний доступный (повтор)
-                    availableQuests = TEXT_QUESTS_ROSTER;
+                    const filtered = TEXT_QUESTS_ROSTER.filter(q => !GameModule.isTextQuestCompleted(q));
+                    // Если есть непройденные, используем их, иначе оставляем полный список (для повтора)
+                    if (filtered.length > 0) {
+                        availableQuests = filtered;
+                    }
                 }
 
                 const randomQuestFile = rng.choice(availableQuests);
+
+                // 3. ФИКСИРУЕМ ГОРОД КАК "ИСПОЛЬЗОВАННЫЙ" ДЛЯ ТЕКСТОВЫХ КВЕСТОВ
+                if (typeof GameModule !== 'undefined' && GameModule.markCityTextQuestTaken) {
+                    GameModule.markCityTextQuestTaken(gx, gy);
+                }
 
                 npcs.push({
                     x: specialX,
                     y: specialY,
                     name: "Странный Странник",
                     char: "☺",
-                    color: "#ff00ff",
+                    color: "#ff00ff", // Ярко-розовый цвет для отличия
                     dialog: "Псс! Эй, ты! У меня есть для тебя одна история...",
                     isNPC: true,
                     isSpecial: true,
                     direction: directions[rng.int(0, 3)],
                     
-                    // === ИЗМЕНЕНИЕ ЗДЕСЬ ===
-                    // Используем function(), чтобы this указывал на этого NPC
+                    // === ДЕЙСТВИЕ ПРИ ВЗАИМОДЕЙСТВИИ ===
                     action: function() { 
+                        // Запускаем квест
                         GameModule.openTwineQuest(randomQuestFile);
-                        this.action = null; // Удаляем действие после первого запуска
                         
-                        // Опционально: меняем диалог, чтобы было понятно, что квест уже дан
+                        // Удаляем действие у ЭТОГО NPC, чтобы он стал обычным жителем до перезахода в город
+                        this.action = null; 
+                        
+                        // Меняем диалог
                         this.dialog = "Я уже рассказал тебе всё, что знал. Иди с миром.";
                     }
                 });
