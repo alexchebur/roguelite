@@ -11,7 +11,7 @@ const NpcGeneratorModule = (function() {
         'Quack of Duckness.html',
         // Сюда можно добавить другие файлы, когда они появятся:
         // 'The_Haunted_Mansion.html',
-        // 'Lost_Caravan.html'
+        'RingOfPower.html'
     ];
 
     // Базы данных
