@@ -266,9 +266,16 @@ const EntityModule = (function() {
             if (placed.has(key)) continue;
             placed.add(key);
 
-            // Расчёт количества золота: база × множитель глубины × множитель мира
-            const depthBonus = 1 + (depth * 0.1); // +50% за каждый уровень глубины
+            // === НОВОЕ: Экспоненциальный рост золота ===
+            // База: 10-25 монет. 
+            // Множитель глубины: 1.5^depth. 
+            // Уровень 1: x1.5, Уровень 3: x3.37, Уровень 5: x7.5, Уровень 10: x57!
+            const depthBonus = Math.pow(1.5, depth); 
+            
+            // Увеличиваем базовый разброс, чтобы на верхних уровнях тоже было чуть больше
             const baseAmount = Math.floor(goldTemplate.val[0] + Math.random() * (goldTemplate.val[1] - goldTemplate.val[0]));
+            
+            // Итоговая формула: База * Экспонента * Глобальный множитель
             const finalAmount = Math.max(1, Math.floor(baseAmount * depthBonus * worldGoldMult));
 
             goldPiles.push({
