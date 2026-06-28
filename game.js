@@ -2130,20 +2130,21 @@ function updateQuestCompass() {
         overlay.remove();
         isTwineActive = false;
 
-        // === ЛОГИКА ОТМЕТКИ ПРОЙДЕННОГО КВЕСТА ===
+        // === ЛОГИКА ОТМЕТКИ ПРОЙДЕННОГО КВЕСТА И ИСЧЕЗНОВЕНИЯ NPC ===
         if (success && url) {
-            // Для Set используем .add(), он сам проверяет уникальность
+            // 1. Запоминаем, что квест пройден
             completedTextQuests.add(url); 
             RenderModule.log(`📜 История "${url}" завершена и сохранена в памяти.`, "info");
-        }
+            
             // 2. УДАЛЯЕМ ВЫДАВШЕГО ПЕРСОНАЖА ИЗ ГОРОДА
             removeSpecialNpcFromCity();
         } else {
              // Если игрок просто вышел (крестик), можно тоже удалить его, 
              // если по лору он должен "сбежать" или "умереть". 
-             // Если хотите, чтобы он оставался при отказе, оставьте этот блок пустым.
-             // removeSpecialNpcFromCity(); 
+             // Раскомментируйте строку ниже, если хотите, чтобы NPC исчезал даже при отказе:
+            removeSpecialNpcFromCity(); 
         }
+
         // Возвращаем фокус и перерисовываем интерфейс
         if (typeof RenderModule !== 'undefined') {
             RenderModule.requestRedraw();
