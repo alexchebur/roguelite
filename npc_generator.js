@@ -149,10 +149,10 @@ const NpcGeneratorModule = (function() {
                 npcs.push({
                     x: specialX,
                     y: specialY,
-                    name: "Странный Странник",
+                    name: "Загадочная фигура",
                     char: "☺",
                     color: "#ff00ff", // Ярко-розовый цвет для отличия
-                    dialog: "Псс! Эй, ты! У меня есть для тебя одна история...",
+                    dialog: "...",
                     isNPC: true,
                     isSpecial: true,
                     direction: directions[rng.int(0, 3)],
