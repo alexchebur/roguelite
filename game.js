@@ -366,11 +366,11 @@ const GameModule = (function() {
         if (typeof GlobalMapModule !== 'undefined') {
             // Теперь мы просто присваиваем значение существующей переменной
             startPos = GlobalMapModule.initSafeStart(1, 1, 3);
-            RenderModule.log(`Стартовая позиция: ${startPos.x}, ${startPos.y}`, "info");
+            console.log("[SYSTEM]Стартовая позиция: ${startPos.x}, ${startPos.y}", "info");
 
             if (typeof QuestChainModule !== 'undefined') {
                 QuestChainModule.init(startPos.x, startPos.y);
-                RenderModule.log("📜 Сюжетная линия мира сгенерирована.", "info");
+                console.log("[SYSTEM]📜 Сюжетная линия мира сгенерирована.", "info");
             }
         } else {
             RenderModule.log("Ошибка: GlobalMapModule не найден", "combat");
@@ -2135,7 +2135,7 @@ function updateQuestCompass() {
         if (success && url) {
             // 1. Запоминаем, что квест пройден
             completedTextQuests.add(url); 
-            console.log(`📜 [SYSTEM] История "${url}" завершена и сохранена в памяти.`);
+            console.log("📜 [SYSTEM] История "${url}" завершена и сохранена в памяти.");
             
             // 2. УДАЛЯЕМ ВЫДАВШЕГО ПЕРСОНАЖА ИЗ ГОРОДА
             removeSpecialNpcFromCity();
@@ -2149,7 +2149,7 @@ function updateQuestCompass() {
         // Возвращаем фокус и перерисовываем интерфейс
         if (typeof RenderModule !== 'undefined') {
             RenderModule.requestRedraw();
-            RenderModule.log(success ? "Вы вернулись из приключения." : "Вы прервали приключение.", "info");
+            console.log("📜 [SYSTEM] История "${url}" прервана.");
         }
     }
 
