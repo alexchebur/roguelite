@@ -2062,7 +2062,15 @@ function updateQuestCompass() {
 
     function openTwineQuest(url) {
         if (isTwineActive) return;
-    
+        // === ОЧИСТКА СОСТОЯНИЯ TWINE ===
+        // Twine (Harlowe) сохраняет прогресс в sessionStorage браузера.
+        // Ключ "Saved Session" используется всеми квестами на одном домене.
+        // Очищаем его, чтобы квест ВСЕГДА начинался с самого начала.
+        try {
+            sessionStorage.removeItem("Saved Session");
+        } catch(e) {
+            console.warn("Не удалось очистить sessionStorage Twine");
+        }    
         isTwineActive = true;
     
         // 1. Создаем контейнер-затемнение
