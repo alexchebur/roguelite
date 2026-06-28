@@ -595,7 +595,7 @@ const RenderModule = (function() {
                         div.style.color = item.isUnique ? "#d29922" : item.color; 
                         div.style.fontWeight = item.isUnique ? "bold" : "normal";
 
-                        let html = `${item.char} ${item.isUnique ? '🌟 ' : ''}${item.name}`;
+                        let html = `${item.isUnique ? '🌟 ' : ''}${item.name}`;
                         
                         if (item.val && !item.isUnique) html += ` (+${item.val})`;
                         if (item.isUnique) {
