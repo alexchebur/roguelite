@@ -2136,7 +2136,14 @@ function updateQuestCompass() {
             completedTextQuests.add(url); 
             RenderModule.log(`📜 История "${url}" завершена и сохранена в памяти.`, "info");
         }
-
+            // 2. УДАЛЯЕМ ВЫДАВШЕГО ПЕРСОНАЖА ИЗ ГОРОДА
+            removeSpecialNpcFromCity();
+        } else {
+             // Если игрок просто вышел (крестик), можно тоже удалить его, 
+             // если по лору он должен "сбежать" или "умереть". 
+             // Если хотите, чтобы он оставался при отказе, оставьте этот блок пустым.
+             // removeSpecialNpcFromCity(); 
+        }
         // Возвращаем фокус и перерисовываем интерфейс
         if (typeof RenderModule !== 'undefined') {
             RenderModule.requestRedraw();
@@ -2209,7 +2216,29 @@ function updateQuestCompass() {
     function hasCityTakenTextQuest(gx, gy) {
         return textQuestCities.has(`${gx}_${gy}`);
     }
-    
+    // === УДАЛЕНИЕ ОСОБОГО NPC ПОСЛЕ КВЕСТА ===
+    function removeSpecialNpcFromCity() {
+        if (!window.currentCityNpcs || window.currentCityNpcs.length === 0) return;
+        
+        // Ищем NPC, у которого есть поле isSpecial или action (на всякий случай)
+        // Но лучше всего ориентироваться на цвет или имя, если мы их задали жестко.
+        // В нашем случае мы помечали их как isSpecial: true и цветом #ff00ff
+        
+        const index = window.currentCityNpcs.findIndex(npc => npc.isSpecial);
+        
+        if (index !== -1) {
+            const removedNpc = window.currentCityNpcs[index];
+            window.currentCityNpcs.splice(index, 1);
+            
+            // Также удаляем его из общего массива npcs, если он там дублируется
+            // (в loadCityLevel мы обычно используем window.currentCityNpcs как основной источник для рендера)
+            
+            RenderModule.log(`👻 ${removedNpc.name} исчезает в толпе...`, "info");
+            
+            // Запрашиваем перерисовку, чтобы персонаж пропал с экрана
+            RenderModule.requestRedraw();
+        }
+    }    
     return {
         init,
         getPlayer,
