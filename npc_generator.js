@@ -95,7 +95,7 @@ const NpcGeneratorModule = (function() {
             const giver = npcs[0];
             giver.isQuestGiver = true;
             giver.color = "#FFD700"; // Золотой цвет для выделения
-            giver.name = "Капитан стражи"; // Уникальное имя
+            giver.name = "Бургомистр"; // Уникальное имя
             giver.dialog = "Город нуждается в твоей помощи.";
         }
 
