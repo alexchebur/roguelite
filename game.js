@@ -9,6 +9,7 @@ const GameModule = (function() {
     let busy = false;
     let isReadingQuest = false; // Флаг: открыто ли окно сюжета
     let isTwineActive = false; // Флаг активности Twine-окна
+    let globalFlags = {}; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
 
 
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
@@ -2134,7 +2135,7 @@ function updateQuestCompass() {
         if (success && url) {
             // 1. Запоминаем, что квест пройден
             completedTextQuests.add(url); 
-            RenderModule.log(`📜 История "${url}" завершена и сохранена в памяти.`, "info");
+            console.log(`📜 [SYSTEM] История "${url}" завершена и сохранена в памяти.`);
             
             // 2. УДАЛЯЕМ ВЫДАВШЕГО ПЕРСОНАЖА ИЗ ГОРОДА
             removeSpecialNpcFromCity();
@@ -2153,27 +2154,72 @@ function updateQuestCompass() {
     }
 
     function applyTwineReward(data) {
-        if (!player) return;
+        if (!player || !data) return;
     
-        // 1. Обработка золота (безопасная проверка)
-        if (data && data.gold !== undefined) {
+        // 1. ЗОЛОТО (Gold)
+        if (data.gold !== undefined) {
             const amount = parseInt(data.gold);
-            if (amount !== 0) { // Логируем только если есть изменение
+            if (!isNaN(amount) && amount !== 0) {
                 player.gold += amount;
                 RenderModule.log(amount > 0 ? `💰 Получено золото: ${amount}` : `💸 Потеряно золото: ${Math.abs(amount)}`, "loot");
             }
         }
     
-        // 2. Обработка уникальных предметов (по ID из data.js)
-        if (data && data.itemId) {
+        // 2. ОПЫТ (XP) - Требует наличия функции gainXp в GameModule
+        if (data.xp !== undefined) {
+            const xpAmount = parseInt(data.xp);
+            if (!isNaN(xpAmount) && xpAmount > 0) {
+                // Проверяем, существует ли функция прокачки (она есть в game.js)
+                if (typeof gainXp === 'function') {
+                    gainXp(xpAmount);
+                    RenderModule.log(`✨ Получено опыта: ${xpAmount}`, "info");
+                } else {
+                    console.warn("Функция gainXp не найдена.");
+                }
+            }
+        }
+    
+        // 3. ЛЕЧЕНИЕ (Heal Percent)
+        if (data.healPercent !== undefined) {
+            const percent = parseFloat(data.healPercent);
+            if (!isNaN(percent) && percent > 0) {
+                const healAmount = Math.floor(player.maxHp * percent);
+                const oldHp = player.hp;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                if (player.hp > oldHp) {
+                    RenderModule.log(`❤️ Восстановлено ${player.hp - oldHp} HP (${Math.round(percent * 100)}%)`, "info");
+                }
+            }
+        }
+    
+        // 4. ВЫНОСЛИВОСТЬ (Stamina)
+        if (data.stamina !== undefined) {
+            const staminaAmount = parseInt(data.stamina);
+            if (!isNaN(staminaAmount)) {
+                // Если число положительное - добавляем, если отрицательное - отнимаем
+                // Но обычно восстанавливают до максимума или добавляют фиксированное значение
+                if (staminaAmount > 0) {
+                     // Если передали просто число, считаем это добавлением
+                     // Если хотите восстановление до максимума, можно передать 9999 или отдельный флаг
+                     const oldStamina = player.stamina;
+                     player.stamina = Math.min(player.maxStamina, player.stamina + staminaAmount);
+                     if (player.stamina > oldStamina) {
+                         RenderModule.log(`⚡ Выносливость восстановлена на ${player.stamina - oldStamina}`, "info");
+                     }
+                } else if (staminaAmount === -1) { 
+                    // Специальный кейс: полное восстановление
+                    player.stamina = player.maxStamina;
+                    RenderModule.log(`⚡ Выносливость полностью восстановлена!`, "info");
+                }
+            }
+        }
+    
+        // 5. УНИКАЛЬНЫЕ ПРЕДМЕТЫ (Add Item by ID)
+        if (data.itemId) {
             const template = DataModule.UNIQUE_ITEM_TEMPLATES.find(t => t.id === data.itemId);
-            
             if (template) {
-                // Находим базовый тип предмета, чтобы взять правильный символ
                 const baseTemplate = DataModule.ITEM_TYPES.find(t => t.type === template.baseType);
                 const char = template.char || (baseTemplate ? baseTemplate.char : '?');
-                
-                // Вычисляем среднее значение стата для отображения
                 const statVal = template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 
                                 (template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0);
 
@@ -2185,8 +2231,8 @@ function updateQuestCompass() {
                     type: template.baseType,
                     val: statVal,
                     isItem: true,
-                    isQuestItem: false, // Это награда, а не цель квеста
-                    isUnique: true,     // Флаг уникальности
+                    isQuestItem: false,
+                    isUnique: true,
                     uniqueAtk: template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0,
                     uniqueDef: template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 0,
                     desc: template.desc || ""
@@ -2198,8 +2244,41 @@ function updateQuestCompass() {
                 RenderModule.log(`⚠️ Ошибка: предмет с ID "${data.itemId}" не найден в базе.`, "combat");
             }
         }
+    
+        // 6. УДАЛЕНИЕ ПРЕДМЕТА (Remove Item)
+        if (data.removeItem) {
+            const itemNameToRemove = data.removeItem;
+            // Ищем индекс первого подходящего предмета
+            const itemIndex = player.inventory.findIndex(item => 
+                item.name === itemNameToRemove || item.name.includes(itemNameToRemove)
+            );
 
-        // 3. Обновление интерфейса
+            if (itemIndex !== -1) {
+                const removedItem = player.inventory.splice(itemIndex, 1)[0];
+                RenderModule.log(`🗑️ Предмет удален из инвентаря: ${removedItem.name}`, "info");
+            } else {
+                // Не выдаем ошибку игроку, просто логируем в консоль для отладки
+                console.log(`⚠️ Попытка удалить "${itemNameToRemove}", но предмета нет в инвентаре.`);
+            }
+        }
+    
+        // 7. ГЛОБАЛЬНЫЙ ФЛАГ (Quest Flag)
+        // Для этого нам нужно место для хранения флагов. 
+        // Можно добавить объект globalFlags в GameModule, если его еще нет.
+        if (data.questFlag) {
+            // Инициализируем хранилище флагов, если его нет (добавьте let globalFlags = {}; в начало GameModule)
+            if (typeof globalFlags === 'undefined') window.globalFlags = {}; 
+            
+            window.globalFlags[data.questFlag] = true;
+            RenderModule.log(`🚩 Установлен флаг сюжета: ${data.questFlag}`, "event");
+        }
+    
+        // 8. КАСТОМНОЕ СООБЩЕНИЕ (Message)
+        if (data.message) {
+            RenderModule.log(data.message, "event");
+        }
+    
+        // Обновление интерфейса после всех изменений
         RenderModule.updateUI(player, currentLocData, currentWorldTrend);
     }
 
@@ -2249,7 +2328,8 @@ function updateQuestCompass() {
         openTwineQuest, 
         isTextQuestCompleted,
         markCityTextQuestTaken,      // <--- ДОБАВИТЬ
-        hasCityTakenTextQuest,       // <--- ДОБАВИТЬ        
+        hasCityTakenTextQuest,
+        getGlobalFlag: (flagName) => window.globalFlags ? window.globalFlags[flagName] : false,        // <--- ДОБАВИТЬ        
         exitToGlobal 
     };
 })();
