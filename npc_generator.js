@@ -107,7 +107,7 @@ const NpcGeneratorModule = (function() {
             cityAlreadyGaveQuest = GameModule.hasCityTakenTextQuest(gx, gy);
         }
 
-        // Шанс 80% появления Барда-легенды в городе (ТОЛЬКО если город еще не выдавал квест)
+        // Шанс 80% появления фиолетового раздатчика квестов в городе (ТОЛЬКО если город еще не выдавал квест)
         if (!cityAlreadyGaveQuest && npcs.length > 5 && rng.next() < 0.8) {
             let specialX, specialY;
             let foundSpot = false;
@@ -134,8 +134,12 @@ const NpcGeneratorModule = (function() {
                 if (typeof GameModule !== 'undefined' && typeof GameModule.isTextQuestCompleted === 'function') {
                     const filtered = TEXT_QUESTS_ROSTER.filter(q => !GameModule.isTextQuestCompleted(q));
                     // Если есть непройденные, используем их, иначе оставляем полный список (для повтора)
+                    // === ИЗМЕНЕНИЕ ЗДЕСЬ ===
                     if (filtered.length > 0) {
                         availableQuests = filtered;
+                    } else {
+                        // Если непройденных квестов не осталось, прерываем создание NPC
+                        return npcs; 
                     }
                 }
 
