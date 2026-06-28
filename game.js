@@ -2135,7 +2135,7 @@ function updateQuestCompass() {
         if (success && url) {
             // 1. Запоминаем, что квест пройден
             completedTextQuests.add(url); 
-            console.log("📜 [SYSTEM] История "${url}" завершена и сохранена в памяти.");
+            console.log(`📜 [SYSTEM] История "${url}" завершена и сохранена в памяти.`);
             
             // 2. УДАЛЯЕМ ВЫДАВШЕГО ПЕРСОНАЖА ИЗ ГОРОДА
             removeSpecialNpcFromCity();
@@ -2149,7 +2149,7 @@ function updateQuestCompass() {
         // Возвращаем фокус и перерисовываем интерфейс
         if (typeof RenderModule !== 'undefined') {
             RenderModule.requestRedraw();
-            console.log("📜 [SYSTEM] История "${url}" прервана.");
+            console.log(`📜 [SYSTEM] История "${url}" прервана.`);
         }
     }
 
