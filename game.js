@@ -886,26 +886,31 @@ function updateQuestCompass() {
         // === НОВОЕ: Проверка выносливости ПЕРЕД движением ===
         if (player && player.stamina <= 0) {
             RenderModule.log("Вы умерли от усталости. Нажмите F5 чтобы начать сначала.", "combat");
-            busy = true; // Блокируем дальнейшие действия
+            busy = true;
             return;
         }
 
         if (GlobalMapModule.tryMove(dx, dy)) {
             // === НОВОЕ: Уменьшаем выносливость при успешном шаге ===
             if (player) {
+                const oldStamina = player.stamina;
                 player.stamina = Math.max(0, player.stamina - 1);
+                
                 // ✅ ДОБАВИТЬ ЭТОТ БЛОК: Предупреждение при достижении 20/100
                 if (oldStamina > 20 && player.stamina === 20) {
                     RenderModule.log("У вас иссякают силы, немедленно найдите постоялый двор или зелье отдыха!", "combat");
-                }                
+                }
+                
                 // Проверка смерти ПОСЛЕ шага (если ушли в минус)
                 if (player.stamina <= 0) {
                     RenderModule.log("Вы сделали последний шаг... Вы умерли от усталости. Нажмите F5 чтобы начать сначала.", "combat");
                     busy = true;
-                    renderGlobalMap(); // Обновить UI перед смертью
+                    renderGlobalMap();
                     return;
                 }
             }
+            
+            // ... остальной код функции без изменений ...
 
             const playerPos = GlobalMapModule.getPlayerPosition();
             // ... остальной код функции без изменений ...
