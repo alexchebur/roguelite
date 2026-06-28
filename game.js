@@ -1454,13 +1454,27 @@ function updateQuestCompass() {
         const height = DataModule.MAP_HEIGHT;
 
         window.currentCityNpcs.forEach(npc => {
-            if (npc.speed === undefined) npc.speed = 5;
+            // Инициализация скорости, энергии и счетчика шагов
+            if (npc.speed === undefined) npc.speed = 5; 
             if (npc.energy === undefined) npc.energy = Math.floor(Math.random() * npc.speed);
+            if (npc.stepsSinceTurn === undefined) npc.stepsSinceTurn = 0; // <--- НОВОЕ
 
             npc.energy += npc.speed;
 
+            // Если энергии достаточно, NPC делает ход
             if (npc.energy >= PLAYER_SPEED_THRESHOLD) {
                 npc.energy -= PLAYER_SPEED_THRESHOLD;
+
+                // --- ЛОГИКА СЛУЧАЙНОЙ СМЕНЫ НАПРАВЛЕНИЯ ---
+                
+                // 1. Проверяем, пора ли менять направление (каждые 5 шагов + небольшой рандом)
+                // Добавляем случайность, чтобы они меняли направление не синхронно
+                const turnThreshold = 5 + Math.floor(Math.random() * 3); 
+
+                if (npc.stepsSinceTurn >= turnThreshold) {
+                    npc.direction = getRandomDirection();
+                    npc.stepsSinceTurn = 0; // Сбрасываем счетчик
+                }
 
                 if (!npc.direction) {
                     npc.direction = getRandomDirection();
@@ -1468,28 +1482,36 @@ function updateQuestCompass() {
 
                 let moved = false;
                 let attempts = 0;
+                
+                // Пытаемся сделать шаг в текущем направлении
                 while (!moved && attempts < 4) {
                     const nx = npc.x + npc.direction.dx;
                     const ny = npc.y + npc.direction.dy;
 
+                    // Проверка границ и стен
                     if (nx < 0 || nx >= width || ny < 0 || ny >= height || MapModule.isWall(nx, ny)) {
                         npc.direction = getRandomDirection();
+                        npc.stepsSinceTurn = 0; // При смене направления из-за стены тоже сбрасываем
                         attempts++;
                         continue;
                     }
 
+                    // Проверка коллизий с другими сущностями
                     const blockedByNpc = window.currentCityNpcs.some(other => other !== npc && other.x === nx && other.y === ny);
                     const blockedByPlayer = (player.x === nx && player.y === ny);
                     const blockedByEnemy = enemies.some(e => e.hp > 0 && e.x === nx && e.y === ny);
 
                     if (blockedByNpc || blockedByPlayer || blockedByEnemy) {
                         npc.direction = getRandomDirection();
+                        npc.stepsSinceTurn = 0; // При смене направления из-за препятствия тоже сбрасываем
                         attempts++;
                         continue;
                     }
 
+                    // Успешное движение
                     npc.x = nx;
                     npc.y = ny;
+                    npc.stepsSinceTurn++; // <--- УВЕЛИЧИВАЕМ СЧЕТЧИК ШАГОВ
                     moved = true;
                 }
             }
