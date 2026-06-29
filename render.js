@@ -417,6 +417,11 @@ const RenderModule = (function() {
                     case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
                     case 'road': ch = '─'; fg = '#b8860b'; break;
                     default: ch = '·'; fg = '#555';
+                    // В функции drawGlobalMap, в блок switch(tileType) добавляем кейс:
+                    case 'global_scroll': 
+                        ch = '&';       // Символ свитка из TILE_MAP
+                        fg = '#ff00ff'; // Розовый цвет, как у NPC-квестодателя
+                        break;
                 }
 
                 // Игрок
@@ -468,6 +473,7 @@ const RenderModule = (function() {
                     case 'dungeon_entrance': color = '#cd5c5c'; break;
                     case 'road': color = '#b8860b'; break;
                     default: color = '#333';
+                    case 'global_scroll': color = '#ff00ff'; break;
                 }
                 
                 if (gx === centerX && gy === centerY) color = '#0f0'; // Игрок
