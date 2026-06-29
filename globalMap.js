@@ -7,14 +7,20 @@
 // Это гарантирует, что старые "багованные" чанки не будут использоваться
 const chunkCache = new Map(); 
 
-// Конфигурация
+// В объект GLOBAL_CONFIG добавляем параметр плотности
 const GLOBAL_CONFIG = {
     CHUNK_SIZE: 50,          
     WORLD_SEED: 193460752,       
     CITY_DENSITY: 0.010,      
     DUNGEON_DENSITY: 0.01,   
-    ROAD_CONNECT_RADIUS: 40  
+    ROAD_CONNECT_RADIUS: 40,
+    GLOBAL_SCROLL_DENSITY: 0.005 // Шанс 0.5% на клетку для спавна свитка
 };
+
+const GLOBAL_TEXT_QUESTS_ROSTER = [
+    'Quack of Duckness.html' // Заглушка для теста (замените на свои файлы)
+];
+
 
 // Текущая позиция игрока
 let playerGlobalX = 0;
@@ -162,6 +168,36 @@ function generatePOIs(rand, cx, cy, tiles) {
     return pois;
 }
 
+// В функции generatePOIs, ПОСЛЕ цикла генерации подземелий, добавляем блок для свитков:
+// 3. Глобальные свитки
+if (GLOBAL_TEXT_QUESTS_ROSTER.length > 0) {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const currentTile = tiles[y][x];
+            // Свитки появляются только на проходимых ландшафтах
+            const isValidScrollTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
+            
+            if (isValidScrollTerrain && rand.next() < GLOBAL_CONFIG.GLOBAL_SCROLL_DENSITY) {
+                if (isTooClose(x, y)) continue;
+                
+                const globalX = cx * width + x;
+                const globalY = cy * height + y;
+                
+                // Детерминированный выбор квеста из ростера
+                const questFile = GLOBAL_TEXT_QUESTS_ROSTER[Math.floor(rand.next() * GLOBAL_TEXT_QUESTS_ROSTER.length)];
+                
+                pois.push({ 
+                    x: globalX, 
+                    y: globalY, 
+                    type: 'global_scroll', 
+                    questFile: questFile 
+                });
+            }
+        }
+    }
+}
+
+
 // Построение дорог
 function connectPOIsWithRoads(tiles, poisLocal, rand) {
     if (poisLocal.length < 2) return;
@@ -289,9 +325,16 @@ const GlobalMapModule = {
     getDisplayTileType(globalX, globalY) {
         const poi = this.getPOI(globalX, globalY);
         if (poi) {
+            if (poi.type === 'global_scroll') {
+                // Если квест уже пройден, возвращаем базовый тайл ландшафта
+                if (typeof GameModule !== 'undefined' && GameModule.isTextQuestCompleted(poi.questFile)) {
+                    return this.getTileType(globalX, globalY);
+                }
+                return 'global_scroll';
+            }
             return poi.type === 'city' ? 'city' : 'dungeon_entrance';
         }
-        return this.getTileType(globalX, globalY);
+       return this.getTileType(globalX, globalY); 
     },
     
     isWalkable(globalX, globalY) {
@@ -338,5 +381,15 @@ const GlobalMapModule = {
     
     getConfig() {
         return GLOBAL_CONFIG;
+    },
+// Добавляем новый метод в объект GlobalMapModule (в конец, перед закрывающей скобкой):
+    removePOI(globalX, globalY) {
+        const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
+        const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
+        const key = `${cx},${cy}`;
+        const chunk = chunkCache.get(key);
+        if (chunk && chunk.pois) {
+            chunk.pois = chunk.pois.filter(p => !(p.x === globalX && p.y === globalY));
+        }
     }
 };
