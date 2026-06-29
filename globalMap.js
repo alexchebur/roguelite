@@ -18,8 +18,8 @@ const GLOBAL_CONFIG = {
 };
 
 const GLOBAL_TEXT_QUESTS_ROSTER = [
-    'Quack of Duckness.html',
-    'RingOfPower.html'// Заглушка для теста (замените на свои файлы)
+    'twine/Quack of Duckness.html',
+    'twine/RingOfPower.html'// Заглушка для теста (замените на свои файлы)
 ];
 
 
