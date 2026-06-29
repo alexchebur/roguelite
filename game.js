@@ -2167,11 +2167,10 @@ function updateQuestCompass() {
         overlay._msgHandler = messageHandler;
     }
 
-    function closeTwineQuest(success, url) {
+    function closeTwineQuest(success, url, isGlobal = false) {
         const overlay = document.getElementById('twine-overlay');
         if (!overlay) return;
 
-        // Удаляем слушатель событий
         if (overlay._msgHandler) {
             window.removeEventListener('message', overlay._msgHandler);
         }
@@ -2179,25 +2178,33 @@ function updateQuestCompass() {
         overlay.remove();
         isTwineActive = false;
 
-        // === ЛОГИКА ОТМЕТКИ ПРОЙДЕННОГО КВЕСТА И ИСЧЕЗНОВЕНИЯ NPC ===
         if (success && url) {
-            // 1. Запоминаем, что квест пройден
             completedTextQuests.add(url); 
-            console.log(`📜 [SYSTEM] История "${url}" завершена и сохранена в памяти.`);
             
-            // 2. УДАЛЯЕМ ВЫДАВШЕГО ПЕРСОНАЖА ИЗ ГОРОДА
-            removeSpecialNpcFromCity();
+            if (!isGlobal) {
+                removeSpecialNpcFromCity(); 
+            } else {
+                const playerPos = GlobalMapModule.getPlayerPosition();
+                GlobalMapModule.removePOI(playerPos.x, playerPos.y);
+                RenderModule.log("📜 Свиток рассыпается в прах...", "info");
+            }
         } else {
-             // Если игрок просто вышел (крестик), можно тоже удалить его, 
-             // если по лору он должен "сбежать" или "умереть". 
-             // Раскомментируйте строку ниже, если хотите, чтобы NPC исчезал даже при отказе:
-            removeSpecialNpcFromCity(); 
+            if (!isGlobal) {
+                removeSpecialNpcFromCity(); 
+            } else {
+                const playerPos = GlobalMapModule.getPlayerPosition();
+                GlobalMapModule.removePOI(playerPos.x, playerPos.y);
+                RenderModule.log("📜 Вы оставили свиток в покое... но он исчез.", "info");
+            }
         }
 
-        // Возвращаем фокус и перерисовываем интерфейс
+        // === ИСПРАВЛЕНИЕ ОТРИСОВКИ ===
         if (typeof RenderModule !== 'undefined') {
-            RenderModule.requestRedraw();
-            console.log(`📜 [SYSTEM] История "${url}" прервана.`);
+            if (gameMode === 'global') {
+                renderGlobalMap(); // Принудительно рисуем глобальную карту
+            } else {
+                RenderModule.requestRedraw(); // Для обычных квестов в городах
+            }
         }
     }
 
