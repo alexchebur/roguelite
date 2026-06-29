@@ -14,7 +14,7 @@ const GLOBAL_CONFIG = {
     CITY_DENSITY: 0.010,      
     DUNGEON_DENSITY: 0.01,   
     ROAD_CONNECT_RADIUS: 40,
-    GLOBAL_SCROLL_DENSITY: 0.005 // Шанс 0.5% на клетку для спавна свитка
+    GLOBAL_SCROLL_DENSITY: 0.001 // Шанс 0.5% на клетку для спавна свитка
 };
 
 const GLOBAL_TEXT_QUESTS_ROSTER = [
