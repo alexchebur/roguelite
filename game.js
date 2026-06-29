@@ -1944,45 +1944,74 @@ function updateQuestCompass() {
                     player.inventory.push(item);
                     RenderModule.log(`Подобрано: ${item.name}`, "loot ");
                     
-                    // Проверка квестов на подбор (FETCH/COLLECT)
-                    if (typeof QuestSystemModule !== 'undefined') {
-                        [...activeQuests].forEach(q => {
-                            if (q.isCompleted) return;
-                            if (q.type === 'FETCH' || q.type === 'COLLECT') {
-                                let isMatch = false;
-                                 if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
-                                    isMatch = true;
-                                } else if ((item.type === q.target.itemType) && 
-                                         (!q.target.itemName || item.name.includes(q.target.itemName))) {
-                                    isMatch = true;
-                                 }
-
-                                if (isMatch) {
-                                    item.isQuestItem = true;
-                                    if (q.type === 'FETCH') {
-                                         q.progress = q.maxProgress;
-                                        q.isCompleted = true;
-                                        RenderModule.updateQuestBriefing(q);
-                                         RenderModule.log(`📦 Это тот самый предмет!`, "info ");
-                                    } else if (q.type === 'COLLECT') {
-                                        QuestSystemModule.checkProgress(q, { 
-                                             type: 'pickup', 
-                                            itemType: item.type,
-                                            itemName: item.name,
-                                             uniqueId: item.uniqueId,
-                                            locX: dungeonX,
-                                            locY: dungeonY
-                                        });
-                                         RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
-                                    }
-                                    updateQuestCompass();
-                                }
+                // Проверка квестов на подбор (FETCH/COLLECT)
+                if (typeof QuestSystemModule !== 'undefined') {
+                    [...activeQuests].forEach(q => {
+                        if (q.isCompleted) return;
+                        
+                        // Проверяем только квесты, требующие сбора/поиска предметов
+                        if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                            
+                            // 1. Проверка соответствия предмета
+                            let isItemMatch = false;
+                            if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
+                                isItemMatch = true;
+                            } else if ((item.type === q.target.itemType) && 
+                                     (!q.target.itemName || item.name.includes(q.target.itemName))) {
+                                isItemMatch = true;
                             }
-                        });
-                     }
-                }
-                items.splice(itemIdx, 1);
+
+                            if (isItemMatch) {
+                                // 2. Проверка ЛОКАЦИИ (Подземелье)
+                                const isCorrectLocation = (
+                                    dungeonX === q.target.targetX && 
+                                    dungeonY === q.target.targetY
+                                );
+
+                                // 3. Проверка ГЛУБИНЫ
+                                // targetDepth может быть в recommendedDepth или targetDepth
+                                const requiredDepth = q.target.recommendedDepth || q.target.targetDepth;
+                                // currentDepth начинается с 0, поэтому +1 для сравнения с "Уровнем 1"
+                                const isCorrectDepth = !requiredDepth || ((currentDepth + 1) >= requiredDepth);
+
+                                if (!isCorrectLocation) {
+                                    RenderModule.log(`📦 Это ${item.name}, но не тот. Ищите в ${q.target.locationName}.`, "info ");
+                                    return; // Прерываем обработку этого квеста
+                                }
+
+                                if (!isCorrectDepth) {
+                                    RenderModule.log(`📦 Это ${item.name}, но вы на недостаточной глубине. Нужно хотя бы ур. ${requiredDepth}.`, "info ");
+                                    return; // Прерываем обработку этого квеста
+                                }
+
+                                // === ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ ===
+                                item.isQuestItem = true;
+
+                                if (q.type === 'FETCH') {
+                                    q.progress = q.maxProgress;
+                                    q.isCompleted = true;
+                                    RenderModule.updateQuestBriefing(q);
+                                    RenderModule.log(`📦 Это тот самый предмет! Квест выполнен.`, "info ");
+                                } else if (q.type === 'COLLECT') {
+                                    QuestSystemModule.checkProgress(q, { 
+                                        type: 'pickup', 
+                                        itemType: item.type,
+                                        itemName: item.name,
+                                        uniqueId: item.uniqueId,
+                                        locX: dungeonX,
+                                        locY: dungeonY,
+                                        currentDepth: currentDepth // Передаем глубину для надежности
+                                    });
+                                    RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
+                                }
+                                updateQuestCompass();
+                            }
+                        }
+                    });
+                 }
             }
+            items.splice(itemIdx, 1);
+        }
 
         // Лестницы
         if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
