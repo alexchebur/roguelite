@@ -384,13 +384,14 @@ const GlobalMapModule = {
     getConfig() {
         return GLOBAL_CONFIG;
     },
-// Добавляем новый метод в объект GlobalMapModule (в конец, перед закрывающей скобкой):
     removePOI(globalX, globalY) {
         const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
         const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
         const key = `${cx},${cy}`;
         const chunk = chunkCache.get(key);
+        
         if (chunk && chunk.pois) {
+            // Фильтруем массив, оставляя все POI, КРОМЕ того, что совпадает с координатами
             chunk.pois = chunk.pois.filter(p => !(p.x === globalX && p.y === globalY));
         }
     }
