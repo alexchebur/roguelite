@@ -101,8 +101,10 @@ function generateTerrain(rand, width, height) {
 }
 
 // Генерация точек интереса (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// Генерация точек интереса (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
+    // 1. Определяем размеры чанка здесь, чтобы они были видны во всей функции
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
     
@@ -118,7 +120,7 @@ function generatePOIs(rand, cx, cy, tiles) {
         return false;
     };
     
-    // 1. Города
+    // 2. Города
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const currentTile = tiles[y][x];
@@ -132,16 +134,16 @@ function generatePOIs(rand, cx, cy, tiles) {
 
                 // Ставим город
                 tiles[y][x] = 'city';
-                const globalX = cx * width + x;
+                 const globalX = cx * width + x;
                 const globalY = cy * height + y;
                 const cityName = NameGeneratorModule.generateCityName(globalX, globalY);
-                
+                 
                 pois.push({ x: globalX, y: globalY, type: 'city', name: cityName });
             }
         }
     }
     
-    // 2. Входы в подземелья
+    // 3. Входы в подземелья
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const currentTile = tiles[y][x];
@@ -165,36 +167,36 @@ function generatePOIs(rand, cx, cy, tiles) {
             }
         }
     }
-    return pois;
-}
 
-// В функции generatePOIs, ПОСЛЕ цикла генерации подземелий, добавляем блок для свитков:
-// 3. Глобальные свитки
-if (GLOBAL_TEXT_QUESTS_ROSTER.length > 0) {
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const currentTile = tiles[y][x];
-            // Свитки появляются только на проходимых ландшафтах
-            const isValidScrollTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
-            
-            if (isValidScrollTerrain && rand.next() < GLOBAL_CONFIG.GLOBAL_SCROLL_DENSITY) {
-                if (isTooClose(x, y)) continue;
+    // 4. Глобальные свитки (НОВОЕ)
+    if (typeof GLOBAL_TEXT_QUESTS_ROSTER !== 'undefined' && GLOBAL_TEXT_QUESTS_ROSTER.length > 0) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const currentTile = tiles[y][x];
+                // Свитки появляются только на проходимых ландшафтах
+                const isValidScrollTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
                 
-                const globalX = cx * width + x;
-                const globalY = cy * height + y;
-                
-                // Детерминированный выбор квеста из ростера
-                const questFile = GLOBAL_TEXT_QUESTS_ROSTER[Math.floor(rand.next() * GLOBAL_TEXT_QUESTS_ROSTER.length)];
-                
-                pois.push({ 
-                    x: globalX, 
-                    y: globalY, 
-                    type: 'global_scroll', 
-                    questFile: questFile 
-                });
+                if (isValidScrollTerrain && rand.next() < GLOBAL_CONFIG.GLOBAL_SCROLL_DENSITY) {
+                    if (isTooClose(x, y)) continue;
+                    
+                    const globalX = cx * width + x;
+                    const globalY = cy * height + y;
+                    
+                    // Детерминированный выбор квеста из ростера
+                    const questFile = GLOBAL_TEXT_QUESTS_ROSTER[Math.floor(rand.next() * GLOBAL_TEXT_QUESTS_ROSTER.length)];
+                    
+                    pois.push({ 
+                        x: globalX, 
+                        y: globalY, 
+                        type: 'global_scroll', 
+                        questFile: questFile 
+                    });
+                }
             }
         }
     }
+
+    return pois;
 }
 
 
