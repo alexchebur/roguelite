@@ -879,11 +879,12 @@ function updateQuestCompass() {
     }
     
     // === ГЛОБАЛЬНЫЙ РЕЖИМ ===
+    // === ГЛОБАЛЬНЫЙ РЕЖИМ ===
     function processGlobalTurn(dx, dy) {
         if (busy) return;
         if (dx === 0 && dy === 0) return;
         
-        // === НОВОЕ: Проверка выносливости ПЕРЕД движением ===
+        // === Проверка выносливости ПЕРЕД движением ===
         if (player && player.stamina <= 0) {
             RenderModule.log("Вы умерли от усталости. Нажмите F5 чтобы начать сначала.", "combat");
             busy = true;
@@ -891,17 +892,17 @@ function updateQuestCompass() {
         }
 
         if (GlobalMapModule.tryMove(dx, dy)) {
-            // === НОВОЕ: Уменьшаем выносливость при успешном шаге ===
+            // === Уменьшаем выносливость при успешном шаге ===
             if (player) {
                 const oldStamina = player.stamina;
                 player.stamina = Math.max(0, player.stamina - 1);
                 
-                // ✅ ДОБАВИТЬ ЭТОТ БЛОК: Предупреждение при достижении 20/100
+                // Предупреждение при достижении 20/100
                 if (oldStamina > 20 && player.stamina === 20) {
                     RenderModule.log("У вас иссякают силы, немедленно найдите постоялый двор или зелье отдыха!", "combat");
                 }
                 
-                // Проверка смерти ПОСЛЕ шага (если ушли в минус)
+                // Проверка смерти ПОСЛЕ шага
                 if (player.stamina <= 0) {
                     RenderModule.log("Вы сделали последний шаг... Вы умерли от усталости. Нажмите F5 чтобы начать сначала.", "combat");
                     busy = true;
@@ -910,13 +911,26 @@ function updateQuestCompass() {
                 }
             }
             
-            // ... остальной код функции без изменений ...
-
             const playerPos = GlobalMapModule.getPlayerPosition();
-            // ... остальной код функции без изменений ...
             const poi = GlobalMapModule.getPOI(playerPos.x, playerPos.y);
             
             if (poi) {
+                // === НОВАЯ ЛОГИКА ДЛЯ ГЛОБАЛЬНЫХ СВИТКОВ ===
+                if (poi.type === 'global_scroll') {
+                    // Проверяем, не пройден ли уже этот квест
+                    if (GameModule.isTextQuestCompleted(poi.questFile)) {
+                        // Если да, то удаляем "мусорный" POI из кэша и идем дальше
+                        GlobalMapModule.removePOI(playerPos.x, playerPos.y);
+                        RenderModule.log("📜 Здесь больше нет ничего интересного.", "info");
+                        renderGlobalMap(); // Перерисовываем, чтобы свиток исчез
+                    } else {
+                        // Запускаем Twine-квест (флаг true означает, что это глобальный квест)
+                        GameModule.openTwineQuest(poi.questFile, true);
+                    }
+                    return; // Прерываем ход, чтобы не двигаться дальше и не вызывать enterPOI
+                }
+                
+                // Стандартный вход в город или подземелье
                 enterPOI(poi);
                 return;
             }
@@ -927,19 +941,15 @@ function updateQuestCompass() {
                     if (QuestSystemModule.checkProgress(q, { type: 'move', x: playerPos.x, y: playerPos.y })) {
                          RenderModule.log(`📍 Квест выполнен: Вы достигли ${q.target.locationName}!`, "event");
                          
-                         // >>> ЗАМЕНИТЬ ЭТУ СТРОКУ <<<
-                         // grantReward(q); 
-                         
-                         // >>> НА ЭТИ ДВЕ СТРОКИ <<<
-                         q.isTurnedIn = false; // Явно указываем, что награда еще не получена
+                         q.isTurnedIn = false; 
                          RenderModule.updateQuestBriefing(q);
                         
-                         updateQuestCompass(); // Обновляем стрелку на "Награда"
+                         updateQuestCompass();
                     }
                 });
             }
 
-            updateQuestCompass(); // <--- ВАЖНО: Обновляем стрелку после каждого шага
+            updateQuestCompass();
             renderGlobalMap();
         } else {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
