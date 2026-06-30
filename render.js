@@ -412,21 +412,35 @@ const RenderModule = (function() {
                     case 'plain': ch = '░'; fg = '#2e8b57'; break;
                     case 'forest': ch = 'T'; fg = '#336649'; break;
                     case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
-                    case 'water': ch = '≈'; fg = '#4682b4'; break;
+                    case 'water': ch = '≈'; fg = '#4682b4'; break; 
                     case 'city': ch = 'C'; fg = '#ffd700'; break;
                     case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
                     case 'road': ch = '─'; fg = '#b8860b'; break;
                     default: ch = '·'; fg = '#555';
-                    // В функции drawGlobalMap, в блок switch(tileType) добавляем кейс:
-                    case 'global_scroll': 
-                        ch = '&';       // Символ свитка из TILE_MAP
-                        fg = '#ff00ff'; // Розовый цвет, как у NPC-квестодателя
-                        break;
                 }
 
-                // Игрок
+                // === ДИНАМИЧЕСКИЙ СПРАЙТ ИГРОКА НА ГЛОБАЛЬНОЙ КАРТЕ ===
                 if (gx === centerX && gy === centerY) {
-                    ch = '@'; fg = '#fff';
+                    fg = '#fff'; // Цвет игрока всегда белый (или можно менять)
+                    
+                    // Получаем доступ к глобальным флагам
+                    // Предполагается, что в GameModule добавлен метод getGlobalFlag(flagName)
+                    let hasScale = false;
+                    let hasSquad = false;
+
+                    if (typeof GameModule !== 'undefined' && typeof GameModule.getGlobalFlag === 'function') {
+                        hasScale = GameModule.getGlobalFlag('player_global_scale');
+                        hasSquad = GameModule.getGlobalFlag('player_has_squad');
+                    }
+
+                    // Логика выбора символа-маркера для спрайта
+                    if (hasSquad) {
+                        ch = 's'; // Символ для отряда (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
+                    } else if (hasScale) {
+                        ch = 'p'; // Символ для уменьшенного игрока (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
+                    } else {
+                        ch = '@'; // Стандартный игрок
+                    }
                 }
 
                 // Используем TilesetRenderer для глобальной карты
