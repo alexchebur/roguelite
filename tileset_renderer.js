@@ -58,6 +58,12 @@ const TilesetRenderer = (function() {
         'M': { file: 'creature_sprites', x: 14, y: 0 },  // Голем
         'q': { file: 'creature_sprites', x: 15, y: 0 },  // Дракон
         '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
+        // В файле tileset_renderer.js, внутри TILE_MAP
+
+
+        // --- ГЛОБАЛЬНЫЕ ВАРИАНТЫ ИГРОКА ---
+        'p': { file: 'creature_sprites', x: 3, y: 0 }, // Соответствует PLAYER_GLOBAL_SMALL
+        'S': { file: 'creature_sprites', x: 4, y: 0 }, // Соответствует PLAYER_GLOBAL_SQUAD        
         
         // === БОССЫ (2x2) ===
         // Добавляем символ 'B', который используется в entity.js для всех боссов
