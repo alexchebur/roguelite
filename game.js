@@ -380,6 +380,7 @@ const GameModule = (function() {
         // === ИСПРАВЛЕНИЕ 1: Создаем игрока здесь, если он еще не создан ===
         if (!player && startPos) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
+            globalFlags['player_global_scale'] = true;
             // Обновляем UI сразу после создания, чтобы статы появились
             RenderModule.updateUI(player, { fullName: "Глобальная карта", themeName: "Поверхность" }, null);
         }        
