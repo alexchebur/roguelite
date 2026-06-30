@@ -30,6 +30,11 @@ const SPRITE_REGISTRY = {
     'PLAYER':                { char: '@',   tile: { file: 'creature_sprites', x: 2, y: 0 }, desc: 'Игрок' },
     'NPC':                   { char: '☺',   tile: { file: 'creature_sprites', x: 8, y: 3 }, desc: 'NPC' },
 
+    'PLAYER_GLOBAL_SMALL': { char: 'p', tile: { file: 'creature_sprites', x: 3, y: 0 }, desc: 'Игрок (маленький)' },
+    
+    // Отряд (например, тайл 4,0)
+    'PLAYER_GLOBAL_SQUAD': { char: 's', tile: { file: 'creature_sprites', x: 4, y: 0 }, desc: 'Отряд' },    
+
     // ==========================================
     // 4. ВРАГИ (ENEMY_TYPES)
     // ==========================================
