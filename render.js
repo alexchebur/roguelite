@@ -408,6 +408,8 @@ const RenderModule = (function() {
                 }
 
                 let ch, fg;
+                
+                // 1. Сначала определяем базовый тайл местности
                 switch(tileType) {
                     case 'plain': ch = '░'; fg = '#2e8b57'; break;
                     case 'forest': ch = 'T'; fg = '#336649'; break;
@@ -416,17 +418,24 @@ const RenderModule = (function() {
                     case 'city': ch = 'C'; fg = '#ffd700'; break;
                     case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
                     case 'road': ch = '─'; fg = '#b8860b'; break;
+                    
+                    // === ВОССТАНОВЛЕННЫЙ БЛОК ДЛЯ СВИТКОВ ===
+                    case 'global_scroll': 
+                        ch = '&';       
+                        fg = '#ff00ff'; 
+                        break;
+                        
                     default: ch = '·'; fg = '#555';
                 }
 
-                // === ДИНАМИЧЕСКИЙ СПРАЙТ ИГРОКА НА ГЛОБАЛЬНОЙ КАРТЕ ===
+                // 2. Проверяем, находится ли здесь ИГРОК (перекрывает местность)
                 if (gx === centerX && gy === centerY) {
                     fg = '#fff'; 
                     
                     let hasScale = false;
                     let hasSquad = false;
 
-                    // Проверяем, доступен ли модуль игры и метод получения флага
+                    // Проверяем флаги через GameModule
                     if (typeof GameModule !== 'undefined' && typeof GameModule.getGlobalFlag === 'function') {
                         hasScale = GameModule.getGlobalFlag('player_global_scale');
                         hasSquad = GameModule.getGlobalFlag('player_has_squad');
