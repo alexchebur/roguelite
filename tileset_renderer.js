@@ -62,8 +62,8 @@ const TilesetRenderer = (function() {
 
 
         // --- ГЛОБАЛЬНЫЕ ВАРИАНТЫ ИГРОКА ---
-        'p': { file: 'creature_sprites', x: 3, y: 0 }, // Соответствует PLAYER_GLOBAL_SMALL
-        'S': { file: 'creature_sprites', x: 4, y: 0 }, // Соответствует PLAYER_GLOBAL_SQUAD        
+        'p': { file: 'creature_sprites', x: 12, y: 1 }, // Соответствует PLAYER_GLOBAL_SMALL
+        'S': { file: 'creature_sprites', x: 13, y: 1 }, // Соответствует PLAYER_GLOBAL_SQUAD        
         
         // === БОССЫ (2x2) ===
         // Добавляем символ 'B', который используется в entity.js для всех боссов
