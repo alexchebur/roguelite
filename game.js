@@ -2413,7 +2413,7 @@ function updateQuestCompass() {
         isTextQuestCompleted,
         markCityTextQuestTaken,
         hasCityTakenTextQuest,
-        
+        setGlobalFlag: (flagName, value) => { globalFlags[flagName] = value; },
         // Используем локальную переменную globalFlags через замыкание
         getGlobalFlag: (flagName) => globalFlags[flagName] || false, 
         
