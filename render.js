@@ -443,7 +443,7 @@ const RenderModule = (function() {
 
                     // Логика выбора символа-маркера для спрайта
                     if (hasSquad) {
-                        ch = 's'; // Отряд
+                        ch = 'S'; // Отряд
                     } else if (hasScale) {
                         ch = 'p'; // Маленький игрок
                     } else {
