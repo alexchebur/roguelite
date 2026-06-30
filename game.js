@@ -2411,9 +2411,12 @@ function updateQuestCompass() {
         abandonCurrentQuest,
         openTwineQuest, 
         isTextQuestCompleted,
-        markCityTextQuestTaken,      // <--- ДОБАВИТЬ
+        markCityTextQuestTaken,
         hasCityTakenTextQuest,
-        getGlobalFlag: (flagName) => window.globalFlags ? window.globalFlags[flagName] : false,        // <--- ДОБАВИТЬ        
+        
+        // Используем локальную переменную globalFlags через замыкание
+        getGlobalFlag: (flagName) => globalFlags[flagName] || false, 
+        
         exitToGlobal 
     };
 })();
