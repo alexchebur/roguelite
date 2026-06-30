@@ -435,7 +435,7 @@ const RenderModule = (function() {
 
                     // Логика выбора символа-маркера для спрайта
                     if (hasSquad) {
-                        ch = 's'; // Символ для отряда (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
+                        ch = 'S'; // Символ для отряда (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
                     } else if (hasScale) {
                         ch = 'p'; // Символ для уменьшенного игрока (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
                     } else {
