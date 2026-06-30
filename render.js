@@ -421,13 +421,12 @@ const RenderModule = (function() {
 
                 // === ДИНАМИЧЕСКИЙ СПРАЙТ ИГРОКА НА ГЛОБАЛЬНОЙ КАРТЕ ===
                 if (gx === centerX && gy === centerY) {
-                    fg = '#fff'; // Цвет игрока всегда белый (или можно менять)
+                    fg = '#fff'; 
                     
-                    // Получаем доступ к глобальным флагам
-                    // Предполагается, что в GameModule добавлен метод getGlobalFlag(flagName)
                     let hasScale = false;
                     let hasSquad = false;
 
+                    // Проверяем, доступен ли модуль игры и метод получения флага
                     if (typeof GameModule !== 'undefined' && typeof GameModule.getGlobalFlag === 'function') {
                         hasScale = GameModule.getGlobalFlag('player_global_scale');
                         hasSquad = GameModule.getGlobalFlag('player_has_squad');
@@ -435,9 +434,9 @@ const RenderModule = (function() {
 
                     // Логика выбора символа-маркера для спрайта
                     if (hasSquad) {
-                        ch = 'S'; // Символ для отряда (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
+                        ch = 's'; // Отряд
                     } else if (hasScale) {
-                        ch = 'p'; // Символ для уменьшенного игрока (нужно добавить в TILE_MAP и SPRITE_REGISTRY)
+                        ch = 'p'; // Маленький игрок
                     } else {
                         ch = '@'; // Стандартный игрок
                     }
