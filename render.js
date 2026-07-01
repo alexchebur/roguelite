@@ -1147,7 +1147,13 @@ const RenderModule = (function() {
             { text: `🛌 Ночлег (Восстановить выносливость) - 20 золотых`, action: 'rest', color: '#238636' },
             { text: '🗣️ Послушать слухи (Бесплатно)', action: 'rumor', color: '#1f6feb' },
             { text: '🎲 Сыграть в кости (Ставка 10 золотых)', action: 'dice', color: '#8b5cf6' },
-            { text: '❌ Выйти', action: 'exit', color: '#da3633' }
+            { text: '❌ Выйти', action: 'exit', color: '#da3633' },
+            // В функции drawInnWindow, в массив buttons добавьте:
+            { 
+                text: `⚔️ Нанять отряд (${TacticalDataModule.UNIT_COST} золотых)`, 
+                action: 'hire', 
+                color: '#8b5cf6' 
+            },
         ];
 
         ctx.font = 'bold 10px Consolas, monospace'; 
