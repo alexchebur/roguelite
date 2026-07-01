@@ -376,6 +376,108 @@ const RenderModule = (function() {
         return visible;
     }
 
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует TilesetRenderer) ===
+    function drawGlobalMap(centerX, centerY) {
+        const ctx = RenderModule._ctx;
+        if (!ctx) return;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Проверка готовности
+        if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("Loading World...", ctx.canvas.width/2, ctx.canvas.height/2);
+            return;
+        }
+
+        const halfW = Math.floor(COLS / 2);
+        const halfH = Math.floor(ROWS / 2);
+
+        // 1. РИСУЕМ ЛАНДШАФТ
+        for (let sy = 0; sy < ROWS; sy++) {
+            for (let sx = 0; sx < COLS; sx++) {
+                const gx = centerX + sx - halfW;
+                const gy = centerY + sy - halfH;
+
+                let tileType = 'plain';
+                if (typeof GlobalMapModule !== 'undefined') {
+                    tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
+                }
+
+                let ch, fg;
+                
+                // Базовый тайл местности
+                switch(tileType) {
+                    case 'plain': ch = '░'; fg = '#2e8b57'; break;
+                    case 'forest': ch = 'T'; fg = '#336649'; break;
+                    case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
+                    case 'water': ch = '≈'; fg = '#4682b4'; break; 
+                    case 'city': ch = 'C'; fg = '#ffd700'; break;
+                    case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
+                    case 'road': ch = '─'; fg = '#b8860b'; break;
+                    case 'global_scroll': 
+                        ch = '&';       
+                        fg = '#ff00ff'; 
+                        break;
+                    default: ch = '·'; fg = '#555';
+                }
+
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+            }
+        }
+
+        // 2. РИСУЕМ АРМИИ (НОВОЕ)
+        if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getActiveArmies === 'function') {
+            const armies = GlobalMapModule.getActiveArmies();
+            
+            armies.forEach(army => {
+                // Вычисляем экранные координаты армии
+                const sx = army.x - centerX + halfW;
+                const sy = army.y - centerY + halfH;
+
+                // Проверяем, видима ли армия на экране
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
+                    // Рисуем спрайт армии. Используем символ 'A' и красный цвет.
+                    // Если у вас есть специальный спрайт в реестре, замените 'A' на нужный ключ или символ.
+                    TilesetRenderer.draw(ctx, 'A', sx, sy, '#ff0000'); 
+                }
+            });
+        }
+
+        // 3. РИСУЕМ ИГРОКА (поверх всего)
+        // Проходим по сетке еще раз только для клетки игрока, чтобы гарантировать отрисовку поверх армии
+        const playerScreenX = halfW;
+        const playerScreenY = halfH;
+        
+        let playerCh = '@';
+        let playerFg = '#fff'; 
+        
+        let hasScale = false;
+        let hasSquad = false;
+
+        // Проверяем флаги через GameModule
+        if (typeof GameModule !== 'undefined' && typeof GameModule.getGlobalFlag === 'function') {
+            hasScale = GameModule.getGlobalFlag('player_global_scale');
+            hasSquad = GameModule.getGlobalFlag('player_has_squad');
+        }
+
+        // Логика выбора символа-маркера для спрайта
+        if (hasSquad) {
+            playerCh = 'S'; // Отряд
+        } else if (hasScale) {
+            playerCh = 'p'; // Маленький игрок
+        } else {
+            playerCh = '@'; // Стандартный игрок
+        }
+
+        TilesetRenderer.draw(ctx, playerCh, playerScreenX, playerScreenY, playerFg);
+    }
+
+    
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
