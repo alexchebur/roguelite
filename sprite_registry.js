@@ -113,7 +113,15 @@ const SPRITE_REGISTRY = {
     'ITEM_FOOD_BREAD':       { char: '%',   tile: { file: 'item_sprites', x: 6, y: 3 }, desc: 'Еда' },
     'ITEM_FOOD_MEAT':        { char: '~',   tile: { file: 'item_sprites', x: 7, y: 3 }, desc: 'Мясо' },
     'ITEM_POTION_STR':       { char: '!',   tile: { file: 'item_sprites', x: 1, y: 4 }, desc: 'Зелье силы' },
-    'ITEM_BERSERK':          { char: '*',   tile: { file: 'item_sprites', x: 1, y: 4 }, desc: 'Настой берсерка' } // Совпадает с ITEM_DAGGER
+    'ITEM_BERSERK':          { char: '*',   tile: { file: 'item_sprites', x: 1, y: 4 }, desc: 'Настой берсерка' },
+    // В sprite_registry.js добавьте в конец объекта SPRITE_REGISTRY:
+
+    // === АРМИИ НА ГЛОБАЛЬНОЙ КАРТЕ ===
+    'ARMY_ENEMY': { 
+        char: 'A',   
+        tile: { file: 'creature_sprites', x: 0, y: 16 }, // УКАЖИТЕ РЕАЛЬНЫЕ КООРДИНАТЫ СПРАЙТА АРМИИ
+        desc: 'Вражеская армия' 
+    }
 };
 
 /**
