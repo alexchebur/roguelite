@@ -67,6 +67,9 @@ function spawnArmiesInChunk(cx, cy, tiles) {
                 
                 const army = TacticalArmyModule.createGlobalArmy(globalX, globalY, difficulty);
                 activeArmies.push(army);
+                
+                // ДОБАВИТЬ ЛОГ ДЛЯ ПРОВЕРКИ:
+                console.log(`⚔️ [Spawn] Армия создана в чанке (${cx}, ${cy}) на координатах (${globalX}, ${globalY}). Всего армий: ${activeArmies.length}`);
             }
         }
     }
