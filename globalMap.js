@@ -26,7 +26,66 @@ const GLOBAL_TEXT_QUESTS_ROSTER = [
 // Текущая позиция игрока
 let playerGlobalX = 0;
 let playerGlobalY = 0;
+// В globalMap.js добавьте в начало файла:
 
+// === МАССИВ АКТИВНЫХ АРМИЙ ===
+let activeArmies = [];
+let globalTurnCounter = 0;
+
+// === ФУНКЦИЯ СПАВНА АРМИЙ В ЧАНКЕ ===
+function spawnArmiesInChunk(cx, cy, tiles) {
+    const width = GLOBAL_CONFIG.CHUNK_SIZE;
+    const height = GLOBAL_CONFIG.CHUNK_SIZE;
+    const rand = getChunkRandom(cx, cy);
+    
+    // Шанс спавна армии в чанке: 10%
+    if (rand.next() < 0.10) {
+        const armyCount = rand.int(1, 3); // от 1 до 3 армий в чанке
+        
+        for (let i = 0; i < armyCount; i++) {
+            let x, y;
+            let attempts = 0;
+            
+            // Ищем подходящую позицию (равнина или лес, не вода/горы)
+            do {
+                x = rand.int(0, width - 1);
+                y = rand.int(0, height - 1);
+                attempts++;
+            } while (
+                (tiles[y][x] === 'water' || tiles[y][x] === 'mountain') && 
+                attempts < 50
+            );
+            
+            if (attempts < 50) {
+                const globalX = cx * width + x;
+                const globalY = cy * height + y;
+                const difficulty = 1 + Math.abs(globalX) / 100 + Math.abs(globalY) / 100;
+                
+                const army = TacticalArmyModule.createGlobalArmy(globalX, globalY, difficulty);
+                activeArmies.push(army);
+            }
+        }
+    }
+}
+
+// === ФУНКЦИЯ ОБНОВЛЕНИЯ ВСЕХ АРМИЙ ===
+function updateAllArmies(playerX, playerY) {
+    globalTurnCounter++;
+    
+    activeArmies.forEach(army => {
+        TacticalArmyModule.updateArmyPosition(army, playerX, playerY, globalTurnCounter);
+    });
+}
+
+// === ФУНКЦИЯ ПОЛУЧЕНИЯ АРМИИ НА КЛЕТКЕ ===
+function getArmyAt(x, y) {
+    return activeArmies.find(army => army.x === x && army.y === y);
+}
+
+// === ФУНКЦИЯ УДАЛЕНИЯ УНИЧТОЖЕННОЙ АРМИИ ===
+function removeArmy(armyId) {
+    activeArmies = activeArmies.filter(army => army.id !== armyId);
+}
 // === Вспомогательные функции ===
 
 function getChunkRandom(cx, cy) {
@@ -253,12 +312,10 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
     }
 }
 
-// Генерация целого чанка
+// В функции generateChunk добавьте в конец:
 function generateChunk(cx, cy) {
     const rand = getChunkRandom(cx, cy);
-    // 1. Сначала ландшафт (горы, леса, реки)
     const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE);
-    // 2. Потом POI (города, подземелья) - они видят готовый ландшафт
     const pois = generatePOIs(rand, cx, cy, tiles);
     
     const poisLocal = pois.map(p => ({ 
@@ -266,6 +323,9 @@ function generateChunk(cx, cy) {
         y: p.y - cy * GLOBAL_CONFIG.CHUNK_SIZE 
     }));
     connectPOIsWithRoads(tiles, poisLocal, rand);
+    
+    // === НОВОЕ: Спавн армий в чанке ===
+    spawnArmiesInChunk(cx, cy, tiles);
     
     return { tiles, pois };
 }
@@ -385,6 +445,21 @@ const GlobalMapModule = {
     getConfig() {
         return GLOBAL_CONFIG;
     },
+
+    // В конце globalMap.js, внутри GlobalMapModule, добавьте:
+    updateAllArmies: function(playerX, playerY) {
+        updateAllArmies(playerX, playerY);
+    },
+    getArmyAt: function(x, y) {
+        return getArmyAt(x, y);
+    },
+    removeArmy: function(armyId) {
+        removeArmy(armyId);
+    },
+    getActiveArmies: function() {
+        return activeArmies;
+    }
+    
     removePOI(globalX, globalY) {
         const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
         const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
