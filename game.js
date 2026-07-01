@@ -212,6 +212,35 @@ const GameModule = (function() {
                 innLog("У вас нет даже 10 золотых, чтобы поставить!", "combat");
             }
         }
+
+        // В функции innAction добавьте новый блок:
+
+        else if (actionType === 'hire') {
+            const cost = TacticalDataModule.UNIT_COST;
+            if (player.gold >= cost) {
+                player.gold -= cost;
+        
+                // === НОВОЕ: Добавляем флаг наличия армии ===
+                if (!player.hasArmy) {
+                    player.hasArmy = true;
+                    player.armyUnits = [];
+                }
+        
+                // Добавляем случайный отряд
+                const unitType = TacticalArmyModule.getRandomUnitType();
+                const count = Math.floor(5 + Math.random() * 10);
+                player.armyUnits.push({
+                    type: unitType,
+                    count: count,
+                    hp: unitType.hp * count,
+                    maxHp: unitType.hp * count
+                });
+        
+                innLog(`Вы наняли отряд "${unitType.name}" (${count} юнитов) за ${cost} золотых!`, "loot");
+            } else {
+                innLog(`Недостаточно золота! Нужно ${cost} золотых.`, "combat");
+            }
+        }
         
         RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
     }
@@ -935,7 +964,29 @@ function updateQuestCompass() {
                 enterPOI(poi);
                 return;
             }
+            // В функции processGlobalTurn добавьте после проверки POI:
 
+            // === ПРОВЕРКА СТОЛКНОВЕНИЯ С ВРАЖЕСКОЙ АРМИЕЙ ===
+            if (typeof GlobalMapModule.getArmyAt === 'function') {
+                const enemyArmy = GlobalMapModule.getArmyAt(playerPos.x, playerPos.y);
+                if (enemyArmy) {
+                    RenderModule.log(`⚔️ Вы столкнулись с вражеской армией! (Сила: ${enemyArmy.strength.toFixed(1)})`, "combat");
+                    RenderModule.log(`Состав: ${enemyArmy.units.length} отрядов`, "info");
+        
+                    // === ЗАГЛУШКА ДЛЯ ТАКТИЧЕСКОГО БОЯ ===
+                    // Здесь будет вызов TacticalBattleModule.initBattle(enemyArmy)
+                    // Пока просто удаляем армию для теста
+                    GlobalMapModule.removeArmy(enemyArmy.id);
+                    RenderModule.log(`Армия побеждена (заглушка).`, "loot");
+        
+                    return;
+                }
+            }
+
+            // === ОБНОВЛЕНИЕ ПОЗИЦИЙ АРМИЙ ===
+            if (typeof GlobalMapModule.updateAllArmies === 'function') {
+                GlobalMapModule.updateAllArmies(playerPos.x, playerPos.y);
+            }
             // Проверка квестов типа EXPLORE/FETCH при движении
             if (typeof QuestSystemModule !== 'undefined') {
                 activeQuests.forEach(q => {
