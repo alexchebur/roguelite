@@ -372,6 +372,8 @@ function findSafeStartPosition(startX, startY, radius = 3) {
 
 // === Публичный API ===
 
+// === Публичный API ===
+
 const GlobalMapModule = {
     getTileType(globalX, globalY) {
         const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
@@ -446,7 +448,7 @@ const GlobalMapModule = {
         return GLOBAL_CONFIG;
     },
 
-    // В конце globalMap.js, внутри GlobalMapModule, добавьте:
+    // === МЕТОДЫ ДЛЯ АРМИЙ (НОВОЕ) ===
     updateAllArmies: function(playerX, playerY) {
         updateAllArmies(playerX, playerY);
     },
@@ -458,8 +460,9 @@ const GlobalMapModule = {
     },
     getActiveArmies: function() {
         return activeArmies;
-    }
-    
+    }, // <--- ВОТ ЭТА ЗАПЯТАЯ БЫЛА ПРОПУЩЕНА!
+
+    // === СТАРЫЙ МЕТОД УДАЛЕНИЯ POI ===
     removePOI(globalX, globalY) {
         const cx = Math.floor(globalX / GLOBAL_CONFIG.CHUNK_SIZE);
         const cy = Math.floor(globalY / GLOBAL_CONFIG.CHUNK_SIZE);
