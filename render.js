@@ -486,6 +486,7 @@ const RenderModule = (function() {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
         
+        // Настраиваем размер миникарты
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
@@ -538,17 +539,17 @@ const RenderModule = (function() {
                 const mx = army.x - startX;
                 const my = army.y - startY;
                 
-                // Проверяем, попадает ли армия в область миникарты
+                // Проверяем, попадает ли армия в область миникарты (50x50)
                 if (mx >= 0 && mx < MINIMAP_SIZE && my >= 0 && my < MINIMAP_SIZE) {
                     ctx.fillStyle = '#ff0000'; // Красный цвет для врагов
-                    // Рисуем чуть меньше клетки, чтобы было видно как точку
-                    ctx.fillRect(mx * cellW + 1, my * cellH + 1, cellW - 2, cellH - 2);
+                    // Рисуем точку чуть меньше клетки, чтобы было аккуратно
+                    ctx.fillRect(mx * cellW + 2, my * cellH + 2, cellW - 4, cellH - 4);
                 }
             });
         }
 
         // 3. РИСУЕМ ИГРОКА (поверх армий)
-        // Игрок всегда в центре миникарты (координаты 25, 25 при размере 50)
+        // Игрок всегда в центре миникарты
         const playerMX = Math.floor(MINIMAP_SIZE / 2);
         const playerMY = Math.floor(MINIMAP_SIZE / 2);
         
