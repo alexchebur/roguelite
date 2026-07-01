@@ -376,87 +376,6 @@ const RenderModule = (function() {
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует TilesetRenderer) ===
-    function drawGlobalMap(centerX, centerY) {
-        const ctx = RenderModule._ctx;
-        if (!ctx) return;
-
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        // Проверка готовности
-        if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
-            ctx.fillStyle = '#fff';
-            ctx.font = '16px Consolas, monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("Loading World...", ctx.canvas.width/2, ctx.canvas.height/2);
-            return;
-        }
-
-        const halfW = Math.floor(COLS / 2);
-        const halfH = Math.floor(ROWS / 2);
-
-        for (let sy = 0; sy < ROWS; sy++) {
-            for (let sx = 0; sx < COLS; sx++) {
-                const gx = centerX + sx - halfW;
-                const gy = centerY + sy - halfH;
-
-                let tileType = 'plain';
-                if (typeof GlobalMapModule !== 'undefined') {
-                    tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
-                }
-
-                let ch, fg;
-                
-                // 1. Сначала определяем базовый тайл местности
-                switch(tileType) {
-                    case 'plain': ch = '░'; fg = '#2e8b57'; break;
-                    case 'forest': ch = 'T'; fg = '#336649'; break;
-                    case 'mountain': ch = '^'; fg = '#a0a0a0'; break;
-                    case 'water': ch = '≈'; fg = '#4682b4'; break; 
-                    case 'city': ch = 'C'; fg = '#ffd700'; break;
-                    case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
-                    case 'road': ch = '─'; fg = '#b8860b'; break;
-                    
-                    // === ВОССТАНОВЛЕННЫЙ БЛОК ДЛЯ СВИТКОВ ===
-                    case 'global_scroll': 
-                        ch = '&';       
-                        fg = '#ff00ff'; 
-                        break;
-                        
-                    default: ch = '·'; fg = '#555';
-                }
-
-                // 2. Проверяем, находится ли здесь ИГРОК (перекрывает местность)
-                if (gx === centerX && gy === centerY) {
-                    fg = '#fff'; 
-                    
-                    let hasScale = false;
-                    let hasSquad = false;
-
-                    // Проверяем флаги через GameModule
-                    if (typeof GameModule !== 'undefined' && typeof GameModule.getGlobalFlag === 'function') {
-                        hasScale = GameModule.getGlobalFlag('player_global_scale');
-                        hasSquad = GameModule.getGlobalFlag('player_has_squad');
-                    }
-
-                    // Логика выбора символа-маркера для спрайта
-                    if (hasSquad) {
-                        ch = 'S'; // Отряд
-                    } else if (hasScale) {
-                        ch = 'p'; // Маленький игрок
-                    } else {
-                        ch = '@'; // Стандартный игрок
-                    }
-                }
-
-                // Используем TilesetRenderer для глобальной карты
-                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-            }
-        }
-    }
-     
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
@@ -475,6 +394,7 @@ const RenderModule = (function() {
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
         const startY = centerY - Math.floor(MINIMAP_SIZE / 2);
     
+        // 1. РИСУЕМ ЛАНДШАФТ
         for (let dy = 0; dy < MINIMAP_SIZE; dy++) {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
@@ -494,18 +414,41 @@ const RenderModule = (function() {
                     case 'city': color = '#ffd700'; break;
                     case 'dungeon_entrance': color = '#cd5c5c'; break;
                     case 'road': color = '#b8860b'; break;
-                    default: color = '#333';
                     case 'global_scroll': color = '#ff00ff'; break;
+                    default: color = '#333';
                 }
-                
-                if (gx === centerX && gy === centerY) color = '#0f0'; // Игрок
                 
                 ctx.fillStyle = color;
                 ctx.fillRect(dx * cellW, dy * cellH, cellW + 0.5, cellH + 0.5);
             }
         }
-    }
 
+        // 2. РИСУЕМ АРМИИ (НОВОЕ)
+        if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getActiveArmies === 'function') {
+            const armies = GlobalMapModule.getActiveArmies();
+            
+            armies.forEach(army => {
+                // Координаты армии относительно левого верхнего угла миникарты
+                const mx = army.x - startX;
+                const my = army.y - startY;
+                
+                // Проверяем, попадает ли армия в область миникарты
+                if (mx >= 0 && mx < MINIMAP_SIZE && my >= 0 && my < MINIMAP_SIZE) {
+                    ctx.fillStyle = '#ff0000'; // Красный цвет для врагов
+                    // Рисуем чуть меньше клетки, чтобы было видно как точку
+                    ctx.fillRect(mx * cellW + 1, my * cellH + 1, cellW - 2, cellH - 2);
+                }
+            });
+        }
+
+        // 3. РИСУЕМ ИГРОКА (поверх армий)
+        // Игрок всегда в центре миникарты (координаты 25, 25 при размере 50)
+        const playerMX = Math.floor(MINIMAP_SIZE / 2);
+        const playerMY = Math.floor(MINIMAP_SIZE / 2);
+        
+        ctx.fillStyle = '#0f0'; // Зеленый цвет для игрока
+        ctx.fillRect(playerMX * cellW, playerMY * cellH, cellW + 0.5, cellH + 0.5);
+    }
     // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
