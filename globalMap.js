@@ -43,7 +43,7 @@ function spawnArmiesInChunk(cx, cy, tiles) {
     const rand = getChunkRandom(cx, cy);
     
     // Шанс спавна армии в чанке: 10%
-    if (rand.next() < 0.10) {
+    if (rand.next() < 1.0) {
         const armyCount = rand.int(1, 3); // от 1 до 3 армий в чанке
         
         for (let i = 0; i < armyCount; i++) {
