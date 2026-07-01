@@ -63,7 +63,13 @@ const TilesetRenderer = (function() {
 
         // --- ГЛОБАЛЬНЫЕ ВАРИАНТЫ ИГРОКА ---
         'p': { file: 'creature_sprites', x: 12, y: 1 }, // Соответствует PLAYER_GLOBAL_SMALL
-        'S': { file: 'creature_sprites', x: 13, y: 1 }, // Соответствует PLAYER_GLOBAL_SQUAD        
+        'S': { file: 'creature_sprites', x: 13, y: 1 }, // Соответствует PLAYER_GLOBAL_SQUAD     
+        // В tileset_renderer.js, внутри TILE_MAP:
+
+        // --- ГЛОБАЛЬНЫЕ ОБЪЕКТЫ ---
+        'A': { file: 'creature_sprites', x: 14, y: 1 }, // <-- ТЕ ЖЕ КООРДИНАТЫ, ЧТО И В РЕЕСТРЕ
+    
+        // ... остальные маппинги ...
         
         // === БОССЫ (2x2) ===
         // Добавляем символ 'B', который используется в entity.js для всех боссов
