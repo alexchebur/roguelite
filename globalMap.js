@@ -36,41 +36,80 @@ let playerGlobalY = 0;
 let activeArmies = [];
 let globalTurnCounter = 0;
 
-// === ФУНКЦИЯ СПАВНА АРМИЙ В ЧАНКЕ ===
+// === ФУНКЦИЯ СПАВНА АРМИЙ В ЧАНКЕ (ТЕСТОВАЯ ВЕРСИЯ) ===
 function spawnArmiesInChunk(cx, cy, tiles) {
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
     const rand = getChunkRandom(cx, cy);
     
-    // Шанс спавна армии в чанке: 10%
+    // Получаем текущую позицию игрока, если она уже задана
+    let playerX = 0, playerY = 0;
+    if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getPlayerPosition === 'function') {
+        const pPos = GlobalMapModule.getPlayerPosition();
+        playerX = pPos.x;
+        playerY = pPos.y;
+    }
+
+    // Определяем глобальные границы чанка
+    const chunkStartX = cx * width;
+    const chunkStartY = cy * height;
+
+    // Шанс спавна армии в чанке: 100% для теста
     if (rand.next() < 1.0) {
-        const armyCount = rand.int(1, 3); // от 1 до 3 армий в чанке
+        const armyCount = rand.int(1, 2); 
         
         for (let i = 0; i < armyCount; i++) {
             let x, y;
             let attempts = 0;
             
-            // Ищем подходящую позицию (равнина или лес, не вода/горы)
-            do {
-                x = rand.int(0, width - 1);
-                y = rand.int(0, height - 1);
-                attempts++;
-            } while (
-                (tiles[y][x] === 'water' || tiles[y][x] === 'mountain') && 
-                attempts < 50
-            );
+            // ПОПЫТКА 1: Спавн рядом с игроком (если игрок в этом чанке или рядом)
+            // Мы берем координаты игрока и добавляем случайное смещение от -5 до +5
+            let targetX = playerX + rand.int(-5, 5);
+            let targetY = playerY + rand.int(-5, 5);
             
-            if (attempts < 50) {
-                const globalX = cx * width + x;
-                const globalY = cy * height + y;
-                const difficulty = 1 + Math.abs(globalX) / 100 + Math.abs(globalY) / 100;
-                
-                const army = TacticalArmyModule.createGlobalArmy(globalX, globalY, difficulty);
-                activeArmies.push(army);
-                
-                // ДОБАВИТЬ ЛОГ ДЛЯ ПРОВЕРКИ:
-                console.log(`⚔️ [Spawn] Армия создана в чанке (${cx}, ${cy}) на координатах (${globalX}, ${globalY}). Всего армий: ${activeArmies.length}`);
+            // Проверяем, попадают ли эти координаты в текущий чанк
+            const localTargetX = targetX - chunkStartX;
+            const localTargetY = targetY - chunkStartY;
+
+            if (localTargetX >= 0 && localTargetX < width && localTargetY >= 0 && localTargetY < height) {
+                x = localTargetX;
+                y = localTargetY;
+            } else {
+                // ПОПЫТКА 2: Если игрок далеко, спавним в центре чанка
+                x = Math.floor(width / 2) + rand.int(-2, 2);
+                y = Math.floor(height / 2) + rand.int(-2, 2);
             }
+            
+            // Проверка на воду/горы
+            if (tiles[y][x] === 'water' || tiles[y][x] === 'mountain') {
+                // Ищем ближайшую сухую клетку
+                let found = false;
+                for (let dy = -2; dy <= 2; dy++) {
+                    for (let dx = -2; dx <= 2; dx++) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            if (tiles[ny][nx] !== 'water' && tiles[ny][nx] !== 'mountain') {
+                                x = nx;
+                                y = ny;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                }
+                if (!found) continue; // Пропускаем, если кругом вода/горы
+            }
+
+            const globalX = chunkStartX + x;
+            const globalY = chunkStartY + y;
+            const difficulty = 1; // Легкая сложность для теста
+            
+            const army = TacticalArmyModule.createGlobalArmy(globalX, globalY, difficulty);
+            activeArmies.push(army);
+            
+            console.log(`⚔️ [Spawn] Армия ID:${army.id} создана в (${globalX}, ${globalY}). Игрок в (${playerX}, ${playerY})`);
         }
     }
 }
