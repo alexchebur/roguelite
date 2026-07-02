@@ -129,3 +129,5 @@ const TacticalRenderModule = (function() {
         drawBattlefield: drawBattlefield
     };
 })();
+// <--- ДОБАВИТЬ СЮДА ЭТУ СТРОКУ
+window.TacticalRenderModule = TacticalRenderModule;
