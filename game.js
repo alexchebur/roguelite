@@ -1189,7 +1189,37 @@ function updateQuestCompass() {
         RenderModule.updateUI(player, null, null); 
         renderFrame();
     }
+    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    function endTacticalBattle(victory) {
+        // 1. Возвращаем режим игры
+        window.gameMode = 'global';
+        
+        // 2. Показываем скрытые UI-панели (миникарту, заголовок, квест-бар)
+        if (typeof showGlobalUI === 'function') {
+            showGlobalUI();
+        } else {
+            // Фолбэк, если функции нет: вручную убираем класс hidden-ui
+            document.getElementById("header-panel").classList.remove("hidden-ui");
+            document.getElementById("minimap-panel").classList.remove("hidden-ui");
+            document.getElementById("quest-bar").classList.remove("hidden-ui");
+        }
 
+        // 3. Удаляем побежденную армию с глобальной карты (если победа)
+        if (victory && tacticalState && tacticalState.enemyArmyId) {
+            if (typeof GlobalMapModule.removeArmy === 'function') {
+                GlobalMapModule.removeArmy(tacticalState.enemyArmyId);
+            }
+        }
+
+        // 4. Очищаем состояние боя
+        tacticalState = null;
+        busy = false;
+
+        // 5. Перерисовываем глобальную карту
+        renderGlobalMap();
+        
+        RenderModule.log(victory ? "🏆 Победа! Армия противника разбита." : "💨 Вы сбежали с поля боя.", victory ? "loot" : "info");
+    }
 
     
     function enterPOI(poi) {
