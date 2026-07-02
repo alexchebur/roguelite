@@ -37,11 +37,14 @@ const TacticalRenderModule = (function() {
     /**
      * Отрисовка всего тактического экрана
      */
+    /**
+     * Отрисовка всего тактического экрана
+     */
     function drawBattlefield(arena, playerUnit, enemyUnits, playerArmy, currentTactic) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
-        // ВАЖНО: Используем TILE_SIZE из TilesetRenderer, так как именно он рисует спрайты
+        // ВАЖНО: Используем TILE_SIZE из TilesetRenderer (16px), так как именно он рисует спрайты
         const tileW = TilesetRenderer.TILE_SIZE; 
         const tileH = TilesetRenderer.TILE_SIZE;
 
@@ -57,20 +60,20 @@ const TacticalRenderModule = (function() {
         const offsetY = Math.floor((ctx.canvas.height - arenaPixelHeight) / 2);
 
         // Базовые координаты сетки (левый верхний угол арены)
-        // Теперь они будут корректными, так как tileW совпадает с тем, что внутри TilesetRenderer
         const baseGridX = Math.floor(offsetX / tileW);
         const baseGridY = Math.floor(offsetY / tileH);
 
-        console.log(`🎨 [Tactical] Отрисовка поля. Canvas: ${ctx.canvas.width}x${ctx.canvas.height}. ArenaPx: ${arenaPixelWidth}x${arenaPixelHeight}. BaseGrid: (${baseGridX}, ${baseGridY})`);
+        console.log(`🎨 [Tactical] Отрисовка поля. BaseGrid: (${baseGridX}, ${baseGridY}). Игрок: (${playerUnit.x}, ${playerUnit.y})`);
 
         // 2. Рисуем пол арены
         for (let y = 0; y < arena.height; y++) {
             for (let x = 0; x < arena.width; x++) {
+                // Передаем целочисленные координаты сетки
                 TilesetRenderer.draw(ctx, arena.floorChar, baseGridX + x, baseGridY + y, arena.floorColor);
             }
         }
 
-        // Вспомогательная функция для отрисовки HP бара (локальная)
+        // Вспомогательная функция для отрисовки HP бара
         function drawHPBar(sx, sy, hp, maxHp) {
             if (hp >= maxHp) return; 
             const percent = hp / maxHp;
