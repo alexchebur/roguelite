@@ -20,55 +20,107 @@ const TacticalRenderModule = (function() {
         const tileW = RenderModule.TILE_SIZE;
         const tileH = RenderModule.TILE_SIZE;
         
-        // Центрируем арену на экране
-        const offsetX = Math.floor((RenderModule.COLS - arena.width) / 2);
-        const offsetY = Math.floor((RenderModule.ROWS - arena.height) / 2);
+        // Центрируем арену на экране (в пикселях)
+        const arenaPixelWidth = arena.width * tileW;
+        const arenaPixelHeight = arena.height * tileH;
+        
+        const offsetX = Math.floor((ctx.canvas.width - arenaPixelWidth) / 2);
+        const offsetY = Math.floor((ctx.canvas.height - arenaPixelHeight) / 2);
 
         // 2. Рисуем пол арены
         for (let y = 0; y < arena.height; y++) {
             for (let x = 0; x < arena.width; x++) {
-                const screenX = (offsetX + x) * tileW;
-                const screenY = (offsetY + y) * tileH;
+                // Вычисляем экранные координаты тайла
+                const screenX = offsetX + (x * tileW);
+                const screenY = offsetY + (y * tileH);
                 
-                // Рисуем тайл пола
-                TilesetRenderer.draw(ctx, arena.floorChar, offsetX + x, offsetY + y, arena.floorColor);
+                // Рисуем тайл пола. 
+                // Важно: передаем координаты сетки (offsetX + x), а не пиксели, так как TilesetRenderer сам умножит на TILE_SIZE
+                TilesetRenderer.draw(ctx, arena.floorChar, offsetX / tileW + x, offsetY / tileH + y, arena.floorColor);
             }
+        }
+
+        // Вспомогательная функция для отрисовки HP бара
+        function drawHPBar(sx, sy, hp, maxHp) {
+            if (hp >= maxHp) return; // Не рисуем, если здоровье полное
+            
+            const barWidth = tileW - 4;
+            const barHeight = 4;
+            const percent = hp / maxHp;
+            
+            // Координаты бара (немного выше спрайта)
+            const bx = sx * tileW + 2;
+            const by = sy * tileH - 6;
+
+            // Фон бара
+            ctx.fillStyle = '#333';
+            ctx.fillRect(bx, by, barWidth, barHeight);
+            
+            // Заполнение (цвет зависит от %)
+            if (percent > 0.66) ctx.fillStyle = '#0f0';      // Зеленый
+            else if (percent > 0.33) ctx.fillStyle = '#ff0'; // Желтый
+            else ctx.fillStyle = '#f00';                     // Красный
+            
+            ctx.fillRect(bx, by, barWidth * percent, barHeight);
         }
 
         // 3. Рисуем вражеские юниты
         if (enemyUnits) {
             enemyUnits.forEach(unit => {
                 if (unit.hp > 0) {
-                    const sx = offsetX + unit.x;
-                    const sy = offsetY + unit.y;
+                    // Координаты в сетке относительно начала арены
+                    const gridX = (offsetX / tileW) + unit.x;
+                    const gridY = (offsetY / tileH) + unit.y;
                     
-                    // Получаем цвет морали
+                    // Получаем цвет морали/HP
                     const color = TacticalArmyModule.getUnitColor(unit);
                     
+                    // Определяем символ спрайта
+                    let spriteChar = '?';
+                    if (unit.type && unit.type.sprite) {
+                        spriteChar = unit.type.sprite;
+                    } else if (unit.char) {
+                        spriteChar = unit.char;
+                    }
+
                     // Рисуем спрайт юнита
-                    TilesetRenderer.draw(ctx, unit.type.sprite, sx, sy, color);
+                    TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
                     
-                    // Можно добавить HP бар поверх спрайта (опционально)
-                    drawHPBar(ctx, sx, sy, unit.hp, unit.maxHp, tileW);
+                    // Рисуем HP бар
+                    drawHPBar(gridX, gridY, unit.hp, unit.maxHp);
                 }
             });
         }
 
         // 4. Рисуем игрока и его армию
         if (playerUnit) {
-            const sx = offsetX + playerUnit.x;
-            const sy = offsetY + playerUnit.y;
-            TilesetRenderer.draw(ctx, playerUnit.char, sx, sy, playerUnit.color);
+            const gridX = (offsetX / tileW) + playerUnit.x;
+            const gridY = (offsetY / tileH) + playerUnit.y;
+            
+            // Игрок всегда белый или свой цвет
+            TilesetRenderer.draw(ctx, playerUnit.char, gridX, gridY, playerUnit.color || '#fff');
+            
+            // HP бар игрока (опционально, но полезно)
+            drawHPBar(gridX, gridY, playerUnit.hp, playerUnit.maxHp);
         }
 
         if (playerArmy) {
             playerArmy.forEach(unit => {
                 if (unit.hp > 0) {
-                    const sx = offsetX + unit.x;
-                    const sy = offsetY + unit.y;
+                    const gridX = (offsetX / tileW) + unit.x;
+                    const gridY = (offsetY / tileH) + unit.y;
+                    
                     const color = TacticalArmyModule.getUnitColor(unit);
-                    TilesetRenderer.draw(ctx, unit.type.sprite, sx, sy, color);
-                    drawHPBar(ctx, sx, sy, unit.hp, unit.maxHp, tileW);
+                    
+                    let spriteChar = '?';
+                    if (unit.type && unit.type.sprite) {
+                        spriteChar = unit.type.sprite;
+                    } else if (unit.char) {
+                        spriteChar = unit.char;
+                    }
+
+                    TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
+                    drawHPBar(gridX, gridY, unit.hp, unit.maxHp);
                 }
             });
         }
