@@ -557,6 +557,7 @@ const RenderModule = (function() {
         ctx.fillRect(playerMX * cellW, playerMY * cellH, cellW + 0.5, cellH + 0.5);
     }
     // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
+    // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
             document.getElementById("ui-loc-name").textContent = locData.fullName;
@@ -571,11 +572,9 @@ const RenderModule = (function() {
         // === ЛОГИКА КОМПАСА / ВЫХОДА ===
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
-            // Проверяем, находимся ли мы в подземелье (не на поверхности)
             const isDungeon = locData && locData.themeName !== "Поверхность";
             
             if (isDungeon && MapModule.stairsUp) {
-                // МЫ В ПОДЗЕМЕЛЬЕ: Показываем стрелку к выходу (стандартная логика)
                 const sx = MapModule.stairsUp.x, sy = MapModule.stairsUp.y;
                 const dx = sx - player.x, dy = sy - player.y;
                 
@@ -593,34 +592,26 @@ const RenderModule = (function() {
                 }
                 exitEl.textContent = `Выход: ${arrow}`;
             } 
-            // ЕСЛИ МЫ НА ПОВЕРХНОСТИ (ГЛОБАЛЬНАЯ КАРТА):
-            // Мы НИЧЕГО не пишем сюда. 
-            // Элемент остается как есть, а GameModule.updateQuestCompass() заполнит его стрелкой квеста или координатами.
         }
         
         // === СТАТИСТИКА И ИНВЕНТАРЬ ===
         if (player && player.hp !== undefined) {
             
-            // === ПОЛУЧЕНИЕ ДАННЫХ ОБ ЭФФЕКТАХ ===
             let atkText = `${player.atk}`;
             let defText = `${player.def}`;
 
-            // Проверяем наличие модуля эффектов и активных баффов
             if (typeof EffectSystemModule !== 'undefined') {
                 const atkDuration = EffectSystemModule.getEffectDuration(player, EffectSystemModule.TYPES.BUFF_ATK);
                 const defDuration = EffectSystemModule.getEffectDuration(player, EffectSystemModule.TYPES.BUFF_DEF);
 
                 if (atkDuration > 0) {
-                    // Оранжевый цвет для силы, маленький шрифт
                     atkText += ` <span style="font-size:0.8em; color:#ff9800">(${atkDuration})</span>`;
                 }
                 if (defDuration > 0) {
-                    // Голубой цвет для защиты, маленький шрифт
                     defText += ` <span style="font-size:0.8em; color:#00bcd4">(${defDuration})</span>`;
                 }
             }
 
-            // Цвет выносливости меняется на красный при низких значениях
             const staminaColor = player.stamina < 20 ? 'var(--danger)' : '#4CAF50';
 
             document.getElementById("ui-stats").innerHTML = `
@@ -649,9 +640,9 @@ const RenderModule = (function() {
             if (invDiv) {
                 invDiv.innerHTML = "";
                 
-                // === НОВОЕ: ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
-                if (gameMode === 'tactical') {
-                    // Рисуем меню тактики вместо предметов
+                // === ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
+                // Важно: gameMode и currentTactic должны быть доступны из GameModule или глобально
+                if (typeof gameMode !== 'undefined' && gameMode === 'tactical') {
                     const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                     
                     tactics.forEach(tactic => {
@@ -659,18 +650,17 @@ const RenderModule = (function() {
                         div.className = "inv-item";
                         
                         // Подсветка выбранной тактики
-                        const isSelected = currentTactic === tactic.id;
+                        const isSelected = typeof currentTactic !== 'undefined' && currentTactic === tactic.id;
                         div.style.color = isSelected ? "#ffd700" : "#fff";
                         div.style.fontWeight = isSelected ? "bold" : "normal";
                         div.style.borderLeft = isSelected ? "3px solid #ffd700" : "3px solid transparent";
                         
                         div.textContent = `${tactic.key}. ${tactic.name}`;
                         
-                        // При клике меняем тактику
                         div.onclick = () => {
-                            currentTactic = tactic.id;
-                            RenderModule.log(`Тактика изменена: ${tactic.name}`, "info");
-                            renderFrame();
+                            if (typeof handleInput === 'function') {
+                                handleInput({ key: tactic.key });
+                            }
                         };
                         
                         invDiv.appendChild(div);
@@ -725,7 +715,8 @@ const RenderModule = (function() {
                     }
                 }
             }
-    }
+        } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ if (player && player.hp !== undefined)
+    } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ ФУНКЦИИ updateUI
 
     function log(msg, type = "info") {
         const list = document.getElementById("log-list");
