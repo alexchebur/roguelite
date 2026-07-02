@@ -149,9 +149,9 @@ const TacticalRenderModule = (function() {
 
     // В tactical_render.js, внутри drawTacticalUI
 
-    function drawTacticalUI(ctx, currentTactic) {
-        const h = ctx.canvas.height;
-        const w = ctx.canvas.width;
+    //function drawTacticalUI(ctx, currentTactic) {
+        //const h = ctx.canvas.height;
+        //const w = ctx.canvas.width;
     
         // Панель меню
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
