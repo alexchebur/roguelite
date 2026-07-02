@@ -1094,17 +1094,20 @@ function updateQuestCompass() {
         console.log("🚀 [Tactical] Инициализация боя...");
         window.gameMode = 'tactical';
         busy = true; 
-        hideGlobalUI();    
+    
+        // Скрываем глобальный UI
+        if (typeof hideGlobalUI === 'function') hideGlobalUI();
+    
         const globalPos = GlobalMapModule.getPlayerPosition();
         const terrainType = GlobalMapModule.getTileType(globalPos.x, globalPos.y);
         const arena = TacticalMapModule.generateArena(terrainType);
     
-        // Создаем юнита игрока
+        // 1. Создаем юнита-представителя игрока
         const playerUnit = {
             x: arena.startPosPlayer.x,
             y: arena.startPosPlayer.y,
             char: '@',
-            color: '#00ff00', // <--- ИЗМЕНИЛИ ЦВЕТ НА ЗЕЛЕНЫЙ ДЛЯ ВИДИМОСТИ
+            color: '#00ff00', // Ярко-зеленый для видимости
             hp: player.hp,
             maxHp: player.maxHp,
             atk: player.atk,
@@ -1115,18 +1118,16 @@ function updateQuestCompass() {
 
         console.log(`👤 [Tactical] Игрок создан на позиции (${playerUnit.x}, ${playerUnit.y})`);
 
-        // 3. Разворачиваем армию игрока (если есть)
+        // 2. Разворачиваем армию игрока (если есть)
         let playerArmyUnits = [];
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
             player.armyUnits.forEach((armyUnit, index) => {
-                // Безопасное позиционирование: игрок + смещение
                 const xOffset = 1 + Math.floor(index / 5);
                 const yOffset = (index % 2 === 0) ? 1 : -1;
                 
                 let unitX = arena.startPosPlayer.x + xOffset;
                 let unitY = arena.startPosPlayer.y + (index % 5) * yOffset;
 
-                // Проверка границ арены
                 unitX = Math.max(0, Math.min(arena.width - 1, unitX));
                 unitY = Math.max(0, Math.min(arena.height - 1, unitY));
         
@@ -1135,27 +1136,28 @@ function updateQuestCompass() {
                     x: unitX,
                     y: unitY,
                     maxHp: armyUnit.hp,
-                    sprite: armyUnit.type.sprite || '?', // Символ спрайта
-                    type: armyUnit.type.type || 'melee', // melee или range
+                    // === ВАЖНОЕ ИСПРАВЛЕНИЕ ===
+                    char: armyUnit.type.sprite || '?', 
+                    color: '#44ff44', // Зеленый для союзников
+                    sprite: armyUnit.type.sprite || '?',
+                    type: armyUnit.type.type || 'melee',
                     isPlayerSide: true
                 });
             });
         }
 
-        // 4. Разворачиваем вражескую армию в юниты на поле боя
+        // 3. Разворачиваем вражескую армию
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
     
         enemyArmyData.units.forEach((armyUnit, index) => {
-            // Расстановка шеренгой с разбросом
             const xOffset = Math.floor(index / 5);
             const yOffset = (index % 2 === 0) ? 1 : -1;
             
-            let unitX = startX - xOffset; // Враги смотрят влево, поэтому вычитаем
+            let unitX = startX - xOffset; 
             let unitY = startY + (index % 5) * yOffset;
 
-            // Проверка границ арены
             unitX = Math.max(0, Math.min(arena.width - 1, unitX));
             unitY = Math.max(0, Math.min(arena.height - 1, unitY));
         
@@ -1164,18 +1166,21 @@ function updateQuestCompass() {
                 x: unitX,
                 y: unitY,
                 maxHp: armyUnit.hp,
-                sprite: armyUnit.type.sprite || '?', // <--- ВАЖНО: берем символ спрайта
-                type: armyUnit.type.type || 'melee', // <--- ВАЖНО: тип юнита для ИИ
+                // === ВАЖНОЕ ИСПРАВЛЕНИЕ ===
+                char: armyUnit.type.sprite || '?', 
+                color: '#ff5555', // Красный для врагов
+                sprite: armyUnit.type.sprite || '?',
+                type: armyUnit.type.type || 'melee',
                 isPlayerSide: false,
                 name: armyUnit.type.name || 'Враг'
             });
         });
 
-        // 5. Сохраняем состояние боя
+        // 4. Сохраняем состояние боя
         tacticalState = {
             arena: arena,
             playerUnit: playerUnit,
-            playerArmy: [], // Пока пусто для теста
+            playerArmy: playerArmyUnits, // <--- ТЕПЕРЬ ЗДЕСЬ НЕ ПУСТОЙ МАССИВ
             enemyUnits: enemyUnits,
             originalGlobalPos: { ...globalPos },
             enemyArmyId: enemyArmyData.id,
@@ -1186,7 +1191,10 @@ function updateQuestCompass() {
         busy = false; 
         
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
+        
+        // Обновляем UI, чтобы появилось меню тактики
         RenderModule.updateUI(player, null, null); 
+        
         renderFrame();
     }
     // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
