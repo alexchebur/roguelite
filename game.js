@@ -390,7 +390,7 @@ const GameModule = (function() {
             return;
         }
 
-        gameMode = 'global';
+        window.gameMode = 'global';
         
         // === ИСПРАВЛЕНИЕ: Объявляем переменную здесь, чтобы она была видна ниже ===
         let startPos = null; 
@@ -450,7 +450,7 @@ const GameModule = (function() {
         if (isInnOpen) { handleInnClick(clientX, clientY); return; }
         
         // Приоритет 3: Осмотр карты (только в подземелье)
-        if (gameMode === 'dungeon') {
+        if (window.gameMode === 'dungeon') {
             handleMapClick(clientX, clientY);
         }
     }
@@ -499,7 +499,7 @@ const GameModule = (function() {
         }
 
         // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет перед обычным движением) ===
-        if (gameMode === 'tactical') {
+        if (window.gameMode === 'tactical') {
             // Обработка выбора тактики клавишами 1-5
             if (e.key >= '1' && e.key <= '5') {
                 const tacticKey = e.key;
@@ -507,7 +507,7 @@ const GameModule = (function() {
                 const selected = tactics.find(t => t.key === tacticKey);
                 
                 if (selected) {
-                    currentTactic = selected.id;
+                    window.currentTactic = selected.id;
                     RenderModule.log(`Тактика изменена: ${selected.name}`, "info");
                     
                     // Перерисовываем поле боя, чтобы обновить меню
@@ -533,7 +533,7 @@ const GameModule = (function() {
         if (dx !== 0 || dy !== 0 || e.key === " ") {
             e.preventDefault();
             
-            if (gameMode === 'global') {
+            if (window.gameMode === 'global') {
                 processGlobalTurn(dx, dy);
             } else {
                 processTurn(dx, dy);
@@ -790,7 +790,7 @@ function updateQuestCompass() {
     if (!coordsEl) return;
 
     // Работаем ТОЛЬКО на глобальной карте
-    if (gameMode !== 'global') {
+    if (window.gameMode !== 'global') {
         return;
     }
 
@@ -883,7 +883,7 @@ function updateQuestCompass() {
             }
 
             // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет №3) ===
-            if (gameMode === 'tactical') {
+            if (window.gameMode === 'tactical') {
                 handleTacticalTouch(clientX, clientY);
                 return;
             }
@@ -912,7 +912,7 @@ function updateQuestCompass() {
                 dy = offsetY > 0 ? 1 : -1;
             }
             
-            if (gameMode === 'global') {
+            if (window.gameMode === 'global') {
                 processGlobalTurn(dx, dy);
             } else {
                 processTurn(dx, dy);
@@ -1080,7 +1080,7 @@ function updateQuestCompass() {
     }
 
     function initTacticalBattle(enemyArmyData) {
-        gameMode = 'tactical';
+        window.gameMode = 'tactical';
         busy = true; // Блокируем ввод во время инициализации
     
         // 1. Генерируем арену на основе текущей клетки глобальной карты
@@ -1170,7 +1170,7 @@ function updateQuestCompass() {
         };
 
         // 6. Сбрасываем тактику и разблокируем ввод
-        currentTactic = 'hold';
+        window.currentTactic = 'hold';
         busy = false; 
         
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
@@ -1184,7 +1184,7 @@ function updateQuestCompass() {
     function enterPOI(poi) {
         busy = true;
         entrancePos = GlobalMapModule.getPlayerPosition();
-        gameMode = 'dungeon';
+        window.gameMode = 'dungeon';
         
         if (poi.type === 'city') {
             RenderModule.log(`Вы входите в город ${poi.name}`, "info");
@@ -1203,7 +1203,7 @@ function updateQuestCompass() {
         saveCurrentDungeonState();
         isShopOpen = false;
         currentMerchantInv = null;
-        gameMode = 'global';
+        window.gameMode = 'global';
         updateQuestCompass(); 
         renderGlobalMap();
         if (entrancePos) {
@@ -1634,7 +1634,7 @@ function updateQuestCompass() {
     }
     // === СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ПОКИДАНИИ УРОВНЯ ===
     function saveCurrentDungeonState() {
-        if (gameMode === 'dungeon' && currentDepth >= 0) {
+        if (window.gameMode === 'dungeon' && currentDepth >= 0) {
             const cacheKey = `${dungeonX}_${dungeonY}_${currentDepth}`;
             const aliveEnemies = enemies.filter(e => e.hp > 0);
             
@@ -1941,7 +1941,7 @@ function updateQuestCompass() {
             return;
         }
 
-        if (!player || gameMode !== 'dungeon') return;
+        if (!player || window.gameMode !== 'dungeon') return;
 
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas) return;
@@ -2292,20 +2292,20 @@ function updateQuestCompass() {
         if (!player) return;
 
         // 1. ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет №1)
-        if (gameMode === 'tactical' && tacticalState) {
+        if (window.gameMode === 'tactical' && tacticalState) {
             TacticalRenderModule.drawBattlefield(
                 tacticalState.arena, 
                 tacticalState.playerUnit, 
                 tacticalState.enemyUnits, 
                 player.hasArmy ? player.armyUnits : null, // Если есть армия игрока
-                currentTactic
+                window.currentTactic
             );
             // В тактическом режиме UI панелей нет (или они скрыты), рисуем только поле боя
             return; 
         }
 
         // 2. ГЛОБАЛЬНАЯ КАРТА
-        if (gameMode === 'global') {
+        if (window.gameMode === 'global') {
             renderGlobalMap(); // Эта функция уже содержит отрисовку карты, миникарты и UI
             return;
         }
@@ -2479,7 +2479,7 @@ function updateQuestCompass() {
 
         // === ИСПРАВЛЕНИЕ ОТРИСОВКИ ===
         if (typeof RenderModule !== 'undefined') {
-            if (gameMode === 'global') {
+            if (window.gameMode === 'global') {
                 renderGlobalMap(); // Принудительно рисуем глобальную карту
             } else {
                 RenderModule.requestRedraw(); // Для обычных квестов в городах
