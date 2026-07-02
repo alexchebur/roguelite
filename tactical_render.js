@@ -133,11 +133,14 @@ const TacticalRenderModule = (function() {
                     
                     const color = TacticalArmyModule.getUnitColor(unit);
                     
+                    // Определяем символ спрайта с приоритетом
                     let spriteChar = '?';
-                    if (unit.type && unit.type.sprite) {
-                        spriteChar = unit.type.sprite;
-                    } else if (unit.char) {
+                    if (unit.char) {
                         spriteChar = unit.char;
+                    } else if (unit.sprite) {
+                        spriteChar = unit.sprite;
+                    } else if (unit.type && typeof unit.type === 'object' && unit.type.sprite) {
+                        spriteChar = unit.type.sprite;
                     }
 
                     TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
