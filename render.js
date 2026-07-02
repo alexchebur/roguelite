@@ -648,55 +648,83 @@ const RenderModule = (function() {
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) {
                 invDiv.innerHTML = "";
-                if (player.inventory.length === 0) {
-                    invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
-                } else {
-                    const grouped = {};
-                    const order = []; 
-                    player.inventory.forEach((item, originalIndex) => {
-                        const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
-                        if (!grouped[key]) {
-                            grouped[key] = { item: item, count: 0, indices: [] };
-                            order.push(key);
-                        }
-                        grouped[key].count++;
-                        grouped[key].indices.push(originalIndex);
-                    });
-
-                    order.forEach(key => {
-                        const group = grouped[key];
-                        const item = group.item;
+                
+                // === НОВОЕ: ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
+                if (gameMode === 'tactical') {
+                    // Рисуем меню тактики вместо предметов
+                    const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
+                    
+                    tactics.forEach(tactic => {
                         const div = document.createElement("div");
                         div.className = "inv-item";
                         
-                        // Уникальные предметы выделяем фиолетовым или золотым, игнорируя их базовый цвет
-                        div.style.color = item.isUnique ? "#d29922" : item.color; 
-                        div.style.fontWeight = item.isUnique ? "bold" : "normal";
-
-                        let html = `${item.isUnique ? '🌟 ' : ''}${item.name}`;
+                        // Подсветка выбранной тактики
+                        const isSelected = currentTactic === tactic.id;
+                        div.style.color = isSelected ? "#ffd700" : "#fff";
+                        div.style.fontWeight = isSelected ? "bold" : "normal";
+                        div.style.borderLeft = isSelected ? "3px solid #ffd700" : "3px solid transparent";
                         
-                        if (item.val && !item.isUnique) html += ` (+${item.val})`;
-                        if (item.isUnique) {
-                            // Показываем реальные статы уникального предмета в инвентаре
-                            const stats = [];
-                            if (item.uniqueAtk) stats.push(`Атк:${item.uniqueAtk}`);
-                            if (item.uniqueDef) stats.push(`Защ:${item.uniqueDef}`);
-                            if (stats.length > 0) html += ` <span style="opacity:0.8;font-size:10px">[${stats.join(', ')}]</span>`;
-                        }
-
-                        if (group.count > 1) {
-                            html += ` <span style="opacity:0.7">(${group.count})</span>`;
-                        } else if (item.maxAmmo > 0) {
-                            html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
-                        }
+                        div.textContent = `${tactic.key}. ${tactic.name}`;
                         
-                        div.innerHTML = html;
-                        div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
+                        // При клике меняем тактику
+                        div.onclick = () => {
+                            currentTactic = tactic.id;
+                            RenderModule.log(`Тактика изменена: ${tactic.name}`, "info");
+                            renderFrame();
+                        };
+                        
                         invDiv.appendChild(div);
                     });
+                } 
+                // === СТАНДАРТНЫЙ ИНВЕНТАРЬ ===
+                else {
+                    if (player.inventory.length === 0) {
+                        invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
+                    } else {
+                        const grouped = {};
+                        const order = []; 
+                        player.inventory.forEach((item, originalIndex) => {
+                            const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
+                            if (!grouped[key]) {
+                                grouped[key] = { item: item, count: 0, indices: [] };
+                                order.push(key);
+                            }
+                            grouped[key].count++;
+                            grouped[key].indices.push(originalIndex);
+                        });
+
+                        order.forEach(key => {
+                            const group = grouped[key];
+                            const item = group.item;
+                            const div = document.createElement("div");
+                            div.className = "inv-item";
+                            
+                            div.style.color = item.isUnique ? "#d29922" : item.color; 
+                            div.style.fontWeight = item.isUnique ? "bold" : "normal";
+
+                            let html = `${item.isUnique ? '🌟 ' : ''}${item.name}`;
+                            
+                            if (item.val && !item.isUnique) html += ` (+${item.val})`;
+                            if (item.isUnique) {
+                                const stats = [];
+                                if (item.uniqueAtk) stats.push(`Атк:${item.uniqueAtk}`);
+                                if (item.uniqueDef) stats.push(`Защ:${item.uniqueDef}`);
+                                if (stats.length > 0) html += ` <span style="opacity:0.8;font-size:10px">[${stats.join(', ')}]</span>`;
+                            }
+
+                            if (group.count > 1) {
+                                html += ` <span style="opacity:0.7">(${group.count})</span>`;
+                            } else if (item.maxAmmo > 0) {
+                                html += ` <span style="opacity:0.7">[${item.currentAmmo}]</span>`;
+                            }
+                            
+                            div.innerHTML = html;
+                            div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
+                            invDiv.appendChild(div);
+                        });
+                    }
                 }
             }
-        }
     }
 
     function log(msg, type = "info") {
