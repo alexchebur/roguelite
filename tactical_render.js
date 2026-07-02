@@ -157,6 +157,8 @@ const TacticalRenderModule = (function() {
         drawTacticalUI(ctx, currentTactic);
     }
 
+// ... конец файла tactical_render.js
+
     return {
         drawBattlefield: drawBattlefield
     };
