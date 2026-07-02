@@ -852,6 +852,9 @@ function updateQuestCompass() {
         
         if (!canvas) return;
 
+        // Удаляем старый слушатель, если он был, чтобы не дублировать события
+        canvas.ontouchstart = null; 
+
         canvas.addEventListener("touchstart", (e) => {
             e.preventDefault();
             
@@ -862,42 +865,32 @@ function updateQuestCompass() {
 
             // 0. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
             if (isReadingQuest) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                
-                const clickX = (clientX - rect.left) * scaleX;
-                const clickY = (clientY - rect.top) * scaleY;
-
-                // Проверяем клик по кнопке закрытия
-                if (window.questCloseButton) {
-                    const btn = window.questCloseButton;
-                    if (clickX >= btn.x && clickX <= btn.x + btn.w && 
-                        clickY >= btn.y && clickY <= btn.y + btn.h) {
-                        closeQuestWindow();
-                        return;
-                    }
-                }
-                // Клик вне кнопки тоже закрывает окно
-                closeQuestWindow();
-                return;
-            }
-
-            // 1. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
-            if (busy || (player && player.hp <= 0)) return;
-
-            // 2. 🎯 ПРОВЕРКА МАГАЗИНА (Приоритет №1 после сюжета)
-            if (isShopOpen) {
-                handleShopClick(clientX, clientY);
+                handleQuestClick(clientX, clientY);
                 return; 
             }
 
+            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА (Приоритет №1)
             if (isInnOpen) {
                 handleInnClick(clientX, clientY);
                 return; 
             }
 
-            // ... остальной код движения ...
+            // 2. ПРОВЕРКА МАГАЗИНА (Приоритет №2)
+            if (isShopOpen) {
+                handleShopClick(clientX, clientY);
+                return; 
+            }
+
+            // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет №3) ===
+            if (gameMode === 'tactical') {
+                handleTacticalTouch(clientX, clientY);
+                return;
+            }
+
+            // 3. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ (для обычных режимов)
+            if (busy || (player && player.hp <= 0)) return;
+
+            // 4. СТАНДАРТНОЕ ДВИЖЕНИЕ (Подземелье / Глобальная карта)
             const rect = canvas.getBoundingClientRect();
             const touchX = clientX - rect.left;
             const touchY = clientY - rect.top;
@@ -909,7 +902,10 @@ function updateQuestCompass() {
             const offsetX = touchX - centerX;
             const offsetY = touchY - centerY;
             
-            if (Math.abs(offsetX) > Math.abs(offsetY)) {
+            // Если тап очень близко к центру (радиус 20px), считаем это пропуском хода
+            if (Math.abs(offsetX) < 20 && Math.abs(offsetY) < 20) {
+                dx = 0; dy = 0;
+            } else if (Math.abs(offsetX) > Math.abs(offsetY)) {
                 dx = offsetX > 0 ? 1 : -1;
             } else {
                 dy = offsetY > 0 ? 1 : -1;
@@ -927,6 +923,59 @@ function updateQuestCompass() {
             RenderModule.log("💡 Коснитесь части экрана для движения", "info");
         }
     }    
+
+
+
+    // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ ===
+    function handleTacticalTouch(clientX, clientY) {
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        // 1. Проверяем, попал ли тап в нижнее меню тактики
+        // Меню занимает нижние 60 пикселей канваса
+        if (clickY > canvas.height - 60) {
+            const btnWidth = canvas.width / 5; // 5 кнопок
+            const btnIndex = Math.floor(clickX / btnWidth);
+            
+            // Маппинг индексов на клавиши 1-5
+            const keys = ['1', '2', '3', '4', '5'];
+            if (keys[btnIndex]) {
+                // Эмулируем нажатие клавиши
+                handleInput({ key: keys[btnIndex] });
+            }
+            return;
+        }
+
+        // 2. Тап по полю боя (пока просто эмуляция движения/атаки в сторону тапа)
+        // В будущем здесь будет сложная логика выбора цели
+        const cam = RenderModule.getCameraOffset(tacticalState.playerUnit);
+        const tileW = RenderModule.TILE_SIZE;
+        const tileH = RenderModule.TILE_SIZE;
+        
+        // Вычисляем мировые координаты тапа
+        const worldX = Math.floor(clickX / tileW) + cam.x;
+        const worldY = Math.floor(clickY / tileH) + cam.y;
+
+        // Простая логика: если тапнули рядом с игроком - идем туда
+        const dx = worldX - tacticalState.playerUnit.x;
+        const dy = worldY - tacticalState.playerUnit.y;
+
+        // Ограничиваем движение одним шагом для начала
+        if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
+             // Здесь будет вызов функции хода в тактическом режиме
+             // Пока просто логируем
+             RenderModule.log(`Тап по координатам (${worldX}, ${worldY})`, "info");
+        }
+    }
+
+    
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
