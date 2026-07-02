@@ -34,6 +34,9 @@ const TacticalRenderModule = (function() {
     /**
      * Отрисовка всего тактического экрана
      */
+    /**
+     * Отрисовка всего тактического экрана
+     */
     function drawBattlefield(arena, playerUnit, enemyUnits, playerArmy, currentTactic) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -67,7 +70,25 @@ const TacticalRenderModule = (function() {
             }
         }
 
-        // ... остальной код отрисовки юнитов без изменений ...
+        // Вспомогательная функция для отрисовки HP бара (локальная)
+        function drawHPBar(sx, sy, hp, maxHp) {
+            if (hp >= maxHp) return; 
+            const percent = hp / maxHp;
+            const barWidth = tileW - 4;
+            const barHeight = 4;
+            const bx = sx * tileW + 2;
+            const by = sy * tileH - 6;
+
+            ctx.fillStyle = '#333';
+            ctx.fillRect(bx, by, barWidth, barHeight);
+            
+            if (percent > 0.66) ctx.fillStyle = '#0f0';      
+            else if (percent > 0.33) ctx.fillStyle = '#ff0'; 
+            else ctx.fillStyle = '#f00';                     
+            
+            ctx.fillRect(bx, by, barWidth * percent, barHeight);
+        }
+
         // 3. Рисуем вражеские юниты
         if (enemyUnits) {
             enemyUnits.forEach(unit => {
@@ -85,7 +106,7 @@ const TacticalRenderModule = (function() {
                     }
 
                     TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
-                    drawHPBar(ctx, gridX, gridY, unit.hp, unit.maxHp, tileW);
+                    drawHPBar(gridX, gridY, unit.hp, unit.maxHp);
                 }
             });
         }
@@ -98,10 +119,10 @@ const TacticalRenderModule = (function() {
             console.log(`👤 [Tactical] Рисуем игрока в сетке (${gridX}, ${gridY}) со спрайтом '${playerUnit.char}'`);
 
             TilesetRenderer.draw(ctx, playerUnit.char, gridX, gridY, playerUnit.color || '#fff');
-            drawHPBar(ctx, gridX, gridY, playerUnit.hp, playerUnit.maxHp, tileW);
+            drawHPBar(gridX, gridY, playerUnit.hp, playerUnit.maxHp);
         }
 
-        if (playerArmy && playerArmy.length > 0) {
+        if (playerArmy) {
             playerArmy.forEach(unit => {
                 if (unit.hp > 0) {
                     const gridX = baseGridX + unit.x;
@@ -117,12 +138,10 @@ const TacticalRenderModule = (function() {
                     }
 
                     TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
-                    drawHPBar(ctx, gridX, gridY, unit.hp, unit.maxHp, tileW);
+                    drawHPBar(gridX, gridY, unit.hp, unit.maxHp);
                 }
             });
         }
-        
-        // Нижнее меню больше не рисуем здесь! Оно теперь в инвентаре.
     }
 
     return {
