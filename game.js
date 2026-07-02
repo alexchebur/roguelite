@@ -1220,7 +1220,6 @@ function updateQuestCompass() {
         
         RenderModule.log(victory ? "🏆 Победа! Армия противника разбита." : "💨 Вы сбежали с поля боя.", victory ? "loot" : "info");
     }
-
     
     function enterPOI(poi) {
         busy = true;
