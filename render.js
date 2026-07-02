@@ -641,31 +641,41 @@ const RenderModule = (function() {
                 invDiv.innerHTML = "";
                 
                 // === ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
-                // Важно: gameMode и currentTactic должны быть доступны из GameModule или глобально
+                // Используем window.gameMode, так как он глобальный
                 if (typeof window.gameMode !== 'undefined' && window.gameMode === 'tactical') {
+                    console.log("🎨 [UI] Отрисовка тактического меню в инвентаре");
+                    
                     const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                     
                     tactics.forEach(tactic => {
                         const div = document.createElement("div");
                         div.className = "inv-item";
                         
-                        // Подсветка выбранной тактики
-                        const isSelected = typeof currentTactic !== 'undefined' && currentTactic === tactic.id;
+                        // Читаем текущую тактику из window
+                        const isSelected = typeof window.currentTactic !== 'undefined' && window.currentTactic === tactic.id;
+                        
                         div.style.color = isSelected ? "#ffd700" : "#fff";
                         div.style.fontWeight = isSelected ? "bold" : "normal";
                         div.style.borderLeft = isSelected ? "3px solid #ffd700" : "3px solid transparent";
                         
                         div.textContent = `${tactic.key}. ${tactic.name}`;
                         
+                        // При клике меняем тактику через эмуляцию ввода
                         div.onclick = () => {
                             if (typeof handleInput === 'function') {
                                 handleInput({ key: tactic.key });
+                            } else {
+                                // Если handleInput не виден напрямую, меняем переменную напрямую
+                                window.currentTactic = tactic.id;
+                                RenderModule.log(`Тактика изменена: ${tactic.name}`, "info");
+                                renderFrame();
                             }
                         };
                         
                         invDiv.appendChild(div);
                     });
                 } 
+                // ... остальной код инвентаря ...
                 // === СТАНДАРТНЫЙ ИНВЕНТАРЬ ===
                 else {
                     if (player.inventory.length === 0) {
