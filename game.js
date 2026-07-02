@@ -457,9 +457,9 @@ const GameModule = (function() {
     function handleInput(e) {
         // 0. БЛОКИРОВКА ПРИ СМЕРТИ (Глобальная проверка)
         if (player && player.hp <= 0) {
-             // Можно добавить повторный лог, если игрок жмет кнопки после смерти
              return; 
         }    
+
         // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
         if (isReadingQuest) {
             if (e.key === "Escape") closeQuestWindow();
@@ -489,13 +489,35 @@ const GameModule = (function() {
             }
             return;
         }
+
         // Временная клавиша для теста Twine
         if (e.key === 'k' || e.key === 'K') {
             e.preventDefault();
             GameModule.openTwineQuest('Quack of Duckness.html');
             return;
         }
-        // 5. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
+
+        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет перед обычным движением) ===
+        if (gameMode === 'tactical') {
+            // Обработка выбора тактики клавишами 1-5
+            if (e.key >= '1' && e.key <= '5') {
+                const tacticKey = e.key;
+                const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
+                const selected = tactics.find(t => t.key === tacticKey);
+                
+                if (selected) {
+                    currentTactic = selected.id;
+                    RenderModule.log(`Тактика изменена: ${selected.name}`, "info");
+                    
+                    // Перерисовываем поле боя, чтобы обновить меню
+                    renderFrame(); 
+                }
+            }
+            // В тактическом режиме стрелки пока не обрабатываем (будет в Этапе 3)
+            return; 
+        }
+
+        // 5. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ (для обычных режимов)
         if (busy || (player && player.hp <= 0)) return;
         
         let dx = 0, dy = 0;
@@ -517,7 +539,6 @@ const GameModule = (function() {
             }
         }
     }
-
 
 
 
