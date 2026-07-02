@@ -1080,20 +1080,20 @@ function updateQuestCompass() {
     }
 
     function initTacticalBattle(enemyArmyData) {
+        console.log("🚀 [Tactical] Инициализация боя...");
         window.gameMode = 'tactical';
-        busy = true; // Блокируем ввод во время инициализации
+        busy = true; 
     
-        // 1. Генерируем арену на основе текущей клетки глобальной карты
         const globalPos = GlobalMapModule.getPlayerPosition();
         const terrainType = GlobalMapModule.getTileType(globalPos.x, globalPos.y);
         const arena = TacticalMapModule.generateArena(terrainType);
     
-        // 2. Создаем юнита-представителя игрока
+        // Создаем юнита игрока
         const playerUnit = {
             x: arena.startPosPlayer.x,
             y: arena.startPosPlayer.y,
             char: '@',
-            color: '#fff',
+            color: '#00ff00', // <--- ИЗМЕНИЛИ ЦВЕТ НА ЗЕЛЕНЫЙ ДЛЯ ВИДИМОСТИ
             hp: player.hp,
             maxHp: player.maxHp,
             atk: player.atk,
@@ -1101,6 +1101,8 @@ function updateQuestCompass() {
             name: 'Герой',
             isPlayer: true
         };
+
+        console.log(`👤 [Tactical] Игрок создан на позиции (${playerUnit.x}, ${playerUnit.y})`);
 
         // 3. Разворачиваем армию игрока (если есть)
         let playerArmyUnits = [];
@@ -1162,20 +1164,17 @@ function updateQuestCompass() {
         tacticalState = {
             arena: arena,
             playerUnit: playerUnit,
-            playerArmy: playerArmyUnits,
+            playerArmy: [], // Пока пусто для теста
             enemyUnits: enemyUnits,
             originalGlobalPos: { ...globalPos },
             enemyArmyId: enemyArmyData.id,
             turnCount: 0
         };
 
-        // 6. Сбрасываем тактику и разблокируем ввод
         window.currentTactic = 'hold';
         busy = false; 
         
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
-        RenderModule.log(`Враг: ${enemyUnits.length} отрядов. Выберите тактику (1-5).`, "info");
-        
         renderFrame();
     }
 
