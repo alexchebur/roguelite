@@ -1,6 +1,5 @@
 /**
  * МОДУЛЬ ОТРИСОВКИ ТАКТИЧЕСКОГО БОЯ (tactical_render.js)
- * Отвечает за визуализацию поля боя, юнитов и UI тактики.
  */
 
 const TacticalRenderModule = (function() {
@@ -10,7 +9,7 @@ const TacticalRenderModule = (function() {
      * Вспомогательная функция для отрисовки HP бара
      */
     function drawHPBar(ctx, sx, sy, hp, maxHp, tileW) {
-        if (hp >= maxHp) return; // Не рисуем, если здоровье полное
+        if (hp >= maxHp) return; 
         
         const percent = hp / maxHp;
         const barWidth = tileW - 4;
@@ -18,55 +17,18 @@ const TacticalRenderModule = (function() {
         
         // Координаты бара (немного выше спрайта)
         const bx = sx * tileW + 2;
-        const by = sy * tileH - 6;
+        const by = sy * tileW - 6; // Используем tileW для высоты тоже, так как тайлы квадратные
 
         // Фон бара
         ctx.fillStyle = '#333';
         ctx.fillRect(bx, by, barWidth, barHeight);
         
-        // Заполнение (цвет зависит от %)
-        if (percent > 0.66) ctx.fillStyle = '#0f0';      // Зеленый
-        else if (percent > 0.33) ctx.fillStyle = '#ff0'; // Желтый
-        else ctx.fillStyle = '#f00';                     // Красный
+        // Заполнение
+        if (percent > 0.66) ctx.fillStyle = '#0f0';      
+        else if (percent > 0.33) ctx.fillStyle = '#ff0'; 
+        else ctx.fillStyle = '#f00';                     
         
         ctx.fillRect(bx, by, barWidth * percent, barHeight);
-    }
-
-    /**
-     * Отрисовка меню выбора тактики
-     */
-    function drawTacticalUI(ctx, currentTactic) {
-        const h = ctx.canvas.height;
-        const w = ctx.canvas.width;
-    
-        // Панель меню
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-        ctx.fillRect(0, h - 60, w, 60);
-        ctx.strokeStyle = '#58a6ff';
-        ctx.strokeRect(0, h - 60, w, 60);
-
-        // Уменьшаем шрифт
-        ctx.font = '10px Consolas, monospace'; 
-        ctx.textBaseline = 'middle';
-    
-        let yPos = h - 45;
-        let xPos = 10; // Начинаем чуть левее
-
-        // Выводим доступные тактики
-        const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
-        tactics.forEach(tactic => {
-            const isSelected = currentTactic === tactic.id;
-            ctx.fillStyle = isSelected ? '#ffd700' : '#fff';
-        
-            // Сокращаем текст для экономии места
-            let shortName = tactic.name;
-            if (shortName.length > 15) {
-                shortName = shortName.substring(0, 12) + '...';
-            }
-        
-            ctx.fillText(`${tactic.key}. ${shortName}`, xPos, yPos);
-            xPos += 120; // Уменьшаем отступ между кнопками
-        });
     }
 
     /**
@@ -91,8 +53,11 @@ const TacticalRenderModule = (function() {
         const offsetY = Math.floor((ctx.canvas.height - arenaPixelHeight) / 2);
 
         // Базовые координаты сетки (левый верхний угол арены)
+        // Важно: используем Math.floor, чтобы координаты были целыми
         const baseGridX = Math.floor(offsetX / tileW);
         const baseGridY = Math.floor(offsetY / tileH);
+
+        console.log(`🎨 [Tactical] Отрисовка поля. BaseGrid: (${baseGridX}, ${baseGridY}). Игрок: (${playerUnit.x}, ${playerUnit.y})`);
 
         // 2. Рисуем пол арены
         for (let y = 0; y < arena.height; y++) {
@@ -128,11 +93,13 @@ const TacticalRenderModule = (function() {
             const gridX = baseGridX + playerUnit.x;
             const gridY = baseGridY + playerUnit.y;
             
+            console.log(`👤 [Tactical] Рисуем игрока в сетке (${gridX}, ${gridY}) со спрайтом '${playerUnit.char}'`);
+
             TilesetRenderer.draw(ctx, playerUnit.char, gridX, gridY, playerUnit.color || '#fff');
             drawHPBar(ctx, gridX, gridY, playerUnit.hp, playerUnit.maxHp, tileW);
         }
 
-        if (playerArmy) {
+        if (playerArmy && playerArmy.length > 0) {
             playerArmy.forEach(unit => {
                 if (unit.hp > 0) {
                     const gridX = baseGridX + unit.x;
@@ -152,12 +119,9 @@ const TacticalRenderModule = (function() {
                 }
             });
         }
-
-        // 5. Рисуем тактическое меню (внизу экрана)
-        drawTacticalUI(ctx, currentTactic);
+        
+        // Нижнее меню больше не рисуем здесь! Оно теперь в инвентаре.
     }
-
-// ... конец файла tactical_render.js
 
     return {
         drawBattlefield: drawBattlefield
