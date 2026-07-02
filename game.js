@@ -1175,6 +1175,7 @@ function updateQuestCompass() {
         busy = false; 
         
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
+        RenderModule.updateUI(player, null, null); 
         renderFrame();
     }
 
