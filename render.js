@@ -642,7 +642,7 @@ const RenderModule = (function() {
                 
                 // === ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
                 // Важно: gameMode и currentTactic должны быть доступны из GameModule или глобально
-                if (typeof gameMode !== 'undefined' && gameMode === 'tactical') {
+                if (typeof window.gameMode !== 'undefined' && window.gameMode === 'tactical') {
                     const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                     
                     tactics.forEach(tactic => {
