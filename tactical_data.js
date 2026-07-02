@@ -8,6 +8,7 @@ const TacticalDataModule = (function() {
 
 // В tactical_data.js
 
+// В tactical_data.js
 const UNIT_TYPES = {
     SPEARMAN: {
         id: 'spearman',
@@ -18,7 +19,7 @@ const UNIT_TYPES = {
         atk: 5,
         def: 3,
         range: 1,
-        sprite: getChar('ENEMY_GOBLIN') // <--- ЗАМЕНИТЕ НА getChar()
+        sprite: 'g' // Используем символ Гоблина из sprite_registry как заглушку
     },
     CAVALRY: {
         id: 'cavalry',
@@ -29,7 +30,7 @@ const UNIT_TYPES = {
         atk: 7,
         def: 2,
         range: 1,
-        sprite: getChar('ENEMY_WOLF') // <--- ЗАМЕНИТЕ НА getChar()
+        sprite: 'w' // Используем символ Волка
     },
     ARCHER: {
         id: 'archer',
@@ -40,7 +41,7 @@ const UNIT_TYPES = {
         atk: 6,
         def: 1,
         range: 8,
-        sprite: getChar('ENEMY_SKELETON') // <--- ЗАМЕНИТЕ НА getChar()
+        sprite: 's' // Используем символ Скелета
     }
 };
 
