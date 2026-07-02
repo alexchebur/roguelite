@@ -11,7 +11,8 @@ const GameModule = (function() {
     let isTwineActive = false; // Флаг активности Twine-окна
     let globalFlags = {}; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
     let tacticalState = null; // Хранит данные текущего боя { arena, playerUnit, enemyUnits, ... }
-    let currentTactic = 'hold'; // Текущая выбранная тактика игрока
+    window.currentTactic = 'hold'; // Текущая выбранная тактика игрока
+    
 
 
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
@@ -27,7 +28,7 @@ const GameModule = (function() {
     let completedTextQuests = new Set(); // Храним имена файлов, которые игрок уже завершил
 
     // === Режимы ===
-    let gameMode = 'global';
+    window.gameMode = 'global';
     let entrancePos = null; 
     
     // === Подземельные координаты ===
