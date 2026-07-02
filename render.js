@@ -641,8 +641,9 @@ const RenderModule = (function() {
                 invDiv.innerHTML = "";
                 
                 // === ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
-                if (typeof window.gameMode !== 'undefined' && window.gameMode === 'tactical') {
-                    // Рисуем меню тактики вместо предметов
+                // Используем window.gameMode, так как он объявлен глобально в game.js
+                if (typeof window !== 'undefined' && window.gameMode === 'tactical') {
+                    
                     const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                     
                     tactics.forEach(tactic => {
@@ -650,29 +651,39 @@ const RenderModule = (function() {
                         div.className = "inv-item";
                         
                         // Подсветка выбранной тактики
-                        const isSelected = typeof window.currentTactic !== 'undefined' && window.currentTactic === tactic.id;
+                        const isSelected = window.currentTactic === tactic.id;
                         div.style.color = isSelected ? "#ffd700" : "#fff";
                         div.style.fontWeight = isSelected ? "bold" : "normal";
                         div.style.borderLeft = isSelected ? "3px solid #ffd700" : "3px solid transparent";
                         
                         div.textContent = `${tactic.key}. ${tactic.name}`;
                         
-                        // При клике меняем тактику (эмуляция нажатия клавиши)
+                        // При клике меняем тактику через эмуляцию ввода
                         div.onclick = () => {
-                            if (typeof handleInput === 'function') {
-                                handleInput({ key: tactic.key });
+                            // Вызываем handleInput из GameModule, если он доступен, 
+                            // или напрямую меняем состояние и логируем
+                            if (typeof GameModule !== 'undefined') {
+                                // Эмулируем нажатие клавиши
+                                const event = new KeyboardEvent('keydown', {'key': tactic.key});
+                                document.dispatchEvent(event);
+                            } else {
+                                // Фолбэк, если GameModule недоступен напрямую
+                                window.currentTactic = tactic.id;
+                                RenderModule.log(`Тактика изменена: ${tactic.name}`, "info");
+                                renderFrame();
                             }
                         };
                         
                         invDiv.appendChild(div);
                     });
                 } 
-                // === СТАНДАРТНЫЙ ИНВЕНТАРЬ (если не в бою) ===
+                // === СТАНДАРТНЫЙ ИНВЕНТАРЬ ===
                 else {
                     if (player.inventory.length === 0) {
                         invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
                     } else {
-                        const grouped = {};
+                        // ... здесь ваш старый код отрисовки предметов ...
+                         const grouped = {};
                         const order = []; 
                         player.inventory.forEach((item, originalIndex) => {
                             const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
