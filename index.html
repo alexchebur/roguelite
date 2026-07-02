@@ -186,10 +186,11 @@
         margin-bottom: 2px;
         cursor: pointer;
         border-radius: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 12px; /* было 10px */
+        white-space: nowrap; /* Запрещаем перенос строк */
+        overflow: hidden;    /* Скрываем то, что не влезло */
+        text-overflow: ellipsis; /* Добавляем троеточие (...) */
+        font-size: 12px;
+        transition: background 0.2s;
     }
     .inv-item:hover {
         background: rgba(255,255,255,0.12);
