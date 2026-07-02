@@ -1080,7 +1080,7 @@ function updateQuestCompass() {
 
     function initTacticalBattle(enemyArmyData) {
         gameMode = 'tactical';
-        busy = true; // Блокируем обычный ввод
+        busy = true; // Блокируем ввод во время инициализации
     
         // 1. Генерируем арену на основе текущей клетки глобальной карты
         const globalPos = GlobalMapModule.getPlayerPosition();
@@ -1096,41 +1096,85 @@ function updateQuestCompass() {
             hp: player.hp,
             maxHp: player.maxHp,
             atk: player.atk,
-            def: player.def
+            def: player.def,
+            name: 'Герой',
+            isPlayer: true
         };
 
-        // 3. Разворачиваем вражескую армию в юниты на поле боя
+        // 3. Разворачиваем армию игрока (если есть)
+        let playerArmyUnits = [];
+        if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
+            player.armyUnits.forEach((armyUnit, index) => {
+                // Безопасное позиционирование: игрок + смещение
+                const xOffset = 1 + Math.floor(index / 5);
+                const yOffset = (index % 2 === 0) ? 1 : -1;
+                
+                let unitX = arena.startPosPlayer.x + xOffset;
+                let unitY = arena.startPosPlayer.y + (index % 5) * yOffset;
+
+                // Проверка границ арены
+                unitX = Math.max(0, Math.min(arena.width - 1, unitX));
+                unitY = Math.max(0, Math.min(arena.height - 1, unitY));
+        
+                playerArmyUnits.push({
+                    ...armyUnit,
+                    x: unitX,
+                    y: unitY,
+                    maxHp: armyUnit.hp,
+                    sprite: armyUnit.type.sprite || '?', // Символ спрайта
+                    type: armyUnit.type.type || 'melee', // melee или range
+                    isPlayerSide: true
+                });
+            });
+        }
+
+        // 4. Разворачиваем вражескую армию в юниты на поле боя
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
     
         enemyArmyData.units.forEach((armyUnit, index) => {
-            // Расставляем юнитов шеренгой с небольшим разбросом
+            // Расстановка шеренгой с разбросом
+            const xOffset = Math.floor(index / 5);
             const yOffset = (index % 2 === 0) ? 1 : -1;
-            const unitX = startX + Math.floor(index / 5); // Сдвигаем вправо каждые 5 юнитов
-            const unitY = startY + (index % 5) * yOffset;
+            
+            let unitX = startX - xOffset; // Враги смотрят влево, поэтому вычитаем
+            let unitY = startY + (index % 5) * yOffset;
+
+            // Проверка границ арены
+            unitX = Math.max(0, Math.min(arena.width - 1, unitX));
+            unitY = Math.max(0, Math.min(arena.height - 1, unitY));
         
             enemyUnits.push({
-                ...armyUnit, // Копируем данные отряда
+                ...armyUnit,
                 x: unitX,
                 y: unitY,
-                maxHp: armyUnit.hp // Сохраняем макс HP для расчета морали
+                maxHp: armyUnit.hp,
+                sprite: armyUnit.type.sprite || '?', // <--- ВАЖНО: берем символ спрайта
+                type: armyUnit.type.type || 'melee', // <--- ВАЖНО: тип юнита для ИИ
+                isPlayerSide: false,
+                name: armyUnit.type.name || 'Враг'
             });
         });
 
-        // 4. Сохраняем состояние боя
+        // 5. Сохраняем состояние боя
         tacticalState = {
             arena: arena,
             playerUnit: playerUnit,
+            playerArmy: playerArmyUnits,
             enemyUnits: enemyUnits,
-            originalGlobalPos: { ...globalPos }, // Чтобы вернуться туда же
-            enemyArmyId: enemyArmyData.id
+            originalGlobalPos: { ...globalPos },
+            enemyArmyId: enemyArmyData.id,
+            turnCount: 0
         };
 
+        // 6. Сбрасываем тактику и разблокируем ввод
         currentTactic = 'hold';
-        busy = false; // Разблокируем ввод для тактического режима
-    
-        RenderModule.log("⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!", "combat");
+        busy = false; 
+        
+        RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
+        RenderModule.log(`Враг: ${enemyUnits.length} отрядов. Выберите тактику (1-5).`, "info");
+        
         renderFrame();
     }
 
