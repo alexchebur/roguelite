@@ -56,7 +56,18 @@ const GameModule = (function() {
             }
         });
     }
+    // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ ПАНЕЛЕЙ ПРИ ТАКТИЧЕСКОМ БОЮ ===
+    function hideGlobalUI() {
+        document.getElementById("header-panel").classList.add("hidden-ui");
+        document.getElementById("minimap-panel").classList.add("hidden-ui");
+        document.getElementById("quest-bar").classList.add("hidden-ui");
+    }
 
+    function showGlobalUI() {
+        document.getElementById("header-panel").classList.remove("hidden-ui");
+        document.getElementById("minimap-panel").classList.remove("hidden-ui");
+        document.getElementById("quest-bar").classList.remove("hidden-ui");
+    }
     // === ОКНО СЮЖЕТНОГО КВЕСТА ===
     // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ UI ===
     function toggleUI(isVisible) {
@@ -1083,7 +1094,7 @@ function updateQuestCompass() {
         console.log("🚀 [Tactical] Инициализация боя...");
         window.gameMode = 'tactical';
         busy = true; 
-    
+        hideGlobalUI();    
         const globalPos = GlobalMapModule.getPlayerPosition();
         const terrainType = GlobalMapModule.getTileType(globalPos.x, globalPos.y);
         const arena = TacticalMapModule.generateArena(terrainType);
