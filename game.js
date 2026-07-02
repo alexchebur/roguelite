@@ -2290,16 +2290,21 @@ function updateQuestCompass() {
     function renderFrame() {
         if (!player) return;
 
-        // 1. ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет №1)
+        // 1. ТАКТИЧЕСКИЙ РЕЖИМ
         if (window.gameMode === 'tactical' && tacticalState) {
-            TacticalRenderModule.drawBattlefield(
-                tacticalState.arena, 
-                tacticalState.playerUnit, 
-                tacticalState.enemyUnits, 
-                player.hasArmy ? player.armyUnits : null, // Если есть армия игрока
-                window.currentTactic
-            );
-            // В тактическом режиме UI панелей нет (или они скрыты), рисуем только поле боя
+            // Проверка наличия модуля
+            if (typeof TacticalRenderModule !== 'undefined') {
+                TacticalRenderModule.drawBattlefield(
+                    tacticalState.arena, 
+                    tacticalState.playerUnit, 
+                    tacticalState.enemyUnits, 
+                    player.hasArmy ? player.armyUnits : null,
+                    window.currentTactic
+                );
+            } else {
+                console.error("❌ TacticalRenderModule не найден! Проверьте подключение скрипта.");
+                RenderModule.log("Ошибка графики: модуль тактики не загружен.", "combat");
+            }
             return; 
         }
 
