@@ -6,42 +6,43 @@
 const TacticalDataModule = (function() {
     'use strict';
 
-    // === ТИПЫ ЮНИТОВ ===
-    const UNIT_TYPES = {
-        SPEARMAN: {
-            id: 'spearman',
-            name: 'Копейщик',
-            type: 'melee', // ближний бой
-            speed: 3, // медленный (3 клетки за ход)
-            hp: 20,
-            atk: 5,
-            def: 3,
-            range: 1, // дистанция атаки
-            sprite: 'ENEMY_GOBLIN' // заглушка из creature_sprites.png
-        },
-        CAVALRY: {
-            id: 'cavalry',
-            name: 'Всадник',
-            type: 'melee',
-            speed: 8, // быстрый
-            hp: 30,
-            atk: 7,
-            def: 2,
-            range: 1,
-            sprite: 'ENEMY_WOLF' // заглушка
-        },
-        ARCHER: {
-            id: 'archer',
-            name: 'Лучник',
-            type: 'range', // дистанционный бой
-            speed: 5, // средний
-            hp: 15,
-            atk: 6,
-            def: 1,
-            range: 8, // может стрелять на 8 клеток
-            sprite: 'ENEMY_SKELETON' // заглушка
-        }
-    };
+// В tactical_data.js
+
+const UNIT_TYPES = {
+    SPEARMAN: {
+        id: 'spearman',
+        name: 'Копейщик',
+        type: 'melee',
+        speed: 3,
+        hp: 20,
+        atk: 5,
+        def: 3,
+        range: 1,
+        sprite: getChar('ENEMY_GOBLIN') // <--- ЗАМЕНИТЕ НА getChar()
+    },
+    CAVALRY: {
+        id: 'cavalry',
+        name: 'Всадник',
+        type: 'melee',
+        speed: 8,
+        hp: 30,
+        atk: 7,
+        def: 2,
+        range: 1,
+        sprite: getChar('ENEMY_WOLF') // <--- ЗАМЕНИТЕ НА getChar()
+    },
+    ARCHER: {
+        id: 'archer',
+        name: 'Лучник',
+        type: 'range',
+        speed: 5,
+        hp: 15,
+        atk: 6,
+        def: 1,
+        range: 8,
+        sprite: getChar('ENEMY_SKELETON') // <--- ЗАМЕНИТЕ НА getChar()
+    }
+};
 
     // === ТИПЫ ФОРМАЦИЙ ===
     const FORMATION_TYPES = {
