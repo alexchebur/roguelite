@@ -38,8 +38,9 @@ const TacticalRenderModule = (function() {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
 
-        const tileW = RenderModule.TILE_SIZE;
-        const tileH = RenderModule.TILE_SIZE;
+        // ВАЖНО: Используем TILE_SIZE из TilesetRenderer, так как именно он рисует спрайты
+        const tileW = TilesetRenderer.TILE_SIZE; 
+        const tileH = TilesetRenderer.TILE_SIZE;
 
         // 1. Очистка и фон
         ctx.fillStyle = '#000';
@@ -53,11 +54,11 @@ const TacticalRenderModule = (function() {
         const offsetY = Math.floor((ctx.canvas.height - arenaPixelHeight) / 2);
 
         // Базовые координаты сетки (левый верхний угол арены)
-        // Важно: используем Math.floor, чтобы координаты были целыми
+        // Теперь они будут корректными, так как tileW совпадает с тем, что внутри TilesetRenderer
         const baseGridX = Math.floor(offsetX / tileW);
         const baseGridY = Math.floor(offsetY / tileH);
 
-        console.log(`🎨 [Tactical] Отрисовка поля. BaseGrid: (${baseGridX}, ${baseGridY}). Игрок: (${playerUnit.x}, ${playerUnit.y})`);
+        console.log(`🎨 [Tactical] Отрисовка поля. Canvas: ${ctx.canvas.width}x${ctx.canvas.height}. ArenaPx: ${arenaPixelWidth}x${arenaPixelHeight}. BaseGrid: (${baseGridX}, ${baseGridY})`);
 
         // 2. Рисуем пол арены
         for (let y = 0; y < arena.height; y++) {
@@ -66,6 +67,7 @@ const TacticalRenderModule = (function() {
             }
         }
 
+        // ... остальной код отрисовки юнитов без изменений ...
         // 3. Рисуем вражеские юниты
         if (enemyUnits) {
             enemyUnits.forEach(unit => {
