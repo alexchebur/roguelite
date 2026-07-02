@@ -44,3 +44,7 @@ const TacticalMapModule = (function() {
         generateArena: generateArena
     };
 })();
+// В конце каждого из этих файлов добавьте:
+window.TacticalMapModule = TacticalMapModule;
+window.TacticalArmyModule = TacticalArmyModule;
+window.TacticalDataModule = TacticalDataModule;
