@@ -10,6 +10,8 @@ const GameModule = (function() {
     let isReadingQuest = false; // Флаг: открыто ли окно сюжета
     let isTwineActive = false; // Флаг активности Twine-окна
     let globalFlags = {}; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+    let tacticalState = null; // Хранит данные текущего боя { arena, playerUnit, enemyUnits, ... }
+    let currentTactic = 'hold'; // Текущая выбранная тактика игрока
 
 
     // === ПАМЯТЬ ПОДЗЕМЕЛИЙ ===
@@ -966,20 +968,18 @@ function updateQuestCompass() {
             }
             // В функции processGlobalTurn добавьте после проверки POI:
 
+            // Внутри processGlobalTurn, после проверки POI:
+
             // === ПРОВЕРКА СТОЛКНОВЕНИЯ С ВРАЖЕСКОЙ АРМИЕЙ ===
             if (typeof GlobalMapModule.getArmyAt === 'function') {
                 const enemyArmy = GlobalMapModule.getArmyAt(playerPos.x, playerPos.y);
                 if (enemyArmy) {
-                    RenderModule.log(`⚔️ Вы столкнулись с вражеской армией! (Сила: ${enemyArmy.strength.toFixed(1)})`, "combat");
-                    RenderModule.log(`Состав: ${enemyArmy.units.length} отрядов`, "info");
+                    RenderModule.log(`⚔️ Вы столкнулись с вражеской армией!`, "combat");
         
-                    // === ЗАГЛУШКА ДЛЯ ТАКТИЧЕСКОГО БОЯ ===
-                    // Здесь будет вызов TacticalBattleModule.initBattle(enemyArmy)
-                    // Пока просто удаляем армию для теста
-                    GlobalMapModule.removeArmy(enemyArmy.id);
-                    RenderModule.log(`Армия побеждена (заглушка).`, "loot");
+                    // ЗАПУСК ТАКТИЧЕСКОГО БОЯ
+                    initTacticalBattle(enemyArmy);
         
-                    return;
+                    return; // Прерываем глобальный ход
                 }
             }
 
@@ -1007,6 +1007,64 @@ function updateQuestCompass() {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
         }
     }
+
+    function initTacticalBattle(enemyArmyData) {
+        gameMode = 'tactical';
+        busy = true; // Блокируем обычный ввод
+    
+        // 1. Генерируем арену на основе текущей клетки глобальной карты
+        const globalPos = GlobalMapModule.getPlayerPosition();
+        const terrainType = GlobalMapModule.getTileType(globalPos.x, globalPos.y);
+        const arena = TacticalMapModule.generateArena(terrainType);
+    
+        // 2. Создаем юнита-представителя игрока
+        const playerUnit = {
+            x: arena.startPosPlayer.x,
+            y: arena.startPosPlayer.y,
+            char: '@',
+            color: '#fff',
+            hp: player.hp,
+            maxHp: player.maxHp,
+            atk: player.atk,
+            def: player.def
+        };
+
+        // 3. Разворачиваем вражескую армию в юниты на поле боя
+        const enemyUnits = [];
+        let startX = arena.startPosEnemy.x;
+        let startY = arena.startPosEnemy.y;
+    
+        enemyArmyData.units.forEach((armyUnit, index) => {
+            // Расставляем юнитов шеренгой с небольшим разбросом
+            const yOffset = (index % 2 === 0) ? 1 : -1;
+            const unitX = startX + Math.floor(index / 5); // Сдвигаем вправо каждые 5 юнитов
+            const unitY = startY + (index % 5) * yOffset;
+        
+            enemyUnits.push({
+                ...armyUnit, // Копируем данные отряда
+                x: unitX,
+                y: unitY,
+                maxHp: armyUnit.hp // Сохраняем макс HP для расчета морали
+            });
+        });
+
+        // 4. Сохраняем состояние боя
+        tacticalState = {
+            arena: arena,
+            playerUnit: playerUnit,
+            enemyUnits: enemyUnits,
+            originalGlobalPos: { ...globalPos }, // Чтобы вернуться туда же
+            enemyArmyId: enemyArmyData.id
+        };
+
+        currentTactic = 'hold';
+        busy = false; // Разблокируем ввод для тактического режима
+    
+        RenderModule.log("⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!", "combat");
+        renderFrame();
+    }
+
+
     
     function enterPOI(poi) {
         busy = true;
