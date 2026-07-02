@@ -2172,12 +2172,32 @@ function updateQuestCompass() {
         renderFrame();
     }
 
-    // === ОТРИСОВКА КАДРА (Исправленная renderFrame) ===
+    // === ОТРИСОВКА КАДРА (Обновленная с тактическим боем) ===
     function renderFrame() {
         if (!player) return;
-        
+
+        // 1. ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет №1)
+        if (gameMode === 'tactical' && tacticalState) {
+            TacticalRenderModule.drawBattlefield(
+                tacticalState.arena, 
+                tacticalState.playerUnit, 
+                tacticalState.enemyUnits, 
+                player.hasArmy ? player.armyUnits : null, // Если есть армия игрока
+                currentTactic
+            );
+            // В тактическом режиме UI панелей нет (или они скрыты), рисуем только поле боя
+            return; 
+        }
+
+        // 2. ГЛОБАЛЬНАЯ КАРТА
+        if (gameMode === 'global') {
+            renderGlobalMap(); // Эта функция уже содержит отрисовку карты, миникарты и UI
+            return;
+        }
+
+        // 3. ОБЫЧНЫЙ РЕЖИМ (Подземелье / Город)
         // Стандартная отрисовка подземелья/города
-        const vis = RenderModule.draw(player, enemies, items, npcs);
+        const vis = RenderModule.draw(player, enemies, items, npcs); 
         vis.forEach(k => explored.add(k));
         
         // Обновление UI панелей
@@ -2187,6 +2207,11 @@ function updateQuestCompass() {
         // === НОВОЕ: Если открыт постоялый двор, рисуем его поверх всего ===
         if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
             RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+        }
+        
+        // === НОВОЕ: Если открыт магазин, рисуем его поверх всего ===
+        if (isShopOpen && typeof RenderModule.drawShopWindow === 'function') {
+             RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         }
     }
     
