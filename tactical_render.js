@@ -147,32 +147,39 @@ const TacticalRenderModule = (function() {
         ctx.fillRect(sx * size, y, barW * percent, barH);
     }
 
-    /**
-     * Отрисовка меню выбора тактики
-     */
+    // В tactical_render.js, внутри drawTacticalUI
+
     function drawTacticalUI(ctx, currentTactic) {
         const h = ctx.canvas.height;
         const w = ctx.canvas.width;
-        
+    
         // Панель меню
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.fillRect(0, h - 60, w, 60);
         ctx.strokeStyle = '#58a6ff';
         ctx.strokeRect(0, h - 60, w, 60);
 
-        ctx.font = '12px Consolas, monospace';
+        // Уменьшаем шрифт
+        ctx.font = '10px Consolas, monospace'; 
         ctx.textBaseline = 'middle';
-        
+    
         let yPos = h - 45;
-        let xPos = 20;
+        let xPos = 10; // Начинаем чуть левее
 
         // Выводим доступные тактики
         const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
         tactics.forEach(tactic => {
             const isSelected = currentTactic === tactic.id;
             ctx.fillStyle = isSelected ? '#ffd700' : '#fff';
-            ctx.fillText(`${tactic.key}. ${tactic.name}`, xPos, yPos);
-            xPos += 150; // Отступ между кнопками
+        
+            // Сокращаем текст для экономии места
+            let shortName = tactic.name;
+            if (shortName.length > 15) {
+                shortName = shortName.substring(0, 12) + '...';
+            }
+        
+            ctx.fillText(`${tactic.key}. ${shortName}`, xPos, yPos);
+            xPos += 120; // Уменьшаем отступ между кнопками
         });
     }
 
