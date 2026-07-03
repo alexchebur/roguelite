@@ -82,16 +82,26 @@ const TacticalBattleModule = (function() {
     }
 
     function performAttack(attacker, defender) {
-        // Используем упрощенную формулу урона
-        let dmg = Math.max(1, attacker.atk - defender.def);
-        // Крит?
+        // Защита от undefined/NaN
+        const atk = attacker.atk || 1;
+        const def = defender.def || 0;
+        
+        let dmg = Math.max(1, atk - def);
+        
+        // Крит (10% шанс)
         if (Math.random() < 0.1) dmg = Math.floor(dmg * 1.5);
         
         defender.hp -= dmg;
         
         // Лог
+        const attackerName = attacker.name || 'Неизвестный';
+        const defenderName = defender.name || 'Неизвестный';
+        
+        // Проверяем, кто атакует, чтобы выбрать правильный глагол или цвет лога
         if (attacker.isPlayer || (GameModule.getPlayerArmy().includes(attacker))) {
-             RenderModule.log(`${attacker.name || 'Герой'} бьет ${defender.name || 'врага'} на ${dmg}`, "combat");
+             RenderModule.log(`${attackerName} бьет ${defenderName} на ${dmg}`, "combat");
+        } else {
+             RenderModule.log(`${attackerName} атакует вас на ${dmg}`, "combat");
         }
     }
 
