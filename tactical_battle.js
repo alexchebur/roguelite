@@ -74,16 +74,21 @@ const TacticalBattleModule = (function() {
 
     function executeUnitActions(actions, targets) {
         actions.forEach(action => {
-            const unit = action.unit; // <--- БЕРЕМ ПРЯМУЮ ССЫЛКУ ИЗ ДЕЙСТВИЯ
+            // Используем прямую ссылку action.unit, которую мы добавили в tactical_ai.js
+            const unit = action.unit; 
+            
             if (!unit || unit.hp <= 0) return;
 
             if (action.type === 'move') {
-                console.log(`[Move] ${unit.name} идет на (${action.x}, ${action.y})`);
+                // Проверка: не занята ли клетка целью (игроком или другим юнитом)
+                const isOccupied = targets.some(t => t && t.hp > 0 && t.x === action.x && t.y === action.y);
                 
-                const isOccupied = targets.some(t => t.x === action.x && t.y === action.y && t.hp > 0);
                 if (!isOccupied) {
+                    console.log(`[Move] ${unit.name} идет на (${action.x}, ${action.y})`);
                     unit.x = action.x;
                     unit.y = action.y;
+                } else {
+                    console.log(`[Block] ${unit.name} заблокирован на (${action.x}, ${action.y})`);
                 }
             } else if (action.type === 'attack') {
                 if (action.target && action.target.hp > 0) {
