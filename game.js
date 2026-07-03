@@ -1169,7 +1169,86 @@ function updateQuestCompass() {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
         }
     }
+    // === ДВИЖЕНИЕ ВРАГОВ В ТАКТИЧЕСКОМ РЕЖИМЕ ===
+    function moveTacticalEnemies() {
+        if (!tacticalState) return;
+        
+        const ENEMY_SPEED_THRESHOLD = 10; // Порог энергии для хода
 
+        tacticalState.enemyUnits.forEach(unit => {
+            // Пропускаем мертвых
+            if (unit.hp <= 0) return;
+            
+            // Инициализация энергии, если её нет
+            if (unit.energy === undefined) unit.energy = 0;
+            unit.energy += unit.speed || 5;
+
+            // Если накоплено достаточно энергии - делаем ход
+            if (unit.energy >= ENEMY_SPEED_THRESHOLD) {
+                unit.energy -= ENEMY_SPEED_THRESHOLD;
+                
+                // 1. Поиск ближайшей цели (Игрок или его армия)
+                let target = null;
+                let minDist = Infinity;
+                
+                // Проверяем дистанцию до игрока
+                const distToPlayer = Math.abs(unit.x - tacticalState.playerUnit.x) + Math.abs(unit.y - tacticalState.playerUnit.y);
+                if (distToPlayer < minDist) {
+                    minDist = distToPlayer;
+                    target = tacticalState.playerUnit;
+                }
+
+                // Проверяем дистанцию до армии игрока
+                if (tacticalState.playerArmy) {
+                    tacticalState.playerArmy.forEach(ally => {
+                        if (ally.hp > 0) {
+                            const d = Math.abs(unit.x - ally.x) + Math.abs(unit.y - ally.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                target = ally;
+                            }
+                        }
+                    });
+                }
+
+                // 2. Логика поведения
+                if (target) {
+                    // А. Если цель рядом (дистанция 1) - Атакуем
+                    if (minDist === 1) {
+                        const dmg = Math.max(1, unit.atk - target.def);
+                        target.hp -= dmg;
+                        
+                        // Логируем урон только если это игрок или важный юнит, чтобы не спамить
+                        if (target === tacticalState.playerUnit) {
+                            RenderModule.log(`${unit.name} наносит вам ${dmg} урона!`, "combat");
+                        }
+                    } 
+                    // Б. Если далеко - Идем к цели
+                    else {
+                        const dx = Math.sign(target.x - unit.x);
+                        const dy = Math.sign(target.y - unit.y);
+                        
+                        const nx = unit.x + dx;
+                        const ny = unit.y + dy;
+
+                        // Простая проверка коллизий (чтобы враги не вставали друг на друга)
+                        const isBlockedByEnemy = tacticalState.enemyUnits.some(e => e !== unit && e.hp > 0 && e.x === nx && e.y === ny);
+                        const isBlockedByAlly = tacticalState.playerArmy.some(a => a.hp > 0 && a.x === nx && a.y === ny);
+                        const isBlockedByPlayer = (nx === tacticalState.playerUnit.x && ny === tacticalState.playerUnit.y);
+
+                        // Двигаемся, если клетка свободна и в пределах арены
+                        if (!isBlockedByEnemy && !isBlockedByAlly && !isBlockedByPlayer &&
+                            nx >= 0 && nx < tacticalState.arena.width && 
+                            ny >= 0 && ny < tacticalState.arena.height) {
+                            
+                            unit.x = nx;
+                            unit.y = ny;
+                        }
+                    }
+                }
+            }
+        });
+    }
     function initTacticalBattle(enemyArmyData) {
         console.log("🚀 [Tactical] Инициализация боя...");
         window.gameMode = 'tactical';
@@ -1197,6 +1276,7 @@ function updateQuestCompass() {
 
         // 2. Разворачиваем армию игрока (если есть)
         // 2. Разворачиваем армию игрока (если есть)
+        // 2. Разворачиваем армию игрока (если есть)
         let playerArmyUnits = [];
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
             player.armyUnits.forEach((armyUnit, index) => {
@@ -1207,6 +1287,7 @@ function updateQuestCompass() {
                 unitX = Math.max(0, Math.min(arena.width - 1, unitX));
                 unitY = Math.max(0, Math.min(arena.height - 1, unitY));
 
+                // === ИСПРАВЛЕНИЕ: Явно копируем все статы из типа юнита ===
                 playerArmyUnits.push({
                     ...armyUnit,
                     x: unitX,
@@ -1215,55 +1296,49 @@ function updateQuestCompass() {
                     char: armyUnit.type.sprite || '?', 
                     color: '#44ff44', 
                     sprite: armyUnit.type.sprite || '?',
-                    type: armyUnit.type,       // <--- ВАЖНО: Ссылка на объект типа (нужна для range/speed)
+                    type: armyUnit.type,       
                     isPlayerSide: true,
-                    speed: armyUnit.type.speed || 5, // <--- ВАЖНО: Скорость для системы энергии
-                    energy: 0,                       // <--- ВАЖНО: Начальная энергия
-                    name: armyUnit.type.name         // <--- ВАЖНО: Имя для логов
+                    name: armyUnit.type.name,
+                    
+                    // ВАЖНО: Переносим боевые характеристики
+                    atk: armyUnit.type.atk || 5,   
+                    def: armyUnit.type.def || 2,   
+                    speed: armyUnit.type.speed || 5, 
+                    energy: 0,                     
+                    range: armyUnit.type.range || 1  
                 });
             });
         }
         // 3. Разворачиваем вражескую армию (ИСПРАВЛЕННАЯ ЛОГИКА HP)
+        // 3. Разворачиваем вражескую армию
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
-        
-        // Получаем множитель сложности для текущих координат
-        const difficultyMult = WorldCurveModule.getEnemyMultiplier(globalPos.x, globalPos.y);
-
         enemyArmyData.units.forEach((armyUnit, index) => {
             const xOffset = Math.floor(index / 5);
             const yOffset = (index % 2 === 0) ? 1 : -1;
             let unitX = startX - xOffset; 
             let unitY = startY + (index % 5) * yOffset;
-            
             unitX = Math.max(0, Math.min(arena.width - 1, unitX));
             unitY = Math.max(0, Math.min(arena.height - 1, unitY));
-
-            // ВАЖНО: Берем базовые статы из типа юнита, а не из armyUnit (где hp умножено на count)
-            const baseHp = armyUnit.type.hp; 
-            const baseAtk = armyUnit.type.atk;
-            const baseDef = armyUnit.type.def;
-
-            // Масштабируем под уровень мира
-            const scaledHp = Math.max(1, Math.floor(baseHp * difficultyMult));
-            const scaledAtk = Math.max(1, Math.floor(baseAtk * Math.sqrt(difficultyMult)));
-            const scaledDef = Math.max(0, Math.floor(baseDef * Math.pow(difficultyMult, 0.3)));
-
+            
             enemyUnits.push({
-                ...armyUnit, // Копируем остальные поля
+                ...armyUnit,
                 x: unitX,
                 y: unitY,
-                hp: scaledHp,      // Теперь HP будет около 20-40, а не 200
-                maxHp: scaledHp,
-                atk: scaledAtk,
-                def: scaledDef,
+                maxHp: armyUnit.hp,
                 char: armyUnit.type.sprite || '?', 
-                color: '#ff5555',
+                color: '#ff5555', 
                 sprite: armyUnit.type.sprite || '?',
-                type: armyUnit.type.type || 'melee',
+                type: armyUnit.type,
                 isPlayerSide: false,
-                name: armyUnit.type.name || 'Враг',
+                name: armyUnit.type.name,
+                
+                // ВАЖНО: Добавляем скорость и энергию для движения
+                atk: armyUnit.type.atk || 5,
+                def: armyUnit.type.def || 2,
+                speed: armyUnit.type.speed || 5, 
+                energy: 0,
                 range: armyUnit.type.range || 1
             });
         });
