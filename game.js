@@ -962,55 +962,68 @@ function updateQuestCompass() {
         }
     }    
 
-
-
-    // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ ===
+    // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ (ОБНОВЛЕННАЯ) ===
     function handleTacticalTouch(clientX, clientY) {
-        const canvas = document.querySelector("#map-container canvas");
-        if (!canvas) return;
+         const canvas = document.querySelector("#map-container canvas");
+         if (!canvas) return;
+         
+         const rect = canvas.getBoundingClientRect();
+         
+         // 1. Проверяем, попал ли тап в панель Инвентаря (теперь это Меню Тактики)
+         // Находим элемент инвентаря в DOM
+         const invPanel = document.getElementById("inventory-panel");
+         if (invPanel) {
+             const invRect = invPanel.getBoundingClientRect();
+             
+             // Если тап внутри прямоугольника панели инвентаря
+             if (clientX >= invRect.left && clientX <= invRect.right &&
+                 clientY >= invRect.top && clientY <= invRect.bottom) {
+                 
+                 // Вычисляем относительные координаты внутри панели
+                 const panelY = clientY - invRect.top;
+                 const panelHeight = invRect.height;
+                 
+                 // Панель делится на 5 зон по вертикали (или можно по клику на конкретный div)
+                 // Но проще всего эмулировать нажатие клавиш 1-5 в зависимости от высоты тапа
+                 const sectionHeight = panelHeight / 5;
+                 const index = Math.floor(panelY / sectionHeight);
+                 
+                 const keys = ['1', '2', '3', '4', '5'];
+                 if (keys[index]) {
+                     handleInput({ key: keys[index] });
+                 }
+                 return; // Тап обработан как смена тактики
+             }
+         }
 
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        const clickX = (clientX - rect.left) * scaleX;
-        const clickY = (clientY - rect.top) * scaleY;
+         // 2. Тап по полю боя -> Движение/Атака героя
+         // Координаты относительно Canvas
+         const clickX = (clientX - rect.left);
+         const clickY = (clientY - rect.top);
 
-        // 1. Проверяем, попал ли тап в нижнее меню тактики
-        // Меню занимает нижние 60 пикселей канваса
-        if (clickY > canvas.height - 60) {
-            const btnWidth = canvas.width / 5; // 5 кнопок
-            const btnIndex = Math.floor(clickX / btnWidth);
-            
-            // Маппинг индексов на клавиши 1-5
-            const keys = ['1', '2', '3', '4', '5'];
-            if (keys[btnIndex]) {
-                // Эмулируем нажатие клавиши
-                handleInput({ key: keys[btnIndex] });
-            }
-            return;
-        }
-
-        // 2. Тап по полю боя (пока просто эмуляция движения/атаки в сторону тапа)
-        // В будущем здесь будет сложная логика выбора цели
-        const cam = RenderModule.getCameraOffset(tacticalState.playerUnit);
-        const tileW = RenderModule.TILE_SIZE;
-        const tileH = RenderModule.TILE_SIZE;
-        
-        // Вычисляем мировые координаты тапа
-        const worldX = Math.floor(clickX / tileW) + cam.x;
-        const worldY = Math.floor(clickY / tileH) + cam.y;
-
-        // Простая логика: если тапнули рядом с игроком - идем туда
-        const dx = worldX - tacticalState.playerUnit.x;
-        const dy = worldY - tacticalState.playerUnit.y;
-
-        // Ограничиваем движение одним шагом для начала
-        if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
-             // Здесь будет вызов функции хода в тактическом режиме
-             // Пока просто логируем
-             RenderModule.log(`Тап по координатам (${worldX}, ${worldY})`, "info");
-        }
+         // Вычисляем смещение камеры
+         const cam = RenderModule.getCameraOffset(tacticalState.playerUnit);
+         const tileW = TilesetRenderer.TILE_SIZE; // 16px
+         const tileH = TilesetRenderer.TILE_SIZE;
+         
+         // Учитываем центрирование арены (из tactical_render.js)
+         const arenaPixelWidth = tacticalState.arena.width * tileW;
+         const arenaPixelHeight = tacticalState.arena.height * tileH;
+         const offsetX = Math.floor((rect.width - arenaPixelWidth) / 2);
+         const offsetY = Math.floor((rect.height - arenaPixelHeight) / 2);
+         
+         // Координаты внутри арены (в тайлах)
+         const arenaX = Math.floor((clickX - offsetX) / tileW);
+         const arenaY = Math.floor((clickY - offsetY) / tileH);
+         
+         // Разница между позицией игрока и тапом
+         const dx = arenaX - tacticalState.playerUnit.x;
+         const dy = arenaY - tacticalState.playerUnit.y;
+         
+         // Разрешаем движение только на 1 клетку (или атаку, если враг рядом)
+         if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+              TacticalBattleModule.processBattleTurn(Math.sign(dx), Math.sign(dy), window.currentTactic);
+         }
     }
 
     
