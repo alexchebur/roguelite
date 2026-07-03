@@ -92,11 +92,23 @@ const TacticalArmyModule = (function() {
     }
 
     // === ПОЛУЧЕНИЕ ЦВЕТА СПРАЙТА В ЗАВИСИМОСТИ ОТ HP ===
+    // === ПОЛУЧЕНИЕ ЦВЕТА СПРАЙТА В ЗАВИСИМОСТИ ОТ HP И СТОРОНЫ ===
     function getUnitColor(unit) {
         const hpPercent = unit.hp / unit.maxHp;
-        if (hpPercent > 0.66) return '#ff69b4'; // Hot Pink (здоров)
-        if (hpPercent > 0.33) return '#db7093'; // Pale Violet Red (ранен)
-        return '#c71585';                       // Medium Violet Red (при смерти)
+        
+        // 1. ЛОГИКА ДЛЯ СОЮЗНИКОВ (Зеленая гамма, как у игрока)
+        if (unit.isPlayerSide) {
+            if (hpPercent > 0.66) return '#44ff44'; // Ярко-зеленый (здоров)
+            if (hpPercent > 0.33) return '#2e8b57'; // Средне-зеленый (ранен)
+            return '#006400';                       // Темно-зеленый (при смерти)
+        }
+        
+        // 2. ЛОГИКА ДЛЯ ВРАГОВ (Розовая гамма)
+        else {
+            if (hpPercent > 0.66) return '#ff69b4'; // Hot Pink (здоров)
+            if (hpPercent > 0.33) return '#db7093'; // Pale Violet Red (ранен)
+            return '#c71585';                       // Medium Violet Red (при смерти)
+        }
     }
 
     return {
