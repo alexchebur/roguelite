@@ -48,7 +48,7 @@ const TacticalRenderModule = (function() {
             const bx = gridX * tileW + 2;
             const by = gridY * tileH - 6; 
             const barWidth = tileW - 4;
-            const barHeight = 5; // Чуть толще для видимости
+            const barHeight = 2; // Чуть толще для видимости
 
             // Фон бара
             ctx.fillStyle = '#222';
