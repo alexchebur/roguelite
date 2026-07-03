@@ -6,40 +6,29 @@ const TacticalAIModule = (function() {
 
     function calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena) {
         const actions = []; 
-        // Создаем набор занятых клеток на начало хода
         const occupiedCells = new Set();
         
-        // Добавляем игрока и его армию как препятствия
         if (playerUnit && playerUnit.hp > 0) occupiedCells.add(`${playerUnit.x},${playerUnit.y}`);
         if (playerArmy) {
-            playerArmy.forEach(p => {
-                if (p.hp > 0) occupiedCells.add(`${p.x},${p.y}`);
-            });
+            playerArmy.forEach(p => { if (p.hp > 0) occupiedCells.add(`${p.x},${p.y}`); });
         }
-        // Добавляем всех врагов как препятствия
-        enemyUnits.forEach(u => {
-            if (u.hp > 0) occupiedCells.add(`${u.x},${u.y}`);
-        });
+        enemyUnits.forEach(u => { if (u.hp > 0) occupiedCells.add(`${u.x},${u.y}`); });
 
         enemyUnits.forEach(unit => {
             if (unit.hp <= 0) return;
-
-            // Удаляем текущего юнита из занятых, чтобы он мог "подумать" о своем месте, 
-            // но потом мы проверим, не занято ли оно кем-то ДРУГИМ, кто уже походил
             occupiedCells.delete(`${unit.x},${unit.y}`);
 
             const hpPercent = unit.hp / unit.maxHp;
             
-            // 1. ПРОВЕРКА МОРАЛИ
             if (hpPercent < 0.33) {
                 const action = getRetreatAction(unit, enemyUnits, arena, occupiedCells);
+                action.unit = unit; // <--- ВАЖНО: Добавляем ссылку на юнита
                 actions.push(action);
                 if (action.type === 'move') occupiedCells.add(`${action.x},${action.y}`);
-                else occupiedCells.add(`${unit.x},${unit.y}`); // Если ждет, место остается занятым
+                else occupiedCells.add(`${unit.x},${unit.y}`);
                 return;
             }
 
-            // 2. ПОИСК ЦЕЛИ
             let target = findNearestTarget(unit, playerUnit, playerArmy);
             if (!target) {
                 occupiedCells.add(`${unit.x},${unit.y}`);
@@ -49,29 +38,25 @@ const TacticalAIModule = (function() {
             const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
             let action = null;
 
-            // 3. ЛОГИКА
             if (unit.type === 'range') {
                 if (dist <= unit.range) {
-                    action = { unitId: unit.id, type: 'attack', target: target };
+                    action = { type: 'attack', target: target, unit: unit };
                 } else {
                     action = getApproachAction(unit, target, unit.range, arena, occupiedCells);
                 }
             } else {
                 if (dist === 1) {
-                    action = { unitId: unit.id, type: 'attack', target: target };
+                    action = { type: 'attack', target: target, unit: unit };
                 } else {
                     action = getApproachAction(unit, target, 1, arena, occupiedCells);
                 }
             }
 
             if (action) {
+                action.unit = unit; // <--- ВАЖНО: Добавляем ссылку на юнита
                 actions.push(action);
-                if (action.type === 'move') {
-                    console.log(`👾 [AI] Юнит ${unit.name} идет на (${action.x}, ${action.y})`);
-                    occupiedCells.add(`${action.x},${action.y}`);
-                } else {
-                    occupiedCells.add(`${unit.x},${unit.y}`);
-                }
+                if (action.type === 'move') occupiedCells.add(`${action.x},${action.y}`);
+                else occupiedCells.add(`${unit.x},${unit.y}`);
             }
         });
 
@@ -102,16 +87,15 @@ const TacticalAIModule = (function() {
         const dx = targetX > unit.x ? 1 : -1;
         const dy = targetY > unit.y ? 1 : -1;
         
-        if (isValidMove(unit.x + dx, unit.y, arena, occupiedCells)) return { unitId: unit.id, type: 'move', x: unit.x + dx, y: unit.y };
-        if (isValidMove(unit.x, unit.y + dy, arena, occupiedCells)) return { unitId: unit.id, type: 'move', x: unit.x, y: unit.y + dy };
-        return { unitId: unit.id, type: 'wait' };
+        if (isValidMove(unit.x + dx, unit.y, arena, occupiedCells)) return { type: 'move', x: unit.x + dx, y: unit.y };
+        if (isValidMove(unit.x, unit.y + dy, arena, occupiedCells)) return { type: 'move', x: unit.x, y: unit.y + dy };
+        return { type: 'wait' };
     }
 
     function getApproachAction(unit, target, desiredRange, arena, occupiedCells) {
         const dx = Math.sign(target.x - unit.x);
         const dy = Math.sign(target.y - unit.y);
         
-        // Проверяем только соседние клетки (максимум 1 шаг)
         const moves = [
             { x: unit.x + dx, y: unit.y + dy }, 
             { x: unit.x + dx, y: unit.y },      
@@ -120,10 +104,10 @@ const TacticalAIModule = (function() {
 
         for (const move of moves) {
             if (isValidMove(move.x, move.y, arena, occupiedCells)) {
-                return { unitId: unit.id, type: 'move', x: move.x, y: move.y };
+                return { type: 'move', x: move.x, y: move.y };
             }
         }
-        return { unitId: unit.id, type: 'wait' };
+        return { type: 'wait' };
     }
 
     function isValidMove(x, y, arena, occupiedCells) {
@@ -133,3 +117,4 @@ const TacticalAIModule = (function() {
 
     return { calculateArmyTurn: calculateArmyTurn };
 })();
+window.TacticalAIModule = TacticalAIModule;
