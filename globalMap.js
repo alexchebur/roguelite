@@ -104,7 +104,9 @@ function spawnArmiesInChunk(cx, cy, tiles) {
 
             const globalX = chunkStartX + x;
             const globalY = chunkStartY + y;
-            const difficulty = 1; // Легкая сложность для теста
+            // Сложность растет на 1 каждые 40 клеток от центра мира (0,0)
+            const distFromStart = Math.abs(globalX) + Math.abs(globalY);
+            const difficulty = 1 + Math.floor(distFromStart / 40); 
             
             const army = TacticalArmyModule.createGlobalArmy(globalX, globalY, difficulty);
             activeArmies.push(army);
