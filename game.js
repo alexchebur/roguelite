@@ -177,6 +177,8 @@ const GameModule = (function() {
                     if (area.action === 'rest') { innAction('rest'); return; }
                     if (area.action === 'rumor') { innAction('rumor'); return; }
                     if (area.action === 'dice') { innAction('dice'); return; }
+                    // === ДОБАВИТЬ ЭТУ СТРОКУ ===
+                    if (area.action === 'hire') { innAction('hire'); return; }
                 }
             }
         }
