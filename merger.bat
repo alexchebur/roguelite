@@ -1,6 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
+
 set "output=merged_output.md"
 
 :: Удаляем старый файл, если он есть
