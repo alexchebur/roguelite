@@ -1,7 +1,7 @@
 /**
  * МОДУЛЬ ЛОРА (lore.js)
  * Управляет выдачей текстовых фрагментов из книг.
- */
+ */ 
 
 const LoreModule = (function() {
     'use strict';
