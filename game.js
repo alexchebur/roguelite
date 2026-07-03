@@ -497,7 +497,9 @@ const GameModule = (function() {
             if (player && player.hp > 0) {
                 const healAmount = 100;
                 player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                player.gold += 1000;
                 RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
+                RenderModule.log(`💰 ЧИТ: Получено 1000 золотых!`, "loot");
                 RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             }
             return;
