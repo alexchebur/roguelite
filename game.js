@@ -1184,34 +1184,47 @@ function updateQuestCompass() {
             });
         }
 
-        // 3. Разворачиваем вражескую армию
+        // 3. Разворачиваем вражескую армию (ИСПРАВЛЕННАЯ ЛОГИКА HP)
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
         
+        // Получаем множитель сложности для текущих координат
+        const difficultyMult = WorldCurveModule.getEnemyMultiplier(globalPos.x, globalPos.y);
+
         enemyArmyData.units.forEach((armyUnit, index) => {
             const xOffset = Math.floor(index / 5);
             const yOffset = (index % 2 === 0) ? 1 : -1;
             let unitX = startX - xOffset; 
             let unitY = startY + (index % 5) * yOffset;
             
-            // ИСПРАВЛЕНИЕ: используем Math.min вместо min
             unitX = Math.max(0, Math.min(arena.width - 1, unitX));
             unitY = Math.max(0, Math.min(arena.height - 1, unitY));
 
+            // ВАЖНО: Берем базовые статы из типа юнита, а не из armyUnit (где hp умножено на count)
+            const baseHp = armyUnit.type.hp; 
+            const baseAtk = armyUnit.type.atk;
+            const baseDef = armyUnit.type.def;
+
+            // Масштабируем под уровень мира
+            const scaledHp = Math.max(1, Math.floor(baseHp * difficultyMult));
+            const scaledAtk = Math.max(1, Math.floor(baseAtk * Math.sqrt(difficultyMult)));
+            const scaledDef = Math.max(0, Math.floor(baseDef * Math.pow(difficultyMult, 0.3)));
+
             enemyUnits.push({
-                ...armyUnit,
+                ...armyUnit, // Копируем остальные поля
                 x: unitX,
                 y: unitY,
-                maxHp: armyUnit.hp,
+                hp: scaledHp,      // Теперь HP будет около 20-40, а не 200
+                maxHp: scaledHp,
+                atk: scaledAtk,
+                def: scaledDef,
                 char: armyUnit.type.sprite || '?', 
                 color: '#ff5555',
                 sprite: armyUnit.type.sprite || '?',
                 type: armyUnit.type.type || 'melee',
                 isPlayerSide: false,
                 name: armyUnit.type.name || 'Враг',
-                atk: armyUnit.type.atk,
-                def: armyUnit.type.def,
                 range: armyUnit.type.range || 1
             });
         });
