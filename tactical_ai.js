@@ -11,45 +11,43 @@ const TacticalAIModule = (function() {
     function calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena) {
         const actions = []; // Массив действий: { unitId, type: 'move'|'attack', targetX, targetY, targetUnit }
 
-        enemyUnits.forEach(unit => {
-            if (unit.hp <= 0) return;
+    // В tactical_ai.js, внутри calculateArmyTurn
 
-            // 1. ПРОВЕРКА МОРАЛИ (Бегство)
-            const hpPercent = unit.hp / unit.maxHp;
-            if (hpPercent < 0.33) {
-                actions.push(getRetreatAction(unit, enemyUnits, arena));
-                return;
-            }
+    enemyUnits.forEach(unit => {
+        if (unit.hp <= 0) return;
 
-            // 2. ПОИСК ЦЕЛИ
-            // Ищем ближайшую цель (Игрок или его отряды)
-            let target = findNearestTarget(unit, playerUnit, playerArmy);
-            
-            if (!target) return; // Нет целей - стоим
+        const hpPercent = unit.hp / unit.maxHp;
+    
+        // 1. ПРОВЕРКА МОРАЛИ
+        if (hpPercent < 0.33) {
+            RenderModule.log(`${unit.name} в панике отступает!`, "combat"); // <--- ЛОГ
+            actions.push(getRetreatAction(unit, enemyUnits, arena));
+            return;
+        }
 
-            const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
+        // 2. ПОИСК ЦЕЛИ
+        let target = findNearestTarget(unit, playerUnit, playerArmy);
+        if (!target) return;
 
-            // 3. ЛОГИКА В ЗАВИСИМОСТИ ОТ ТИПА ЮНИТА
-            if (unit.type === 'range') {
-                // Лучники
-                if (dist <= unit.range) {
-                    // Враг в радиусе -> Атаковать
-                    actions.push({ unitId: unit.id, type: 'attack', target: target });
-                } else {
-                    // Враг далеко -> Подойти, но держать дистанцию
-                    actions.push(getApproachAction(unit, target, unit.range, arena));
-                }
+        const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
+
+        // 3. ЛОГИКА
+        if (unit.type === 'range') {
+            if (dist <= unit.range) {
+                actions.push({ unitId: unit.id, type: 'attack', target: target });
             } else {
-                // Мили (Копейщики, Конница)
-                if (dist === 1) {
-                    // Вплотную -> Атаковать
-                    actions.push({ unitId: unit.id, type: 'attack', target: target });
-                } else {
-                    // Идти в ближний бой
-                    actions.push(getApproachAction(unit, target, 1, arena));
-                }
+                // Лучник подходит, но осторожно
+                actions.push(getApproachAction(unit, target, unit.range, arena));
             }
-        });
+        } else {
+            // Мили
+            if (dist === 1) {
+                actions.push({ unitId: unit.id, type: 'attack', target: target });
+            } else {
+                actions.push(getApproachAction(unit, target, 1, arena));
+            }
+        }
+    });
 
         return actions;
     }
