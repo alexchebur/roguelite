@@ -9,30 +9,34 @@ const TacticalBattleModule = (function() {
      * Вызывается из GameModule.processTurn или специального обработчика
      */
     function processBattleTurn(playerDx, playerDy, currentTactic) {
-        const state = GameModule.getTacticalState(); // Нужно добавить геттер в GameModule
+        const state = GameModule.getTacticalState();
         if (!state) return;
 
         const { arena, playerUnit, playerArmy, enemyUnits } = state;
 
-        // 1. Движение/Действие Игрока (Героя)
+        // 1. Действие игрока
         handlePlayerHeroAction(playerUnit, playerDx, playerDy, enemyUnits, arena);
 
-        // 2. Действия Армии Игрока (AI союзников)
+        // 2. Действия армии игрока
         const playerActions = TacticalPlayerModule.processPlayerTactic(currentTactic, playerArmy, playerUnit, enemyUnits, arena);
-        executeUnitActions(playerArmy, playerActions, enemyUnits);
+        // Добавляем ссылки на юнитов в действия игрока (аналогично AI)
+        playerActions.forEach(pa => {
+            pa.unit = playerArmy.find(u => u.id === pa.unitId);
+        });
+        executeUnitActions(playerActions, [playerUnit, ...enemyUnits]);
 
-        // 3. Действия Вражеской Армии (AI врагов)
+        // 3. Действия врагов
         const enemyActions = TacticalAIModule.calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena);
-        executeUnitActions(enemyUnits, enemyActions, [playerUnit, ...playerArmy]);
+        executeUnitActions(enemyActions, [playerUnit, ...playerArmy]);
 
         // 4. Очистка мертвых
         cleanUpDeadUnits(state);
 
-        // 5. Проверка условий победы/поражения
+        // 5. Проверка конца боя
         checkBattleEnd(state);
 
         // 6. Рендер
-        RenderModule.requestRedraw();
+        RenderModule.requestRedraw(); 
     }
 
     function handlePlayerHeroAction(player, dx, dy, enemies, arena) {
@@ -60,19 +64,18 @@ const TacticalBattleModule = (function() {
         }
     }
 
-    function executeUnitActions(units, actions, targets) {
+    function executeUnitActions(actions, targets) {
         actions.forEach(action => {
-            const unit = units.find(u => u.id === action.unitId);
+            const unit = action.unit; // <--- БЕРЕМ ПРЯМУЮ ССЫЛКУ ИЗ ДЕЙСТВИЯ
             if (!unit || unit.hp <= 0) return;
 
             if (action.type === 'move') {
-                // ПРОВЕРКА: Меняем ли мы координаты реально?
-                console.log(`[Move] Юнит ${unit.name} (${unit.id}) перемещается с (${unit.x},${unit.y}) на (${action.x},${action.y})`);
+                console.log(`[Move] ${unit.name} идет на (${action.x}, ${action.y})`);
                 
                 const isOccupied = targets.some(t => t.x === action.x && t.y === action.y && t.hp > 0);
                 if (!isOccupied) {
-                    unit.x = action.x; // <--- ЭТА СТРОКА КРИТИЧНА
-                    unit.y = action.y; // <--- ЭТА СТРОКА КРИТИЧНА
+                    unit.x = action.x;
+                    unit.y = action.y;
                 }
             } else if (action.type === 'attack') {
                 if (action.target && action.target.hp > 0) {
