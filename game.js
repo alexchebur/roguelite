@@ -560,10 +560,15 @@ const GameModule = (function() {
                 return; // Завершаем обработку, так как это не ход
             }
 
-            // Б. Обработка движения/атаки/пропуска хода
-            let dx = 0;
-            let dy = 0;
-            let isAction = false; // <--- ОБЪЯВЛЯЕМ ПЕРЕМЕННУЮ ЗДЕСЬ
+            // Б. Обработка побега (клавиша F или 0)
+            if (e.key === 'f' || e.key === 'F' || e.key === '0') {
+                 endTacticalBattle(false); // Поражение/Побег
+                 return;
+            }
+
+            // В. Обработка движения/атаки/пропуска хода
+            let dx = 0, dy = 0;
+            let isAction = false;
 
             if (e.key === "ArrowUp")    { dy = -1; isAction = true; }
             if (e.key === "ArrowDown")  { dy = 1;  isAction = true; }
@@ -577,18 +582,20 @@ const GameModule = (function() {
             }
 
             if (isAction) {
-                // 1. Ход ИГРОКА
+                // 1. Ход ИГРОКА (движение или атака)
                 if (dx !== 0 || dy !== 0) {
                     processTacticalPlayerTurn(dx, dy);
-                } else {
-                    RenderModule.log("⏳ Вы ждете...", "info");
                 }
 
-                // 2. Ход СОЮЗНИКОВ
+                // 2. Ход СОЮЗНИКОВ (с учетом новой тактики)
                 if (typeof movePlayerArmy === 'function') movePlayerArmy();
 
-                // 3. Ход ВРАГОВ (ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ)
-                if (typeof moveTacticalEnemies === 'function') moveTacticalEnemies();
+                // 3. Ход ВРАГОВ (ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ!)
+                if (typeof moveTacticalEnemies === 'function') {
+                    moveTacticalEnemies();
+                } else {
+                    console.error("❌ Функция moveTacticalEnemies не найдена!");
+                }
 
                 // 4. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
                 checkTacticalBattleEnd();
