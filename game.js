@@ -1330,13 +1330,12 @@ function updateQuestCompass() {
                 y: unitY,
                 maxHp: armyUnit.hp,
                 char: armyUnit.type.sprite || '?', 
-                color: '#ff5555', 
+                // === ИЗМЕНЕНО: Ярко-розовый цвет ===
+                color: '#ff69b4', 
                 sprite: armyUnit.type.sprite || '?',
                 type: armyUnit.type,
                 isPlayerSide: false,
                 name: armyUnit.type.name,
-                
-                // ВАЖНО: Добавляем скорость и энергию для движения
                 atk: armyUnit.type.atk || 5,
                 def: armyUnit.type.def || 2,
                 speed: armyUnit.type.speed || 5, 
