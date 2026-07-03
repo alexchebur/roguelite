@@ -82,26 +82,23 @@ const TacticalBattleModule = (function() {
     }
 
     function performAttack(attacker, defender) {
-        // Защита от undefined/NaN
-        const atk = attacker.atk || 1;
-        const def = defender.def || 0;
+        // 1. Защита от некорректных данных
+        if (!attacker || !defender) return;
         
-        let dmg = Math.max(1, atk - def);
-        
-        // Крит (10% шанс)
-        if (Math.random() < 0.1) dmg = Math.floor(dmg * 1.5);
-        
-        defender.hp -= dmg;
-        
-        // Лог
-        const attackerName = attacker.name || 'Неизвестный';
-        const defenderName = defender.name || 'Неизвестный';
-        
-        // Проверяем, кто атакует, чтобы выбрать правильный глагол или цвет лога
-        if (attacker.isPlayer || (GameModule.getPlayerArmy().includes(attacker))) {
-             RenderModule.log(`${attackerName} бьет ${defenderName} на ${dmg}`, "combat");
-        } else {
-             RenderModule.log(`${attackerName} атакует вас на ${dmg}`, "combat");
+        // 2. Используем стандартную боевую систему из combat.js для единообразия расчетов
+        // CombatModule.attack возвращает true, если цель убита
+        const isKilled = CombatModule.attack(
+            attacker, 
+            defender, 
+            (msg) => RenderModule.log(msg, "combat") // Передаем функцию логирования
+        );
+
+        // 3. Дополнительное логирование для тактического режима (опционально, для ясности)
+        if (!isKilled) {
+            const attackerName = attacker.name || (attacker.isPlayer ? 'Герой' : 'Юнит');
+            const defenderName = defender.name || 'Враг';
+            // CombatModule уже вывел лог вида "X бьет Y на Z", но если нужно что-то специфичное:
+            // RenderModule.log(`${attackerName} атакует ${defenderName}`, "info");
         }
     }
 
