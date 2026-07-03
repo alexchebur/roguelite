@@ -123,8 +123,9 @@ const UNIT_TYPES = {
     };
 
     // === КОНСТАНТЫ ТАКТИЧЕСКОГО БОЯ ===
-    const BATTLEFIELD_WIDTH = 40;
-    const BATTLEFIELD_HEIGHT = 20;
+    // === КОНСТАНТЫ ТАКТИЧЕСКОГО БОЯ ===
+    const BATTLEFIELD_WIDTH = 28;  // <-- БЫЛО 40. Ставим 28, чтобы влезло в 30
+    const BATTLEFIELD_HEIGHT = 18; // <-- БЫЛО 20. Ставим 18, чтобы влезло в 20
     const MAX_UNITS_PER_ARMY = 30;
     const UNIT_COST = 10000; // Стоимость найма отряда в постоялом дворе
 
