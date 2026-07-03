@@ -2734,8 +2734,10 @@ function updateQuestCompass() {
         setGlobalFlag: (flagName, value) => { globalFlags[flagName] = value; },
         // Используем локальную переменную globalFlags через замыкание
         getGlobalFlag: (flagName) => globalFlags[flagName] || false,
+        endTacticalBattle: endTacticalBattle,
         getTacticalState: () => tacticalState,
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
+
         
         exitToGlobal 
     };
