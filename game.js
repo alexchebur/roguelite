@@ -1181,6 +1181,7 @@ function updateQuestCompass() {
         };
 
         // 2. Разворачиваем армию игрока (если есть)
+        // 2. Разворачиваем армию игрока (если есть)
         let playerArmyUnits = [];
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
             player.armyUnits.forEach((armyUnit, index) => {
@@ -1188,7 +1189,6 @@ function updateQuestCompass() {
                 const yOffset = (index % 2 === 0) ? 1 : -1;
                 let unitX = arena.startPosPlayer.x + xOffset;
                 let unitY = arena.startPosPlayer.y + (index % 5) * yOffset;
-                
                 unitX = Math.max(0, Math.min(arena.width - 1, unitX));
                 unitY = Math.max(0, Math.min(arena.height - 1, unitY));
 
@@ -1198,18 +1198,16 @@ function updateQuestCompass() {
                     y: unitY,
                     maxHp: armyUnit.hp,
                     char: armyUnit.type.sprite || '?', 
-                    color: '#44ff44',
+                    color: '#44ff44', 
                     sprite: armyUnit.type.sprite || '?',
-                    type: armyUnit.type.type || 'melee',
+                    type: armyUnit.type,       // <--- ВАЖНО: Ссылка на объект типа (нужна для range/speed)
                     isPlayerSide: true,
-                    atk: armyUnit.type.atk,
-                    def: armyUnit.type.def,
-                    range: armyUnit.type.range || 1,
-                    name: armyUnit.type.name
+                    speed: armyUnit.type.speed || 5, // <--- ВАЖНО: Скорость для системы энергии
+                    energy: 0,                       // <--- ВАЖНО: Начальная энергия
+                    name: armyUnit.type.name         // <--- ВАЖНО: Имя для логов
                 });
             });
         }
-
         // 3. Разворачиваем вражескую армию (ИСПРАВЛЕННАЯ ЛОГИКА HP)
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
@@ -2001,7 +1999,111 @@ function updateQuestCompass() {
             }
         });
     }
-    
+    // === ДВИЖЕНИЕ СОЮЗНОЙ АРМИИ (НОВОЕ) ===
+    function movePlayerArmy() {
+        if (!tacticalState || !tacticalState.playerArmy) return;
+        
+        const tactic = window.currentTactic || 'hold';
+        const PLAYER_SPEED_THRESHOLD = 10;
+
+        tacticalState.playerArmy.forEach(unit => {
+            if (unit.hp <= 0) return;
+            
+            // Инициализация энергии, если её нет
+            if (unit.energy === undefined) unit.energy = 0;
+            unit.energy += unit.speed || 5;
+
+            if (unit.energy >= PLAYER_SPEED_THRESHOLD) {
+                unit.energy -= PLAYER_SPEED_THRESHOLD;
+                
+                let targetX = unit.x;
+                let targetY = unit.y;
+                let actionTaken = false;
+
+                // --- ЛОГИКА ПО ТАКТИКЕ ---
+                
+                // 1. ОТСТУПЛЕНИЕ (FLEE/RETREAT)
+                if (tactic === 'retreat' || tactic === 'flee') {
+                    // Двигаемся влево (к своему краю)
+                    if (unit.x > 2) targetX = unit.x - 1;
+                    actionTaken = true;
+                }
+                
+                // 2. ДИСТАНЦИОННАЯ АТАКА (RANGED)
+                else if (tactic === 'ranged' && unit.type && unit.type.range > 1) {
+                    // Ищем ближайшего врага
+                    let nearestEnemy = null;
+                    let minDist = Infinity;
+                    tacticalState.enemyUnits.forEach(e => {
+                        if (e.hp > 0) {
+                            const d = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestEnemy = e;
+                            }
+                        }
+                    });
+
+                    if (nearestEnemy) {
+                        // Если враг в радиусе атаки - стреляем (пока просто урон без анимации)
+                        if (minDist <= unit.type.range) {
+                            const dmg = Math.max(1, unit.atk - nearestEnemy.def);
+                            nearestEnemy.hp -= dmg;
+                            RenderModule.log(`${unit.name} стреляет во врага на ${dmg} урона!`, "combat");
+                            actionTaken = true; // Ход потрачен на выстрел
+                        } else {
+                            // Если далеко - идем к нему
+                            targetX = unit.x + Math.sign(nearestEnemy.x - unit.x);
+                            targetY = unit.y + Math.sign(nearestEnemy.y - unit.y);
+                        }
+                    }
+                }
+
+                // 3. НАСТУПЛЕНИЕ (ADVANCE) или УДЕРЖАНИЕ (HOLD) с поиском цели
+                if (!actionTaken) {
+                    let nearestEnemy = null;
+                    let minDist = Infinity;
+                    
+                    tacticalState.enemyUnits.forEach(e => {
+                        if (e.hp > 0) {
+                            const d = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestEnemy = e;
+                            }
+                        }
+                    });
+
+                    if (nearestEnemy) {
+                        // Если рядом - бьем
+                        if (minDist === 1) {
+                            const dmg = Math.max(1, unit.atk - nearestEnemy.def);
+                            nearestEnemy.hp -= dmg;
+                            RenderModule.log(`${unit.name} атакует врага на ${dmg} урона!`, "combat");
+                            actionTaken = true;
+                        } 
+                        // Если далеко - идем к врагу (только если тактика не HOLD)
+                        else if (tactic !== 'hold') {
+                            targetX = unit.x + Math.sign(nearestEnemy.x - unit.x);
+                            targetY = unit.y + Math.sign(nearestEnemy.y - unit.y);
+                        }
+                    }
+                }
+
+                // --- ПРИМЕНЕНИЕ ДВИЖЕНИЯ ---
+                if (!actionTaken && (targetX !== unit.x || targetY !== unit.y)) {
+                    // Простая проверка коллизий (чтобы не встать друг на друга)
+                    const isBlocked = tacticalState.playerArmy.some(u => u !== unit && u.x === targetX && u.y === targetY) ||
+                                      tacticalState.enemyUnits.some(e => e.x === targetX && e.y === targetY);
+                    
+                    if (!isBlocked && targetX >= 0 && targetX < tacticalState.arena.width && targetY >= 0 && targetY < tacticalState.arena.height) {
+                        unit.x = targetX;
+                        unit.y = targetY;
+                    }
+                }
+            }
+        });
+    }    
     // === СИСТЕМА ПРОКАЧКИ ===
     function gainXp(amount) {
         player.xp += amount;
