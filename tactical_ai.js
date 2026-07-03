@@ -34,7 +34,6 @@ const TacticalAIModule = (function() {
                 if (dist <= unit.range) {
                     actions.push({ unitId: unit.id, type: 'attack', target: target });
                 } else {
-                    // Передаем все необходимые контекстные данные в getApproachAction
                     actions.push(getApproachAction(unit, target, unit.range, arena, enemyUnits, playerUnit, playerArmy));
                 }
             } else {
@@ -42,7 +41,6 @@ const TacticalAIModule = (function() {
                 if (dist === 1) {
                     actions.push({ unitId: unit.id, type: 'attack', target: target });
                 } else {
-                    // Передаем все необходимые контекстные данные в getApproachAction
                     actions.push(getApproachAction(unit, target, 1, arena, enemyUnits, playerUnit, playerArmy));
                 }
             }
@@ -87,7 +85,7 @@ const TacticalAIModule = (function() {
      * Действие отступления
      */
     function getRetreatAction(unit, friends, arena) {
-        // Бежим к правому краю карты (к своему краю спавна)
+        // Бежим к правому краю карты
         const targetX = arena.width - 1;
         const targetY = Math.floor(arena.height / 2);
 
@@ -107,36 +105,39 @@ const TacticalAIModule = (function() {
     }
 
     /**
-     * Действие сближения (более агрессивное и умное)
-     * Исправлено: добавлены параметры friends, pUnit, pArmy для корректной проверки коллизий
+     * Действие сближения (Упрощенное и надежное)
      */
     function getApproachAction(unit, target, desiredRange, arena, friends, pUnit, pArmy) {
-        // Сначала пробуем простой "жадный" шаг к цели
+        // Вычисляем направление к цели
         const dx = Math.sign(target.x - unit.x);
         const dy = Math.sign(target.y - unit.y);
         
-        // Приоритет направлений: диагональ -> основная ось -> второстепенная ось
+        // Приоритетные направления: сначала диагональ, потом прямые
         const moves = [
-            { x: unit.x + dx, y: unit.y + dy }, 
-            { x: unit.x + dx, y: unit.y },      
-            { x: unit.x, y: unit.y + dy }       
+            { x: unit.x + dx, y: unit.y + dy }, // Диагональ
+            { x: unit.x + dx, y: unit.y },      // По X
+            { x: unit.x, y: unit.y + dy }       // По Y
         ];
 
         for (const move of moves) {
-            // Проверяем, свободна ли клетка от союзников
-            if (isValidMove(move.x, move.y, arena, friends)) { 
-                 // Проверяем, не занята ли клетка врагом (игроком или его армией)
-                 // Если занята врагом, мы не можем туда пойти (это должна быть атака, которая обрабатывается выше)
-                 const isOccupiedByEnemy = (pUnit && pUnit.hp > 0 && pUnit.x === move.x && pUnit.y === move.y) || 
-                                           (pArmy && pArmy.some(p => p.hp > 0 && p.x === move.x && p.y === move.y));
+            // Проверяем границы арены
+            if (move.x >= 0 && move.x < arena.width && move.y >= 0 && move.y < arena.height) {
                 
-                if (!isOccupiedByEnemy) {
+                // 1. Проверка: не занято ли место другом (врагом из той же армии)
+                const isFriendThere = friends.some(f => f.x === move.x && f.y === move.y && f.hp > 0);
+                
+                // 2. Проверка: не занято ли место врагом (игроком или его армией)
+                // Если там враг, мы не можем пойти туда (это должна быть атака, но она обрабатывается выше)
+                const isEnemyThere = (pUnit && pUnit.hp > 0 && pUnit.x === move.x && pUnit.y === move.y) || 
+                                     (pArmy && pArmy.some(p => p.hp > 0 && p.x === move.x && p.y === move.y));
+
+                if (!isFriendThere && !isEnemyThere) {
                     return { unitId: unit.id, type: 'move', x: move.x, y: move.y };
                 }
             }
         }
 
-        // Если простые шаги не сработали (заблокированы), пробуем A* как запасной вариант для обхода
+        // Если простые шаги не сработали, пробуем A* (резервный вариант)
         const astar = new ROT.Path.AStar(target.x, target.y, 
             (x, y) => isValidCell(x, y, arena), { topology: 8 });
         
@@ -148,14 +149,13 @@ const TacticalAIModule = (function() {
         });
 
         if (nextStep) {
-             // Финальная проверка: можно ли вообще ступить на клетку, найденную A*
-             if (isValidMove(nextStep.x, nextStep.y, arena, friends)) {
-                 const isOccupiedByEnemy = (pUnit && pUnit.hp > 0 && pUnit.x === nextStep.x && pUnit.y === nextStep.y) || 
-                                           (pArmy && pArmy.some(p => p.hp > 0 && p.x === nextStep.x && p.y === nextStep.y));
-                 
-                 if (!isOccupiedByEnemy) {
-                     return { unitId: unit.id, type: 'move', x: nextStep.x, y: nextStep.y };
-                 }
+             // Финальная проверка для A*
+             const isFriendThere = friends.some(f => f.x === nextStep.x && f.y === nextStep.y && f.hp > 0);
+             const isEnemyThere = (pUnit && pUnit.hp > 0 && pUnit.x === nextStep.x && pUnit.y === nextStep.y) || 
+                                  (pArmy && pArmy.some(p => p.hp > 0 && p.x === nextStep.x && p.y === nextStep.y));
+             
+             if (!isFriendThere && !isEnemyThere) {
+                 return { unitId: unit.id, type: 'move', x: nextStep.x, y: nextStep.y };
              }
         }
 
