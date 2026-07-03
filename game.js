@@ -2118,6 +2118,33 @@ function updateQuestCompass() {
             }
         });
     }    
+
+
+    function processTacticalPlayerTurn(dx, dy) {
+        if (!tacticalState || !tacticalState.playerUnit) return;
+        const p = tacticalState.playerUnit;
+        const nx = p.x + dx;
+        const ny = p.y + dy;
+
+        // Проверка границ арены
+        if (nx < 0 || nx >= tacticalState.arena.width || ny < 0 || ny >= tacticalState.arena.height) return;
+
+        // Проверка коллизий (враги, союзники)
+        const enemy = tacticalState.enemyUnits.find(e => e.x === nx && e.y === ny && e.hp > 0);
+        const ally = tacticalState.playerArmy.find(a => a.x === nx && a.y === ny && a.hp > 0);
+
+        if (enemy) {
+            // Атака врага
+            const dmg = Math.max(1, p.atk - enemy.def);
+            enemy.hp -= dmg;
+            RenderModule.log(`⚔️ Вы нанесли ${dmg} урона!`, "combat");
+        } else if (!ally) {
+            // Движение
+            p.x = nx;
+            p.y = ny;
+        }
+    }
+    
     // === СИСТЕМА ПРОКАЧКИ ===
     function gainXp(amount) {
         player.xp += amount;
