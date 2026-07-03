@@ -1280,8 +1280,6 @@ function updateQuestCompass() {
         };
 
         // 2. Разворачиваем армию игрока (если есть)
-        // 2. Разворачиваем армию игрока (если есть)
-        // 2. Разворачиваем армию игрока (если есть)
         let playerArmyUnits = [];
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
             player.armyUnits.forEach((armyUnit, index) => {
@@ -1292,12 +1290,16 @@ function updateQuestCompass() {
                 unitX = Math.max(0, Math.min(arena.width - 1, unitX));
                 unitY = Math.max(0, Math.min(arena.height - 1, unitY));
 
-                // === ИСПРАВЛЕНИЕ: Явно копируем все статы из типа юнита ===
+                // === ИСПРАВЛЕНИЕ: Используем статы ОДНОГО бойца из типа юнита ===
                 playerArmyUnits.push({
                     ...armyUnit,
                     x: unitX,
                     y: unitY,
-                    maxHp: armyUnit.hp,
+                    
+                    // ВАЖНО: HP берем из типа, а не из глобального объекта армии
+                    hp: armyUnit.type.hp,       
+                    maxHp: armyUnit.type.hp,    
+                    
                     char: armyUnit.type.sprite || '?', 
                     color: '#44ff44', 
                     sprite: armyUnit.type.sprite || '?',
@@ -1305,10 +1307,10 @@ function updateQuestCompass() {
                     isPlayerSide: true,
                     name: armyUnit.type.name,
                     
-                    // ВАЖНО: Переносим боевые характеристики
-                    atk: armyUnit.type.atk || 5,   
-                    def: armyUnit.type.def || 2,   
-                    speed: armyUnit.type.speed || 5, 
+                    // ВАЖНО: Атака и защита также берутся из типа (одного бойца)
+                    atk: armyUnit.type.atk,   
+                    def: armyUnit.type.def,   
+                    speed: armyUnit.type.speed, 
                     energy: 0,                     
                     range: armyUnit.type.range || 1  
                 });
