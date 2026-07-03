@@ -515,15 +515,20 @@ const GameModule = (function() {
             return; 
         }
 
-        // 4. ЧИТ-КОД: Восстановление здоровья (Enter)
+        // 4. ЧИТ-КОД: Восстановление здоровья и золота (Enter)
         if (e.key === "Enter") {
             e.preventDefault();
             if (player && player.hp > 0) {
                 const healAmount = 100;
                 player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                
+                // Добавляем золото
                 player.gold += 1000;
+                
                 RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
                 RenderModule.log(`💰 ЧИТ: Получено 1000 золотых!`, "loot");
+                
+                // Важно: обновляем интерфейс, чтобы увидеть новое золото
                 RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             }
             return;
@@ -536,7 +541,7 @@ const GameModule = (function() {
             return;
         }
 
-        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Этап 3: Управление, ИИ и Боевка) ===
+        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет перед обычным движением) ===
         if (window.gameMode === 'tactical') {
             e.preventDefault(); // Блокируем скролл страницы стрелками
 
@@ -556,15 +561,7 @@ const GameModule = (function() {
                 return; // Завершаем обработку, так как это не ход
             }
 
-            // Б. Обработка побега (клавиша F или 0)
-            if (e.key === 'f' || e.key === 'F' || e.key === '0') {
-                 // Меняем тактику на побег и сразу делаем ход
-                 window.currentTactic = 'flee';
-                 TacticalBattleModule.processBattleTurn(0, 0, 'flee');
-                 return;
-            }
-
-            // В. Обработка движения/атаки/пропуска хода
+            // Б. Обработка движения/атаки/пропуска хода
             let dx = 0, dy = 0;
             let isAction = false;
 
@@ -572,11 +569,31 @@ const GameModule = (function() {
             if (e.key === "ArrowDown") { dy = 1; isAction = true; }
             if (e.key === "ArrowLeft") { dx = -1; isAction = true; }
             if (e.key === "ArrowRight") { dx = 1; isAction = true; }
-            if (e.key === " ") { isAction = true; } // Пропуск хода / Стоять на месте
+            
+            // === ПРОПУСК ХОДА (SPACE) ===
+            if (e.key === " ") { 
+                isAction = true; 
+                RenderModule.log("⏳ Вы ждете следующего хода...", "info");
+            }
 
             if (isAction) {
-                // Передаем управление в модуль тактического боя
-                TacticalBattleModule.processBattleTurn(dx, dy, window.currentTactic);
+                // 1. Обрабатываем ход союзников (если реализовано)
+                if (typeof movePlayerArmy === 'function') {
+                    movePlayerArmy();
+                }
+                
+                // 2. Обрабатываем ход врагов
+                if (typeof moveEnemies === 'function') {
+                    moveEnemies();
+                }
+
+                // 3. Проверяем смерть врагов после их хода
+                if (typeof checkDeath === 'function') {
+                    checkDeath();
+                }
+
+                // 4. Перерисовываем экран
+                renderFrame();
             }
             
             return; 
@@ -604,7 +621,6 @@ const GameModule = (function() {
             }
         }
     }
-
 
 
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule и Окном Сюжета) ===
