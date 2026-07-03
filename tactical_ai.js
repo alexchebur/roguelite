@@ -1,4 +1,3 @@
-
 /**
  * МОДУЛЬ ИСКУССТВЕННОГО ИНТЕЛЛЕКТА ВРАГА (tactical_ai.js)
  */
@@ -9,45 +8,45 @@ const TacticalAIModule = (function() {
      * Рассчитывает действия всей вражеской армии на ход
      */
     function calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena) {
-        const actions = []; // Массив действий: { unitId, type: 'move'|'attack', targetX, targetY, targetUnit }
+        const actions = []; 
 
-    // В tactical_ai.js, внутри calculateArmyTurn
+        enemyUnits.forEach(unit => {
+            if (unit.hp <= 0) return;
 
-    enemyUnits.forEach(unit => {
-        if (unit.hp <= 0) return;
-
-        const hpPercent = unit.hp / unit.maxHp;
-    
-        // 1. ПРОВЕРКА МОРАЛИ
-        if (hpPercent < 0.33) {
-            RenderModule.log(`${unit.name} в панике отступает!`, "combat"); // <--- ЛОГ
-            actions.push(getRetreatAction(unit, enemyUnits, arena));
-            return;
-        }
-
-        // 2. ПОИСК ЦЕЛИ
-        let target = findNearestTarget(unit, playerUnit, playerArmy);
-        if (!target) return;
-
-        const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
-
-        // 3. ЛОГИКА
-        if (unit.type === 'range') {
-            if (dist <= unit.range) {
-                actions.push({ unitId: unit.id, type: 'attack', target: target });
-            } else {
-                // Лучник подходит, но осторожно
-                actions.push(getApproachAction(unit, target, unit.range, arena));
+            const hpPercent = unit.hp / unit.maxHp;
+        
+            // 1. ПРОВЕРКА МОРАЛИ (Бегство при низком HP)
+            if (hpPercent < 0.33) {
+                RenderModule.log(`${unit.name} в панике отступает!`, "combat"); 
+                actions.push(getRetreatAction(unit, enemyUnits, arena));
+                return;
             }
-        } else {
-            // Мили
-            if (dist === 1) {
-                actions.push({ unitId: unit.id, type: 'attack', target: target });
+
+            // 2. ПОИСК ЦЕЛИ
+            let target = findNearestTarget(unit, playerUnit, playerArmy);
+            if (!target) return;
+
+            const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
+
+            // 3. ЛОГИКА ВЫБОРА ДЕЙСТВИЯ
+            if (unit.type === 'range') {
+                // Лучники держат дистанцию
+                if (dist <= unit.range) {
+                    actions.push({ unitId: unit.id, type: 'attack', target: target });
+                } else {
+                    // Передаем все необходимые контекстные данные в getApproachAction
+                    actions.push(getApproachAction(unit, target, unit.range, arena, enemyUnits, playerUnit, playerArmy));
+                }
             } else {
-                actions.push(getApproachAction(unit, target, 1, arena));
+                // Ближний бой
+                if (dist === 1) {
+                    actions.push({ unitId: unit.id, type: 'attack', target: target });
+                } else {
+                    // Передаем все необходимые контекстные данные в getApproachAction
+                    actions.push(getApproachAction(unit, target, 1, arena, enemyUnits, playerUnit, playerArmy));
+                }
             }
-        }
-    });
+        });
 
         return actions;
     }
@@ -88,17 +87,10 @@ const TacticalAIModule = (function() {
      * Действие отступления
      */
     function getRetreatAction(unit, friends, arena) {
-        // Ищем самого дальнего друга или просто бежим в противоположную сторону от центра боя
-        // Для простоты: бежим вправо (к своему краю), если там свободно
-        let bestMove = { x: unit.x, y: unit.y };
-        let maxDist = -1;
-
-        // Простая эвристика: бежать к правому краю карты (x = arena.width - 1)
+        // Бежим к правому краю карты (к своему краю спавна)
         const targetX = arena.width - 1;
         const targetY = Math.floor(arena.height / 2);
 
-        // Используем A* для поиска пути к безопасной зоне
-        // Но для производительности сделаем простой greedy step в сторону края
         const dx = targetX > unit.x ? 1 : -1;
         const dy = targetY > unit.y ? 1 : -1;
         
@@ -115,28 +107,28 @@ const TacticalAIModule = (function() {
     }
 
     /**
-     * Действие сближения (с учетом желаемой дистанции)
+     * Действие сближения (более агрессивное и умное)
+     * Исправлено: добавлены параметры friends, pUnit, pArmy для корректной проверки коллизий
      */
-    /**
-     * Действие сближения (более агрессивное)
-     */
-    function getApproachAction(unit, target, desiredRange, arena) {
+    function getApproachAction(unit, target, desiredRange, arena, friends, pUnit, pArmy) {
         // Сначала пробуем простой "жадный" шаг к цели
         const dx = Math.sign(target.x - unit.x);
         const dy = Math.sign(target.y - unit.y);
         
-        // Пробуем пойти по диагонали или прямой линии
+        // Приоритет направлений: диагональ -> основная ось -> второстепенная ось
         const moves = [
-            { x: unit.x + dx, y: unit.y + dy }, // По диагонали/прямой
-            { x: unit.x + dx, y: unit.y },      // Только по X
-            { x: unit.x, y: unit.y + dy }       // Только по Y
+            { x: unit.x + dx, y: unit.y + dy }, 
+            { x: unit.x + dx, y: unit.y },      
+            { x: unit.x, y: unit.y + dy }       
         ];
 
         for (const move of moves) {
-            if (isValidMove(move.x, move.y, arena, enemyUnits)) { // Проверяем занятость своими
-                 // Дополнительная проверка: не занято ли место врагом (игроком)
-                 const isOccupiedByEnemy = (playerUnit && playerUnit.x === move.x && playerUnit.y === move.y) || 
-                                           (playerArmy && playerArmy.some(p => p.x === move.x && p.y === move.y && p.hp > 0));
+            // Проверяем, свободна ли клетка от союзников
+            if (isValidMove(move.x, move.y, arena, friends)) { 
+                 // Проверяем, не занята ли клетка врагом (игроком или его армией)
+                 // Если занята врагом, мы не можем туда пойти (это должна быть атака, которая обрабатывается выше)
+                 const isOccupiedByEnemy = (pUnit && pUnit.hp > 0 && pUnit.x === move.x && pUnit.y === move.y) || 
+                                           (pArmy && pArmy.some(p => p.hp > 0 && p.x === move.x && p.y === move.y));
                 
                 if (!isOccupiedByEnemy) {
                     return { unitId: unit.id, type: 'move', x: move.x, y: move.y };
@@ -144,7 +136,7 @@ const TacticalAIModule = (function() {
             }
         }
 
-        // Если простые шаги не сработали, пробуем A* как запасной вариант
+        // Если простые шаги не сработали (заблокированы), пробуем A* как запасной вариант для обхода
         const astar = new ROT.Path.AStar(target.x, target.y, 
             (x, y) => isValidCell(x, y, arena), { topology: 8 });
         
@@ -156,9 +148,14 @@ const TacticalAIModule = (function() {
         });
 
         if (nextStep) {
-             // Проверка на занятость своими перед финальным решением A*
-             if (isValidMove(nextStep.x, nextStep.y, arena, enemyUnits)) {
-                 return { unitId: unit.id, type: 'move', x: nextStep.x, y: nextStep.y };
+             // Финальная проверка: можно ли вообще ступить на клетку, найденную A*
+             if (isValidMove(nextStep.x, nextStep.y, arena, friends)) {
+                 const isOccupiedByEnemy = (pUnit && pUnit.hp > 0 && pUnit.x === nextStep.x && pUnit.y === nextStep.y) || 
+                                           (pArmy && pArmy.some(p => p.hp > 0 && p.x === nextStep.x && p.y === nextStep.y));
+                 
+                 if (!isOccupiedByEnemy) {
+                     return { unitId: unit.id, type: 'move', x: nextStep.x, y: nextStep.y };
+                 }
              }
         }
 
@@ -171,7 +168,7 @@ const TacticalAIModule = (function() {
 
     function isValidMove(x, y, arena, friends) {
         if (!isValidCell(x, y, arena)) return false;
-        // Проверка на друзей
+        // Клетка свободна, если там нет живого союзника
         return !friends.some(f => f.x === x && f.y === y && f.hp > 0);
     }
 
