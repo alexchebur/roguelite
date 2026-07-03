@@ -4,39 +4,47 @@
 const TacticalBattleModule = (function() {
     'use strict';
 
-    /**
-     * Основной цикл обработки хода в тактическом режиме
-     * Вызывается из GameModule.processTurn или специального обработчика
-     */
     function processBattleTurn(playerDx, playerDy, currentTactic) {
         const state = GameModule.getTacticalState();
         if (!state) return;
 
         const { arena, playerUnit, playerArmy, enemyUnits } = state;
 
-        // 1. Действие игрока
+        // 1. Движение/Действие Игрока (Героя)
         handlePlayerHeroAction(playerUnit, playerDx, playerDy, enemyUnits, arena);
 
-        // 2. Действия армии игрока
+        // 2. Действия Армии Игрока (AI союзников)
         const playerActions = TacticalPlayerModule.processPlayerTactic(currentTactic, playerArmy, playerUnit, enemyUnits, arena);
-        // Добавляем ссылки на юнитов в действия игрока (аналогично AI)
-        playerActions.forEach(pa => {
-            pa.unit = playerArmy.find(u => u.id === pa.unitId);
-        });
-        executeUnitActions(playerActions, [playerUnit, ...enemyUnits]);
+        executeUnitActions(playerArmy, playerActions, enemyUnits);
 
-        // 3. Действия врагов
+        // 3. Действия Вражеской Армии (AI врагов)
         const enemyActions = TacticalAIModule.calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena);
-        executeUnitActions(enemyActions, [playerUnit, ...playerArmy]);
+        executeUnitActions(enemyUnits, enemyActions, [playerUnit, ...playerArmy]);
 
         // 4. Очистка мертвых
         cleanUpDeadUnits(state);
 
-        // 5. Проверка конца боя
+        // === НОВОЕ: СИНХРОНИЗАЦИЯ HP ИГРОКА ===
+        // Переносим изменения HP из тактической копии в реального игрока
+        const realPlayer = GameModule.getPlayer();
+        if (realPlayer && playerUnit) {
+            realPlayer.hp = playerUnit.hp;
+            // Если игрок умер в бою, блокируем игру глобально
+            if (realPlayer.hp <= 0) {
+                GameModule.endTacticalBattle(false);
+                return;
+            }
+        }
+
+        // 5. Проверка условий победы/поражения
         checkBattleEnd(state);
 
+        // === НОВОЕ: ОБНОВЛЕНИЕ UI ===
+        // Обновляем панель статов, чтобы видеть актуальное HP
+        RenderModule.updateUI(realPlayer, null, null);
+
         // 6. Рендер
-        RenderModule.requestRedraw(); 
+        RenderModule.requestRedraw();
     }
 
     function handlePlayerHeroAction(player, dx, dy, enemies, arena) {
