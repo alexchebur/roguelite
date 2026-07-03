@@ -31,14 +31,19 @@ const TacticalArmyModule = (function() {
             const unitType = getRandomUnitType();
             const count = Math.floor(5 + Math.random() * 10); 
             
-            army.units.push({
-                type: unitType,
-                count: count,       // Количество бойцов в отряде (для логики глобальной карты)
-                hp: unitType.hp,    // <--- ИСПРАВЛЕНО: HP одного бойца, а не всего отряда
-                maxHp: unitType.hp, // <--- ИСПРАВЛЕНО
-                x: 0, 
-                y: 0
-            });
+         // Множитель статов врагов: +20% к HP/Atk/Def за каждый уровень сложности
+         const enemyStatMult = 1 + (difficulty - 1) * 0.2; 
+         
+         army.units.push({
+             type: unitType,
+             count: count,
+             // Применяем множитель к базовым статам
+             hp: Math.floor(unitType.hp * enemyStatMult),
+             maxHp: Math.floor(unitType.hp * enemyStatMult),
+             atk: Math.floor(unitType.atk * enemyStatMult),
+             def: Math.floor(unitType.def * enemyStatMult),
+             x: 0, y: 0
+         });
         }
         return army;
     }
