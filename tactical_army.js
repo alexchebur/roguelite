@@ -94,9 +94,9 @@ const TacticalArmyModule = (function() {
     // === ПОЛУЧЕНИЕ ЦВЕТА СПРАЙТА В ЗАВИСИМОСТИ ОТ HP ===
     function getUnitColor(unit) {
         const hpPercent = unit.hp / unit.maxHp;
-        if (hpPercent > 0.66) return '#00ff00'; // зелёный
-        if (hpPercent > 0.33) return '#ffff00'; // жёлтый
-        return '#ff0000'; // красный
+        if (hpPercent > 0.66) return '#ff69b4'; // Hot Pink (здоров)
+        if (hpPercent > 0.33) return '#db7093'; // Pale Violet Red (ранен)
+        return '#c71585';                       // Medium Violet Red (при смерти)
     }
 
     return {
