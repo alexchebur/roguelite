@@ -574,7 +574,7 @@ const GameModule = (function() {
             if (e.key === "ArrowRight") { dx = 1;  actionTaken = true; }
             if (e.key === " ")          { actionTaken = true; } // Пропуск хода
 
-            if (actionTaken) {
+            if (isAction) {
                 // 1. Ход ИГРОКА (движение или атака)
                 if (dx !== 0 || dy !== 0) {
                     processTacticalPlayerTurn(dx, dy);
@@ -582,14 +582,14 @@ const GameModule = (function() {
                     RenderModule.log("⏳ Вы ждете...", "info");
                 }
 
-                // 2. Ход СОЮЗНИКОВ (с учетом новой тактики)
+                // 2. Ход СОЮЗНИКОВ
                 if (typeof movePlayerArmy === 'function') movePlayerArmy();
 
                 // 3. Ход ВРАГОВ
                 if (typeof moveEnemies === 'function') moveEnemies();
 
-                // 4. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
-                checkTacticalBattleEnd();
+                // 4. ПРОВЕРКА ПОБЕДЫ <--- ДОБАВИТЬ ЭТУ СТРОКУ
+                checkTacticalVictory();
 
                 // 5. Отрисовка
                 renderFrame();
@@ -1343,7 +1343,18 @@ function updateQuestCompass() {
         // 6. Перерисовываем глобальную карту (это также вызовет updateUI и обновит статы/компас)
         renderGlobalMap();
     }
-    
+       function checkTacticalVictory() {
+        if (!tacticalState) return;
+        
+        // Проверяем, остались ли живые враги
+        const aliveEnemies = tacticalState.enemyUnits.filter(e => e.hp > 0);
+        
+        if (aliveEnemies.length === 0) {
+            RenderModule.log("🎉 Все враги повержены! Победа!", "event");
+            // Небольшая задержка, чтобы игрок успел увидеть последний удар
+            setTimeout(() => endTacticalBattle(true), 500);
+        }
+    } 
     function enterPOI(poi) {
         busy = true;
         entrancePos = GlobalMapModule.getPlayerPosition();
