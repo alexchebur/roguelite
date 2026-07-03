@@ -104,7 +104,8 @@ const TacticalArmyModule = (function() {
         createGlobalArmy,
         updateArmyPosition,
         checkCollision,
-        getUnitColor
+        getUnitColor,
+        getRandomUnitType // <--- ДОБАВЬ ЭТУ СТРОКУ
     };
 })();
 // В конце каждого из этих файлов добавьте:
