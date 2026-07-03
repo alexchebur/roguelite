@@ -1480,17 +1480,26 @@ function updateQuestCompass() {
         }
     }
 
-        // === АВТОМАТИЧЕСКИЙ ПОБЕГ ПРИ НИЗКОМ HP ===
+    // === АВТОМАТИЧЕСКИЙ ПОБЕГ ПРИ НИЗКОМ HP ===
     function checkAutoFlee() {
         if (!tacticalState || !tacticalState.playerUnit) return;
         
-        // Если HP игрока упало до 10 или ниже
-        if (tacticalState.playerUnit.hp <= 10) {
+        // Если HP игрока упало до 10 или ниже (и он еще жив)
+        if (tacticalState.playerUnit.hp <= 10 && tacticalState.playerUnit.hp > 0) {
             RenderModule.log("💨 Ваши силы на исходе! Вы автоматически сбегаете с поля боя!", "combat");
+            
+            // Запоминаем текущее состояние, чтобы избежать двойного вызова endTacticalBattle
+            const currentState = tacticalState;
+            
+            // Блокируем ввод на время "побега"
+            busy = true;
             
             // Небольшая задержка для драматизма
             setTimeout(() => {
-                endTacticalBattle(false); // false = побег/поражение (без награды)
+                // Проверяем, что бой все еще активен (на случай, если его уже завершили по другой причине)
+                if (tacticalState === currentState) {
+                    endTacticalBattle(false); // false = побег/поражение (без награды)
+                }
             }, 800);
         }
     }
