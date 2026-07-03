@@ -22,25 +22,24 @@ const TacticalArmyModule = (function() {
         };
 
         // Генерируем состав армии
+        // Генерируем состав армии
         const unitCount = Math.min(
             TacticalDataModule.MAX_UNITS_PER_ARMY,
             Math.floor(3 + Math.random() * difficulty * 2)
         );
-
         for (let i = 0; i < unitCount; i++) {
             const unitType = getRandomUnitType();
-            const count = Math.floor(5 + Math.random() * 10); // от 5 до 14 юнитов в отряде
+            const count = Math.floor(5 + Math.random() * 10); 
             
             army.units.push({
                 type: unitType,
-                count: count,
-                hp: unitType.hp * count,
-                maxHp: unitType.hp * count,
-                x: 0, // координаты на тактическом экране (заполнятся при входе в бой)
+                count: count,       // Количество бойцов в отряде (для логики глобальной карты)
+                hp: unitType.hp,    // <--- ИСПРАВЛЕНО: HP одного бойца, а не всего отряда
+                maxHp: unitType.hp, // <--- ИСПРАВЛЕНО
+                x: 0, 
                 y: 0
             });
         }
-
         return army;
     }
 
