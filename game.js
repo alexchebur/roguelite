@@ -1169,25 +1169,21 @@ function updateQuestCompass() {
             RenderModule.log("Путь преграждают горы или вода!", "combat");
         }
     }
-    // === ДВИЖЕНИЕ ВРАГОВ В ТАКТИЧЕСКОМ РЕЖИМЕ ===
     function moveTacticalEnemies() {
         if (!tacticalState) return;
         
-        const ENEMY_SPEED_THRESHOLD = 10; // Порог энергии для хода
+        const ENEMY_SPEED_THRESHOLD = 10; 
 
         tacticalState.enemyUnits.forEach(unit => {
-            // Пропускаем мертвых
             if (unit.hp <= 0) return;
             
-            // Инициализация энергии, если её нет
             if (unit.energy === undefined) unit.energy = 0;
             unit.energy += unit.speed || 5;
 
-            // Если накоплено достаточно энергии - делаем ход
             if (unit.energy >= ENEMY_SPEED_THRESHOLD) {
                 unit.energy -= ENEMY_SPEED_THRESHOLD;
                 
-                // 1. Поиск ближайшей цели (Игрок или его армия)
+                // 1. Поиск цели (Игрок или его армия)
                 let target = null;
                 let minDist = Infinity;
                 
@@ -1211,19 +1207,17 @@ function updateQuestCompass() {
                     });
                 }
 
-                // 2. Логика поведения
                 if (target) {
-                    // А. Если цель рядом (дистанция 1) - Атакуем
+                    // А. Если рядом - Атакуем
                     if (minDist === 1) {
                         const dmg = Math.max(1, unit.atk - target.def);
                         target.hp -= dmg;
                         
-                        // Логируем урон только если это игрок или важный юнит, чтобы не спамить
                         if (target === tacticalState.playerUnit) {
                             RenderModule.log(`${unit.name} наносит вам ${dmg} урона!`, "combat");
                         }
                     } 
-                    // Б. Если далеко - Идем к цели
+                    // Б. Если далеко - Идем по прямой (Манхэттенское расстояние)
                     else {
                         const dx = Math.sign(target.x - unit.x);
                         const dy = Math.sign(target.y - unit.y);
@@ -1231,16 +1225,11 @@ function updateQuestCompass() {
                         const nx = unit.x + dx;
                         const ny = unit.y + dy;
 
-                        // Простая проверка коллизий (чтобы враги не вставали друг на друга)
-                        const isBlockedByEnemy = tacticalState.enemyUnits.some(e => e !== unit && e.hp > 0 && e.x === nx && e.y === ny);
-                        const isBlockedByAlly = tacticalState.playerArmy.some(a => a.hp > 0 && a.x === nx && a.y === ny);
-                        const isBlockedByPlayer = (nx === tacticalState.playerUnit.x && ny === tacticalState.playerUnit.y);
+                        // Проверка коллизий (чтобы враги не слипались)
+                        const isBlocked = tacticalState.enemyUnits.some(e => e !== unit && e.hp > 0 && e.x === nx && e.y === ny) ||
+                                          (nx === tacticalState.playerUnit.x && ny === tacticalState.playerUnit.y && minDist > 1);
 
-                        // Двигаемся, если клетка свободна и в пределах арены
-                        if (!isBlockedByEnemy && !isBlockedByAlly && !isBlockedByPlayer &&
-                            nx >= 0 && nx < tacticalState.arena.width && 
-                            ny >= 0 && ny < tacticalState.arena.height) {
-                            
+                        if (!isBlocked && nx >= 0 && nx < tacticalState.arena.width && ny >= 0 && ny < tacticalState.arena.height) {
                             unit.x = nx;
                             unit.y = ny;
                         }
@@ -1249,6 +1238,10 @@ function updateQuestCompass() {
             }
         });
     }
+
+
+
+    
     function initTacticalBattle(enemyArmyData) {
         console.log("🚀 [Tactical] Инициализация боя...");
         window.gameMode = 'tactical';
