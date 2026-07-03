@@ -7,6 +7,9 @@ const TacticalRenderModule = (function() {
     /**
      * Отрисовка всего тактического экрана
      */
+    /**
+     * Отрисовка всего тактического экрана
+     */
     function drawBattlefield(arena, playerUnit, enemyUnits, playerArmy, currentTactic) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -23,7 +26,6 @@ const TacticalRenderModule = (function() {
         const arenaPixelWidth = arena.width * tileW;
         const arenaPixelHeight = arena.height * tileH;
         
-        // Так как мы исправили размеры арены (28x18), offsetX и offsetY будут положительными
         const offsetX = Math.floor((ctx.canvas.width - arenaPixelWidth) / 2);
         const offsetY = Math.floor((ctx.canvas.height - arenaPixelHeight) / 2);
 
@@ -38,16 +40,31 @@ const TacticalRenderModule = (function() {
             }
         }
 
-        // Вспомогательная функция для HP баров (принимает координаты сетки)
+        // Вспомогательная функция для HP баров (рисуем ВСЕГДА)
         function drawHPBar(gridX, gridY, hp, maxHp) {
-            if (hp >= maxHp) return; 
-            const percent = hp / maxHp;
+            const percent = Math.max(0, Math.min(1, hp / maxHp));
+            
+            // Координаты бара (над спрайтом)
             const bx = gridX * tileW + 2;
-            const by = gridY * tileH - 5; // Чуть выше спрайта
-            ctx.fillStyle = '#333';
-            ctx.fillRect(bx, by, tileW - 4, 4);
-            ctx.fillStyle = percent > 0.66 ? '#0f0' : (percent > 0.33 ? '#ff0' : '#f00');
-            ctx.fillRect(bx, by, (tileW - 4) * percent, 4);
+            const by = gridY * tileH - 6; 
+            const barWidth = tileW - 4;
+            const barHeight = 5; // Чуть толще для видимости
+
+            // Фон бара
+            ctx.fillStyle = '#222';
+            ctx.fillRect(bx, by, barWidth, barHeight);
+
+            // Заполнение цветом
+            if (percent > 0.66) ctx.fillStyle = '#0f0';      // Зеленый
+            else if (percent > 0.33) ctx.fillStyle = '#ff0'; // Желтый
+            else ctx.fillStyle = '#f00';                     // Красный
+            
+            ctx.fillRect(bx, by, barWidth * percent, barHeight);
+            
+            // Тонкая рамка для контраста
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx, by, barWidth, barHeight);
         }
 
         // 4. Рисуем вражеские юниты
@@ -56,7 +73,12 @@ const TacticalRenderModule = (function() {
                 if (unit.hp > 0) {
                     const gridX = baseGridX + unit.x;
                     const gridY = baseGridY + unit.y;
-                    const spriteChar = (unit.type && unit.type.sprite) ? unit.type.sprite : '?';
+                    
+                    // Определение спрайта
+                    let spriteChar = '?';
+                    if (unit.char) spriteChar = unit.char;
+                    else if (unit.type && unit.type.sprite) spriteChar = unit.type.sprite;
+                    
                     const color = TacticalArmyModule.getUnitColor(unit);
                     
                     TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
@@ -80,7 +102,13 @@ const TacticalRenderModule = (function() {
                 if (unit.hp > 0) {
                     const gridX = baseGridX + unit.x;
                     const gridY = baseGridY + unit.y;
-                    const spriteChar = unit.char || (unit.type && unit.type.sprite) || '?';
+                    
+                    // Определение спрайта с приоритетом
+                    let spriteChar = '?';
+                    if (unit.char) spriteChar = unit.char;
+                    else if (unit.sprite) spriteChar = unit.sprite;
+                    else if (unit.type && typeof unit.type === 'object' && unit.type.sprite) spriteChar = unit.type.sprite;
+                    
                     const color = TacticalArmyModule.getUnitColor(unit);
                     
                     TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
