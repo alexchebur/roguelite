@@ -4,6 +4,9 @@
 const TacticalBattleModule = (function() {
     'use strict';
 
+    /**
+     * Основной цикл обработки хода в тактическом режиме
+     */
     function processBattleTurn(playerDx, playerDy, currentTactic) {
         const state = GameModule.getTacticalState();
         if (!state) return;
@@ -14,41 +17,48 @@ const TacticalBattleModule = (function() {
         handlePlayerHeroAction(playerUnit, playerDx, playerDy, enemyUnits, arena);
 
         // 2. Действия Армии Игрока (AI союзников)
-        const playerActions = TacticalPlayerModule.processPlayerTactic(currentTactic, playerArmy, playerUnit, enemyUnits, arena);
-        executeUnitActions(playerArmy, playerActions, enemyUnits);
+        // Получаем сырые действия из модуля тактики
+        const rawPlayerActions = TacticalPlayerModule.processPlayerTactic(currentTactic, playerArmy, playerUnit, enemyUnits, arena);
+        
+        // ВАЖНО: Привязываем объекты юнитов к действиям, так как у них нет ID
+        const playerActions = rawPlayerActions.map(action => {
+            // Находим юнита по ссылке (если action уже содержит unit, используем его, иначе ищем)
+            if (action.unit) return action;
+            
+            // Если action пришел с unitId (из старого кода), ищем его
+            if (action.unitId) {
+                const unit = playerArmy.find(u => u.x === action.unitId.x && u.y === action.unitId.y); // Хак: ищем по координатам, если ID нет
+                return { ...action, unit: unit };
+            }
+            return action;
+        });
+
+        executeUnitActions(playerActions, [playerUnit, ...enemyUnits]);
 
         // 3. Действия Вражеской Армии (AI врагов)
+        // TacticalAIModule теперь сам возвращает actions с полем .unit
         const enemyActions = TacticalAIModule.calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena);
-        executeUnitActions(enemyUnits, enemyActions, [playerUnit, ...playerArmy]);
+        executeUnitActions(enemyActions, [playerUnit, ...playerArmy]);
 
         // 4. Очистка мертвых
         cleanUpDeadUnits(state);
 
-        // === НОВОЕ: СИНХРОНИЗАЦИЯ HP ИГРОКА ===
-        // Переносим изменения HP из тактической копии в реального игрока
-        const realPlayer = GameModule.getPlayer();
-        if (realPlayer && playerUnit) {
-            realPlayer.hp = playerUnit.hp;
-            // Если игрок умер в бою, блокируем игру глобально
-            if (realPlayer.hp <= 0) {
-                GameModule.endTacticalBattle(false);
-                return;
-            }
-        }
-
         // 5. Проверка условий победы/поражения
         checkBattleEnd(state);
 
-        // === НОВОЕ: ОБНОВЛЕНИЕ UI ===
-        // Обновляем панель статов, чтобы видеть актуальное HP
-        RenderModule.updateUI(realPlayer, null, null);
+        // 6. Синхронизация HP игрока с реальным объектом (для UI)
+        const realPlayer = GameModule.getPlayer();
+        if (realPlayer && playerUnit) {
+            realPlayer.hp = playerUnit.hp;
+            RenderModule.updateUI(realPlayer, null, null);
+        }
 
-        // 6. Рендер
+        // 7. Рендер
         RenderModule.requestRedraw();
     }
 
     function handlePlayerHeroAction(player, dx, dy, enemies, arena) {
-        if (dx === 0 && dy === 0) return; // Пропуск хода
+        if (dx === 0 && dy === 0) return; 
 
         const nx = player.x + dx;
         const ny = player.y + dy;
@@ -59,11 +69,9 @@ const TacticalBattleModule = (function() {
         // Проверка врага
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
-            // Атака героя
             performAttack(player, enemy);
         } else {
             // Движение героя
-            // Простая проверка коллизий с своей армией
             const isBlockedByAlly = GameModule.getPlayerArmy().some(a => a.x === nx && a.y === ny && a.hp > 0);
             if (!isBlockedByAlly) {
                 player.x = nx;
@@ -74,7 +82,7 @@ const TacticalBattleModule = (function() {
 
     function executeUnitActions(actions, targets) {
         actions.forEach(action => {
-            // Используем прямую ссылку action.unit, которую мы добавили в tactical_ai.js
+            // Берем прямую ссылку на юнита из действия
             const unit = action.unit; 
             
             if (!unit || unit.hp <= 0) return;
@@ -84,11 +92,8 @@ const TacticalBattleModule = (function() {
                 const isOccupied = targets.some(t => t && t.hp > 0 && t.x === action.x && t.y === action.y);
                 
                 if (!isOccupied) {
-                    console.log(`[Move] ${unit.name} идет на (${action.x}, ${action.y})`);
                     unit.x = action.x;
                     unit.y = action.y;
-                } else {
-                    console.log(`[Block] ${unit.name} заблокирован на (${action.x}, ${action.y})`);
                 }
             } else if (action.type === 'attack') {
                 if (action.target && action.target.hp > 0) {
@@ -99,24 +104,14 @@ const TacticalBattleModule = (function() {
     }
 
     function performAttack(attacker, defender) {
-        // 1. Защита от некорректных данных
         if (!attacker || !defender) return;
         
-        // 2. Используем стандартную боевую систему из combat.js для единообразия расчетов
-        // CombatModule.attack возвращает true, если цель убита
-        const isKilled = CombatModule.attack(
+        // Используем стандартную боевую систему
+        CombatModule.attack(
             attacker, 
             defender, 
-            (msg) => RenderModule.log(msg, "combat") // Передаем функцию логирования
+            (msg) => RenderModule.log(msg, "combat")
         );
-
-        // 3. Дополнительное логирование для тактического режима (опционально, для ясности)
-        if (!isKilled) {
-            const attackerName = attacker.name || (attacker.isPlayer ? 'Герой' : 'Юнит');
-            const defenderName = defender.name || 'Враг';
-            // CombatModule уже вывел лог вида "X бьет Y на Z", но если нужно что-то специфичное:
-            // RenderModule.log(`${attackerName} атакует ${defenderName}`, "info");
-        }
     }
 
     function cleanUpDeadUnits(state) {
@@ -125,31 +120,13 @@ const TacticalBattleModule = (function() {
     }
 
     function checkBattleEnd(state) {
-        // 1. Проверка поражения
-        // Поражение наступает, если:
-        // А) Умер сам герой (HP <= 0)
-        // Б) ИЛИ умер герой И вся его армия (даже если у героя осталось 1 HP, но армия мертва - это критическая ситуация, но по ТЗ побегаем при 1 HP, так что тут строго 0)
-        const isHeroDead = state.playerUnit.hp <= 0;
-        const isArmyDead = state.playerArmy.every(u => u.hp <= 0);
-        
-        // Если герой мертв - сразу поражение. 
-        // Если герой жив, но армия мертва - он может сбежать (если выберет тактику), но автоматически не проигрывает, пока у него есть HP.
-        // Однако, для надежности добавим условие: если герой мертв, то всё равно проиграли.
-        const isDefeat = isHeroDead || (isHeroDead && isArmyDead);
-
-        // 2. Проверка победы
-        // Победа наступает, если не осталось ни одного живого врага
+        const isPlayerDead = state.playerUnit.hp <= 0;
         const isVictory = state.enemyUnits.length === 0;
 
-        // 3. Завершение боя
-        if (isDefeat) {
-            if (typeof GameModule !== 'undefined' && typeof GameModule.endTacticalBattle === 'function') {
-                GameModule.endTacticalBattle(false); // Поражение
-            }
+        if (isPlayerDead) {
+            GameModule.endTacticalBattle(false);
         } else if (isVictory) {
-            if (typeof GameModule !== 'undefined' && typeof GameModule.endTacticalBattle === 'function') {
-                GameModule.endTacticalBattle(true); // Победа
-            }
+            GameModule.endTacticalBattle(true);
         }
     }
 
