@@ -1184,42 +1184,34 @@ function updateQuestCompass() {
             });
         }
 
-        // 3. Разворачиваем вражескую армию (с масштабированием под уровень мира)
+        // 3. Разворачиваем вражескую армию
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
         
-        // Получаем множитель сложности для текущих координат
-        const difficultyMult = WorldCurveModule.getEnemyMultiplier(globalPos.x, globalPos.y);
-
         enemyArmyData.units.forEach((armyUnit, index) => {
             const xOffset = Math.floor(index / 5);
             const yOffset = (index % 2 === 0) ? 1 : -1;
             let unitX = startX - xOffset; 
             let unitY = startY + (index % 5) * yOffset;
             
+            // ИСПРАВЛЕНИЕ: используем Math.min вместо min
             unitX = Math.max(0, Math.min(arena.width - 1, unitX));
-            unitY = Math.max(0, min(arena.height - 1, unitY));
-
-            // Масштабируем статы врага как в подземелье
-            const scaledHp = Math.max(1, Math.floor(armyUnit.hp * difficultyMult));
-            const scaledAtk = Math.max(1, Math.floor(armyUnit.type.atk * Math.sqrt(difficultyMult)));
-            const scaledDef = Math.max(0, Math.floor(armyUnit.type.def * Math.pow(difficultyMult, 0.3)));
+            unitY = Math.max(0, Math.min(arena.height - 1, unitY));
 
             enemyUnits.push({
                 ...armyUnit,
                 x: unitX,
                 y: unitY,
-                hp: scaledHp,      // Масштабированное HP
-                maxHp: scaledHp,   // Максимум равен текущему при спавне
-                atk: scaledAtk,    // Масштабированная атака
-                def: scaledDef,    // Масштабированная защита
+                maxHp: armyUnit.hp,
                 char: armyUnit.type.sprite || '?', 
                 color: '#ff5555',
                 sprite: armyUnit.type.sprite || '?',
                 type: armyUnit.type.type || 'melee',
                 isPlayerSide: false,
                 name: armyUnit.type.name || 'Враг',
+                atk: armyUnit.type.atk,
+                def: armyUnit.type.def,
                 range: armyUnit.type.range || 1
             });
         });
