@@ -1426,7 +1426,29 @@ function updateQuestCompass() {
         } else if (!victory) {
              RenderModule.log("💨 Вы сбежали с поля боя, сохранив жизнь.", "info");
         }
+        // === СОХРАНЕНИЕ ВЫЖИВШИХ ОТРЯДОВ (СОЗДАНИЕ ДЕФИЦИТА) ===
+        if (tacticalState.playerArmy && player) {
+            // Фильтруем только живых юнитов
+            const survivors = tacticalState.playerArmy.filter(u => u.hp > 0);
+            
+            // Перезаписываем глобальный массив армии игрока реальными выжившими
+            player.armyUnits = survivors.map(u => ({
+                type: u.type,
+                count: 1, // Каждый выживший на поле теперь считается за 1 отряд
+                hp: u.hp,
+                maxHp: u.maxHp,
+                atk: u.atk, // Сохраняем статы, чтобы аура не пересчитывалась дважды
+                def: u.def
+            }));
 
+            if (survivors.length === 0 && player.hasArmy) {
+                RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
+                player.hasArmy = false; // Сбрасываем флаг, чтобы спрайт на карте сменился
+                GameModule.setGlobalFlag('player_has_squad', false);
+            } else if (survivors.length > 0) {
+                RenderModule.log(`🛡️ В строю осталось ${survivors.length} бойцов.`, "info");
+            }
+        }
         // 5. Очищаем состояние боя
         tacticalState = null;
         busy = false;
