@@ -597,10 +597,13 @@ const GameModule = (function() {
                     console.error("❌ Функция moveTacticalEnemies не найдена!");
                 }
 
-                // 4. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
+                // 4. ПРОВЕРКА АВТОМАТИЧЕСКОГО ПОБЕГА <--- ДОБАВИТЬ ЭТУ СТРОКУ
+                checkAutoFlee();
+
+                // 5. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
                 checkTacticalBattleEnd();
 
-                // 5. Отрисовка
+                // 65. Отрисовка
                 renderFrame();
             }
             
