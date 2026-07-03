@@ -108,15 +108,31 @@ const TacticalBattleModule = (function() {
     }
 
     function checkBattleEnd(state) {
-        // Поражение игрока: умер герой И вся армия
-        const isPlayerDead = state.playerUnit.hp <= 0 && state.playerArmy.every(u => u.hp <= 0);
-        // Победа игрока: все враги мертвы
+        // 1. Проверка поражения
+        // Поражение наступает, если:
+        // А) Умер сам герой (HP <= 0)
+        // Б) ИЛИ умер герой И вся его армия (даже если у героя осталось 1 HP, но армия мертва - это критическая ситуация, но по ТЗ побегаем при 1 HP, так что тут строго 0)
+        const isHeroDead = state.playerUnit.hp <= 0;
+        const isArmyDead = state.playerArmy.every(u => u.hp <= 0);
+        
+        // Если герой мертв - сразу поражение. 
+        // Если герой жив, но армия мертва - он может сбежать (если выберет тактику), но автоматически не проигрывает, пока у него есть HP.
+        // Однако, для надежности добавим условие: если герой мертв, то всё равно проиграли.
+        const isDefeat = isHeroDead || (isHeroDead && isArmyDead);
+
+        // 2. Проверка победы
+        // Победа наступает, если не осталось ни одного живого врага
         const isVictory = state.enemyUnits.length === 0;
 
-        if (isPlayerDead) {
-            GameModule.endTacticalBattle(false); // Поражение
+        // 3. Завершение боя
+        if (isDefeat) {
+            if (typeof GameModule !== 'undefined' && typeof GameModule.endTacticalBattle === 'function') {
+                GameModule.endTacticalBattle(false); // Поражение
+            }
         } else if (isVictory) {
-            GameModule.endTacticalBattle(true); // Победа
+            if (typeof GameModule !== 'undefined' && typeof GameModule.endTacticalBattle === 'function') {
+                GameModule.endTacticalBattle(true); // Победа
+            }
         }
     }
 
