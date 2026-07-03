@@ -466,6 +466,7 @@ const GameModule = (function() {
         }
     }
 
+    // === ОБРАБОТКА ВВОДА (КЛИКИ И КЛАВИШИ) ===
     function handleInput(e) {
         // 0. БЛОКИРОВКА ПРИ СМЕРТИ (Глобальная проверка)
         if (player && player.hp <= 0) {
@@ -509,9 +510,11 @@ const GameModule = (function() {
             return;
         }
 
-        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет перед обычным движением) ===
+        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Этап 3: Управление, ИИ и Боевка) ===
         if (window.gameMode === 'tactical') {
-            // Обработка выбора тактики клавишами 1-5
+            e.preventDefault(); // Блокируем скролл страницы стрелками
+
+            // А. Обработка выбора тактики клавишами 1-5
             if (e.key >= '1' && e.key <= '5') {
                 const tacticKey = e.key;
                 const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
@@ -524,8 +527,32 @@ const GameModule = (function() {
                     // Перерисовываем поле боя, чтобы обновить меню
                     renderFrame(); 
                 }
+                return; // Завершаем обработку, так как это не ход
             }
-            // В тактическом режиме стрелки пока не обрабатываем (будет в Этапе 3)
+
+            // Б. Обработка побега (клавиша F или 0)
+            if (e.key === 'f' || e.key === 'F' || e.key === '0') {
+                 // Меняем тактику на побег и сразу делаем ход
+                 window.currentTactic = 'flee';
+                 TacticalBattleModule.processBattleTurn(0, 0, 'flee');
+                 return;
+            }
+
+            // В. Обработка движения/атаки/пропуска хода
+            let dx = 0, dy = 0;
+            let isAction = false;
+
+            if (e.key === "ArrowUp") { dy = -1; isAction = true; }
+            if (e.key === "ArrowDown") { dy = 1; isAction = true; }
+            if (e.key === "ArrowLeft") { dx = -1; isAction = true; }
+            if (e.key === "ArrowRight") { dx = 1; isAction = true; }
+            if (e.key === " ") { isAction = true; } // Пропуск хода / Стоять на месте
+
+            if (isAction) {
+                // Передаем управление в модуль тактического боя
+                TacticalBattleModule.processBattleTurn(dx, dy, window.currentTactic);
+            }
+            
             return; 
         }
 
@@ -551,7 +578,6 @@ const GameModule = (function() {
             }
         }
     }
-
 
 
 
@@ -2076,13 +2102,14 @@ function updateQuestCompass() {
     
     // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ) ===
     function processTurn(dx, dy) {
-        // БЛОКИРОВКА: Если игрок мертв, ничего не делаем
+        // 0. ГЛОБАЛЬНЫЕ ПРОВЕРКИ
         if (player.hp <= 0) return; 
+        if (window.gameMode === 'tactical') return; // Защита: тактика обрабатывается отдельно
 
         const nx = player.x + dx;
         const ny = player.y + dy;
 
-        // Пропуск хода
+        // 1. Пропуск хода
         if (dx === 0 && dy === 0) {
             moveNpcs(); 
             moveEnemies();
@@ -2090,10 +2117,10 @@ function updateQuestCompass() {
             return;
         }
 
-        // Проверка стен
+        // 2. Проверка стен
         if (MapModule.isWall(nx, ny)) return;
 
-        // === ПРОВЕРКА ВХОДА В МАГАЗИН ===
+        // 3. Взаимодействие со зданиями (Магазин / Постоялый двор)
         if (window.currentShopCoords && window.currentShopCoords.length > 0) {
             const isTargetShop = window.currentShopCoords.some(pos => pos.x === nx && pos.y === ny);
             if (isTargetShop && !isShopOpen) {
@@ -2102,7 +2129,6 @@ function updateQuestCompass() {
             }
         }
 
-        // === ПРОВЕРКА ВХОДА В ПОСТОЯЛЫЙ ДВОР (НОВОЕ) ===
         if (window.currentInnCoords && window.currentInnCoords.length > 0) {
             const isTargetInn = window.currentInnCoords.some(pos => pos.x === nx && pos.y === ny);
             if (isTargetInn && !isInnOpen) {
@@ -2111,7 +2137,7 @@ function updateQuestCompass() {
             }
         }
         
-        // Проверка столкновения с боссом (учитываем его размер 2x2)
+        // 4. Столкновение с Боссом (2x2)
         const bossInWay = enemies.find(e => e.isBoss && e.hp > 0 && (
             (nx === e.x && ny === e.y) || 
             (nx === e.x + 1 && ny === e.y) || 
@@ -2122,7 +2148,6 @@ function updateQuestCompass() {
         if (bossInWay) {
             CombatModule.attack(player, bossInWay, (m, t) => RenderModule.log(m, t));
             checkDeath();
-            // ВАЖНО: Если после атаки игрок умер, прерываем ход
             if (player.hp <= 0) {
                 RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
                 renderFrame();
@@ -2134,12 +2159,11 @@ function updateQuestCompass() {
             return;
         }
 
-        // Атака обычного врага
+        // 5. Атака обычного врага
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
             CombatModule.attack(player, enemy, (m, t) => RenderModule.log(m, t));
             checkDeath();
-            // ВАЖНО: Если после атаки игрок умер, прерываем ход
             if (player.hp <= 0) {
                 RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
                 renderFrame();
@@ -2151,13 +2175,12 @@ function updateQuestCompass() {
             return;
         }
 
-        // Взаимодействие с NPC
+        // 6. Взаимодействие с NPC
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === nx && n.y === ny) : null;
         if (npc) {
-            // === НОВОЕ: Проверка на особое действие (например, запуск Twine-квеста) ===
             if (npc.action) {
-                npc.action(); // Вызываем функцию действия
-                return;       // Прерываем ход, чтобы не двигаться в клетку NPC
+                npc.action(); 
+                return;       
             }
 
             let questHandled = false;
@@ -2169,9 +2192,8 @@ function updateQuestCompass() {
                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
             }
             
-            // === ИСПРАВЛЕНИЕ: Если открылось окно квеста, не затираем его отрисовкой карты ===
             if (isReadingQuest) {
-                return; // Прерываем ход, окно квеста уже на экране
+                return; 
             }
 
             moveNpcs(); 
@@ -2180,160 +2202,142 @@ function updateQuestCompass() {
             return; 
         }
 
-        // Движение игрока
+        // 7. Движение игрока
         player.x = nx;
         player.y = ny;
 
-            // ... внутри processTurn ...
-
-            // Подбор предметов
-            const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
-            if (itemIdx !== -1) {
-                const item = items[itemIdx];
-            
-                if (item.type === 'gold') {
-                    player.gold += item.val;
-                     RenderModule.log(`Подобрано: ${item.name}`, "loot ");
-                } 
-                else if (item.type === 'book') {
-                    // === ИЗМЕНЕНИЕ: Добавляем книгу в инвентарь ===
-                    player.inventory.push(item);
-                    
-                    if (typeof LoreModule !== 'undefined') {
-                        const fragment = LoreModule.getNextFragment();
-                        RenderModule.log(`📖 Вы подобрали "${item.name}". Внутри написано:`, "info ");
-                        RenderModule.log(fragment, "event ");
-                        
-                        if (typeof QuestSystemModule !== 'undefined') {
-                            activeQuests.forEach(q => {
-                                QuestSystemModule.checkProgress(q, { type: 'read_book' });
-                            });
-                        }
-                    } else {
-                         RenderModule.log(`Вы подобрали "${item.name}".`, "info ");
-                    }
-                }  
-                else {
-                    player.inventory.push(item);
-                    RenderModule.log(`Подобрано: ${item.name}`, "loot ");
-                    
-                // Проверка квестов на подбор (FETCH/COLLECT)
-                if (typeof QuestSystemModule !== 'undefined') {
-                    [...activeQuests].forEach(q => {
-                        if (q.isCompleted) return;
-                        
-                        // Проверяем только квесты, требующие сбора/поиска предметов
-                        if (q.type === 'FETCH' || q.type === 'COLLECT') {
-                            
-                            // 1. Проверка соответствия предмета
-                            let isItemMatch = false;
-                            if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
-                                isItemMatch = true;
-                            } else if ((item.type === q.target.itemType) && 
-                                     (!q.target.itemName || item.name.includes(q.target.itemName))) {
-                                isItemMatch = true;
-                            }
-
-                            if (isItemMatch) {
-                                // 2. Проверка ЛОКАЦИИ (Подземелье)
-                                const isCorrectLocation = (
-                                    dungeonX === q.target.targetX && 
-                                    dungeonY === q.target.targetY
-                                );
-
-                                // 3. Проверка ГЛУБИНЫ
-                                // targetDepth может быть в recommendedDepth или targetDepth
-                                const requiredDepth = q.target.recommendedDepth || q.target.targetDepth;
-                                // currentDepth начинается с 0, поэтому +1 для сравнения с "Уровнем 1"
-                                const isCorrectDepth = !requiredDepth || ((currentDepth + 1) >= requiredDepth);
-
-                                if (!isCorrectLocation) {
-                                    RenderModule.log(`📦 Это ${item.name}, но не тот. Ищите в ${q.target.locationName}.`, "info ");
-                                    return; // Прерываем обработку этого квеста
-                                }
-
-                                if (!isCorrectDepth) {
-                                    RenderModule.log(`📦 Это ${item.name}, но вы на недостаточной глубине. Нужно хотя бы ур. ${requiredDepth}.`, "info ");
-                                    return; // Прерываем обработку этого квеста
-                                }
-
-                                // === ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ ===
-                                item.isQuestItem = true;
-
-                                if (q.type === 'FETCH') {
-                                    q.progress = q.maxProgress;
-                                    q.isCompleted = true;
-                                    RenderModule.updateQuestBriefing(q);
-                                    RenderModule.log(`📦 Это тот самый предмет! Квест выполнен.`, "info ");
-                                } else if (q.type === 'COLLECT') {
-                                    QuestSystemModule.checkProgress(q, { 
-                                        type: 'pickup', 
-                                        itemType: item.type,
-                                        itemName: item.name,
-                                        uniqueId: item.uniqueId,
-                                        locX: dungeonX,
-                                        locY: dungeonY,
-                                        currentDepth: currentDepth // Передаем глубину для надежности
-                                    });
-                                    RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
-                                }
-                                updateQuestCompass();
-                            }
-                        }
-                    });
-                 }
-            }
-            items.splice(itemIdx, 1);
-        }
-
-        // Лестницы
-        if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
-            const nextDepth = currentDepth + 1;
-            RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
-            loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName, 'down');
-            return; 
-        }
-
-        if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
-            if (currentDepth === 0) {
-                RenderModule.log("Вы поднимаетесь на поверхность...", "info");
-                exitToGlobal();
-            } else {
-                const prevDepth = currentDepth - 1;
-                RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
-                loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName, 'up');
-            }
-            return; 
-        }
-
-        // Ход врагов в конце хода игрока
-        if (player.hp > 0) {
-            moveNpcs();
-            moveEnemies();
-        }
-
-        if (player.hp <= 0) {
-            RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
-        }
-
-
-        // === НОВОЕ: Обработка временных эффектов игрока ===
-        if (player.hp > 0) {
-            EffectSystemModule.processEffects(player, RenderModule.log);
-            // Если эффекты изменились (например, закончились), пересчитываем статы
-            // (recalculateStats вызывается внутри processEffects при удалении, 
-            // но можно вызвать явно для надежности, если были DoT/HoT)
-            EffectSystemModule.recalculateStats(player);
-        }
-
-        if (player.hp <= 0) {
-            RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
-            busy = true; // Блокируем дальнейшие действия
-        }
-    
+        // 8. Подбор предметов
+        const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
+        if (itemIdx !== -1) {
+            const item = items[itemIdx];
         
-        renderFrame();
+            if (item.type === 'gold') {
+                player.gold += item.val;
+                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
+            } 
+            else if (item.type === 'book') {
+                player.inventory.push(item);
+                
+                if (typeof LoreModule !== 'undefined') {
+                    const fragment = LoreModule.getNextFragment();
+                    RenderModule.log(`📖 Вы подобрали "${item.name}". Внутри написано:`, "info ");
+                    RenderModule.log(fragment, "event ");
+                    
+                    if (typeof QuestSystemModule !== 'undefined') {
+                        activeQuests.forEach(q => {
+                            QuestSystemModule.checkProgress(q, { type: 'read_book' });
+                        });
+                    }
+                } else {
+                     RenderModule.log(`Вы подобрали "${item.name}".`, "info ");
+                }
+            }  
+            else {
+                player.inventory.push(item);
+                RenderModule.log(`Подобрано: ${item.name}`, "loot ");
+                
+            // Проверка квестов на подбор (FETCH/COLLECT)
+            if (typeof QuestSystemModule !== 'undefined') {
+                [...activeQuests].forEach(q => {
+                    if (q.isCompleted) return;
+                    
+                    if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                        
+                        let isItemMatch = false;
+                        if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
+                            isItemMatch = true;
+                        } else if ((item.type === q.target.itemType) && 
+                                 (!q.target.itemName || item.name.includes(q.target.itemName))) {
+                            isItemMatch = true;
+                        }
+
+                        if (isItemMatch) {
+                            const isCorrectLocation = (
+                                dungeonX === q.target.targetX && 
+                                dungeonY === q.target.targetY
+                            );
+
+                            const requiredDepth = q.target.recommendedDepth || q.target.targetDepth;
+                            const isCorrectDepth = !requiredDepth || ((currentDepth + 1) >= requiredDepth);
+
+                            if (!isCorrectLocation) {
+                                RenderModule.log(`📦 Это ${item.name}, но не тот. Ищите в ${q.target.locationName}.`, "info ");
+                                return; 
+                            }
+
+                            if (!isCorrectDepth) {
+                                RenderModule.log(`📦 Это ${item.name}, но вы на недостаточной глубине. Нужно хотя бы ур. ${requiredDepth}.`, "info ");
+                                return; 
+                            }
+
+                            item.isQuestItem = true;
+
+                            if (q.type === 'FETCH') {
+                                q.progress = q.maxProgress;
+                                q.isCompleted = true;
+                                RenderModule.updateQuestBriefing(q);
+                                RenderModule.log(`📦 Это тот самый предмет! Квест выполнен.`, "info ");
+                            } else if (q.type === 'COLLECT') {
+                                QuestSystemModule.checkProgress(q, { 
+                                    type: 'pickup', 
+                                    itemType: item.type,
+                                    itemName: item.name,
+                                    uniqueId: item.uniqueId,
+                                    locX: dungeonX,
+                                    locY: dungeonY,
+                                    currentDepth: currentDepth 
+                                });
+                                RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
+                            }
+                            updateQuestCompass();
+                        }
+                    }
+                });
+             }
+        }
+        items.splice(itemIdx, 1);
     }
+
+    // 9. Лестницы
+    if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
+        const nextDepth = currentDepth + 1;
+        RenderModule.log(`Вы спускаетесь на уровень ${nextDepth + 1}...`, "info");
+        loadDungeonLevel(dungeonX, dungeonY, nextDepth, currentDungeonTypeName, currentDungeonFullName, 'down');
+        return; 
+    }
+
+    if (MapModule.stairsUp && nx === MapModule.stairsUp.x && ny === MapModule.stairsUp.y) {
+        if (currentDepth === 0) {
+            RenderModule.log("Вы поднимаетесь на поверхность...", "info");
+            exitToGlobal();
+        } else {
+            const prevDepth = currentDepth - 1;
+            RenderModule.log(`Вы поднимаетесь на уровень ${prevDepth + 1}...`, "info");
+            loadDungeonLevel(dungeonX, dungeonY, prevDepth, currentDungeonTypeName, currentDungeonFullName, 'up');
+        }
+        return; 
+    }
+
+    // 10. Ход врагов и NPC
+    if (player.hp > 0) {
+        moveNpcs();
+        moveEnemies();
+    }
+
+    // 11. Обработка временных эффектов
+    if (player.hp > 0) {
+        EffectSystemModule.processEffects(player, RenderModule.log);
+        EffectSystemModule.recalculateStats(player);
+    }
+
+    // 12. Финальная проверка смерти
+    if (player.hp <= 0) {
+        RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
+        busy = true; 
+    }
+    
+    renderFrame();
+}
 
     // === ОТРИСОВКА КАДРА (Обновленная с тактическим боем) ===
     function renderFrame() {
@@ -2716,7 +2720,9 @@ function updateQuestCompass() {
         hasCityTakenTextQuest,
         setGlobalFlag: (flagName, value) => { globalFlags[flagName] = value; },
         // Используем локальную переменную globalFlags через замыкание
-        getGlobalFlag: (flagName) => globalFlags[flagName] || false, 
+        getGlobalFlag: (flagName) => globalFlags[flagName] || false,
+        getTacticalState: () => tacticalState,
+        getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
         
         exitToGlobal 
     };
