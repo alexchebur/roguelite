@@ -2668,20 +2668,32 @@ function updateQuestCompass() {
     renderFrame();
 }
 
-    // === ОТРИСОВКА КАДРА (Обновленная с тактическим боем) ===
+    // === ОТРИСОВКА КАДРА (Обновленная с тактическим боем и синхронизацией) ===
     function renderFrame() {
         if (!player) return;
 
         // 1. ТАКТИЧЕСКИЙ РЕЖИМ
         if (window.gameMode === 'tactical' && tacticalState) {
             if (typeof TacticalRenderModule !== 'undefined') {
+                // === ВАЖНО: Синхронизация HP перед отрисовкой UI ===
+                const realPlayer = GameModule.getPlayer();
+                if (realPlayer && tacticalState.playerUnit) {
+                    // Копируем текущее HP из тактической копии в реального игрока для отображения
+                    realPlayer.hp = tacticalState.playerUnit.hp;
+                }
+
                 TacticalRenderModule.drawBattlefield(
                     tacticalState.arena, 
                     tacticalState.playerUnit, 
                     tacticalState.enemyUnits, 
-                    tacticalState.playerArmy, // <--- ИСПОЛЬЗУЕМ ДАННЫЕ ИЗ СОСТОЯНИЯ БОЯ
+                    tacticalState.playerArmy, 
                     window.currentTactic
                 );
+
+                // Обновляем UI с актуальным HP
+                if (realPlayer) {
+                    RenderModule.updateUI(realPlayer, null, null); 
+                }
             } else {
                 console.error("❌ TacticalRenderModule не найден!");
             }
@@ -2696,21 +2708,23 @@ function updateQuestCompass() {
 
         // 3. ОБЫЧНЫЙ РЕЖИМ (Подземелье / Город)
         // Стандартная отрисовка подземелья/города
-        const vis = RenderModule.draw(player, enemies, items, npcs); 
-        vis.forEach(k => explored.add(k));
-        
-        // Обновление UI панелей
-        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-        RenderModule.drawMinimap(player, explored);
+        if (typeof RenderModule !== 'undefined') {
+            const vis = RenderModule.draw(player, enemies, items, npcs); 
+            if (vis) vis.forEach(k => explored.add(k));
+            
+            // Обновление UI панелей
+            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.drawMinimap(player, explored);
 
-        // === НОВОЕ: Если открыт постоялый двор, рисуем его поверх всего ===
-        if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
-            RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
-        }
-        
-        // === НОВОЕ: Если открыт магазин, рисуем его поверх всего ===
-        if (isShopOpen && typeof RenderModule.drawShopWindow === 'function') {
-             RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+            // === НОВОЕ: Если открыт постоялый двор, рисуем его поверх всего ===
+            if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
+                RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+            }
+            
+            // === НОВОЕ: Если открыт магазин, рисуем его поверх всего ===
+            if (isShopOpen && typeof RenderModule.drawShopWindow === 'function') {
+                 RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+            }
         }
     }
     
@@ -2726,7 +2740,6 @@ function updateQuestCompass() {
     function getCompletedQuestIds() {
         return completedQuestIds;
     }
-
     // === ОТКАЗ ОТ КВЕСТА ===
     // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ КНОПКИ ОТКАЗА ===
     function updateAbandonButton(hasActiveQuest) {
