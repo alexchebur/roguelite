@@ -66,12 +66,13 @@ const TacticalBattleModule = (function() {
             if (!unit || unit.hp <= 0) return;
 
             if (action.type === 'move') {
-                // Простая телепортация на клетку (в будущем можно добавить анимацию)
-                // Проверка, не занята ли клетка кем-то из targets (врагов/союзников)
+                // ПРОВЕРКА: Меняем ли мы координаты реально?
+                console.log(`[Move] Юнит ${unit.name} (${unit.id}) перемещается с (${unit.x},${unit.y}) на (${action.x},${action.y})`);
+                
                 const isOccupied = targets.some(t => t.x === action.x && t.y === action.y && t.hp > 0);
                 if (!isOccupied) {
-                    unit.x = action.x;
-                    unit.y = action.y;
+                    unit.x = action.x; // <--- ЭТА СТРОКА КРИТИЧНА
+                    unit.y = action.y; // <--- ЭТА СТРОКА КРИТИЧНА
                 }
             } else if (action.type === 'attack') {
                 if (action.target && action.target.hp > 0) {
