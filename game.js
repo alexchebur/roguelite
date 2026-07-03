@@ -541,61 +541,59 @@ const GameModule = (function() {
             return;
         }
 
-        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет перед обычным движением) ===
+        // === ТАКТИЧЕСКИЙ РЕЖИМ (ИСПРАВЛЕННЫЙ) ===
         if (window.gameMode === 'tactical') {
-            e.preventDefault(); // Блокируем скролл страницы стрелками
+            e.preventDefault(); 
 
-            // А. Обработка выбора тактики клавишами 1-5
+            // А. Выбор тактики (1-5) - только меняет флаг, не делает ход
             if (e.key >= '1' && e.key <= '5') {
                 const tacticKey = e.key;
                 const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                 const selected = tactics.find(t => t.key === tacticKey);
-                
                 if (selected) {
                     window.currentTactic = selected.id;
-                    RenderModule.log(`Тактика изменена: ${selected.name}`, "info");
-                    
-                    // Перерисовываем поле боя, чтобы обновить меню
+                    RenderModule.log(`Тактика: ${selected.name}`, "info");
                     renderFrame(); 
                 }
-                return; // Завершаем обработку, так как это не ход
+                return; 
             }
 
-            // Б. Обработка движения/атаки/пропуска хода
+            // Б. Побег (F или 0)
+            if (e.key === 'f' || e.key === 'F' || e.key === '0') {
+                endTacticalBattle(false); // Поражение/Побег
+                return;
+            }
+
+            // В. Движение игрока или Пропуск хода
             let dx = 0, dy = 0;
-            let isAction = false;
+            let actionTaken = false;
 
-            if (e.key === "ArrowUp") { dy = -1; isAction = true; }
-            if (e.key === "ArrowDown") { dy = 1; isAction = true; }
-            if (e.key === "ArrowLeft") { dx = -1; isAction = true; }
-            if (e.key === "ArrowRight") { dx = 1; isAction = true; }
-            
-            // === ПРОПУСК ХОДА (SPACE) ===
-            if (e.key === " ") { 
-                isAction = true; 
-                RenderModule.log("⏳ Вы ждете следующего хода...", "info");
-            }
+            if (e.key === "ArrowUp")    { dy = -1; actionTaken = true; }
+            if (e.key === "ArrowDown")  { dy = 1;  actionTaken = true; }
+            if (e.key === "ArrowLeft")  { dx = -1; actionTaken = true; }
+            if (e.key === "ArrowRight") { dx = 1;  actionTaken = true; }
+            if (e.key === " ")          { actionTaken = true; } // Пропуск хода
 
-            if (isAction) {
-                // 1. Обрабатываем ход союзников (если реализовано)
-                if (typeof movePlayerArmy === 'function') {
-                    movePlayerArmy();
-                }
-                
-                // 2. Обрабатываем ход врагов
-                if (typeof moveEnemies === 'function') {
-                    moveEnemies();
+            if (actionTaken) {
+                // 1. Ход ИГРОКА (движение или атака)
+                if (dx !== 0 || dy !== 0) {
+                    processTacticalPlayerTurn(dx, dy);
+                } else {
+                    RenderModule.log("⏳ Вы ждете...", "info");
                 }
 
-                // 3. Проверяем смерть врагов после их хода
-                if (typeof checkDeath === 'function') {
-                    checkDeath();
-                }
+                // 2. Ход СОЮЗНИКОВ (с учетом новой тактики)
+                if (typeof movePlayerArmy === 'function') movePlayerArmy();
 
-                // 4. Перерисовываем экран
+                // 3. Ход ВРАГОВ
+                if (typeof moveEnemies === 'function') moveEnemies();
+
+                // 4. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
+                checkTacticalBattleEnd();
+
+                // 5. Отрисовка
                 renderFrame();
             }
-            
             return; 
         }
 
