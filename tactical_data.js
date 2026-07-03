@@ -6,13 +6,37 @@ const TacticalDataModule = (function() {
 
     const UNIT_TYPES = {
         SPEARMAN: {
-            id: 'spearman', name: 'Копейщик', type: 'melee', speed: 3, hp: 20, atk: 5, def: 3, range: 1, sprite: 'g'
+            id: 'spearman',
+            name: 'Копейщик',
+            type: 'melee',      // Ближний бой
+            speed: 3,
+            hp: 20,
+            atk: 5,
+            def: 3,
+            range: 1,           // <--- ВАЖНО: Атакует только вплотную
+            sprite: 'g' 
         },
         CAVALRY: {
-            id: 'cavalry', name: 'Всадник', type: 'melee', speed: 8, hp: 30, atk: 7, def: 2, range: 1, sprite: 'w'
+            id: 'cavalry',
+            name: 'Всадник',
+            type: 'melee',      // Ближний бой
+            speed: 8,
+            hp: 30,
+            atk: 7,
+            def: 2,
+            range: 1,           // <--- ВАЖНО: Атакует только вплотную
+            sprite: 'w' 
         },
         ARCHER: {
-            id: 'archer', name: 'Лучник', type: 'range', speed: 5, hp: 15, atk: 6, def: 1, range: 8, sprite: 's'
+            id: 'archer',
+            name: 'Лучник',
+            type: 'range',      // Дальний бой
+            speed: 5,
+            hp: 15,
+            atk: 6,
+            def: 1,
+            range: 8,           // <--- ВАЖНО: Стреляет издалека
+            sprite: 's' 
         }
     };
 
