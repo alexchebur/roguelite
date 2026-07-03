@@ -1236,34 +1236,61 @@ function updateQuestCompass() {
     }
     // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     function endTacticalBattle(victory) {
-        // 1. Возвращаем режим игры
+        // 1. Синхронизация состояния игрока перед выходом
+        if (tacticalState && tacticalState.playerUnit) {
+            const realPlayer = GameModule.getPlayer();
+            if (realPlayer) {
+                // Переносим HP из тактической копии в реального игрока
+                realPlayer.hp = tacticalState.playerUnit.hp;
+                
+                // Если игрок умер в бою — конец игры
+                if (realPlayer.hp <= 0) {
+                    window.gameMode = 'global';
+                    if (typeof showGlobalUI === 'function') showGlobalUI();
+                    renderGlobalMap();
+                    RenderModule.log("💀 Вы погибли в тактическом бою. F5 для рестарта.", "combat");
+                    busy = true; // Блокируем управление навсегда
+                    return;
+                }
+            }
+        }
+
+        // 2. Возвращаем режим игры
         window.gameMode = 'global';
         
-        // 2. Показываем скрытые UI-панели (миникарту, заголовок, квест-бар)
+        // 3. Показываем скрытые UI-панели
         if (typeof showGlobalUI === 'function') {
             showGlobalUI();
         } else {
-            // Фолбэк, если функции нет: вручную убираем класс hidden-ui
             document.getElementById("header-panel").classList.remove("hidden-ui");
             document.getElementById("minimap-panel").classList.remove("hidden-ui");
             document.getElementById("quest-bar").classList.remove("hidden-ui");
         }
 
-        // 3. Удаляем побежденную армию с глобальной карты (если победа)
+        // 4. Награды и удаление армии
         if (victory && tacticalState && tacticalState.enemyArmyId) {
+            // Удаляем армию с карты
             if (typeof GlobalMapModule.removeArmy === 'function') {
                 GlobalMapModule.removeArmy(tacticalState.enemyArmyId);
             }
+            
+            // Начисляем золото за победу
+            const rewardGold = 50 + (tacticalState.enemyUnits.length * 10);
+            const realPlayer = GameModule.getPlayer();
+            if (realPlayer) {
+                realPlayer.gold += rewardGold;
+                RenderModule.log(`🏆 Победа! Получено ${rewardGold} золотых.`, "loot");
+            }
+        } else if (!victory) {
+             RenderModule.log("💨 Вы сбежали с поля боя, сохранив жизнь.", "info");
         }
 
-        // 4. Очищаем состояние боя
+        // 5. Очищаем состояние боя
         tacticalState = null;
         busy = false;
 
-        // 5. Перерисовываем глобальную карту
+        // 6. Перерисовываем глобальную карту (это также вызовет updateUI и обновит статы/компас)
         renderGlobalMap();
-        
-        RenderModule.log(victory ? "🏆 Победа! Армия противника разбита." : "💨 Вы сбежали с поля боя.", victory ? "loot" : "info");
     }
     
     function enterPOI(poi) {
