@@ -1344,6 +1344,27 @@ function updateQuestCompass() {
         // 6. Перерисовываем глобальную карту (это также вызовет updateUI и обновит статы/компас)
         renderGlobalMap();
     }
+
+
+    // === ПРОВЕРКА ОКОНЧАНИЯ ТАКТИЧЕСКОГО БОЯ ===
+    function checkTacticalBattleEnd() {
+        if (!tacticalState) return;
+
+        // 1. Проверка поражения (игрок мертв)
+        if (tacticalState.playerUnit && tacticalState.playerUnit.hp <= 0) {
+            RenderModule.log("💀 Ваш отряд разбит!", "combat");
+            setTimeout(() => endTacticalBattle(false), 1000);
+            return;
+        }
+
+        // 2. Проверка победы (все враги мертвы)
+        const aliveEnemies = tacticalState.enemyUnits.filter(e => e.hp > 0);
+        if (aliveEnemies.length === 0) {
+            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
+            // Небольшая задержка, чтобы игрок увидел результат
+            setTimeout(() => endTacticalBattle(true), 1500);
+        }
+    }    
        function checkTacticalVictory() {
         if (!tacticalState) return;
         
