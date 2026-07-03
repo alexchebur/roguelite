@@ -1,4 +1,4 @@
-/** 
+/**
  * МОДУЛЬ ОТРИСОВКИ ТАКТИЧЕСКОГО БОЯ (tactical_render.js)
  */
 const TacticalRenderModule = (function() {
@@ -95,11 +95,4 @@ const TacticalRenderModule = (function() {
     };
 })();
 
-window.TacticalRenderModule = TacticalRenderModule;
-
-    return {
-        drawBattlefield: drawBattlefield
-    };
-})();
-// <--- ДОБАВИТЬ СЮДА ЭТУ СТРОКУ
 window.TacticalRenderModule = TacticalRenderModule;
