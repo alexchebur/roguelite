@@ -1300,12 +1300,10 @@ function updateQuestCompass() {
                 // === ИСПРАВЛЕНИЕ: Используем статы ОДНОГО бойца из типа юнита ===
                 playerArmyUnits.push({
                     ...armyUnit,
-                    x: unitX,
-                    y: unitY,
-                    
-                    // ВАЖНО: HP берем из типа, а не из глобального объекта армии
-                    hp: armyUnit.type.hp,       
-                    maxHp: armyUnit.type.hp,    
+                    x: unitX, y: unitY,
+                    // Базовое HP * Ауру Командира
+                    hp: Math.floor(armyUnit.type.hp * auraHpMult),
+                    maxHp: Math.floor(armyUnit.type.hp * auraHpMult),
                     
                     char: armyUnit.type.sprite || '?', 
                     color: '#44ff44', 
@@ -1314,10 +1312,10 @@ function updateQuestCompass() {
                     isPlayerSide: true,
                     name: armyUnit.type.name,
                     
-                    // ВАЖНО: Атака и защита также берутся из типа (одного бойца)
-                    atk: armyUnit.type.atk,   
-                    def: armyUnit.type.def,   
-                    speed: armyUnit.type.speed, 
+                    // Атака и Защита с учетом Ауры и Экипировки игрока
+                    atk: Math.floor(armyUnit.type.atk * auraAtkMult) + gearAtkBonus,   
+                    def: Math.floor(armyUnit.type.def * auraAtkMult) + gearDefBonus,   
+                    speed: armyUnit.type.speed || 5, 
                     energy: 0,                     
                     range: armyUnit.type.range || 1  
                 });
