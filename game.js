@@ -577,16 +577,18 @@ const GameModule = (function() {
             }
 
             if (isAction) {
-                // 1. Ход ИГРОКА (движение или атака)
+                // 1. Ход ИГРОКА
                 if (dx !== 0 || dy !== 0) {
                     processTacticalPlayerTurn(dx, dy);
+                } else {
+                    RenderModule.log("⏳ Вы ждете...", "info");
                 }
 
-                // 2. Ход СОЮЗНИКОВ (с учетом новой тактики)
+                // 2. Ход СОЮЗНИКОВ
                 if (typeof movePlayerArmy === 'function') movePlayerArmy();
 
-                // 3. Ход ВРАГОВ
-                if (typeof moveEnemies === 'function') moveEnemies();
+                // 3. Ход ВРАГОВ (ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ)
+                if (typeof moveTacticalEnemies === 'function') moveTacticalEnemies();
 
                 // 4. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
                 checkTacticalBattleEnd();
