@@ -1385,13 +1385,18 @@ function updateQuestCompass() {
                 // Переносим HP из тактической копии в реального игрока
                 realPlayer.hp = tacticalState.playerUnit.hp;
                 
-                // Если игрок умер в бою — конец игры
+                // === СТРАХОВКА: Если HP отрицательный или нулевой, восстанавливаем до минимума ===
                 if (realPlayer.hp <= 0) {
+                    realPlayer.hp = 10; // Восстанавливаем до 10 HP
+                    RenderModule.log("💨 Вы едва спаслись! Ваши силы на исходе...", "combat");
+                }
+                
+                // Если игрок умер в бою (но мы его спасли) — это побег, а не смерть
+                if (tacticalState.playerUnit.hp <= 0) {
                     window.gameMode = 'global';
                     if (typeof showGlobalUI === 'function') showGlobalUI();
                     renderGlobalMap();
-                    RenderModule.log("💀 Вы погибли в тактическом бою. F5 для рестарта.", "combat");
-                    busy = true; // Блокируем управление навсегда
+                    busy = false; // Разблокируем управление
                     return;
                 }
             }
@@ -1426,37 +1431,34 @@ function updateQuestCompass() {
         } else if (!victory) {
              RenderModule.log("💨 Вы сбежали с поля боя, сохранив жизнь.", "info");
         }
-        // === СОХРАНЕНИЕ ВЫЖИВШИХ ОТРЯДОВ (СОЗДАНИЕ ДЕФИЦИТА) ===
+
+        // === СОХРАНЕНИЕ ВЫЖИВШИХ ОТРЯДОВ ===
         if (tacticalState.playerArmy && player) {
-            // Фильтруем только живых юнитов
             const survivors = tacticalState.playerArmy.filter(u => u.hp > 0);
-            
-            // Перезаписываем глобальный массив армии игрока реальными выжившими
             player.armyUnits = survivors.map(u => ({
                 type: u.type,
-                count: 1, // Каждый выживший на поле теперь считается за 1 отряд
+                count: 1,
                 hp: u.hp,
                 maxHp: u.maxHp,
-                atk: u.atk, // Сохраняем статы, чтобы аура не пересчитывалась дважды
+                atk: u.atk,
                 def: u.def
             }));
-
             if (survivors.length === 0 && player.hasArmy) {
                 RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
-                player.hasArmy = false; // Сбрасываем флаг, чтобы спрайт на карте сменился
+                player.hasArmy = false;
                 GameModule.setGlobalFlag('player_has_squad', false);
             } else if (survivors.length > 0) {
                 RenderModule.log(`🛡️ В строю осталось ${survivors.length} бойцов.`, "info");
             }
         }
+
         // 5. Очищаем состояние боя
         tacticalState = null;
         busy = false;
 
-        // 6. Перерисовываем глобальную карту (это также вызовет updateUI и обновит статы/компас)
+        // 6. Перерисовываем глобальную карту
         renderGlobalMap();
     }
-
 
     // === ПРОВЕРКА ОКОНЧАНИЯ ТАКТИЧЕСКОГО БОЯ ===
     function checkTacticalBattleEnd() {
