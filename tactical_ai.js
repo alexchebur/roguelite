@@ -117,11 +117,34 @@ const TacticalAIModule = (function() {
     /**
      * Действие сближения (с учетом желаемой дистанции)
      */
+    /**
+     * Действие сближения (более агрессивное)
+     */
     function getApproachAction(unit, target, desiredRange, arena) {
-        // Используем A* из ROT.js
-        // Цель: клетка, которая находится на расстоянии desiredRange от target
-        // Но для простоты пока будем идти прямо к target, а остановимся, когда dist <= desiredRange
+        // Сначала пробуем простой "жадный" шаг к цели
+        const dx = Math.sign(target.x - unit.x);
+        const dy = Math.sign(target.y - unit.y);
         
+        // Пробуем пойти по диагонали или прямой линии
+        const moves = [
+            { x: unit.x + dx, y: unit.y + dy }, // По диагонали/прямой
+            { x: unit.x + dx, y: unit.y },      // Только по X
+            { x: unit.x, y: unit.y + dy }       // Только по Y
+        ];
+
+        for (const move of moves) {
+            if (isValidMove(move.x, move.y, arena, enemyUnits)) { // Проверяем занятость своими
+                 // Дополнительная проверка: не занято ли место врагом (игроком)
+                 const isOccupiedByEnemy = (playerUnit && playerUnit.x === move.x && playerUnit.y === move.y) || 
+                                           (playerArmy && playerArmy.some(p => p.x === move.x && p.y === move.y && p.hp > 0));
+                
+                if (!isOccupiedByEnemy) {
+                    return { unitId: unit.id, type: 'move', x: move.x, y: move.y };
+                }
+            }
+        }
+
+        // Если простые шаги не сработали, пробуем A* как запасной вариант
         const astar = new ROT.Path.AStar(target.x, target.y, 
             (x, y) => isValidCell(x, y, arena), { topology: 8 });
         
@@ -133,9 +156,10 @@ const TacticalAIModule = (function() {
         });
 
         if (nextStep) {
-            // Проверка, не занято ли место другим другом (простая проверка коллизий)
-            // В идеале тут нужна более сложная логика расталкивания, но пока пропустим
-            return { unitId: unit.id, type: 'move', x: nextStep.x, y: nextStep.y };
+             // Проверка на занятость своими перед финальным решением A*
+             if (isValidMove(nextStep.x, nextStep.y, arena, enemyUnits)) {
+                 return { unitId: unit.id, type: 'move', x: nextStep.x, y: nextStep.y };
+             }
         }
 
         return { unitId: unit.id, type: 'wait' };
