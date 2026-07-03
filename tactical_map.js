@@ -46,5 +46,4 @@ const TacticalMapModule = (function() {
 })();
 // В конце каждого из этих файлов добавьте:
 window.TacticalMapModule = TacticalMapModule;
-window.TacticalArmyModule = TacticalArmyModule;
-window.TacticalDataModule = TacticalDataModule;
+
