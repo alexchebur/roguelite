@@ -1264,6 +1264,13 @@ function updateQuestCompass() {
         const globalPos = GlobalMapModule.getPlayerPosition();
         const terrainType = GlobalMapModule.getTileType(globalPos.x, globalPos.y);
         const arena = TacticalMapModule.generateArena(terrainType);
+        // === АУРА КОМАНДИРА (Бонус от прогресса игрока) ===
+        const playerLevel = player.level || 1;
+        const auraHpMult = 1 + (playerLevel - 1) * 0.1;  // +10% HP за уровень
+        const auraAtkMult = 1 + (playerLevel - 1) * 0.05; // +5% Атаки за уровень
+        // Бонус от экипировки: 20% от твоего бонусного урона/защиты передается отряду
+        const gearAtkBonus = Math.floor((player.bonusAtk || 0) * 0.2); 
+        const gearDefBonus = Math.floor((player.bonusDef || 0) * 0.2);
 
         // 1. Создаем юнита-представителя игрока (используем реальные статы из player)
         const playerUnit = {
