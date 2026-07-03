@@ -1347,6 +1347,8 @@ function updateQuestCompass() {
             });
         });
 
+        // ... (код инициализации врагов) ...
+
         // 4. Сохраняем состояние боя
         tacticalState = {
             arena: arena,
@@ -1358,7 +1360,9 @@ function updateQuestCompass() {
             turnCount: 0
         };
         
-        window.currentTactic = 'hold';
+        // === ИЗМЕНЕНО: Тактика по умолчанию - Наступать ===
+        window.currentTactic = 'advance'; 
+        
         busy = false; 
         
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
