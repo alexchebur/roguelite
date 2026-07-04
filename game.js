@@ -1291,39 +1291,56 @@ function updateQuestCompass() {
             isPlayer: true
         };
 
-        // 2. Разворачиваем армию игрока (если есть)
+        // 2. Разворачиваем армию игрока (КАЖДЫЙ ЮНИТ - ОТДЕЛЬНЫЙ СПРАЙТ)
         let playerArmyUnits = [];
+        
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
-            player.armyUnits.forEach((armyUnit, index) => {
-                const xOffset = 1 + Math.floor(index / 5);
-                const yOffset = (index % 2 === 0) ? 1 : -1;
-                let unitX = arena.startPosPlayer.x + xOffset;
-                let unitY = arena.startPosPlayer.y + (index % 5) * yOffset;
-                unitX = Math.max(0, Math.min(arena.width - 1, unitX));
-                unitY = Math.max(0, Math.min(arena.height - 1, unitY));
+            // Ограничиваем количество отрядов для тактики
+            const squadsForBattle = player.armyUnits.slice(0, TacticalDataModule.MAX_PLAYER_SQUADS);
+            
+            squadsForBattle.forEach((armyUnit, squadIndex) => {
+                const unitCount = armyUnit.count || 1; // Количество юнитов в отряде
+                
+                // Рассчитываем стартовую позицию для всей шеренги этого отряда
+                // Отряды стоят друг за другом с небольшим интервалом
+                const squadStartX = arena.startPosPlayer.x + 2 + (squadIndex * 4); 
+                const squadStartY = Math.floor(arena.height / 2) - Math.floor(unitCount / 2);
 
-                // === ИСПРАВЛЕНИЕ: Используем статы ОДНОГО бойца из типа юнита ===
-                playerArmyUnits.push({
-                    ...armyUnit,
-                    x: unitX, y: unitY,
-                    // Базовое HP * Ауру Командира
-                    hp: Math.floor(armyUnit.type.hp * auraHpMult),
-                    maxHp: Math.floor(armyUnit.type.hp * auraHpMult),
-                    
-                    char: armyUnit.type.sprite || '?', 
-                    color: '#44ff44', 
-                    sprite: armyUnit.type.sprite || '?',
-                    type: armyUnit.type,       
-                    isPlayerSide: true,
-                    name: armyUnit.type.name,
-                    
-                    // Атака и Защита с учетом Ауры и Экипировки игрока
-                    atk: Math.floor(armyUnit.type.atk * auraAtkMult) + gearAtkBonus,   
-                    def: Math.floor(armyUnit.type.def * auraAtkMult) + gearDefBonus,   
-                    speed: armyUnit.type.speed || 5, 
-                    energy: 0,                     
-                    range: armyUnit.type.range || 1  
-                });
+                for (let i = 0; i < unitCount; i++) {
+                    // Формация "Шеренга": все стоят в одной колонке (по Y)
+                    let unitX = squadStartX;
+                    let unitY = squadStartY + i;
+
+                    // Проверка границ арены
+                    if (unitY < 0) unitY = 0;
+                    if (unitY >= arena.height) unitY = arena.height - 1;
+                    if (unitX >= arena.width) unitX = arena.width - 1;
+
+                    // === ВАЖНО: Влияние количества юнитов на статы (Аура Командира) ===
+                    // Чем больше людей в отряде, тем выше мораль и слаженность
+                    const countBonusHp = Math.floor(armyUnit.type.hp * 0.1); 
+                    const countBonusAtk = Math.floor(armyUnit.type.atk * 0.05);
+
+                    playerArmyUnits.push({
+                        ...armyUnit, // Копируем базовые данные
+                        x: unitX,
+                        y: unitY,
+                        hp: armyUnit.type.hp + countBonusHp, // Базовое HP типа + бонус
+                        maxHp: armyUnit.type.hp + countBonusHp,
+                        char: armyUnit.type.sprite || '?', 
+                        color: '#44ff44', 
+                        sprite: armyUnit.type.sprite || '?',
+                        type: armyUnit.type,       
+                        isPlayerSide: true,
+                        name: `${armyUnit.type.name} #${i+1}`, // Уникальное имя для лога
+                        atk: armyUnit.type.atk + countBonusAtk,   
+                        def: armyUnit.type.def,   
+                        speed: armyUnit.type.speed || 5, 
+                        energy: 0,                     
+                        range: armyUnit.type.range || 1,
+                        squadId: squadIndex // Метка, чтобы знать, к какому отряду он относится
+                    });
+                }
             });
         }
         // 3. Разворачиваем вражескую армию (ИСПРАВЛЕННАЯ ЛОГИКА HP)
