@@ -1,116 +1,136 @@
 /**
- * МОДУЛЬ УПРАВЛЕНИЯ АРМИЕЙ ИГРОКА (tactical_player.js)
+ * МОДУЛЬ УПРАВЛЕНИЯ АРМИЕЙ ИГРОКА (tactical_player.js) - С ФОРМАЦИЕЙ
  */
 const TacticalPlayerModule = (function() {
     'use strict';
 
     /**
-     * Генерирует приказы для армии игрока на основе текущей тактики
+     * Генерирует приказы для армии игрока
      */
     function processPlayerTactic(tacticId, playerArmy, playerUnit, enemyUnits, arena) {
         const actions = [];
         if (!playerArmy || playerArmy.length === 0) return actions;
 
-        switch (tacticId) {
-            case 'advance': // Наступать
-                playerArmy.forEach(unit => {
-                    const target = findNearestEnemy(unit, enemyUnits);
-                    if (target) {
-                        actions.push(getMoveOrAttackAction(unit, target, arena, enemyUnits));
-                    }
-                });
-                break;
+        // Группируем юнитов по отрядам (squadId)
+        const squads = {};
+        playerArmy.forEach(u => {
+            if (!squads[u.squadId]) squads[u.squadId] = [];
+            squads[u.squadId].push(u);
+        });
 
-            case 'ranged': // Дистанционная атака (Лучники стреляют, остальные ждут/идут медленно)
-                playerArmy.forEach(unit => {
-                    if (unit.type === 'range') {
-                        const target = findNearestEnemy(unit, enemyUnits);
-                        if (target && getDistance(unit, target) <= unit.range) {
-                            actions.push({ unitId: unit.id, type: 'attack', target: target });
-                        } else if (target) {
-                            // Подойти поближе
-                             actions.push(getMoveOrAttackAction(unit, target, arena, enemyUnits));
-                        }
-                    } else {
-                        // Мили юниты просто идут вперед медленно или держат строй
-                        // Пока пусть просто идут к ближайшему врагу
-                         const target = findNearestEnemy(unit, enemyUnits);
-                         if (target) actions.push(getMoveOrAttackAction(unit, target, arena, enemyUnits));
-                    }
-                });
-                break;
-
-            case 'retreat': // Отступать (к левому краю)
-                playerArmy.forEach(unit => {
-                    // Цель: x = 0
-                    if (unit.x > 1) {
-                         actions.push({ unitId: unit.id, type: 'move', x: unit.x - 1, y: unit.y });
-                    }
-                });
-                break;
-
-            case 'hold': // Держать позиции
-                playerArmy.forEach(unit => {
-                    const target = findNearestEnemy(unit, enemyUnits);
-                    // Если враг в радиусе атаки (для лучников) или вплотную (для мили) - атакуем
-                    if (unit.type === 'range' && target && getDistance(unit, target) <= unit.range) {
-                        actions.push({ unitId: unit.id, type: 'attack', target: target });
-                    } else if (target && getDistance(unit, target) === 1) {
-                        actions.push({ unitId: unit.id, type: 'attack', target: target });
-                    }
-                    // Иначе стоим
-                });
-                break;
+        Object.values(squads).forEach(squad => {
+            // Находим лидера отряда (юнит с минимальным Y, чтобы строй был вертикальным)
+            // Или можно брать первого в массиве
+            const leader = squad.reduce((prev, curr) => (prev.y < curr.y ? prev : curr));
             
-            case 'flee':
-                // Обрабатывается в game.js как конец боя
-                break;
-        }
+            squad.forEach(unit => {
+                let action = null;
+
+                // Если это сам лидер — он ведет отряд к цели
+                if (unit === leader) {
+                    action = getLeaderAction(unit, tacticId, enemyUnits, arena);
+                } 
+                // Если это рядовой — он держит позицию относительно лидера
+                else {
+                    action = getFollowerAction(unit, leader, tacticId, arena, playerArmy);
+                }
+
+                if (action) actions.push(action);
+            });
+        });
 
         return actions;
     }
 
-    function findNearestEnemy(me, enemies) {
-        let nearest = null;
-        let minDist = Infinity;
-        enemies.forEach(e => {
-            if (e.hp > 0) {
-                const d = Math.abs(me.x - e.x) + Math.abs(me.y - e.y);
-                if (d < minDist) {
-                    minDist = d;
-                    nearest = e;
-                }
+    function getLeaderAction(leader, tacticId, enemies, arena) {
+        const target = findNearestEnemy(leader, enemies);
+        if (!target) return { unitId: leader.id, type: 'wait', unit: leader };
+
+        switch (tacticId) {
+            case 'advance':
+                return getMoveOrAttackAction(leader, target, arena, enemies);
+            case 'retreat':
+                // Лидер бежит влево
+                if (leader.x > 2) return { unitId: leader.id, type: 'move', x: leader.x - 1, y: leader.y, unit: leader };
+                break;
+            case 'hold':
+                const dist = Math.abs(leader.x - target.x) + Math.abs(leader.y - target.y);
+                if (dist <= 1) return { unitId: leader.id, type: 'attack', target: target, unit: leader };
+                if (leader.type === 'range' && dist <= leader.range) return { unitId: leader.id, type: 'attack', target: target, unit: leader };
+                break;
+        }
+        return { unitId: leader.id, type: 'wait', unit: leader };
+    }
+
+    function getFollowerAction(follower, leader, tacticId, arena, allAllies) {
+        // Целевая позиция: рядом с лидером, сохраняя исходное смещение
+        // Для простоты: строим вертикальную шеренгу позади или рядом с лидером
+        
+        // Вычисляем "идеальную" позицию в строю
+        // Допустим, мы хотим стоять вплотную друг к другу по вертикали
+        // Нам нужно знать индекс юнита в его отряде, но пока сделаем проще:
+        // Просто идем к клетке рядом с лидером, которая свободна
+        
+        const targets = [
+            { x: leader.x, y: leader.y - 1 }, // Над лидером
+            { x: leader.x, y: leader.y + 1 }, // Под лидером
+            { x: leader.x - 1, y: leader.y }, // Слева от лидера (если отступаем)
+            { x: leader.x + 1, y: leader.y }  // Справа от лидера (если атакуем)
+        ];
+
+        // Выбираем лучшую свободную клетку
+        for (let pos of targets) {
+            if (isValidPos(pos.x, pos.y, arena, allAllies)) {
+                 // Проверяем, не занято ли место врагом
+                 // (упрощенно считаем, что если клетка свободна от союзников, то ок)
+                 return { unitId: follower.id, type: 'move', x: pos.x, y: pos.y, unit: follower };
             }
-        });
-        return nearest;
+        }
+
+        // Если все места вокруг лидера заняты, просто стоим
+        return { unitId: follower.id, type: 'wait', unit: follower };
     }
 
-    function getDistance(u1, u2) {
-        return Math.abs(u1.x - u2.x) + Math.abs(u1.y - u2.y);
+    function isValidPos(x, y, arena, allies) {
+        if (x < 0 || x >= arena.width || y < 0 || y >= arena.height) return false;
+        // Не можем встать на другого союзника
+        return !allies.some(a => a.x === x && a.y === y && a.hp > 0);
     }
 
-    function getMoveOrAttackAction(unit, target, arena, enemies) {
-        const dist = getDistance(unit, target);
-        if (dist === 1) {
-            return { unitId: unit.id, type: 'attack', target: target };
-        }
-        
-        // Простое движение к цели
-        const dx = Math.sign(target.x - unit.x);
-        const dy = Math.sign(target.y - unit.y);
-        
-        // Пробуем пойти по диагонали или прямой
-        let nx = unit.x + dx;
-        let ny = unit.y + dy;
-        
-        // Проверка границ и занятости (очень упрощенно)
-        if (nx >= 0 && nx < arena.width && ny >= 0 && ny < arena.height) {
-             // Тут должна быть проверка коллизий с друзьями, но для прототипа опустим
-             return { unitId: unit.id, type: 'move', x: nx, y: ny };
-        }
-        
-        return { unitId: unit.id, type: 'wait' };
-    }
+    // ... остальные вспомогательные функции (findNearestEnemy и т.д.) остаются без изменений ...
+    function findNearestEnemy(me, enemies) {
+         let nearest = null;
+         let minDist = Infinity;
+         enemies.forEach(e => {
+             if (e.hp > 0) {
+                 const d = Math.abs(me.x - e.x) + Math.abs(me.y - e.y);
+                 if (d < minDist) {
+                     minDist = d;
+                     nearest = e;
+                 }
+             }
+         });
+         return nearest;
+     }
+     
+     function getDistance(u1, u2) {
+         return Math.abs(u1.x - u2.x) + Math.abs(u1.y - u2.y);
+     }
+     
+     function getMoveOrAttackAction(unit, target, arena, enemies) {
+         const dist = getDistance(unit, target);
+         if (dist === 1) {
+             return { unitId: unit.id, type: 'attack', target: target, unit: unit };
+         }
+         const dx = Math.sign(target.x - unit.x);
+         const dy = Math.sign(target.y - unit.y);
+         let nx = unit.x + dx;
+         let ny = unit.y + dy;
+         if (nx >= 0 && nx < arena.width && ny >= 0 && ny < arena.height) {
+              return { unitId: unit.id, type: 'move', x: nx, y: ny, unit: unit };
+         }
+         return { unitId: unit.id, type: 'wait', unit: unit };
+     }
 
     return {
         processPlayerTactic: processPlayerTactic
