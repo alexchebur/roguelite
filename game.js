@@ -1406,8 +1406,7 @@ function updateQuestCompass() {
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
         RenderModule.updateUI(player, null, null); 
         renderFrame();
-    }    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
-    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ФУНКЦИИ initTacticalBattle    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
         // === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ОТРЯДОВ ===
         if (tacticalState.playerArmy && player && player.armyUnits) {
             // Проходим по всем отрядам игрока (даже тем, что не влезли в бой)
