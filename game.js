@@ -228,21 +228,22 @@ const GameModule = (function() {
                 innLog("У вас нет даже 10 золотых, чтобы поставить!", "combat");
             }
         }
-        // === ИСПРАВЛЕННАЯ ЛОГИКА НАЙМА ОТРЯДА ===
+        // === ЛОГИКА НАЙМА ОТРЯДА С ОГРАНИЧЕНИЕМ ===
         else if (actionType === 'hire') {
             // Проверяем наличие модуля данных тактики
             if (typeof TacticalDataModule === 'undefined') {
                 innLog("Система найма временно недоступна.", "combat");
                 return;
             }
+
             // ПРОВЕРКА ЛИМИТА ОТРЯДОВ
             const currentSquads = player.armyUnits ? player.armyUnits.length : 0;
             if (currentSquads >= TacticalDataModule.MAX_PLAYER_SQUADS) {
                 innLog(`Вы не можете нанять больше ${TacticalDataModule.MAX_PLAYER_SQUADS} отрядов!`, "combat");
                 return;
             }
+
             const cost = TacticalDataModule.UNIT_COST; // 10000 золотых
-            
             if (player.gold >= cost) {
                 player.gold -= cost;
                 
@@ -254,34 +255,33 @@ const GameModule = (function() {
                     player.hasArmy = true;
                     player.armyUnits = [];
                 }
-
+                
                 // 3. Добавляем случайный отряд
                 if (typeof TacticalArmyModule !== 'undefined') {
                     const unitType = TacticalArmyModule.getRandomUnitType();
-                    const count = Math.floor(5 + Math.random() * 10); // 5-14 юнитов
+                    const count = Math.floor(5 + Math.random() * 10); // 5-14 юнитов в отряде (для глобальной карты)
                     
                     player.armyUnits.push({
                         type: unitType,
                         count: count,
-                        hp: unitType.hp * count,
+                        hp: unitType.hp * count, // HP отряда на глобальной карте
                         maxHp: unitType.hp * count
                     });
                     
-                    innLog(`Вы наняли отряд "${unitType.name}" (${count} юнитов) за ${cost} золотых!`, "loot");
+                    innLog(`Вы наняли отряд "${unitType.name}" (${count} бойцов) за ${cost} золотых!`, "loot");
                 } else {
-                    // Фолбэк, если модуль армии не загружен
+                    // Фолбэк
                     player.armyUnits.push({ name: "Наемники", count: 10, hp: 200, maxHp: 200 });
                     innLog(`Вы наняли отряд наемников за ${cost} золотых!`, "loot");
                 }
-
-                // 4. Обновляем UI, чтобы увидеть новое золото
+                
+                // 4. Обновляем UI
                 RenderModule.updateUI(player, currentLocData, currentWorldTrend);
                 RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
             } else {
                 innLog(`Недостаточно золота! Нужно ${cost} золотых.`, "combat");
             }
-        }
-        
+        }        
         // Обновляем окно постоялого двора, если действие не 'hire' (там уже есть свое обновление)
         if (actionType !== 'hire') {
              RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
