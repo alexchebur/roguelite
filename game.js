@@ -235,7 +235,12 @@ const GameModule = (function() {
                 innLog("Система найма временно недоступна.", "combat");
                 return;
             }
-
+            // ПРОВЕРКА ЛИМИТА ОТРЯДОВ
+            const currentSquads = player.armyUnits ? player.armyUnits.length : 0;
+            if (currentSquads >= TacticalDataModule.MAX_PLAYER_SQUADS) {
+                innLog(`Вы не можете нанять больше ${TacticalDataModule.MAX_PLAYER_SQUADS} отрядов!`, "combat");
+                return;
+            }
             const cost = TacticalDataModule.UNIT_COST; // 10000 золотых
             
             if (player.gold >= cost) {
