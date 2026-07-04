@@ -75,6 +75,7 @@ const TacticalDataModule = (function() {
         BATTLEFIELD_WIDTH,
         BATTLEFIELD_HEIGHT,
         MAX_UNITS_PER_ARMY,
+        MAX_PLAYER_SQUADS, 
         UNIT_COST,
         ARMY_STRATEGIES
     };
