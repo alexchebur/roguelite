@@ -58,7 +58,7 @@ const TacticalDataModule = (function() {
     const BATTLEFIELD_WIDTH = 28; 
     const BATTLEFIELD_HEIGHT = 18; 
     
-    const MAX_UNITS_PER_ARMY = 30;
+    const MAX_UNITS_PER_ARMY = 10;
     const MAX_PLAYER_SQUADS = 5; 
     const UNIT_COST = 10000;
     
