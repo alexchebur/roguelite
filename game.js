@@ -1269,10 +1269,12 @@ function updateQuestCompass() {
         const globalPos = GlobalMapModule.getPlayerPosition();
         const terrainType = GlobalMapModule.getTileType(globalPos.x, globalPos.y);
         const arena = TacticalMapModule.generateArena(terrainType);
+
         // === АУРА КОМАНДИРА (Бонус от прогресса игрока) ===
         const playerLevel = player.level || 1;
         const auraHpMult = 1 + (playerLevel - 1) * 0.1;  // +10% HP за уровень
         const auraAtkMult = 1 + (playerLevel - 1) * 0.05; // +5% Атаки за уровень
+        
         // Бонус от экипировки: 20% от твоего бонусного урона/защиты передается отряду
         const gearAtkBonus = Math.floor((player.bonusAtk || 0) * 0.2); 
         const gearDefBonus = Math.floor((player.bonusDef || 0) * 0.2);
@@ -1295,15 +1297,16 @@ function updateQuestCompass() {
         let playerArmyUnits = [];
         
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
-            // Ограничиваем количество отрядов для тактики
+            // Ограничиваем количество отрядов для тактики (максимум 5)
             const squadsForBattle = player.armyUnits.slice(0, TacticalDataModule.MAX_PLAYER_SQUADS);
             
             squadsForBattle.forEach((armyUnit, squadIndex) => {
                 const unitCount = armyUnit.count || 1; // Количество юнитов в отряде
                 
                 // Рассчитываем стартовую позицию для всей шеренги этого отряда
-                // Отряды стоят друг за другом с небольшим интервалом
+                // Отряды стоят друг за другом с небольшим интервалом по X
                 const squadStartX = arena.startPosPlayer.x + 2 + (squadIndex * 4); 
+                // Центрируем шеренгу по Y относительно центра арены
                 const squadStartY = Math.floor(arena.height / 2) - Math.floor(unitCount / 2);
 
                 for (let i = 0; i < unitCount; i++) {
@@ -1325,16 +1328,18 @@ function updateQuestCompass() {
                         ...armyUnit, // Копируем базовые данные
                         x: unitX,
                         y: unitY,
-                        hp: armyUnit.type.hp + countBonusHp, // Базовое HP типа + бонус
-                        maxHp: armyUnit.type.hp + countBonusHp,
+                        // Базовое HP типа * Ауру + Бонус от численности
+                        hp: Math.floor(armyUnit.type.hp * auraHpMult) + countBonusHp,
+                        maxHp: Math.floor(armyUnit.type.hp * auraHpMult) + countBonusHp,
                         char: armyUnit.type.sprite || '?', 
                         color: '#44ff44', 
                         sprite: armyUnit.type.sprite || '?',
                         type: armyUnit.type,       
                         isPlayerSide: true,
                         name: `${armyUnit.type.name} #${i+1}`, // Уникальное имя для лога
-                        atk: armyUnit.type.atk + countBonusAtk,   
-                        def: armyUnit.type.def,   
+                        // Атака и Защита с учетом Ауры, Экипировки и Численности
+                        atk: Math.floor(armyUnit.type.atk * auraAtkMult) + gearAtkBonus + countBonusAtk,   
+                        def: Math.floor(armyUnit.type.def * auraAtkMult) + gearDefBonus,   
                         speed: armyUnit.type.speed || 5, 
                         energy: 0,                     
                         range: armyUnit.type.range || 1,
@@ -1343,40 +1348,46 @@ function updateQuestCompass() {
                 }
             });
         }
-        // 3. Разворачиваем вражескую армию (ИСПРАВЛЕННАЯ ЛОГИКА HP)
+
         // 3. Разворачиваем вражескую армию
         const enemyUnits = [];
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
+        
+        // Получаем множитель сложности для текущих координат
+        const difficultyMult = WorldCurveModule.getEnemyMultiplier(globalPos.x, globalPos.y);
+
         enemyArmyData.units.forEach((armyUnit, index) => {
             const xOffset = Math.floor(index / 5);
             const yOffset = (index % 2 === 0) ? 1 : -1;
             let unitX = startX - xOffset; 
             let unitY = startY + (index % 5) * yOffset;
+            
             unitX = Math.max(0, Math.min(arena.width - 1, unitX));
             unitY = Math.max(0, Math.min(arena.height - 1, unitY));
-            
+
+            // Масштабируем статы врага как в подземелье
+            const scaledHp = Math.max(1, Math.floor(armyUnit.type.hp * difficultyMult));
+            const scaledAtk = Math.max(1, Math.floor(armyUnit.type.atk * Math.sqrt(difficultyMult)));
+            const scaledDef = Math.max(0, Math.floor(armyUnit.type.def * Math.pow(difficultyMult, 0.3)));
+
             enemyUnits.push({
                 ...armyUnit,
                 x: unitX,
                 y: unitY,
-                maxHp: armyUnit.hp,
+                hp: scaledHp,      // Масштабированное HP
+                maxHp: scaledHp,   // Максимум равен текущему при спавне
+                atk: scaledAtk,    // Масштабированная атака
+                def: scaledDef,    // Масштабированная защита
                 char: armyUnit.type.sprite || '?', 
-                // === ИЗМЕНЕНО: Ярко-розовый цвет ===
-                color: '#ff69b4', 
+                color: '#ff5555',
                 sprite: armyUnit.type.sprite || '?',
-                type: armyUnit.type,
+                type: armyUnit.type.type || 'melee',
                 isPlayerSide: false,
-                name: armyUnit.type.name,
-                atk: armyUnit.type.atk || 5,
-                def: armyUnit.type.def || 2,
-                speed: armyUnit.type.speed || 5, 
-                energy: 0,
+                name: armyUnit.type.name || 'Враг',
                 range: armyUnit.type.range || 1
             });
         });
-
-        // ... (код инициализации врагов) ...
 
         // 4. Сохраняем состояние боя
         tacticalState = {
@@ -1389,16 +1400,13 @@ function updateQuestCompass() {
             turnCount: 0
         };
         
-        // === ИЗМЕНЕНО: Тактика по умолчанию - Наступать ===
-        window.currentTactic = 'advance'; 
-        
+        window.currentTactic = 'hold';
         busy = false; 
         
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
         RenderModule.updateUI(player, null, null); 
         renderFrame();
-    }
-    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    }    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     function endTacticalBattle(victory) {
         // 1. Синхронизация состояния игрока перед выходом
