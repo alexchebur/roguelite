@@ -1408,50 +1408,43 @@ function updateQuestCompass() {
         renderFrame();
     }    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
-    function endTacticalBattle(victory) {
-        // 1. Синхронизация состояния игрока перед выходом
-        if (tacticalState && tacticalState.playerUnit) {
-            const realPlayer = GameModule.getPlayer();
-            if (realPlayer) {
-                // Переносим HP из тактической копии в реального игрока
-                realPlayer.hp = tacticalState.playerUnit.hp;
+        // === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ОТРЯДОВ ===
+        if (tacticalState.playerArmy && player && player.armyUnits) {
+            // Проходим по всем отрядам игрока (даже тем, что не влезли в бой)
+            for (let i = 0; i < player.armyUnits.length; i++) {
+                const globalSquad = player.armyUnits[i];
                 
-                // Если игрок умер в бою — конец игры
-                if (realPlayer.hp <= 0) {
-                    window.gameMode = 'global';
-                    if (typeof showGlobalUI === 'function') showGlobalUI();
-                    renderGlobalMap();
-                    RenderModule.log("💀 Вы погибли в тактическом бою. F5 для рестарта.", "combat");
-                    busy = true; // Блокируем управление навсегда
-                    return;
-                }
-            }
-        }
+                // Ищем соответствующего юнита на поле боя по индексу (squadId)
+                // Мы добавляли squadId при создании юнитов в initTacticalBattle
+                const battlefieldUnit = tacticalState.playerArmy.find(u => u.squadId === i);
 
-        // === СОХРАНЕНИЕ ВЫЖИВШИХ ОТРЯДОВ (ПЕРЕД ОЧИСТКОЙ tacticalState!) ===
-        if (tacticalState && tacticalState.playerArmy && player) {
-            // Фильтруем только живых юнитов
-            const survivors = tacticalState.playerArmy.filter(u => u.hp > 0);
+                if (battlefieldUnit) {
+                    // Если юнит был в бою, обновляем его статы (HP, Atk, Def)
+                    globalSquad.hp = battlefieldUnit.hp;
+                    globalSquad.maxHp = battlefieldUnit.maxHp;
+                    globalSquad.atk = battlefieldUnit.atk;
+                    globalSquad.def = battlefieldUnit.def;
+                    
+                    // Если юнит погиб в бою, обнуляем его HP в глобальном массиве
+                    if (battlefieldUnit.hp <= 0) {
+                        globalSquad.hp = 0;
+                    }
+                } 
+                // Если battlefieldUnit не найден, значит этот отряд не участвовал в бою.
+                // Мы НЕ трогаем globalSquad, оставляя его HP и статы прежними.
+            }
             
-            // Перезаписываем глобальный массив армии игрока реальными выжившими
-            player.armyUnits = survivors.map(u => ({
-                type: u.type,
-                count: 1, // Каждый выживший на поле теперь считается за 1 отряд
-                hp: u.hp,
-                maxHp: u.maxHp,
-                atk: u.atk, // Сохраняем статы, чтобы аура не пересчитывалась дважды
-                def: u.def
-            }));
-
-            if (survivors.length === 0 && player.hasArmy) {
+            // Проверка на полную потерю армии (если все отряды имеют 0 HP)
+            const aliveCount = player.armyUnits.filter(u => u.hp > 0).length;
+            if (aliveCount === 0 && player.hasArmy) {
                 RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
-                player.hasArmy = false; // Сбрасываем флаг, чтобы спрайт на карте сменился
+                player.hasArmy = false;
+                player.armyUnits = []; // Полная очистка
                 GameModule.setGlobalFlag('player_has_squad', false);
-            } else if (survivors.length > 0) {
-                RenderModule.log(`🛡️ В строю осталось ${survivors.length} бойцов.`, "info");
+            } else if (aliveCount > 0) {
+                RenderModule.log(`🛡️ В строю осталось ${aliveCount} отрядов.`, "info");
             }
         }
-
         // 2. Возвращаем режим игры
         window.gameMode = 'global';
         
