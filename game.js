@@ -1377,6 +1377,7 @@ function updateQuestCompass() {
         renderFrame();
     }
     // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     function endTacticalBattle(victory) {
         // 1. Синхронизация состояния игрока перед выходом
         if (tacticalState && tacticalState.playerUnit) {
@@ -1385,20 +1386,39 @@ function updateQuestCompass() {
                 // Переносим HP из тактической копии в реального игрока
                 realPlayer.hp = tacticalState.playerUnit.hp;
                 
-                // === СТРАХОВКА: Если HP отрицательный или нулевой, восстанавливаем до минимума ===
+                // Если игрок умер в бою — конец игры
                 if (realPlayer.hp <= 0) {
-                    realPlayer.hp = 10; // Восстанавливаем до 10 HP
-                    RenderModule.log("💨 Вы едва спаслись! Ваши силы на исходе...", "combat");
-                }
-                
-                // Если игрок умер в бою (но мы его спасли) — это побег, а не смерть
-                if (tacticalState.playerUnit.hp <= 0) {
                     window.gameMode = 'global';
                     if (typeof showGlobalUI === 'function') showGlobalUI();
                     renderGlobalMap();
-                    busy = false; // Разблокируем управление
+                    RenderModule.log("💀 Вы погибли в тактическом бою. F5 для рестарта.", "combat");
+                    busy = true; // Блокируем управление навсегда
                     return;
                 }
+            }
+        }
+
+        // === СОХРАНЕНИЕ ВЫЖИВШИХ ОТРЯДОВ (ПЕРЕД ОЧИСТКОЙ tacticalState!) ===
+        if (tacticalState && tacticalState.playerArmy && player) {
+            // Фильтруем только живых юнитов
+            const survivors = tacticalState.playerArmy.filter(u => u.hp > 0);
+            
+            // Перезаписываем глобальный массив армии игрока реальными выжившими
+            player.armyUnits = survivors.map(u => ({
+                type: u.type,
+                count: 1, // Каждый выживший на поле теперь считается за 1 отряд
+                hp: u.hp,
+                maxHp: u.maxHp,
+                atk: u.atk, // Сохраняем статы, чтобы аура не пересчитывалась дважды
+                def: u.def
+            }));
+
+            if (survivors.length === 0 && player.hasArmy) {
+                RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
+                player.hasArmy = false; // Сбрасываем флаг, чтобы спрайт на карте сменился
+                GameModule.setGlobalFlag('player_has_squad', false);
+            } else if (survivors.length > 0) {
+                RenderModule.log(`🛡️ В строю осталось ${survivors.length} бойцов.`, "info");
             }
         }
 
@@ -1432,31 +1452,11 @@ function updateQuestCompass() {
              RenderModule.log("💨 Вы сбежали с поля боя, сохранив жизнь.", "info");
         }
 
-        // === СОХРАНЕНИЕ ВЫЖИВШИХ ОТРЯДОВ ===
-        if (tacticalState.playerArmy && player) {
-            const survivors = tacticalState.playerArmy.filter(u => u.hp > 0);
-            player.armyUnits = survivors.map(u => ({
-                type: u.type,
-                count: 1,
-                hp: u.hp,
-                maxHp: u.maxHp,
-                atk: u.atk,
-                def: u.def
-            }));
-            if (survivors.length === 0 && player.hasArmy) {
-                RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
-                player.hasArmy = false;
-                GameModule.setGlobalFlag('player_has_squad', false);
-            } else if (survivors.length > 0) {
-                RenderModule.log(`🛡️ В строю осталось ${survivors.length} бойцов.`, "info");
-            }
-        }
-
-        // 5. Очищаем состояние боя
+        // 5. Очищаем состояние боя (ТОЛЬКО ТЕПЕРЬ!)
         tacticalState = null;
         busy = false;
 
-        // 6. Перерисовываем глобальную карту
+        // 6. Перерисовываем глобальную карту (это также вызовет updateUI и обновит статы/компас)
         renderGlobalMap();
     }
 
