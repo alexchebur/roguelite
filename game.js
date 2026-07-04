@@ -1407,43 +1407,27 @@ function updateQuestCompass() {
         RenderModule.updateUI(player, null, null); 
         renderFrame();
     } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ФУНКЦИИ initTacticalBattle    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
-        // === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ОТРЯДОВ ===
-        if (tacticalState.playerArmy && player && player.armyUnits) {
-            // Проходим по всем отрядам игрока (даже тем, что не влезли в бой)
-            for (let i = 0; i < player.armyUnits.length; i++) {
-                const globalSquad = player.armyUnits[i];
+    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    function endTacticalBattle(victory) {
+        // 1. Синхронизация состояния игрока перед выходом
+        if (tacticalState && tacticalState.playerUnit) {
+            const realPlayer = GameModule.getPlayer();
+            if (realPlayer) {
+                // Переносим HP из тактической копии в реального игрока
+                realPlayer.hp = tacticalState.playerUnit.hp;
                 
-                // Ищем соответствующего юнита на поле боя по индексу (squadId)
-                // Мы добавляли squadId при создании юнитов в initTacticalBattle
-                const battlefieldUnit = tacticalState.playerArmy.find(u => u.squadId === i);
-
-                if (battlefieldUnit) {
-                    // Если юнит был в бою, обновляем его статы (HP, Atk, Def)
-                    globalSquad.hp = battlefieldUnit.hp;
-                    globalSquad.maxHp = battlefieldUnit.maxHp;
-                    globalSquad.atk = battlefieldUnit.atk;
-                    globalSquad.def = battlefieldUnit.def;
-                    
-                    // Если юнит погиб в бою, обнуляем его HP в глобальном массиве
-                    if (battlefieldUnit.hp <= 0) {
-                        globalSquad.hp = 0;
-                    }
-                } 
-                // Если battlefieldUnit не найден, значит этот отряд не участвовал в бою.
-                // Мы НЕ трогаем globalSquad, оставляя его HP и статы прежними.
-            }
-            
-            // Проверка на полную потерю армии (если все отряды имеют 0 HP)
-            const aliveCount = player.armyUnits.filter(u => u.hp > 0).length;
-            if (aliveCount === 0 && player.hasArmy) {
-                RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
-                player.hasArmy = false;
-                player.armyUnits = []; // Полная очистка
-                GameModule.setGlobalFlag('player_has_squad', false);
-            } else if (aliveCount > 0) {
-                RenderModule.log(`🛡️ В строю осталось ${aliveCount} отрядов.`, "info");
+                // Если игрок умер в бою — конец игры
+                if (realPlayer.hp <= 0) {
+                    window.gameMode = 'global';
+                    if (typeof showGlobalUI === 'function') showGlobalUI();
+                    renderGlobalMap();
+                    RenderModule.log("💀 Вы погибли в тактическом бою. F5 для рестарта.", "combat");
+                    busy = true; // Блокируем управление навсегда
+                    return;
+                }
             }
         }
+
         // 2. Возвращаем режим игры
         window.gameMode = 'global';
         
@@ -1474,11 +1458,48 @@ function updateQuestCompass() {
              RenderModule.log("💨 Вы сбежали с поля боя, сохранив жизнь.", "info");
         }
 
-        // 5. Очищаем состояние боя (ТОЛЬКО ТЕПЕРЬ!)
+        // === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ОТРЯДОВ ===
+        if (tacticalState && tacticalState.playerArmy && player && player.armyUnits) {
+            // Проходим по всем отрядам игрока (даже тем, что не влезли в бой)
+            for (let i = 0; i < player.armyUnits.length; i++) {
+                const globalSquad = player.armyUnits[i];
+                
+                // Ищем соответствующего юнита на поле боя по индексу (squadId)
+                const battlefieldUnit = tacticalState.playerArmy.find(u => u.squadId === i);
+
+                if (battlefieldUnit) {
+                    // Если юнит был в бою, обновляем его статы (HP, Atk, Def)
+                    globalSquad.hp = battlefieldUnit.hp;
+                    globalSquad.maxHp = battlefieldUnit.maxHp;
+                    globalSquad.atk = battlefieldUnit.atk;
+                    globalSquad.def = battlefieldUnit.def;
+                    
+                    // Если юнит погиб в бою, обнуляем его HP в глобальном массиве
+                    if (battlefieldUnit.hp <= 0) {
+                        globalSquad.hp = 0;
+                    }
+                } 
+                // Если battlefieldUnit не найден, значит этот отряд не участвовал в бою.
+                // Мы НЕ трогаем globalSquad, оставляя его HP и статы прежними.
+            }
+            
+            // Проверка на полную потерю армии (если все отряды имеют 0 HP)
+            const aliveCount = player.armyUnits.filter(u => u.hp > 0).length;
+            if (aliveCount === 0 && player.hasArmy) {
+                RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
+                player.hasArmy = false;
+                player.armyUnits = []; // Полная очистка
+                GameModule.setGlobalFlag('player_has_squad', false);
+            } else if (aliveCount > 0) {
+                RenderModule.log(`🛡️ В строю осталось ${aliveCount} отрядов.`, "info");
+            }
+        }
+
+        // 5. Очищаем состояние боя
         tacticalState = null;
         busy = false;
 
-        // 6. Перерисовываем глобальную карту (это также вызовет updateUI и обновит статы/компас)
+        // 6. Перерисовываем глобальную карту
         renderGlobalMap();
     }
 
