@@ -288,6 +288,7 @@ const GameModule = (function() {
         }
     }
     
+    // === МАГАЗИН (HTML Версия) ===
     function openShop() {
         if (isShopOpen) return;
     
@@ -296,7 +297,7 @@ const GameModule = (function() {
     
         currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
         isShopOpen = true;
-        busy = true; // <--- ВАЖНО: Останавливаем игровой цикл
+        busy = true; // Блокируем игровой цикл
     
         toggleUI(false); // Скрываем боковые панели
         
@@ -312,12 +313,12 @@ const GameModule = (function() {
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
-            // Рендерим содержимое в HTML
-            RenderModule.renderShopUI(currentMerchantInv, player.gold);
+            // Рендерим содержимое в HTML через RenderModule
+            if (typeof RenderModule.renderShopUI === 'function') {
+                RenderModule.renderShopUI(currentMerchantInv, player.gold);
+            }
         } else {
             console.error("HTML элементы магазина не найдены!");
-            // Если HTML сломан, пробуем фолбэк (опционально)
-            // RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         }
 
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
@@ -328,7 +329,7 @@ const GameModule = (function() {
         
         isShopOpen = false;
         currentMerchantInv = null;
-        busy = false; // <--- ВАЖНО: Возвращаем управление игрой
+        busy = false; // Разблокируем игровой цикл
         
         // Скрываем HTML-модалку
         const overlay = document.getElementById('modal-overlay');
@@ -345,13 +346,11 @@ const GameModule = (function() {
     }
 
     function handleShopClick(clientX, clientY) {
-        // В новой версии клики обрабатываются напрямую HTML-элементами (onclick),
-        // но эта функция нужна для закрытия окна при клике вне его области (на затемнение).
-        
+        // В HTML-версии клики обрабатываются самим окном, 
+        // но эта функция нужна для закрытия по клику на затемнение
         const target = document.elementFromPoint(clientX, clientY);
         const overlay = document.getElementById('modal-overlay');
         
-        // Если клик был по самому оверлею (затемнению), а не по окну внутри
         if (target && target === overlay) {
             closeShop();
         }
@@ -378,7 +377,6 @@ const GameModule = (function() {
             if (typeof RenderModule.renderShopUI === 'function') {
                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
-            // RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Старый код
         } else {
             RenderModule.log("Недостаточно золота!", "combat");
         }
@@ -413,12 +411,10 @@ const GameModule = (function() {
             if (typeof RenderModule.renderShopUI === 'function') {
                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
-            // RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Старый код
         } else {
             RenderModule.log("У торговца недостаточно золота!", "combat");
         }
     }
-
     // === ИНИЦИАЛИЗАЦИЯ ===
     async function init() {
         try {
