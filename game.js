@@ -1290,6 +1290,9 @@ function updateQuestCompass() {
             atk: player.atk,         // Атака с учетом экипировки и баффов
             def: player.def,         // Защита с учетом экипировки и баффов
             name: 'Герой',
+            speed: 5, // Средняя скорость для героя
+            energy: 5,
+            maxEnergy: 5,
             isPlayer: true
         };
 
@@ -1341,7 +1344,8 @@ function updateQuestCompass() {
                         atk: Math.floor(armyUnit.type.atk * auraAtkMult) + gearAtkBonus + countBonusAtk,   
                         def: Math.floor(armyUnit.type.def * auraAtkMult) + gearDefBonus,   
                         speed: armyUnit.type.speed || 5, 
-                        energy: 0,                     
+                        energy: armyUnit.type.speed,
+                        maxEnergy: armyUnit.type.speed,
                         range: armyUnit.type.range || 1,
                         squadId: squadIndex // Метка, чтобы знать, к какому отряду он относится
                     });
@@ -1385,6 +1389,9 @@ function updateQuestCompass() {
                 type: armyUnit.type.type || 'melee',
                 isPlayerSide: false,
                 name: armyUnit.type.name || 'Враг',
+                speed: armyUnit.type.speed,
+                energy: armyUnit.type.speed,
+                maxEnergy: armyUnit.type.speed,
                 range: armyUnit.type.range || 1
             });
         });
