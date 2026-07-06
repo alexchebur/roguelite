@@ -288,8 +288,6 @@ const GameModule = (function() {
         }
     }
     
-    // === МАГАЗИН (HTML/CSS Версия) ===
-    
     function openShop() {
         if (isShopOpen) return;
     
@@ -309,18 +307,12 @@ const GameModule = (function() {
             overlay.style.display = 'flex';
             shopModal.classList.remove('hidden');
             
-            // Инициализируем пагинацию при открытии
+            // Инициализируем пагинацию
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
             // Рендерим содержимое в HTML
-            if (typeof RenderModule.renderShopUI === 'function') {
-                RenderModule.renderShopUI(currentMerchantInv, player.gold);
-            }
-        } else {
-            console.error("HTML элементы магазина не найдены!");
-            // Фолбэк на старую систему, если HTML сломан
-            // RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+            RenderModule.renderShopUI(currentMerchantInv, player.gold);
         }
 
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
@@ -3120,15 +3112,32 @@ function updateQuestCompass() {
         markCityTextQuestTaken,
         hasCityTakenTextQuest,
         setGlobalFlag: (flagName, value) => { globalFlags[flagName] = value; },
-        // Используем локальную переменную globalFlags через замыкание
         getGlobalFlag: (flagName) => globalFlags[flagName] || false,
         endTacticalBattle: endTacticalBattle,
         checkBattleEnd: checkBattleEnd, 
         getTacticalState: () => tacticalState,
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
-
+        exitToGlobal,
         
-        exitToGlobal 
+        // === НОВАЯ ФУНКЦИЯ ПАГИНАЦИИ МАГАЗИНА ===
+        changeShopPage: function(type, dir) {
+            if (type === 'm') window.shopPageMerchant += dir;
+            if (type === 'p') window.shopPagePlayer += dir;
+            
+            // Проверка границ страниц
+            if (currentMerchantInv) {
+                const itemsPerPage = 8;
+                const totalMerchantPages = Math.ceil(currentMerchantInv.items.length / itemsPerPage) || 1;
+                
+                if (window.shopPageMerchant >= totalMerchantPages) window.shopPageMerchant = totalMerchantPages - 1;
+                if (window.shopPageMerchant < 0) window.shopPageMerchant = 0;
+
+                // Обновляем UI
+                if (typeof RenderModule.renderShopUI === 'function') {
+                    RenderModule.renderShopUI(currentMerchantInv, player.gold);
+                }
+            }
+        }
     };
 })();
 
