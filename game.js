@@ -288,8 +288,8 @@ const GameModule = (function() {
         }
     }
     
-    // === МАГАЗИН ===
-    // === МАГАЗИН ===
+    // === МАГАЗИН (HTML/CSS Версия) ===
+    
     function openShop() {
         if (isShopOpen) return;
     
@@ -299,69 +299,62 @@ const GameModule = (function() {
         currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
         isShopOpen = true;
     
-        toggleUI(false); // <--- СКРЫВАЕМ ПАНЕЛИ
-    
-        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+        toggleUI(false); // Скрываем боковые панели
+        
+        // Показываем HTML-модалку
+        const overlay = document.getElementById('modal-overlay');
+        const shopModal = document.getElementById('shop-modal');
+        
+        if (overlay && shopModal) {
+            overlay.style.display = 'flex';
+            shopModal.classList.remove('hidden');
+            
+            // Инициализируем пагинацию при открытии
+            window.shopPageMerchant = 0;
+            window.shopPagePlayer = 0;
+            
+            // Рендерим содержимое в HTML
+            if (typeof RenderModule.renderShopUI === 'function') {
+                RenderModule.renderShopUI(currentMerchantInv, player.gold);
+            }
+        } else {
+            console.error("HTML элементы магазина не найдены!");
+            // Фолбэк на старую систему, если HTML сломан
+            // RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+        }
+
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
     }
 
     function closeShop() {
+        if (!isShopOpen) return;
+        
         isShopOpen = false;
         currentMerchantInv = null;
-        toggleUI(true); // <--- ВОЗВРАЩАЕМ ПАНЕЛИ
+        
+        // Скрываем HTML-модалку
+        const overlay = document.getElementById('modal-overlay');
+        const shopModal = document.getElementById('shop-modal');
+        
+        if (overlay && shopModal) {
+            shopModal.classList.add('hidden');
+            overlay.style.display = 'none';
+        }
+
+        toggleUI(true); // Возвращаем боковые панели
         RenderModule.requestRedraw();
         RenderModule.log("Вы покинули лавку.", "info");
     }
 
     function handleShopClick(clientX, clientY) {
-        const canvas = document.querySelector("#map-container canvas");
-        if (!canvas) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
+        // В новой версии клики обрабатываются напрямую HTML-элементами (onclick),
+        // но эта функция нужна для закрытия окна при клике вне его области (на затемнение).
         
-        const clickX = (clientX - rect.left) * scaleX;
-        const clickY = (clientY - rect.top) * scaleY;
-
-        // 1. Кнопка выхода
-        if (window.shopExitButton) {
-            const btn = window.shopExitButton;
-            if (clickX >= btn.x && clickX <= btn.x + btn.w && 
-                clickY >= btn.y && clickY <= btn.y + btn.h) {
-                closeShop();
-                return;
-            }
-        }
-
-        // 2. Навигация и товары
-        if (window.shopClickAreas) {
-            for (const area of window.shopClickAreas) {
-                if (clickX >= area.x && clickX <= area.x + area.w &&
-                    clickY >= area.y && clickY <= area.y + area.h) {
-                    
-                    if (area.action.startsWith('prev_') || area.action.startsWith('next_')) {
-                        if (area.action === 'prev_m') window.shopPageMerchant--;
-                        if (area.action === 'next_m') window.shopPageMerchant++;
-                        if (area.action === 'prev_p') window.shopPagePlayer--;
-                        if (area.action === 'next_p') window.shopPagePlayer++;
-                        RenderModule.drawShopWindow(currentMerchantInv, player.gold);
-                        return;
-                    }
-                    
-                    if (area.action === 'buy') { buyItem(area.index); return; }
-                    if (area.action === 'sell') { sellItem(area.index); return; }
-                }
-            }
-        }
-
-        // 3. Клик вне окна
-        const winW = canvas.width * 0.65; // Соответствует новому размеру в render.js
-        const winH = canvas.height * 0.60;
-        const winX = (canvas.width - winW) / 2;
-        const winY = (canvas.height - winH) / 2;
-
-        if (clickX < winX || clickX > winX + winW || clickY < winY || clickY > winY + winH) {
+        const target = document.elementFromPoint(clientX, clientY);
+        const overlay = document.getElementById('modal-overlay');
+        
+        // Если клик был по самому оверлею (затемнению), а не по окну внутри
+        if (target && target === overlay) {
             closeShop();
         }
     }
@@ -382,7 +375,12 @@ const GameModule = (function() {
             
             RenderModule.log(`Куплено: ${item.name} за ${item.price} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+            
+            // Обновляем HTML интерфейс
+            if (typeof RenderModule.renderShopUI === 'function') {
+                RenderModule.renderShopUI(currentMerchantInv, player.gold);
+            }
+            // RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Старый код
         } else {
             RenderModule.log("Недостаточно золота!", "combat");
         }
@@ -412,7 +410,12 @@ const GameModule = (function() {
             
             RenderModule.log(`Продано: ${item.name} за ${sellPrice} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            RenderModule.drawShopWindow(currentMerchantInv, player.gold);
+            
+            // Обновляем HTML интерфейс
+            if (typeof RenderModule.renderShopUI === 'function') {
+                RenderModule.renderShopUI(currentMerchantInv, player.gold);
+            }
+            // RenderModule.drawShopWindow(currentMerchantInv, player.gold); // Старый код
         } else {
             RenderModule.log("У торговца недостаточно золота!", "combat");
         }
