@@ -1,4 +1,4 @@
-/**
+/** 
  * МОДУЛЬ ИСКУССТВЕННОГО ИНТЕЛЛЕКТА ВРАГА (tactical_ai.js) - ФИНАЛЬНЫЙ РАБОЧИЙ
  */
 const TacticalAIModule = (function() {
