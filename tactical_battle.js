@@ -98,7 +98,7 @@ const TacticalBattleModule = (function() {
     function checkBattleEnd(state) {
         // 1. Проверка поражения:
         // А) Игрок мертв (HP <= 0)
-        // Б) Игрок при смерти (HP <= 10) -> Автоматический побег
+        // Б) Игрок при смерти (HP <= 10) -> Автоматический побег по ТЗ
         const isDead = state.playerUnit.hp <= 0;
         const isCritical = state.playerUnit.hp <= 10 && state.playerUnit.hp > 0;
         
@@ -106,12 +106,15 @@ const TacticalBattleModule = (function() {
         const isVictory = state.enemyUnits.length === 0;
 
         if (isDead) {
-            GameModule.endTacticalBattle(false); // Смерть
+            RenderModule.log("💀 Вы погибли в бою...", "combat");
+            setTimeout(() => GameModule.endTacticalBattle(false), 1000);
         } else if (isCritical) {
             RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
-            GameModule.endTacticalBattle(false); // Побег (поражение без смерти)
+            // Небольшая задержка, чтобы игрок успел прочитать лог перед выходом
+            setTimeout(() => GameModule.endTacticalBattle(false), 800);
         } else if (isVictory) {
-            GameModule.endTacticalBattle(true); // Победа
+            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
+            setTimeout(() => GameModule.endTacticalBattle(true), 1500);
         }
     }
 
