@@ -1272,82 +1272,81 @@ function updateQuestCompass() {
 
         // === АУРА КОМАНДИРА (Бонус от прогресса игрока) ===
         const playerLevel = player.level || 1;
-        const auraHpMult = 1 + (playerLevel - 1) * 0.1;  // +10% HP за уровень
-        const auraAtkMult = 1 + (playerLevel - 1) * 0.05; // +5% Атаки за уровень
-        
-        // Бонус от экипировки: 20% от твоего бонусного урона/защиты передается отряду
+        const auraHpMult = 1 + (playerLevel - 1) * 0.1;  
+        const auraAtkMult = 1 + (playerLevel - 1) * 0.05; 
         const gearAtkBonus = Math.floor((player.bonusAtk || 0) * 0.2); 
         const gearDefBonus = Math.floor((player.bonusDef || 0) * 0.2);
 
-        // 1. Создаем юнита-представителя игрока (используем реальные статы из player)
+        // 1. Создаем юнита-представителя игрока
         const playerUnit = {
             x: arena.startPosPlayer.x,
             y: arena.startPosPlayer.y,
             char: '@',
             color: '#00ff00',
-            hp: player.hp,           // Текущее HP
-            maxHp: player.maxHp,     // Максимальное HP
-            atk: player.atk,         // Атака с учетом экипировки и баффов
-            def: player.def,         // Защита с учетом экипировки и баффов
+            hp: player.hp,           
+            maxHp: player.maxHp,     
+            atk: player.atk,         
+            def: player.def,         
             name: 'Герой',
-            speed: 5, // Средняя скорость для героя
-            energy: 5,
-            maxEnergy: 5,
             isPlayer: true
         };
 
-        // 2. Разворачиваем армию игрока (КАЖДЫЙ ЮНИТ - ОТДЕЛЬНЫЙ СПРАЙТ)
+        // 2. Разворачиваем армию игрока (С УЧЕТОМ ТЕКУЩЕГО СОСТОЯНИЯ)
         let playerArmyUnits = [];
-        
         if (player.hasArmy && player.armyUnits && player.armyUnits.length > 0) {
-            // Ограничиваем количество отрядов для тактики (максимум 5)
             const squadsForBattle = player.armyUnits.slice(0, TacticalDataModule.MAX_PLAYER_SQUADS);
             
             squadsForBattle.forEach((armyUnit, squadIndex) => {
-                const unitCount = armyUnit.count || 1; // Количество юнитов в отряде
-                
-                // Рассчитываем стартовую позицию для всей шеренги этого отряда
-                // Отряды стоят друг за другом с небольшим интервалом по X
+                // === ВАЖНО: Пропускаем мертвые отряды ===
+                if (armyUnit.hp <= 0) return; 
+
+                const unitCount = armyUnit.count || 1; 
                 const squadStartX = arena.startPosPlayer.x + 2 + (squadIndex * 4); 
-                // Центрируем шеренгу по Y относительно центра арены
                 const squadStartY = Math.floor(arena.height / 2) - Math.floor(unitCount / 2);
 
                 for (let i = 0; i < unitCount; i++) {
-                    // Формация "Шеренга": все стоят в одной колонке (по Y)
                     let unitX = squadStartX;
                     let unitY = squadStartY + i;
-
-                    // Проверка границ арены
+                    
                     if (unitY < 0) unitY = 0;
                     if (unitY >= arena.height) unitY = arena.height - 1;
                     if (unitX >= arena.width) unitX = arena.width - 1;
 
-                    // === ВАЖНО: Влияние количества юнитов на статы (Аура Командира) ===
-                    // Чем больше людей в отряде, тем выше мораль и слаженность
-                    const countBonusHp = Math.floor(armyUnit.type.hp * 0.1); 
-                    const countBonusAtk = Math.floor(armyUnit.type.atk * 0.05);
+                    // Базовые статы типа
+                    const baseHp = armyUnit.type.hp;
+                    const baseAtk = armyUnit.type.atk;
+                    const baseDef = armyUnit.type.def;
+
+                    // Расчет максимальных статов с учетом ауры и численности
+                    const countBonusHp = Math.floor(baseHp * 0.1); 
+                    const countBonusAtk = Math.floor(baseAtk * 0.05);
+                    const calculatedMaxHp = Math.floor(baseHp * auraHpMult) + countBonusHp;
+                    const calculatedAtk = Math.floor(baseAtk * auraAtkMult) + gearAtkBonus + countBonusAtk;   
+                    const calculatedDef = Math.floor(baseDef * auraAtkMult) + gearDefBonus;   
+
+                    // === ВАЖНО: Используем текущие HP отряда, но не больше максимума ===
+                    // Если отряд был ранен, его HP будет меньше calculatedMaxHp
+                    const currentHpRatio = armyUnit.hp / armyUnit.maxHp;
+                    const startHp = Math.max(1, Math.floor(calculatedMaxHp * currentHpRatio));
 
                     playerArmyUnits.push({
-                        ...armyUnit, // Копируем базовые данные
+                        ...armyUnit, 
                         x: unitX,
                         y: unitY,
-                        // Базовое HP типа * Ауру + Бонус от численности
-                        hp: Math.floor(armyUnit.type.hp * auraHpMult) + countBonusHp,
-                        maxHp: Math.floor(armyUnit.type.hp * auraHpMult) + countBonusHp,
+                        hp: startHp,       // <--- Текущее здоровье
+                        maxHp: calculatedMaxHp, // <--- Максимальное здоровье с баффами
                         char: armyUnit.type.sprite || '?', 
                         color: '#44ff44', 
                         sprite: armyUnit.type.sprite || '?',
                         type: armyUnit.type,       
                         isPlayerSide: true,
-                        name: `${armyUnit.type.name} #${i+1}`, // Уникальное имя для лога
-                        // Атака и Защита с учетом Ауры, Экипировки и Численности
-                        atk: Math.floor(armyUnit.type.atk * auraAtkMult) + gearAtkBonus + countBonusAtk,   
-                        def: Math.floor(armyUnit.type.def * auraAtkMult) + gearDefBonus,   
+                        name: `${armyUnit.type.name} #${i+1}`, 
+                        atk: calculatedAtk,   
+                        def: calculatedDef,   
                         speed: armyUnit.type.speed || 5, 
-                        energy: armyUnit.type.speed,
-                        maxEnergy: armyUnit.type.speed,
+                        energy: 0,                     
                         range: armyUnit.type.range || 1,
-                        squadId: squadIndex // Метка, чтобы знать, к какому отряду он относится
+                        squadId: squadIndex 
                     });
                 }
             });
@@ -1358,7 +1357,6 @@ function updateQuestCompass() {
         let startX = arena.startPosEnemy.x;
         let startY = arena.startPosEnemy.y;
         
-        // Получаем множитель сложности для текущих координат
         const difficultyMult = WorldCurveModule.getEnemyMultiplier(globalPos.x, globalPos.y);
 
         enemyArmyData.units.forEach((armyUnit, index) => {
@@ -1370,7 +1368,6 @@ function updateQuestCompass() {
             unitX = Math.max(0, Math.min(arena.width - 1, unitX));
             unitY = Math.max(0, Math.min(arena.height - 1, unitY));
 
-            // Масштабируем статы врага как в подземелье
             const scaledHp = Math.max(1, Math.floor(armyUnit.type.hp * difficultyMult));
             const scaledAtk = Math.max(1, Math.floor(armyUnit.type.atk * Math.sqrt(difficultyMult)));
             const scaledDef = Math.max(0, Math.floor(armyUnit.type.def * Math.pow(difficultyMult, 0.3)));
@@ -1379,19 +1376,16 @@ function updateQuestCompass() {
                 ...armyUnit,
                 x: unitX,
                 y: unitY,
-                hp: scaledHp,      // Масштабированное HP
-                maxHp: scaledHp,   // Максимум равен текущему при спавне
-                atk: scaledAtk,    // Масштабированная атака
-                def: scaledDef,    // Масштабированная защита
+                hp: scaledHp,      
+                maxHp: scaledHp,   
+                atk: scaledAtk,    
+                def: scaledDef,    
                 char: armyUnit.type.sprite || '?', 
                 color: '#ff5555',
                 sprite: armyUnit.type.sprite || '?',
                 type: armyUnit.type.type || 'melee',
                 isPlayerSide: false,
                 name: armyUnit.type.name || 'Враг',
-                speed: armyUnit.type.speed,
-                energy: armyUnit.type.speed,
-                maxEnergy: armyUnit.type.speed,
                 range: armyUnit.type.range || 1
             });
         });
@@ -1413,8 +1407,7 @@ function updateQuestCompass() {
         RenderModule.log(`⚔️ ТАКТИЧЕСКИЙ БОЙ НАЧАЛСЯ!`, "combat");
         RenderModule.updateUI(player, null, null); 
         renderFrame();
-    } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ФУНКЦИИ initTacticalBattle    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
-    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    }    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     function endTacticalBattle(victory) {
         // 1. Синхронизация состояния игрока перед выходом
         if (tacticalState && tacticalState.playerUnit) {
