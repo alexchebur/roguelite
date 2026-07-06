@@ -398,6 +398,8 @@
         <div id="log-list"></div>
     </div>
 
+    <!-- ... существующий код ... -->
+    
     <!-- Низ Центр: Квесты -->
     <div id="quest-bar" class="ui-panel">
         <div id="ui-quest-briefing"></div>
@@ -406,6 +408,60 @@
              style="display: none;">
              ❌ Отказаться
         </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ВСТАВИТЬ НОВЫЕ БЛОКИ НИЖЕ ЭТОЙ ЛИНИИ      -->
+    <!-- ========================================== -->
+
+    <!-- Контейнер для модальных окон (Магазин, Двор, Квесты) -->
+    <div id="modal-overlay" class="hidden-ui" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; justify-content:center; align-items:center;">
+        
+        <!-- Окно Магазина -->
+        <div id="shop-modal" class="game-modal hidden" style="display:none;">
+            <div class="modal-header" style="border-bottom: 1px solid #58a6ff; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
+                <button class="close-btn" onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:16px; cursor:pointer;">❌</button>
+            </div>
+            <div class="modal-body">
+                <div class="shop-columns" style="display:flex; gap:20px;">
+                    <div class="shop-col" style="flex:1;">
+                        <h4 style="color:#8b949e; margin-top:0;">Товары</h4>
+                        <div id="shop-merchant-list" style="max-height:300px; overflow-y:auto;"></div>
+                    </div>
+                    <div class="shop-col" style="flex:1;">
+                        <h4 style="color:#8b949e; margin-top:0;">Ваш инвентарь</h4>
+                        <div id="shop-player-list" style="max-height:300px; overflow-y:auto;"></div>
+                    </div>
+                </div>
+                <div class="shop-footer" style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; justify-content:space-between; color:#ffd700;">
+                    <span id="shop-gold-info">Золото: 0</span>
+                    <div class="pagination-controls">
+                        <!-- Кнопки пагинации будут добавлены JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Окно Постоялого Двора -->
+        <div id="inn-modal" class="game-modal hidden" style="display:none;">
+            <div class="modal-header" style="border-bottom: 1px solid #8B4513; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color:#D2B48C;">🏨 Постоялый Двор</h3>
+                <button class="close-btn" onclick="GameModule.closeInn()" style="background:none; border:none; color:#f85149; font-size:16px; cursor:pointer;">❌</button>
+            </div>
+            <div class="modal-body" id="inn-content">
+                <!-- Сюда JS будет рендерить кнопки действий -->
+            </div>
+        </div>
+
+        <!-- Окно Сюжетного Квеста (если захотите перенести его из канваса) -->
+        <div id="quest-modal" class="game-modal hidden" style="display:none;">
+            <div class="modal-body">
+                <p id="quest-text-content" style="white-space: pre-wrap; line-height: 1.5;"></p>
+            </div>
+            <button onclick="GameModule.closeQuestWindow()" style="margin-top:15px; padding:5px 15px; background:#da3633; color:white; border:none; cursor:pointer;">Закрыть</button>
+        </div>
+
     </div>
 
 </body>
