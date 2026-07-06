@@ -1389,6 +1389,32 @@ function updateQuestCompass() {
         RenderModule.updateUI(player, null, null); 
         renderFrame();
     }    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
+    // === ПРОВЕРКА ОКОНЧАНИЯ ТАКТИЧЕСКОГО БОЯ (ЕДИНАЯ ТОЧКА) ===
+    function checkBattleEnd(state) {
+        if (!state) return;
+
+        // 1. Проверка поражения:
+        // А) Игрок мертв (HP <= 0)
+        // Б) Игрок при смерти (HP <= 10) -> Автоматический побег по ТЗ
+        const isDead = state.playerUnit.hp <= 0;
+        const isCritical = state.playerUnit.hp <= 10 && state.playerUnit.hp > 0;
+        
+        // 2. Проверка победы: все враги мертвы
+        const isVictory = state.enemyUnits.length === 0;
+
+        if (isDead) {
+            RenderModule.log("💀 Ваш отряд разбит! Вы погибли.", "combat");
+            setTimeout(() => endTacticalBattle(false), 1000);
+        } else if (isCritical) {
+            RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
+            setTimeout(() => endTacticalBattle(false), 800);
+        } else if (isVictory) {
+            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
+            setTimeout(() => endTacticalBattle(true), 1500);
+        }
+    }
+
+    // === ЗАВЕРШЕНИЕ ТАКТИЧЕСКОГО БОЯ ===
     function endTacticalBattle(victory) {
         // 1. Синхронизация состояния игрока перед выходом
         if (tacticalState && tacticalState.playerUnit) {
@@ -1397,13 +1423,14 @@ function updateQuestCompass() {
                 // Переносим HP из тактической копии в реального игрока
                 realPlayer.hp = tacticalState.playerUnit.hp;
                 
-                // Если игрок умер в бою — конец игры
+                // Если игрок умер в бою — конец игры (блокируем управление)
                 if (realPlayer.hp <= 0) {
                     window.gameMode = 'global';
                     if (typeof showGlobalUI === 'function') showGlobalUI();
                     renderGlobalMap();
                     RenderModule.log("💀 Вы погибли в тактическом бою. F5 для рестарта.", "combat");
                     busy = true; // Блокируем управление навсегда
+                    tacticalState = null;
                     return;
                 }
             }
@@ -1439,7 +1466,7 @@ function updateQuestCompass() {
              RenderModule.log("💨 Вы сбежали с поля боя, сохранив жизнь.", "info");
         }
 
-        // === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ОТРЯДОВ ===
+        // === СОХРАНЕНИЕ СОСТОЯНИЯ ОТРЯДОВ ===
         if (tacticalState && tacticalState.playerArmy && player && player.armyUnits) {
             // Проходим по всем отрядам игрока (даже тем, что не влезли в бой)
             for (let i = 0; i < player.armyUnits.length; i++) {
@@ -1460,11 +1487,9 @@ function updateQuestCompass() {
                         globalSquad.hp = 0;
                     }
                 } 
-                // Если battlefieldUnit не найден, значит этот отряд не участвовал в бою.
-                // Мы НЕ трогаем globalSquad, оставляя его HP и статы прежними.
             }
             
-            // Проверка на полную потерю армии (если все отряды имеют 0 HP)
+            // Проверка на полную потерю армии
             const aliveCount = player.armyUnits.filter(u => u.hp > 0).length;
             if (aliveCount === 0 && player.hasArmy) {
                 RenderModule.log("💀 Ваш отряд полностью уничтожен! Придется нанимать новый.", "combat");
@@ -1484,61 +1509,6 @@ function updateQuestCompass() {
         renderGlobalMap();
     }
 
-    // === ПРОВЕРКА ОКОНЧАНИЯ ТАКТИЧЕСКОГО БОЯ ===
-    function checkTacticalBattleEnd() {
-        if (!tacticalState) return;
-
-        // 1. Проверка поражения (игрок мертв)
-        if (tacticalState.playerUnit && tacticalState.playerUnit.hp <= 0) {
-            RenderModule.log("💀 Ваш отряд разбит!", "combat");
-            setTimeout(() => endTacticalBattle(false), 1000);
-            return;
-        }
-
-        // 2. Проверка победы (все враги мертвы)
-        const aliveEnemies = tacticalState.enemyUnits.filter(e => e.hp > 0);
-        if (aliveEnemies.length === 0) {
-            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
-            // Небольшая задержка, чтобы игрок увидел результат
-            setTimeout(() => endTacticalBattle(true), 1500);
-        }
-    }
-
-    // === АВТОМАТИЧЕСКИЙ ПОБЕГ ПРИ НИЗКОМ HP ===
-    function checkAutoFlee() {
-        if (!tacticalState || !tacticalState.playerUnit) return;
-        
-        // Если HP игрока упало до 10 или ниже (и он еще жив)
-        if (tacticalState.playerUnit.hp <= 10 && tacticalState.playerUnit.hp > 0) {
-            RenderModule.log("💨 Ваши силы на исходе! Вы автоматически сбегаете с поля боя!", "combat");
-            
-            // Запоминаем текущее состояние, чтобы избежать двойного вызова endTacticalBattle
-            const currentState = tacticalState;
-            
-            // Блокируем ввод на время "побега"
-            busy = true;
-            
-            // Небольшая задержка для драматизма
-            setTimeout(() => {
-                // Проверяем, что бой все еще активен (на случай, если его уже завершили по другой причине)
-                if (tacticalState === currentState) {
-                    endTacticalBattle(false); // false = побег/поражение (без награды)
-                }
-            }, 800);
-        }
-    }
-       function checkTacticalVictory() {
-        if (!tacticalState) return;
-        
-        // Проверяем, остались ли живые враги
-        const aliveEnemies = tacticalState.enemyUnits.filter(e => e.hp > 0);
-        
-        if (aliveEnemies.length === 0) {
-            RenderModule.log("🎉 Все враги повержены! Победа!", "event");
-            // Небольшая задержка, чтобы игрок успел увидеть последний удар
-            setTimeout(() => endTacticalBattle(true), 500);
-        }
-    } 
     function enterPOI(poi) {
         busy = true;
         entrancePos = GlobalMapModule.getPlayerPosition();
@@ -3150,6 +3120,7 @@ function updateQuestCompass() {
         // Используем локальную переменную globalFlags через замыкание
         getGlobalFlag: (flagName) => globalFlags[flagName] || false,
         endTacticalBattle: endTacticalBattle,
+        checkBattleEnd: checkBattleEnd, 
         getTacticalState: () => tacticalState,
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
 
