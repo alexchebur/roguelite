@@ -296,6 +296,7 @@ const GameModule = (function() {
     
         currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
         isShopOpen = true;
+        busy = true; // <--- ВАЖНО: Останавливаем игровой цикл
     
         toggleUI(false); // Скрываем боковые панели
         
@@ -313,6 +314,10 @@ const GameModule = (function() {
             
             // Рендерим содержимое в HTML
             RenderModule.renderShopUI(currentMerchantInv, player.gold);
+        } else {
+            console.error("HTML элементы магазина не найдены!");
+            // Если HTML сломан, пробуем фолбэк (опционально)
+            // RenderModule.drawShopWindow(currentMerchantInv, player.gold);
         }
 
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
@@ -323,6 +328,7 @@ const GameModule = (function() {
         
         isShopOpen = false;
         currentMerchantInv = null;
+        busy = false; // <--- ВАЖНО: Возвращаем управление игрой
         
         // Скрываем HTML-модалку
         const overlay = document.getElementById('modal-overlay');
@@ -2719,20 +2725,17 @@ function updateQuestCompass() {
     renderFrame();
 }
 
-    // === ОТРИСОВКА КАДРА (Обновленная с тактическим боем и синхронизацией) ===
+    // === ОТРИСОВКА КАДРА (Обновленная) ===
     function renderFrame() {
         if (!player) return;
 
         // 1. ТАКТИЧЕСКИЙ РЕЖИМ
         if (window.gameMode === 'tactical' && tacticalState) {
             if (typeof TacticalRenderModule !== 'undefined') {
-                // === ВАЖНО: Синхронизация HP перед отрисовкой UI ===
                 const realPlayer = GameModule.getPlayer();
                 if (realPlayer && tacticalState.playerUnit) {
-                    // Копируем текущее HP из тактической копии в реального игрока для отображения
                     realPlayer.hp = tacticalState.playerUnit.hp;
                 }
-
                 TacticalRenderModule.drawBattlefield(
                     tacticalState.arena, 
                     tacticalState.playerUnit, 
@@ -2740,41 +2743,32 @@ function updateQuestCompass() {
                     tacticalState.playerArmy, 
                     window.currentTactic
                 );
-
-                // Обновляем UI с актуальным HP
                 if (realPlayer) {
                     RenderModule.updateUI(realPlayer, null, null); 
                 }
-            } else {
-                console.error("❌ TacticalRenderModule не найден!");
             }
             return; 
         }
 
         // 2. ГЛОБАЛЬНАЯ КАРТА
         if (window.gameMode === 'global') {
-            renderGlobalMap(); // Эта функция уже содержит отрисовку карты, миникарты и UI
+            renderGlobalMap();
             return;
         }
 
         // 3. ОБЫЧНЫЙ РЕЖИМ (Подземелье / Город)
-        // Стандартная отрисовка подземелья/города
         if (typeof RenderModule !== 'undefined') {
             const vis = RenderModule.draw(player, enemies, items, npcs); 
             if (vis) vis.forEach(k => explored.add(k));
             
-            // Обновление UI панелей
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             RenderModule.drawMinimap(player, explored);
 
-            // === НОВОЕ: Если открыт постоялый двор, рисуем его поверх всего ===
+            // === УДАЛЕНО: Отрисовка магазина на Canvas (теперь он в HTML) ===
+            
+            // Постоялый двор пока остался на Canvas (если вы его еще не перенесли)
             if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
                 RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
-            }
-            
-            // === НОВОЕ: Если открыт магазин, рисуем его поверх всего ===
-            if (isShopOpen && typeof RenderModule.drawShopWindow === 'function') {
-                 RenderModule.drawShopWindow(currentMerchantInv, player.gold);
             }
         }
     }
