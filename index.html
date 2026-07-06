@@ -519,7 +519,7 @@
         <div id="log-list"></div>
     </div>
 
-    <!-- ... существующий код ... -->
+    <!-- ... ваш существующий код панелей ... -->
     
     <!-- Низ Центр: Квесты -->
     <div id="quest-bar" class="ui-panel">
@@ -532,10 +532,8 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- ВСТАВИТЬ НОВЫЕ БЛОКИ НИЖЕ ЭТОЙ ЛИНИИ      -->
+    <!-- КОНТЕЙНЕР ДЛЯ МОДАЛЬНЫХ ОКОН (HTML)       -->
     <!-- ========================================== -->
-
-    <!-- Контейнер для модальных окон (Магазин, Двор, Квесты) -->
     <div id="modal-overlay" class="hidden-ui" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; justify-content:center; align-items:center;">
         
         <!-- Окно Магазина -->
@@ -564,23 +562,13 @@
             </div>
         </div>
 
-        <!-- Окно Постоялого Двора -->
+        <!-- Окно Постоялого Двора (пока пустое, чтобы не ломалось) -->
         <div id="inn-modal" class="game-modal hidden" style="display:none;">
-            <div class="modal-header" style="border-bottom: 1px solid #8B4513; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; color:#D2B48C;">🏨 Постоялый Двор</h3>
-                <button class="close-btn" onclick="GameModule.closeInn()" style="background:none; border:none; color:#f85149; font-size:16px; cursor:pointer;">❌</button>
+             <div class="modal-header">
+                <h3>🏨 Постоялый Двор</h3>
+                <button class="close-btn" onclick="GameModule.closeInn()">❌</button>
             </div>
-            <div class="modal-body" id="inn-content">
-                <!-- Сюда JS будет рендерить кнопки действий -->
-            </div>
-        </div>
-
-        <!-- Окно Сюжетного Квеста (если захотите перенести его из канваса) -->
-        <div id="quest-modal" class="game-modal hidden" style="display:none;">
-            <div class="modal-body">
-                <p id="quest-text-content" style="white-space: pre-wrap; line-height: 1.5;"></p>
-            </div>
-            <button onclick="GameModule.closeQuestWindow()" style="margin-top:15px; padding:5px 15px; background:#da3633; color:white; border:none; cursor:pointer;">Закрыть</button>
+            <div id="inn-content"></div>
         </div>
 
     </div>
