@@ -1,5 +1,5 @@
 /**
- * МОДУЛЬ УПРАВЛЕНИЯ АРМИЕЙ ИГРОКА (tactical_player.js) - С ТАКТИКОЙ И СКОРОСТЬЮ
+ * МОДУЛЬ УПРАВЛЕНИЯ АРМИЕЙ ИГРОКА (tactical_player.js) - С УЛУЧШЕННЫМ ОТСТУПЛЕНИЕМ
  */
 const TacticalPlayerModule = (function() {
     'use strict';
@@ -16,7 +16,6 @@ const TacticalPlayerModule = (function() {
         let minDistToEnemy = Infinity;
         enemyUnits.forEach(e => {
             if (e.hp > 0) {
-                // Используем игрока как центр внимания, если армия далеко
                 const d = Math.abs(playerUnit.x - e.x) + Math.abs(playerUnit.y - e.y);
                 if (d < minDistToEnemy) {
                     minDistToEnemy = d;
@@ -34,73 +33,73 @@ const TacticalPlayerModule = (function() {
 
             if (globalTarget) {
                 if (tacticId === 'advance') {
-                    // НАСТУПЛЕНИЕ: Все идут к врагу, но melee стараются быть ближе
+                    // НАСТУПЛЕНИЕ: Все идут к врагу
                     tx = globalTarget.x;
                     ty = globalTarget.y;
                 } 
                 else if (tacticId === 'retreat') {
                     // ОТСТУПЛЕНИЕ: 
-                    // 1. Определяем самую левую точку фронта (минимальный X среди всех своих melee)
+                    // Цель: левый край карты (x = 2), но с учетом позиции других
+                    const retreatX = 2;
+                    
+                    // Лучники хотят быть ЗА линией фронта (если есть melee союзники)
                     let frontLineX = arena.width; 
                     playerArmy.forEach(ally => {
-                        if (ally.type === 'melee' && ally.hp > 0 && ally.x < frontLineX) {
+                        if (ally.type === 'melee' && ally.hp > 0 && ally.x < frontLineX && ally !== unit) {
                             frontLineX = ally.x;
                         }
                     });
-                    
-                    // Цель отступления: X = 2 (безопасная зона)
-                    const retreatX = 2;
 
                     if (unit.type === 'range') {
-                        // Лучники хотят быть ЗА линией фронта (X < frontLineX)
-                        // Если фронт далеко, бежим к retreatX. Если фронт близко, держимся за ним.
+                        // Лучники стремятся к x=2, но держатся за спинами melee (frontLineX - 2)
                         tx = Math.min(retreatX, frontLineX - 2); 
-                        ty = unit.y; // Сохраняем Y, чтобы не сбиваться в кучу по вертикали
                     } else {
                         // Melee прикрывают отход, стоят чуть правее лучников
                         tx = Math.max(frontLineX - 1, retreatX + 2);
-                        ty = unit.y;
                     }
+                    ty = unit.y; // Сохраняем Y
                 }
                 else if (tacticId === 'hold') {
-                    // ДЕРЖАТЬ ПОЗИЦИИ: Стоим на месте, стреляем/бьем если достаем
+                    // ДЕРЖАТЬ ПОЗИЦИИ: Стоим на месте
                     tx = unit.x;
                     ty = unit.y;
                 }
                 else if (tacticId === 'ranged') {
                     // ДИСТАНЦИОННАЯ АТАКА:
                     if (unit.type === 'range') {
-                        // Лучники ищут позицию на максимальной дистанции
                         const dist = Math.abs(unit.x - globalTarget.x) + Math.abs(unit.y - globalTarget.y);
                         if (dist > unit.range) {
                             tx = globalTarget.x;
                             ty = globalTarget.y;
                         } else {
-                            // Уже в радиусе - стоим
                             tx = unit.x;
                             ty = unit.y;
                         }
                     } else {
-                        // Melee защищают лучников, стоя между ними и врагом
+                        // Melee защищают лучников
                         tx = globalTarget.x;
                         ty = globalTarget.y;
                     }
                 }
             } else {
-                // Нет врагов - стоим или идем к центру
-                tx = Math.floor(arena.width / 2);
-                ty = Math.floor(arena.height / 2);
+                // Нет врагов - стоим
+                tx = unit.x;
+                ty = unit.y;
             }
 
             // Генерируем действие движения к тактической точке
             action = getMoveActionWithSpeed(unit, tx, ty, arena, enemyUnits, playerArmy);
             
             // Если движение невозможно или не нужно, проверяем атаку
+            // ВАЖНО: При отступлении мы тоже можем атаковать, если враг блокирует путь или стоит рядом!
             if (!action || action.type === 'wait') {
                 const nearestEnemy = findNearestEnemy(unit, enemyUnits);
                 if (nearestEnemy) {
                     const dist = Math.abs(unit.x - nearestEnemy.x) + Math.abs(unit.y - nearestEnemy.y);
-                    if ((unit.type === 'range' && dist <= unit.range) || dist === 1) {
+                    // Атакуем, если:
+                    // 1. Это мили и враг вплотную
+                    // 2. Это лучник и враг в радиусе
+                    if ((unit.type !== 'range' && dist === 1) || (unit.type === 'range' && dist <= unit.range)) {
                         action = { unitId: unit.id, type: 'attack', target: nearestEnemy, unit: unit };
                     }
                 }
