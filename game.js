@@ -483,11 +483,11 @@ const GameModule = (function() {
             handleQuestClick(clientX, clientY);
             return;
         }
-        // Приоритет 2: Магазин
+        /*/ Приоритет 2: Магазин
         if (isShopOpen) {
             handleShopClick(clientX, clientY);
             return;
-        }
+        }*/
         if (isInnOpen) { handleInnClick(clientX, clientY); return; }
         
         // Приоритет 3: Осмотр карты (только в подземелье)
