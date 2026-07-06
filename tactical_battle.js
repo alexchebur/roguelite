@@ -1,5 +1,5 @@
 /**
- * ГЛАВНЫЙ КОНТРОЛЛЕР ТАКТИЧЕСКОГО БОЯ (tactical_battle.js) - С УЧЕТОМ СКОРОСТИ/ЭНЕРГИИ
+ * ГЛАВНЫЙ КОНТРОЛЛЕР ТАКТИЧЕСКОГО БОЯ (tactical_battle.js)
  */
 const TacticalBattleModule = (function() {
     'use strict';
@@ -13,25 +13,24 @@ const TacticalBattleModule = (function() {
 
         const { arena, playerUnit, playerArmy, enemyUnits } = state;
 
-        // 0. ВОССТАНОВЛЕНИЕ ЭНЕРГИИ ПЕРЕД ХОДОМ
-        restoreEnergy(playerUnit);
-        playerArmy.forEach(restoreEnergy);
-        enemyUnits.forEach(restoreEnergy);
-
         // 1. Движение/Действие Игрока (Героя)
         handlePlayerHeroAction(playerUnit, playerDx, playerDy, enemyUnits, arena);
 
         // 2. Действия Армии Игрока (AI союзников)
+        // Получаем сырые действия из модуля тактики
         const rawPlayerActions = TacticalPlayerModule.processPlayerTactic(currentTactic, playerArmy, playerUnit, enemyUnits, arena);
         
+        // ВАЖНО: Теперь tactical_player.js сам возвращает action.unit, поэтому маппинг не нужен
+        // Но оставим проверку для надежности
         const playerActions = rawPlayerActions.map(action => {
-            if (action.unit) return action;
-            if (action.unitId) {
-                const unit = playerArmy.find(u => u.x === action.unitId.x && u.y === action.unitId.y);
-                return { ...action, unit: unit };
+            if (!action.unit) {
+                // Фолбэк: если ссылка потерялась, ищем по ID (если он есть)
+                if (action.unitId) {
+                     action.unit = playerArmy.find(u => u.id === action.unitId);
+                }
             }
             return action;
-        });
+        }).filter(a => a); // Убираем null
 
         executeUnitActions(playerActions, [playerUnit, ...enemyUnits]);
 
@@ -56,23 +55,8 @@ const TacticalBattleModule = (function() {
         RenderModule.requestRedraw();
     }
 
-    /**
-     * Восстановление энергии юнита до максимума (скорости)
-     */
-    function restoreEnergy(unit) {
-        if (unit && unit.maxEnergy) {
-            unit.energy = unit.maxEnergy;
-        }
-    }
-
     function handlePlayerHeroAction(player, dx, dy, enemies, arena) {
         if (dx === 0 && dy === 0) return; 
-
-        // Проверка энергии героя
-        if (player.energy < 1) {
-            RenderModule.log("У вас нет сил для движения!", "info");
-            return;
-        }
 
         const nx = player.x + dx;
         const ny = player.y + dy;
@@ -83,25 +67,22 @@ const TacticalBattleModule = (function() {
         // Проверка врага
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
-            // Атака тратит энергию
-            if (player.energy >= 1) {
-                performAttack(player, enemy);
-                player.energy -= 1; 
-            }
+            performAttack(player, enemy);
         } else {
-            // Движение героя тратит энергию
+            // Движение героя
             const isBlockedByAlly = GameModule.getPlayerArmy().some(a => a.x === nx && a.y === ny && a.hp > 0);
             if (!isBlockedByAlly) {
                 player.x = nx;
                 player.y = ny;
-                player.energy -= 1;
             }
         }
     }
 
     function executeUnitActions(actions, targets) {
         actions.forEach(action => {
+            // Берем прямую ссылку на юнита из действия
             const unit = action.unit; 
+            
             if (!unit || unit.hp <= 0) return;
 
             // === НОВОЕ: Обработка исчезновения юнита (побег) ===
@@ -113,7 +94,10 @@ const TacticalBattleModule = (function() {
             }
 
             if (action.type === 'move') {
-                const isOccupied = targets.some(t => t && t.hp > 0 && t.x === action.x && t.y === action.y);
+                // Проверка: не занята ли клетка целью (игроком или другим юнитом)
+                // Исключаем самого юнита из проверки, если он вдруг попал в targets
+                const isOccupied = targets.some(t => t !== unit && t && t.hp > 0 && t.x === action.x && t.y === action.y);
+                
                 if (!isOccupied) {
                     unit.x = action.x;
                     unit.y = action.y;
@@ -128,7 +112,13 @@ const TacticalBattleModule = (function() {
 
     function performAttack(attacker, defender) {
         if (!attacker || !defender) return;
-        CombatModule.attack(attacker, defender, (msg) => RenderModule.log(msg, "combat"));
+        
+        // Используем стандартную боевую систему
+        CombatModule.attack(
+            attacker, 
+            defender, 
+            (msg) => RenderModule.log(msg, "combat")
+        );
     }
 
     function cleanUpDeadUnits(state) {
