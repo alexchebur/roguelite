@@ -288,8 +288,7 @@ const GameModule = (function() {
         }
     }
     
-    // === МАГАЗИН (HTML Версия) ===
-    function openShop() {
+    // === МАГАЗИН (HTML Версия) ===    function openShop() {
         if (isShopOpen) return;
     
         const depth = currentDepth > 0 ? currentDepth : 1;
@@ -297,33 +296,34 @@ const GameModule = (function() {
     
         currentMerchantInv = EntityModule.createMerchantInventory(depth, merchantGold);
         isShopOpen = true;
-        busy = true; // Блокируем игровой цикл
+        busy = true; 
     
-        toggleUI(false); // Скрываем боковые панели
+        toggleUI(false); 
         
-        // Показываем HTML-модалку
         const overlay = document.getElementById('modal-overlay');
         const shopModal = document.getElementById('shop-modal');
         
         if (overlay && shopModal) {
-            overlay.style.display = 'flex';
-            shopModal.classList.remove('hidden');
+            // Прямое управление стилями в обход классов
+            overlay.style.display = 'flex'; 
+            overlay.style.visibility = 'visible';
             
-            // Инициализируем пагинацию
+            shopModal.style.display = 'block';
+            shopModal.style.visibility = 'visible';
+            shopModal.classList.remove('hidden'); // На всякий случай
+            
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
-            // Рендерим содержимое в HTML через RenderModule
             if (typeof RenderModule.renderShopUI === 'function') {
                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
         } else {
-            console.error("HTML элементы магазина не найдены!");
+            console.error("Элементы магазина не найдены!");
         }
 
         RenderModule.log("Вы вошли в лавку. Добро пожаловать!", "info");
     }
-
     function closeShop() {
         if (!isShopOpen) return;
         
