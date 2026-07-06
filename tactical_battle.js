@@ -102,27 +102,25 @@ const TacticalBattleModule = (function() {
     function executeUnitActions(actions, targets) {
         actions.forEach(action => {
             const unit = action.unit; 
-            
             if (!unit || unit.hp <= 0) return;
 
-            // Проверка энергии перед действием
-            if (unit.energy < 1) return; // Нет энергии - стоим
+            // === НОВОЕ: Обработка исчезновения юнита (побег) ===
+            if (action.type === 'remove') {
+                // Просто устанавливаем HP в 0, чтобы cleanUpDeadUnits удалил его в конце хода
+                unit.hp = 0; 
+                RenderModule.log(`${unit.name} сбегает с поля боя!`, "info");
+                return;
+            }
 
             if (action.type === 'move') {
                 const isOccupied = targets.some(t => t && t.hp > 0 && t.x === action.x && t.y === action.y);
-                
                 if (!isOccupied) {
                     unit.x = action.x;
                     unit.y = action.y;
-                    unit.energy -= 1; // Тратим 1 энергию на шаг
-                    
-                    // Если скорость позволяет, можно сделать еще шаг? 
-                    // Пока оставим 1 действие за ход для простоты, но энергия копится для будущих апгрейдов
                 }
             } else if (action.type === 'attack') {
                 if (action.target && action.target.hp > 0) {
                     performAttack(unit, action.target);
-                    unit.energy -= 1; // Тратим 1 энергию на атаку
                 }
             }
         });
