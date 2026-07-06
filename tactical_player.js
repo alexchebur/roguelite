@@ -26,11 +26,11 @@ const TacticalPlayerModule = (function() {
                 if (tacticId === 'flee') {
                     // Цель: левый край экрана (x = 0)
                     if (unit.x > 0) {
-                        // Двигаемся влево
-                        action = { unitId: unit.id, type: 'move', x: unit.x - 1, y: unit.y, unit: unit };
+                        // Пытаемся найти любой свободный шаг влево/вверх/вниз
+                        action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena);
+                        if (!action) action = { unitId: unit.id, type: 'wait', unit: unit };
                     } else {
                         // Если достигли левого края (x=0), юнит исчезает
-                        // Мы помечаем это действием 'remove', которое обработает battle module
                         action = { unitId: unit.id, type: 'remove', unit: unit };
                     }
                 } 
@@ -45,9 +45,9 @@ const TacticalPlayerModule = (function() {
                         action = { unitId: unit.id, type: 'attack', target: nearestEnemy, unit: unit };
                     } else {
                         // 2. Если врага нет рядом, отступаем влево
-                        // Цель: x = 2 (безопасная зона у левого края, но не за ним)
                         if (unit.x > 2) {
-                            action = { unitId: unit.id, type: 'move', x: unit.x - 1, y: unit.y, unit: unit };
+                            action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena);
+                            if (!action) action = { unitId: unit.id, type: 'wait', unit: unit };
                         } else {
                             // Если уже в безопасной зоне (x <= 2), стоим на месте
                             action = { unitId: unit.id, type: 'wait', unit: unit };
@@ -108,6 +108,41 @@ const TacticalPlayerModule = (function() {
     }
 
     /**
+     * Поиск безопасного шага при отступлении (влево, но можно вверх/вниз если занято)
+     */
+    function getRetreatMove(unit, squad, enemies, playerUnit, arena) {
+        // Приоритетные направления: влево, затем вверх-влево, вниз-влево, просто вверх/вниз
+        const candidates = [
+            { x: unit.x - 1, y: unit.y },     // Влево
+            { x: unit.x - 1, y: unit.y - 1 }, // Влево-Вверх
+            { x: unit.x - 1, y: unit.y + 1 }, // Влево-Вниз
+            { x: unit.x, y: unit.y - 1 },     // Вверх
+            { x: unit.x, y: unit.y + 1 }      // Вниз
+        ];
+
+        for (const pos of candidates) {
+            // Проверка границ
+            if (pos.x < 0 || pos.x >= arena.width || pos.y < 0 || pos.y >= arena.height) continue;
+            
+            // Проверка занятости врагами
+            const isEnemyThere = enemies.some(e => e.hp > 0 && e.x === pos.x && e.y === pos.y);
+            if (isEnemyThere) continue;
+
+            // Проверка занятости игроком
+            if (playerUnit && playerUnit.hp > 0 && playerUnit.x === pos.x && playerUnit.y === pos.y) continue;
+
+            // Проверка занятости своими (из этого же отряда)
+            const isAllyThere = squad.some(a => a !== unit && a.hp > 0 && a.x === pos.x && a.y === pos.y);
+            if (isAllyThere) continue;
+
+            // Нашли свободное место!
+            return { unitId: unit.id, type: 'move', x: pos.x, y: pos.y, unit: unit };
+        }
+
+        return null; // Нет доступных ходов
+    }
+
+    /**
      * Корректирует целевую позицию, чтобы юнит не подходил слишком близко к своим
      */
     function applySeparation(me, squad, targetX, targetY, arena, enemies) {
@@ -129,11 +164,11 @@ const TacticalPlayerModule = (function() {
             // Проверка занятости врагами
             const isEnemyThere = enemies.some(e => e.hp > 0 && e.x === pos.x && e.y === pos.y);
             if (isEnemyThere) continue;
-
+            
             // Проверка занятости своими (кроме меня самого)
             const isAllyThere = squad.some(a => a !== me && a.hp > 0 && a.x === pos.x && a.y === pos.y);
             if (isAllyThere) continue;
-
+            
             // Расчет оценки: чем дальше от других союзников, тем лучше
             let separationScore = 0;
             squad.forEach(ally => {
@@ -142,11 +177,11 @@ const TacticalPlayerModule = (function() {
                     if (d < 2) separationScore += (2 - d) * 10; // Сильный штраф за близость
                 }
             });
-
+            
             // Штраф за отклонение от оригинальной цели (чтобы не убегали слишком далеко в стороны)
             const deviation = Math.abs(pos.x - targetX) + Math.abs(pos.y - targetY);
             const totalScore = separationScore + deviation;
-
+            
             if (totalScore < minScore) {
                 minScore = totalScore;
                 bestX = pos.x;
