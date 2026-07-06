@@ -1236,6 +1236,101 @@ function renderShopUI(merchantInv, playerGold) {
             btnY += btnH + 4; 
         });
     }
+
+    // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-МАГАЗИНА ===
+    function renderShopUI(merchantInv, playerGold) {
+        const merchantList = document.getElementById('shop-merchant-list');
+        const playerList = document.getElementById('shop-player-list');
+        const goldInfo = document.getElementById('shop-gold-info');
+        const paginationControls = document.querySelector('.pagination-controls');
+        
+        if (!merchantList || !playerList) return;
+
+        // Очистка списков
+        merchantList.innerHTML = '';
+        playerList.innerHTML = '';
+
+        // Настройки пагинации
+        const itemsPerPage = 8;
+        const totalMerchantPages = Math.ceil(merchantInv.items.length / itemsPerPage) || 1;
+        
+        let player = null;
+        let totalPlayerPages = 1;
+        if (typeof GameModule !== 'undefined') {
+            player = GameModule.getPlayer();
+            if (player) {
+                totalPlayerPages = Math.ceil(player.inventory.length / itemsPerPage) || 1;
+            }
+        }
+
+        // Инициализация страниц, если их нет
+        if (typeof window.shopPageMerchant === 'undefined') window.shopPageMerchant = 0;
+        if (typeof window.shopPagePlayer === 'undefined') window.shopPagePlayer = 0;
+
+        // Коррекция границ страниц
+        if (window.shopPageMerchant >= totalMerchantPages) window.shopPageMerchant = totalMerchantPages - 1;
+        if (window.shopPageMerchant < 0) window.shopPageMerchant = 0;
+        if (player && window.shopPagePlayer >= totalPlayerPages) window.shopPagePlayer = totalPlayerPages - 1;
+        if (player && window.shopPagePlayer < 0) window.shopPagePlayer = 0;
+
+        // --- Рендер товаров торговца ---
+        const startIdxM = window.shopPageMerchant * itemsPerPage;
+        const endIdxM = startIdxM + itemsPerPage;
+        
+        merchantInv.items.slice(startIdxM, endIdxM).forEach((item, i) => {
+            const index = startIdxM + i;
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `<span style="color:${item.color}">${item.name}</span> <span style="float:right; color:#ffd700">${item.price}g</span>`;
+            div.onclick = () => GameModule.buyItem(index);
+            merchantList.appendChild(div);
+        });
+
+        // --- Рендер инвентаря игрока ---
+        if (player) {
+            const startIdxP = window.shopPagePlayer * itemsPerPage;
+            const endIdxP = startIdxP + itemsPerPage;
+            
+            player.inventory.slice(startIdxP, endIdxP).forEach((item, i) => {
+                const index = startIdxP + i;
+                const div = document.createElement('div');
+                div.className = 'shop-item';
+                div.innerHTML = `<span style="color:${item.color}">${item.name}</span> <span style="float:right; color:#aaa">продать</span>`;
+                div.onclick = () => GameModule.sellItem(index);
+                playerList.appendChild(div);
+            });
+        }
+
+        // --- Обновление золота и пагинации ---
+        if (goldInfo) {
+            goldInfo.textContent = `Золото: ${playerGold} | У торговца: ${merchantInv.gold}`;
+        }
+
+        if (paginationControls) {
+            paginationControls.innerHTML = `
+                <button onclick="GameModule.changeShopPage('m', -1)" ${window.shopPageMerchant === 0 ? 'disabled' : ''}>← Товары</button>
+                <span style="margin:0 10px; color:#8b949e">${window.shopPageMerchant + 1}/${totalMerchantPages}</span>
+                <button onclick="GameModule.changeShopPage('m', 1)" ${window.shopPageMerchant >= totalMerchantPages - 1 ? 'disabled' : ''}>Товары →</button>
+                
+                <span style="margin-left:20px;"></span>
+
+                <button onclick="GameModule.changeShopPage('p', -1)" ${!player || window.shopPagePlayer === 0 ? 'disabled' : ''}>← Инвентарь</button>
+                <span style="margin:0 10px; color:#8b949e">${player ? window.shopPagePlayer + 1 : 0}/${totalPlayerPages}</span>
+                <button onclick="GameModule.changeShopPage('p', 1)" ${!player || window.shopPagePlayer >= totalPlayerPages - 1 ? 'disabled' : ''}>Инвентарь →</button>
+            `;
+        }
+    }
+
+    // Вспомогательная функция для смены страниц (можно добавить в GameModule или оставить тут)
+    // Лучше добавить эту маленькую функцию в GameModule.return {}, но для простоты пока здесь:
+    window.changeShopPage = function(type, dir) {
+        if (type === 'm') window.shopPageMerchant += dir;
+        if (type === 'p') window.shopPagePlayer += dir;
+        if (typeof RenderModule.renderShopUI === 'function' && typeof currentMerchantInv !== 'undefined') {
+             RenderModule.renderShopUI(currentMerchantInv, player.gold);
+        }
+    };    
+
     
     return {
         init,
@@ -1254,7 +1349,8 @@ function renderShopUI(merchantInv, playerGold) {
         updateQuestBriefing,
         drawShopWindow,
         drawQuestWindow,
-        drawInnWindow, // <--- НОВОЕ// <--- ДОБАВИТЬ ЭТУ СТРОКУ
+        drawInnWindow,
+        renderShopUI, // <--- НОВОЕ// <--- ДОБАВИТЬ ЭТУ СТРОКУ
         COLS,
         ROWS,
         _ctx: null, 
