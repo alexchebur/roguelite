@@ -469,6 +469,27 @@
         color: #8b949e;
         min-height: 20px;
     }
+    /* === ЖЕСТКИЕ ПРАВИЛА ДЛЯ МОДАЛОК === */
+    #modal-overlay {
+        z-index: 9999 !important; /* Гарантированно выше всего */
+        pointer-events: auto !important; /* Разрешаем клики */
+    }
+
+    .game-modal {
+        z-index: 10000 !important;
+        position: relative;
+        display: block !important; /* Перебиваем скрытие, если класс hidden удален */
+    }
+
+    /* Класс hidden должен скрывать только само окно, но не ломать flex-контейнер оверлея */
+    .hidden {
+        display: none !important;
+    }
+    
+    /* Убедимся, что оверлей не перехватывает клики, когда скрыт */
+    #modal-overlay[style*="display: none"] {
+        pointer-events: none;
+    }
 
 </style>
 </head>
