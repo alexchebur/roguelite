@@ -123,7 +123,6 @@
     /* ========================================= */
     #header-panel {
         top: 8px;
-        /* Подстроено под новые ширины stats (160px) и inventory (190px) */
         left: calc(160px + 8px + 15px);
         right: calc(190px + 8px + 15px);
         text-align: center;
@@ -143,13 +142,13 @@
     #stats-panel {
         top: 8px;
         left: 8px;
-        width: 160px; /* было 110px */
+        width: 160px;
     }
     .stat-row {
         display: flex;
         justify-content: space-between;
         margin-bottom: 3px;
-        font-size: 12px; /* было 10px */
+        font-size: 12px;
         line-height: 1.3;
     }
     .val-hp { color: var(--danger); }
@@ -157,7 +156,7 @@
     .val-def { color: var(--accent); }
 
     .equip-slot {
-        font-size: 11px; /* было 9px */
+        font-size: 11px;
         margin-bottom: 2px;
         color: #aaa;
         white-space: nowrap;
@@ -172,7 +171,7 @@
     #inventory-panel {
         top: 8px;
         right: 8px;
-        width: 190px; /* было 130px */
+        width: 190px;
         max-height: 45vh;
         display: flex;
         flex-direction: column;
@@ -180,7 +179,7 @@
     #inventory-list {
         overflow-y: auto;
         flex: 1;
-        font-size: 12px; /* было 10px */
+        font-size: 12px;
         margin-bottom: 2px;
     }
     .inv-item {
@@ -189,9 +188,9 @@
         margin-bottom: 2px;
         cursor: pointer;
         border-radius: 2px;
-        white-space: nowrap; /* Запрещаем перенос строк */
-        overflow: hidden;    /* Скрываем то, что не влезло */
-        text-overflow: ellipsis; /* Добавляем троеточие (...) */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         transition: background 0.2s;
     }
@@ -205,8 +204,8 @@
     #minimap-panel {
         bottom: 8px;
         left: 8px;
-        width: 150px; /* было 100px */
-        height: 150px; /* было 100px */
+        width: 150px;
+        height: 150px;
         display: flex;
         flex-direction: column;
     }
@@ -222,13 +221,12 @@
     /* === ИНСПЕКТОР (над миникартой) === */
     /* ========================================= */
     #inspector-panel {
-        /* bottom = высота миникарты (150) + отступ (8) + margin (4) */
-        bottom: 166px; /* было 110px */
+        bottom: 166px;
         left: 8px;
-        width: 150px; /* было 100px */
-        max-height: 180px; /* было 120px */
+        width: 150px;
+        max-height: 180px;
         overflow-y: auto;
-        font-size: 11px; /* было 9px */
+        font-size: 11px;
     }
     #ui-inspector {
         font-size: 11px;
@@ -242,15 +240,15 @@
     #log-panel {
         bottom: 8px;
         right: 8px;
-        width: 280px; /* было 180px */
-        height: 180px; /* было 100px */
+        width: 280px;
+        height: 180px;
         display: flex;
         flex-direction: column;
     }
     #log-list {
         overflow-y: auto;
         flex: 1;
-        font-size: 11px; /* было 9px */
+        font-size: 11px;
         line-height: 1.25;
         justify-content: flex-end;
         scroll-behavior: smooth;
@@ -281,16 +279,16 @@
         transform: translateX(-50%);
         display: flex;
         align-items: center;
-        justify-content: center; /* <--- ДОБАВИТЬ: Это выровняет содержимое по центру */
+        justify-content: center;
         gap: 12px;
         padding: 6px 16px;
-        max-width: 65%; /* было 50% */
+        max-width: 65%;
     }
     #ui-quest-briefing {
         color: var(--gold);
         font-weight: bold;
-        font-size: 12px; /* было 10px */
-        white-space: normal; /* было nowrap — теперь текст переносится */
+        font-size: 12px;
+        white-space: normal;
         word-wrap: break-word;
         line-height: 1.3;
     }
@@ -306,7 +304,7 @@
     }
 
     /* ========================================= */
-    /* === МОБИЛЬНАЯ АДАПТАЦИЯ (без изменений) === */
+    /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
     /* ========================================= */
     @media (max-width: 600px) {
         .ui-panel {
@@ -344,9 +342,132 @@
         #ui-quest-briefing { font-size: 9px; }
     }
 
-    /* В index.html внутри тега <style> */
+    /* ========================================= */
+    /* === НОВЫЕ СТИЛИ ДЛЯ HTML-МОДАЛОК === */
+    /* ========================================= */
+    
     .hidden-ui {
         display: none !important;
+    }
+
+    /* Базовый стиль модального окна */
+    .game-modal {
+        background: #161b22;
+        border: 2px solid #58a6ff;
+        color: #c9d1d9;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+        font-family: 'Consolas', monospace;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        position: relative;
+    }
+
+    /* Элементы внутри модалок */
+    .modal-header {
+        border-bottom: 1px solid #30363d;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #f85149;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0 5px;
+    }
+    .close-btn:hover {
+        color: #ff7b72;
+    }
+
+    /* Стили для Магазина */
+    .shop-columns {
+        display: flex;
+        gap: 20px;
+    }
+    .shop-col {
+        flex: 1;
+        min-width: 200px;
+    }
+    .shop-col h4 {
+        color: #8b949e;
+        margin-top: 0;
+        border-bottom: 1px solid #30363d;
+        padding-bottom: 5px;
+    }
+    .shop-item {
+        padding: 6px 8px;
+        border-bottom: 1px solid #30363d;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+    }
+    .shop-item:hover {
+        background: rgba(255,255,255,0.1);
+    }
+    .shop-footer {
+        margin-top: 15px;
+        border-top: 1px solid #30363d;
+        padding-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #ffd700;
+        font-weight: bold;
+    }
+    .pagination-controls button {
+        background: #21262d;
+        border: 1px solid #30363d;
+        color: #58a6ff;
+        padding: 4px 10px;
+        margin: 0 2px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    .pagination-controls button:hover {
+        background: #30363d;
+    }
+    .pagination-controls button:disabled {
+        color: #484f58;
+        cursor: default;
+    }
+
+    /* Стили для Постоялого Двора */
+    .inn-action-btn {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #21262d;
+        border: 1px solid #30363d;
+        color: #c9d1d9;
+        text-align: left;
+        cursor: pointer;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 13px;
+    }
+    .inn-action-btn:hover {
+        background: #30363d;
+        border-color: #58a6ff;
+    }
+    .inn-status {
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 4px;
+        font-style: italic;
+        color: #8b949e;
+        min-height: 20px;
     }
 
 </style>
