@@ -545,10 +545,10 @@ const GameModule = (function() {
             return;
         }
 
-        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет перед обычным движением) ===
+        // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Полная передача управления в TacticalBattleModule) ===
         if (window.gameMode === 'tactical') {
             e.preventDefault(); // Блокируем скролл страницы стрелками
-
+            
             // А. Обработка выбора тактики клавишами 1-5
             if (e.key >= '1' && e.key <= '5') {
                 const tacticKey = e.key;
@@ -567,14 +567,16 @@ const GameModule = (function() {
 
             // Б. Обработка побега (клавиша F или 0)
             if (e.key === 'f' || e.key === 'F' || e.key === '0') {
-                 endTacticalBattle(false); // Поражение/Побег
+                 // Устанавливаем тактику побега и делаем ход
+                 window.currentTactic = 'flee';
+                 TacticalBattleModule.processBattleTurn(0, 0, 'flee');
                  return;
             }
 
             // В. Обработка движения/атаки/пропуска хода
             let dx = 0, dy = 0;
             let isAction = false;
-
+            
             if (e.key === "ArrowUp")    { dy = -1; isAction = true; }
             if (e.key === "ArrowDown")  { dy = 1;  isAction = true; }
             if (e.key === "ArrowLeft")  { dx = -1; isAction = true; }
@@ -587,29 +589,8 @@ const GameModule = (function() {
             }
 
             if (isAction) {
-                // 1. Ход ИГРОКА (движение или атака)
-                if (dx !== 0 || dy !== 0) {
-                    processTacticalPlayerTurn(dx, dy);
-                }
-
-                // 2. Ход СОЮЗНИКОВ (с учетом новой тактики)
-                if (typeof movePlayerArmy === 'function') movePlayerArmy();
-
-                // 3. Ход ВРАГОВ (ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ!)
-                if (typeof moveTacticalEnemies === 'function') {
-                    moveTacticalEnemies();
-                } else {
-                    console.error("❌ Функция moveTacticalEnemies не найдена!");
-                }
-
-                // 4. ПРОВЕРКА АВТОМАТИЧЕСКОГО ПОБЕГА <--- ДОБАВИТЬ ЭТУ СТРОКУ
-                checkAutoFlee();
-
-                // 5. ПРОВЕРКА ПОБЕДЫ/ПОРАЖЕНИЯ
-                checkTacticalBattleEnd();
-
-                // 65. Отрисовка
-                renderFrame();
+                // 🚀 ГЛАВНОЕ ИЗМЕНЕНИЕ: Вызываем наш новый модуль, игнорируя старые функции
+                TacticalBattleModule.processBattleTurn(dx, dy, window.currentTactic);
             }
             
             return; 
