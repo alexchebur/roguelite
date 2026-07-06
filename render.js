@@ -801,10 +801,31 @@ const RenderModule = (function() {
             redrawCallback();
         }
     }
-    // === ОТРИСОВКА ОКНА МАГАЗИНА ===
-    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
-    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
-    // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
+
+// Вместо отрисовки на канвасе, мы генерируем HTML
+function renderShopUI(merchantInv, playerGold) {
+    const list = document.getElementById('shop-merchant-list');
+    if (!list) return;
+    
+    list.innerHTML = ''; // Очистка
+    
+    merchantInv.items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        div.innerHTML = `${item.name} - <span style="color:gold">${item.price}g</span>`;
+        div.onclick = () => GameModule.buyItem(index); // Вызов логики из game.js
+        list.appendChild(div);
+    });
+    
+    document.getElementById('shop-gold-info').textContent = `Ваше золото: ${playerGold}`;
+}
+
+
+
+
+
+
+    
     // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
     function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
