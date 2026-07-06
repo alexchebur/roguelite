@@ -827,7 +827,7 @@ function renderShopUI(merchantInv, playerGold) {
 
     
     // === ОТРИСОВКА ОКНА МАГАЗИНА (С ПАГИНАЦИЕЙ И ИСПРАВЛЕНИЯМИ) ===
-    function drawShopWindow(merchantInv, playerGold) {
+/*    function drawShopWindow(merchantInv, playerGold) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
         // === НАСТРОЙКИ ДЛЯ ЧЕТКОГО ТЕКСТА ===
@@ -1011,7 +1011,7 @@ function renderShopUI(merchantInv, playerGold) {
                 window.shopClickAreas.push({ x: ctx.canvas.width - winX - 50, y: bottomY - 25, w: 40, h: 20, action: 'next_p' });
             }
         }
-    }
+    }*/
     // === ОТРИСОВКА ОКНА КВЕСТА (СЮЖЕТНОГО) ===
     function drawQuestWindow(quest, isCompleted) {
         const ctx = RenderModule._ctx;
@@ -1237,7 +1237,7 @@ function renderShopUI(merchantInv, playerGold) {
         });
     }
 
-    // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-МАГАЗИНА ===
+    // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-МАГАЗИНА (ЕДИНСТВЕННАЯ ВЕРСИЯ) ===
     function renderShopUI(merchantInv, playerGold) {
         const merchantList = document.getElementById('shop-merchant-list');
         const playerList = document.getElementById('shop-player-list');
@@ -1321,17 +1321,20 @@ function renderShopUI(merchantInv, playerGold) {
         }
     }
 
-    // Вспомогательная функция для смены страниц (можно добавить в GameModule или оставить тут)
-    // Лучше добавить эту маленькую функцию в GameModule.return {}, но для простоты пока здесь:
+    // Вспомогательная функция для смены страниц
     window.changeShopPage = function(type, dir) {
         if (type === 'm') window.shopPageMerchant += dir;
         if (type === 'p') window.shopPagePlayer += dir;
-        if (typeof RenderModule.renderShopUI === 'function' && typeof currentMerchantInv !== 'undefined') {
-             RenderModule.renderShopUI(currentMerchantInv, player.gold);
+        // Получаем доступ к данным через GameModule, так как currentMerchantInv может быть скрыт
+        if (typeof GameModule !== 'undefined') {
+             // В game.js нужно будет добавить геттер или сделать переменную доступной
+             // Пока используем глобальную переменную, если она есть, или передаем через замыкание
+             if (typeof currentMerchantInv !== 'undefined' && typeof player !== 'undefined') {
+                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
+             }
         }
     };    
 
-    
     return {
         init,
         draw,
@@ -1347,10 +1350,10 @@ function renderShopUI(merchantInv, playerGold) {
         addBlinkEffect,
         addProjectileEffect,
         updateQuestBriefing,
-        drawShopWindow,
+        // drawShopWindow, // <--- ЗАКОММЕНТИРОВАНО: Старая Canvas-версия больше не нужна
         drawQuestWindow,
         drawInnWindow,
-        renderShopUI, // <--- НОВОЕ// <--- ДОБАВИТЬ ЭТУ СТРОКУ
+        renderShopUI, // <--- НОВАЯ HTML-ВЕРСИЯ
         COLS,
         ROWS,
         _ctx: null, 
