@@ -521,6 +521,10 @@
 
     <!-- ... ваш существующий код панелей ... -->
     
+    <!-- ... ваши остальные панели (stats, inventory и т.д.) ... -->
+
+    <!-- ... ваши остальные панели (stats, inventory и т.д.) ... -->
+
     <!-- Низ Центр: Квесты -->
     <div id="quest-bar" class="ui-panel">
         <div id="ui-quest-briefing"></div>
@@ -531,10 +535,9 @@
         </div>
     </div>
 
-    <!-- ... ваш существующий код панелей ... -->
-
     <!-- ========================================== -->
     <!-- КОНТЕЙНЕР ДЛЯ МОДАЛЬНЫХ ОКОН (HTML)       -->
+    <!-- ВАЖНО: Этот блок должен быть ПЕРЕД </body> -->
     <!-- ========================================== -->
     <div id="modal-overlay" class="hidden-ui" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; justify-content:center; align-items:center;">
         
@@ -562,7 +565,7 @@
             </div>
         </div>
 
-        <!-- Окно Постоялого Двора (заглушка) -->
+        <!-- Окно Постоялого Двора -->
         <div id="inn-modal" class="game-modal hidden" style="display:none;">
              <div class="modal-header">
                 <h3>🏨 Постоялый Двор</h3>
@@ -570,6 +573,7 @@
             </div>
             <div id="inn-content"></div>
         </div>
+
     </div>
 
 </body>
