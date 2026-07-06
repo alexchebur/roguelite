@@ -96,21 +96,23 @@ const TacticalBattleModule = (function() {
     }
 
     function checkBattleEnd(state) {
-        // Победа: все враги мертвы
-        if (state.enemyUnits.length === 0) {
-            GameModule.endTacticalBattle(true);
-            return;
-        }
+        // 1. Проверка поражения:
+        // А) Игрок мертв (HP <= 0)
+        // Б) Игрок при смерти (HP <= 10) -> Автоматический побег
+        const isDead = state.playerUnit.hp <= 0;
+        const isCritical = state.playerUnit.hp <= 10 && state.playerUnit.hp > 0;
         
-        // Поражение: игрок мертв
-        if (state.playerUnit.hp <= 0) {
-            GameModule.endTacticalBattle(false);
-            return;
-        }
+        // 2. Проверка победы: все враги мертвы
+        const isVictory = state.enemyUnits.length === 0;
 
-        // Поражение: вся армия игрока мертва И игрок сбежал (или остался один против толпы)
-        // По ТЗ: если игрок выбирает "сбежать", бой заканчивается. Это обрабатывается через тактику flee.
-        // Если все союзники мертвы, а игрок жив, он может продолжать бой в одиночку.
+        if (isDead) {
+            GameModule.endTacticalBattle(false); // Смерть
+        } else if (isCritical) {
+            RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
+            GameModule.endTacticalBattle(false); // Побег (поражение без смерти)
+        } else if (isVictory) {
+            GameModule.endTacticalBattle(true); // Победа
+        }
     }
 
     return { processBattleTurn: processBattleTurn };
