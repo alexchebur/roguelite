@@ -1358,7 +1358,7 @@ const RenderModule = (function() {
         updateQuestBriefing,
         // drawShopWindow, // <--- ЗАКОММЕНТИРОВАНО: Старая Canvas-версия больше не нужна
         drawQuestWindow,
-        drawInnWindow,
+        //drawInnWindow,
         renderShopUI,
         showShopStatus, // <--- НОВАЯ HTML-ВЕРСИЯ
         COLS,
