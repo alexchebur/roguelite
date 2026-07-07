@@ -2769,9 +2769,9 @@ function updateQuestCompass() {
             // === УДАЛЕНО: Отрисовка магазина на Canvas (теперь он в HTML) ===
             
             // Постоялый двор пока остался на Canvas (если вы его еще не перенесли)
-            if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
-                RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
-            }
+            //if (isInnOpen && typeof RenderModule.drawInnWindow === 'function') {
+                //RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+            //}
         }
     }
     
