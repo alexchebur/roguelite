@@ -143,25 +143,58 @@ const GameModule = (function() {
 
     // === ПОСТОЯЛЫЙ ДВОР (HTML Версия) ===
     function openInn() {
-        console.log("🔍 Попытка открыть постоялый двор. isInnOpen:", isInnOpen);
-        if (isInnOpen) return;
+        console.log("🔍 [Inn] Попытка открыть постоялый двор. Текущий статус isInnOpen:", isInnOpen);
+        
+        if (isInnOpen) {
+            console.warn("⚠️ [Inn] Окно уже открыто, выходим.");
+            return;
+        }
+        
         isInnOpen = true;
         busy = true; // Блокируем игровой цикл
+        console.log("✅ [Inn] Флаг isInnOpen установлен, busy = true");
     
         toggleUI(false); // Скрываем боковые панели
         
         const overlay = document.getElementById('modal-overlay');
         const innModal = document.getElementById('inn-modal');
         
+        console.log("🔍 [Inn] Поиск элементов DOM...");
+        console.log("   - Overlay:", overlay ? "Найден" : "НЕ НАЙДЕН");
+        console.log("   - Inn Modal:", innModal ? "Найден" : "НЕ НАЙДЕН");
+        
         if (overlay && innModal) {
+            console.log("✅ [Inn] Элементы найдены. Применяем стили...");
+            
+            // Принудительное управление стилями для гарантии отображения
             overlay.style.display = 'flex';
+            overlay.style.visibility = 'visible';
+            
+            innModal.style.display = 'block'; // Явно показываем само окно
+            innModal.style.visibility = 'visible';
             innModal.classList.remove('hidden');
+            
+            console.log("✅ [Inn] Стили применены. Обновляем UI...");
             
             // Обновляем данные при открытии
             updateInnUI();
             setInnStatus("Добро пожаловать! Выберите действие.");
+            
+            // Проверка внутренних элементов
+            const goldEl = document.getElementById('inn-gold-info');
+            const staminaEl = document.getElementById('inn-stamina-info');
+            
+            if (!goldEl) console.error("❌ [Inn] ОШИБКА: Не найден элемент #inn-gold-info внутри модалки!");
+            if (!staminaEl) console.error("❌ [Inn] ОШИБКА: Не найден элемент #inn-stamina-info внутри модалки!");
+            
         } else {
-            console.error("HTML элементы постоялого двора не найдены!");
+            console.error("❌ [Inn] КРИТИЧЕСКАЯ ОШИБКА: HTML элементы постоялого двора не найдены в DOM!");
+            console.error("   Проверьте index.html: должен быть div id='modal-overlay' и внутри него div id='inn-modal'");
+            
+            // Откат изменений, если ошибка
+            isInnOpen = false;
+            busy = false;
+            toggleUI(true);
         }
     
         RenderModule.log("Вы вошли в Постоялый двор.", "info");
