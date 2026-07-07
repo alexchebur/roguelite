@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Roguelike: Подземелье Координат</title>
-    <!-- === ФАВИКОНКИ (Исправление путей) === -->
+    <!-- === ФАВИКОНКИ === -->
     <link rel="icon" type="image/x-icon" href="./favicon.ico">
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
@@ -29,14 +29,13 @@
     <script src="quest_system.js"></script>
     <script src="story_script.js"></script> 
     <script src="quest_chain.js"></script>
-    <!-- Добавьте перед <script src="game.js"></script> -->
     <script src="tactical_data.js"></script>
     <script src="tactical_army.js"></script>
     <script src="tactical_map.js"></script>
     <script src="tactical_render.js"></script>
-    <script src="tactical_ai.js"></script>       <!-- NEW -->
-    <script src="tactical_player.js"></script>   <!-- NEW -->
-    <script src="tactical_battle.js"></script>   <!-- NEW -->
+    <script src="tactical_ai.js"></script>
+    <script src="tactical_player.js"></script>
+    <script src="tactical_battle.js"></script>
     <script src="game.js"></script>
 
 <style>
@@ -119,7 +118,7 @@
     }
 
     /* ========================================= */
-    /* === ВЕРХНЯЯ ПАНЕЛЬ (ЛОКАЦИЯ) === */
+    /* === ПАНЕЛИ ИНТЕРФЕЙСА === */
     /* ========================================= */
     #header-panel {
         top: 8px;
@@ -136,380 +135,110 @@
     .loc-name { color: var(--accent); font-weight: bold; font-size: 13px; line-height: 1.3; }
     .loc-coords { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
 
-    /* ========================================= */
-    /* === ЛЕВАЯ ВЕРХНЯЯ (Статы) === */
-    /* ========================================= */
-    #stats-panel {
-        top: 8px;
-        left: 8px;
-        width: 160px;
-    }
-    .stat-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 3px;
-        font-size: 12px;
-        line-height: 1.3;
-    }
+    #stats-panel { top: 8px; left: 8px; width: 160px; }
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; line-height: 1.3; }
     .val-hp { color: var(--danger); }
     .val-atk { color: var(--gold); }
     .val-def { color: var(--accent); }
-
-    .equip-slot {
-        font-size: 11px;
-        margin-bottom: 2px;
-        color: #aaa;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    .equip-slot { font-size: 11px; margin-bottom: 2px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .equip-item { color: var(--gold); }
 
-    /* ========================================= */
-    /* === ПРАВАЯ ВЕРХНЯЯ (Инвентарь) === */
-    /* ========================================= */
-    #inventory-panel {
-        top: 8px;
-        right: 8px;
-        width: 190px;
-        max-height: 45vh;
-        display: flex;
-        flex-direction: column;
-    }
-    #inventory-list {
-        overflow-y: auto;
-        flex: 1;
-        font-size: 12px;
-        margin-bottom: 2px;
-    }
-    .inv-item {
-        padding: 3px 4px;
-        background: rgba(255,255,255,0.05);
-        margin-bottom: 2px;
-        cursor: pointer;
-        border-radius: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 12px;
-        transition: background 0.2s;
-    }
-    .inv-item:hover {
-        background: rgba(255,255,255,0.12);
-    }
+    #inventory-panel { top: 8px; right: 8px; width: 190px; max-height: 45vh; display: flex; flex-direction: column; }
+    #inventory-list { overflow-y: auto; flex: 1; font-size: 12px; margin-bottom: 2px; }
+    .inv-item { padding: 3px 4px; background: rgba(255,255,255,0.05); margin-bottom: 2px; cursor: pointer; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; transition: background 0.2s; }
+    .inv-item:hover { background: rgba(255,255,255,0.12); }
 
-    /* ========================================= */
-    /* === НИЖНЯЯ ЛЕВАЯ (Миникарта) === */
-    /* ========================================= */
-    #minimap-panel {
-        bottom: 8px;
-        left: 8px;
-        width: 150px;
-        height: 150px;
-        display: flex;
-        flex-direction: column;
-    }
-    #minimap {
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        border-radius: 2px;
-        image-rendering: pixelated;
-    }
+    #minimap-panel { bottom: 8px; left: 8px; width: 150px; height: 150px; display: flex; flex-direction: column; }
+    #minimap { width: 100%; height: 100%; background: rgba(0,0,0,0.5); border-radius: 2px; image-rendering: pixelated; }
 
-    /* ========================================= */
-    /* === ИНСПЕКТОР (над миникартой) === */
-    /* ========================================= */
-    #inspector-panel {
-        bottom: 166px;
-        left: 8px;
-        width: 150px;
-        max-height: 180px;
-        overflow-y: auto;
-        font-size: 11px;
-    }
-    #ui-inspector {
-        font-size: 11px;
-        color: var(--text-dim);
-        line-height: 1.2;
-    }
+    #inspector-panel { bottom: 166px; left: 8px; width: 150px; max-height: 180px; overflow-y: auto; font-size: 11px; }
+    #ui-inspector { font-size: 11px; color: var(--text-dim); line-height: 1.2; }
 
-    /* ========================================= */
-    /* === НИЖНЯЯ ПРАВАЯ (Лог событий) === */
-    /* ========================================= */
-    #log-panel {
-        bottom: 8px;
-        right: 8px;
-        width: 280px;
-        height: 180px;
-        display: flex;
-        flex-direction: column;
-    }
-    #log-list {
-        overflow-y: auto;
-        flex: 1;
-        font-size: 11px;
-        line-height: 1.25;
-        justify-content: flex-end;
-        scroll-behavior: smooth;
-    }
-    .log-msg {
-        margin-bottom: 2px;
-        word-wrap: break-word;
-        opacity: 0.9;
-    }
+    #log-panel { bottom: 8px; right: 8px; width: 280px; height: 180px; display: flex; flex-direction: column; }
+    #log-list { overflow-y: auto; flex: 1; font-size: 11px; line-height: 1.25; justify-content: flex-end; scroll-behavior: smooth; }
+    .log-msg { margin-bottom: 2px; word-wrap: break-word; opacity: 0.9; }
     .log-combat { color: var(--danger); }
     .log-loot { color: var(--gold); }
     .log-info { color: var(--accent); }
-    .log-lore {
-        color: #d2b48c;
-        font-style: italic;
-        border-left: 2px solid #8b7355;
-        padding-left: 4px;
-        background: rgba(139, 115, 85, 0.1);
-        margin-top: 2px;
-    }
+    .log-lore { color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; padding-left: 4px; background: rgba(139, 115, 85, 0.1); margin-top: 2px; }
 
-    /* ========================================= */
-    /* === НИЖНЯЯ ЦЕНТРАЛЬНАЯ (Квесты) === */
-    /* ========================================= */
-    #quest-bar {
-        bottom: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        padding: 6px 16px;
-        max-width: 65%;
-    }
-    #ui-quest-briefing {
-        color: var(--gold);
-        font-weight: bold;
-        font-size: 12px;
-        white-space: normal;
-        word-wrap: break-word;
-        line-height: 1.3;
-    }
-    #btn-abandon-quest {
-        color: #f85149;
-        font-size: 11px;
-        cursor: pointer;
-        opacity: 0.6;
-        white-space: nowrap;
-    }
-    #btn-abandon-quest:hover {
-        opacity: 1.0;
-    }
+    #quest-bar { bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; gap: 12px; padding: 6px 16px; max-width: 65%; }
+    #ui-quest-briefing { color: var(--gold); font-weight: bold; font-size: 12px; white-space: normal; word-wrap: break-word; line-height: 1.3; }
+    #btn-abandon-quest { color: #f85149; font-size: 11px; cursor: pointer; opacity: 0.6; white-space: nowrap; }
+    #btn-abandon-quest:hover { opacity: 1.0; }
 
     /* ========================================= */
     /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
     /* ========================================= */
     @media (max-width: 600px) {
-        .ui-panel {
-            background: rgba(13, 17, 23, 0.88);
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
-            border-width: 1px;
-        }
+        .ui-panel { background: rgba(13, 17, 23, 0.88); backdrop-filter: none; -webkit-backdrop-filter: none; border-width: 1px; }
         h3 { display: none; }
-
-        #header-panel {
-            top: 2px; padding: 2px 5px;
-            left: calc(90px + 2px + 12px);
-            right: calc(100px + 2px + 12px);
-        }
+        #header-panel { top: 2px; padding: 2px 5px; left: calc(90px + 2px + 12px); right: calc(100px + 2px + 12px); }
         .loc-name { font-size: 10px; }
         .loc-coords { font-size: 9px; }
-
         #stats-panel { width: 90px; top: 2px; left: 2px; }
         .stat-row { font-size: 8px; }
         .equip-slot { font-size: 7px; }
-
         #inventory-panel { width: 100px; right: 2px; top: 2px; max-height: 35vh; }
         .inv-item { font-size: 8px; }
-
         #minimap-panel { width: 80px; height: 80px; bottom: 2px; left: 2px; }
-
         #inspector-panel { bottom: 85px; left: 2px; width: 80px; max-height: 100px; font-size: 8px; }
         #ui-inspector { font-size: 8px; }
-
         #log-panel { width: 140px; height: 80px; bottom: 2px; right: 2px; }
         #log-list { font-size: 8px; }
-
         #quest-bar { bottom: 2px; padding: 3px 8px; max-width: 55%; }
         #ui-quest-briefing { font-size: 9px; }
     }
 
     /* ========================================= */
-    /* === НОВЫЕ СТИЛИ ДЛЯ HTML-МОДАЛОК === */
+    /* === СТИЛИ ДЛЯ HTML-МОДАЛОК === */
     /* ========================================= */
+    .hidden-ui { display: none !important; }
     
-    .hidden-ui {
-        display: none !important;
+    /* Оверлей затемнения */
+    #modal-overlay {
+        z-index: 9999 !important;
+        pointer-events: auto !important;
     }
 
-    /* Базовый стиль модального окна */
+    /* Само окно модалки */
     .game-modal {
-        background: #161b22;
-        border: 2px solid #58a6ff;
-        color: #c9d1d9;
-        padding: 20px;
-        border-radius: 8px;
-        max-width: 80%;
-        max-height: 80%;
-        overflow-y: auto;
-        font-family: 'Consolas', monospace;
-        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        z-index: 10000 !important;
         position: relative;
+        display: block !important; /* Перебиваем скрытие, если класс hidden удален */
     }
+    
+    .hidden { display: none !important; }
 
     /* Элементы внутри модалок */
-    .modal-header {
-        border-bottom: 1px solid #30363d;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .close-btn {
-        background: none;
-        border: none;
-        color: #f85149;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 0 5px;
-    }
-    .close-btn:hover {
-        color: #ff7b72;
-    }
+    .modal-header { border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
+    .close-btn:hover { color: #ff7b72; }
 
     /* Стили для Магазина */
-    .shop-columns {
-        display: flex;
-        gap: 20px;
-    }
-    .shop-col {
-        flex: 1;
-        min-width: 200px;
-    }
-    .shop-col h4 {
-        color: #8b949e;
-        margin-top: 0;
-        border-bottom: 1px solid #30363d;
-        padding-bottom: 5px;
-    }
-    .shop-item {
-        padding: 6px 8px;
-        border-bottom: 1px solid #30363d;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 13px;
-    }
-    .shop-item:hover {
-        background: rgba(255,255,255,0.1);
-    }
-    .shop-footer {
-        margin-top: 15px;
-        border-top: 1px solid #30363d;
-        padding-top: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: #ffd700;
-        font-weight: bold;
-    }
-    .pagination-controls button {
-        background: #21262d;
-        border: 1px solid #30363d;
-        color: #58a6ff;
-        padding: 4px 10px;
-        margin: 0 2px;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-    .pagination-controls button:hover {
-        background: #30363d;
-    }
-    .pagination-controls button:disabled {
-        color: #484f58;
-        cursor: default;
-    }
+    .shop-columns { display: flex; gap: 20px; }
+    .shop-col { flex: 1; min-width: 200px; }
+    .shop-col h4 { color: #8b949e; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+    .shop-item { padding: 6px 8px; border-bottom: 1px solid #30363d; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .shop-item:hover { background: rgba(255,255,255,0.1); }
+    .shop-footer { margin-top: 15px; border-top: 1px solid #30363d; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; color: #ffd700; font-weight: bold; }
+    .pagination-controls button { background: #21262d; border: 1px solid #30363d; color: #58a6ff; padding: 4px 10px; margin: 0 2px; cursor: pointer; border-radius: 4px; }
+    .pagination-controls button:hover { background: #30363d; }
+    .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
     /* Стили для Постоялого Двора */
-    .inn-action-btn {
-        display: block;
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 8px;
-        background: #21262d;
-        border: 1px solid #30363d;
-        color: #c9d1d9;
-        text-align: left;
-        cursor: pointer;
-        border-radius: 4px;
-        font-family: inherit;
-        font-size: 13px;
-    }
-    .inn-action-btn:hover {
-        background: #30363d;
-        border-color: #58a6ff;
-    }
-    .inn-status {
-        margin-top: 10px;
-        padding: 10px;
-        background: rgba(0,0,0,0.2);
-        border-radius: 4px;
-        font-style: italic;
-        color: #8b949e;
-        min-height: 20px;
-    }
-    <!-- ========================================== -->
-    <!-- КОНТЕЙНЕР ДЛЯ МОДАЛЬНЫХ ОКОН (HTML)       -->
-    <!-- ВАЖНО: Этот блок должен быть ПЕРЕД </body> -->
-    <!-- ========================================== -->
-    <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
-        
-        <!-- Окно Магазина -->
-        <div id="shop-modal" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
-            
-            <div style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
-                <button onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
-            </div>
+    .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
+    .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
+    .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
 
-            <div style="display:flex; gap:20px; flex:1; min-height:0;">
-                <div style="flex:1; border-right:1px solid #30363d; padding-right:10px; display:flex; flex-direction:column;">
-                    <h4 style="color:#8b949e; margin-top:0;">Товары</h4>
-                    <div id="shop-merchant-list" style="overflow-y:auto; flex:1;"></div>
-                </div>
-                <div style="flex:1; padding-left:10px; display:flex; flex-direction:column;">
-                    <h4 style="color:#8b949e; margin-top:0;">Ваш инвентарь</h4>
-                    <div id="shop-player-list" style="overflow-y:auto; flex:1;"></div>
-                </div>
-            </div>
-
-            <div style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; justify-content:space-between; color:#ffd700; font-weight:bold; align-items:center;">
-                <span id="shop-gold-info">Золото: 0</span>
-                <div class="pagination-controls"></div>
-            </div>
-        </div>
-
-    </div>
-
-</body>
-</html>
+</style>
+</head>
+<body>
 
     <!-- Игровое окно (Канвас) -->
     <div id="map-container"></div>
 
     <!-- UI Слои -->
-    
     <!-- Верх Центр: Локация -->
     <div id="header-panel" class="ui-panel">
         <div id="ui-loc-name" class="loc-name">Инициализация...</div>
@@ -550,12 +279,6 @@
         <div id="log-list"></div>
     </div>
 
-    <!-- ... ваш существующий код панелей ... -->
-    
-    <!-- ... ваши остальные панели (stats, inventory и т.д.) ... -->
-
-    <!-- ... ваши остальные панели (stats, inventory и т.д.) ... -->
-
     <!-- Низ Центр: Квесты -->
     <div id="quest-bar" class="ui-panel">
         <div id="ui-quest-briefing"></div>
@@ -570,33 +293,34 @@
     <!-- КОНТЕЙНЕР ДЛЯ МОДАЛЬНЫХ ОКОН (HTML)       -->
     <!-- ВАЖНО: Этот блок должен быть ПЕРЕД </body> -->
     <!-- ========================================== -->
-    <div id="modal-overlay" class="hidden-ui" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; justify-content:center; align-items:center;">
+    <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
         
         <!-- Окно Магазина -->
-        <div id="shop-modal" class="game-modal hidden" style="display:none;">
-            <div class="modal-header" style="border-bottom: 1px solid #58a6ff; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+        <div id="shop-modal" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
+            
+            <div style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
-                <button class="close-btn" onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:16px; cursor:pointer;">❌</button>
+                <button onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
             </div>
-            <div class="modal-body">
-                <div class="shop-columns" style="display:flex; gap:20px;">
-                    <div class="shop-col" style="flex:1;">
-                        <h4 style="color:#8b949e; margin-top:0;">Товары</h4>
-                        <div id="shop-merchant-list" style="max-height:300px; overflow-y:auto;"></div>
-                    </div>
-                    <div class="shop-col" style="flex:1;">
-                        <h4 style="color:#8b949e; margin-top:0;">Ваш инвентарь</h4>
-                        <div id="shop-player-list" style="max-height:300px; overflow-y:auto;"></div>
-                    </div>
+
+            <div style="display:flex; gap:20px; flex:1; min-height:0;">
+                <div style="flex:1; border-right:1px solid #30363d; padding-right:10px; display:flex; flex-direction:column;">
+                    <h4 style="color:#8b949e; margin-top:0;">Товары</h4>
+                    <div id="shop-merchant-list" style="overflow-y:auto; flex:1;"></div>
                 </div>
-                <div class="shop-footer" style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; justify-content:space-between; color:#ffd700;">
-                    <span id="shop-gold-info">Золото: 0</span>
-                    <div class="pagination-controls"></div>
+                <div style="flex:1; padding-left:10px; display:flex; flex-direction:column;">
+                    <h4 style="color:#8b949e; margin-top:0;">Ваш инвентарь</h4>
+                    <div id="shop-player-list" style="overflow-y:auto; flex:1;"></div>
                 </div>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; justify-content:space-between; color:#ffd700; font-weight:bold; align-items:center;">
+                <span id="shop-gold-info">Золото: 0</span>
+                <div class="pagination-controls"></div>
             </div>
         </div>
 
-        <!-- Окно Постоялого Двора -->
+        <!-- Окно Постоялого Двора (заглушка) -->
         <div id="inn-modal" class="game-modal hidden" style="display:none;">
              <div class="modal-header">
                 <h3>🏨 Постоялый Двор</h3>
