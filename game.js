@@ -82,63 +82,40 @@ const GameModule = (function() {
         });
     }
 
-    // === ОКНО СЮЖЕТНОГО КВЕСТА ===
+    // === ОКНО СЮЖЕТНОГО КВЕСТА (HTML Версия) ===
     function openQuestWindow(quest, isCompleted) {
         isReadingQuest = true;
-        toggleUI(false); // <--- СКРЫВАЕМ ПАНЕЛИ
-    
-        if (typeof RenderModule.drawQuestWindow === 'function') {
-            RenderModule.drawQuestWindow(quest, isCompleted);
+        toggleUI(false); // Скрываем боковые панели
+        
+        const overlay = document.getElementById('modal-overlay');
+        const questModal = document.getElementById('quest-modal');
+        
+        if (overlay && questModal) {
+            overlay.style.display = 'flex';
+            questModal.classList.remove('hidden');
+            
+            // Рендерим контент через RenderModule
+            if (typeof RenderModule.renderQuestUI === 'function') {
+                RenderModule.renderQuestUI(quest, isCompleted);
+            }
         } else {
-            console.error("RenderModule.drawQuestWindow не найден!");
-            closeQuestWindow();
+            console.error("HTML элементы окна квеста не найдены!");
         }
     }
 
     function closeQuestWindow() {
         isReadingQuest = false;
-        window.questCloseButton = null;
-        window.questClickAreas = null; // Очистка зон клика для пагинации
-        toggleUI(true); // <--- ВОЗВРАЩАЕМ ПАНЕЛИ
-        RenderModule.requestRedraw();
-    }
-
-    // === ОБРАБОТКА КЛИКА В ОКНЕ КВЕСТА ===
-    function handleQuestClick(clientX, clientY) {
-        const canvas = document.querySelector("#map-container canvas");
-        if (!canvas) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
         
-        const clickX = (clientX - rect.left) * scaleX;
-        const clickY = (clientY - rect.top) * scaleY;
-
-        // Проверка зон клика (кнопки пагинации и закрытия)
-        if (window.questClickAreas) {
-            for (const area of window.questClickAreas) {
-                if (clickX >= area.x && clickX <= area.x + area.w && 
-                    clickY >= area.y && clickY <= area.y + area.h) {
-                    
-                    if (area.action === 'close') {
-                        closeQuestWindow();
-                        return;
-                    }
-                    if (area.action === 'prev_q' || area.action === 'next_q') {
-                        // Перерисовка окна с новой страницей
-                        // Данные берутся из глобальной переменной, сохраненной при открытии
-                        if (window.currentQuestWindowData) {
-                            RenderModule.drawQuestWindow(window.currentQuestWindowData.quest, window.currentQuestWindowData.isCompleted);
-                        }
-                        return;
-                    }
-                }
-            }
+        const overlay = document.getElementById('modal-overlay');
+        const questModal = document.getElementById('quest-modal');
+        
+        if (overlay && questModal) {
+            questModal.classList.add('hidden');
+            overlay.style.display = 'none';
         }
-        
-        // Клик вне активных зон закрывает окно
-        closeQuestWindow();
+
+        toggleUI(true); // Возвращаем панели
+        RenderModule.requestRedraw();
     }
 
     // === ПОСТОЯЛЫЙ ДВОР (HTML Версия) ===
