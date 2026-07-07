@@ -199,16 +199,20 @@
     #modal-overlay {
         z-index: 9999 !important;
         pointer-events: auto !important;
+        /* Убираем display:none отсюда, управляем через JS */
     }
 
     /* Само окно модалки */
     .game-modal {
         z-index: 10000 !important;
         position: relative;
-        display: block !important; /* Перебиваем скрытие, если класс hidden удален */
+        /* УБИРАЕМ display: block !important, чтобы класс .hidden мог работать */
     }
     
-    .hidden { display: none !important; }
+    /* Класс для скрытия элементов */
+    .hidden { 
+        display: none !important; 
+    }
 
     /* Элементы внутри модалок */
     .modal-header { border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -230,7 +234,6 @@
     .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
     .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
     .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
-
 </style>
 </head>
 <body>
