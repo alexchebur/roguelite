@@ -1400,6 +1400,7 @@ const RenderModule = (function() {
         drawQuestWindow,
         //drawInnWindow,
         renderShopUI,
+        renderQuestUI, // <--- ДОБАВИТЬ ЭТО
         showShopStatus, // <--- НОВАЯ HTML-ВЕРСИЯ
         COLS,
         ROWS,
