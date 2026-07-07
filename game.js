@@ -141,54 +141,70 @@ const GameModule = (function() {
         closeQuestWindow();
     }
 
-    // === ПОСТОЯЛЫЙ ДВОР ===
+    // === ПОСТОЯЛЫЙ ДВОР (HTML Версия) ===
     function openInn() {
         if (isInnOpen) return;
         isInnOpen = true;
-        toggleUI(false);
-        RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
-        innLog("Вы вошли в Постоялый двор. Добро пожаловать!", "info");
+        busy = true; // Блокируем игровой цикл
+    
+        toggleUI(false); // Скрываем боковые панели
+        
+        const overlay = document.getElementById('modal-overlay');
+        const innModal = document.getElementById('inn-modal');
+        
+        if (overlay && innModal) {
+            overlay.style.display = 'flex';
+            innModal.classList.remove('hidden');
+            
+            // Обновляем данные при открытии
+            updateInnUI();
+            setInnStatus("Добро пожаловать! Выберите действие.");
+        } else {
+            console.error("HTML элементы постоялого двора не найдены!");
+        }
+    
+        RenderModule.log("Вы вошли в Постоялый двор.", "info");
     }
 
     function closeInn() {
+        if (!isInnOpen) return;
         isInnOpen = false;
-        window.innStatusMessage = "";
+        busy = false; // Разблокируем цикл
+        
+        const overlay = document.getElementById('modal-overlay');
+        const innModal = document.getElementById('inn-modal');
+        
+        if (overlay && innModal) {
+            innModal.classList.add('hidden');
+            overlay.style.display = 'none';
+        }
+
         toggleUI(true);
         RenderModule.requestRedraw();
+        RenderModule.log("Вы покинули постоялый двор.", "info");
     }
 
-    function handleInnClick(clientX, clientY) {
-        const canvas = document.querySelector("#map-container canvas");
-        if (!canvas) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
+    // Вспомогательная функция для обновления текста в окне
+    function updateInnUI() {
+        if (!player) return;
+        const goldEl = document.getElementById('inn-gold-info');
+        const staminaEl = document.getElementById('inn-stamina-info');
+        const hireCostEl = document.getElementById('inn-hire-cost');
         
-        const clickX = (clientX - rect.left) * scaleX;
-        const clickY = (clientY - rect.top) * scaleY;
-
-        if (window.innClickAreas) {
-            for (const area of window.innClickAreas) {
-                if (clickX >= area.x && clickX <= area.x + area.w && 
-                    clickY >= area.y && clickY <= area.y + area.h) {
-                    
-                    if (area.action === 'exit') { closeInn(); return; }
-                    if (area.action === 'rest') { innAction('rest'); return; }
-                    if (area.action === 'rumor') { innAction('rumor'); return; }
-                    if (area.action === 'dice') { innAction('dice'); return; }
-                    // === ДОБАВИТЬ ЭТУ СТРОКУ ===
-                    if (area.action === 'hire') { innAction('hire'); return; }
-                }
-            }
+        if (goldEl) goldEl.textContent = player.gold;
+        if (staminaEl) staminaEl.textContent = `${player.stamina}/${player.maxStamina}`;
+        
+        if (typeof TacticalDataModule !== 'undefined' && hireCostEl) {
+            hireCostEl.textContent = TacticalDataModule.UNIT_COST;
         }
     }
 
-    function innLog(msg, type) {
-        RenderModule.log(msg, type);
-        window.innStatusMessage = msg;
-        if (player) RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-        RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
+    function setInnStatus(msg) {
+        const statusEl = document.getElementById('inn-status-msg');
+        if (statusEl) {
+            statusEl.textContent = msg;
+            // Можно добавить небольшую анимацию или смену цвета для важных сообщений
+        }
     }
 
     function innAction(actionType) {
@@ -199,15 +215,18 @@ const GameModule = (function() {
             if (player.gold >= cost) {
                 player.gold -= cost;
                 player.stamina = player.maxStamina;
-                innLog(`Вы сняли комнату за ${cost} золотых. Выносливость восстановлена!`, "loot");
+                setInnStatus(`Вы сняли комнату за ${cost} золотых. Выносливость восстановлена!`);
+                RenderModule.log(`Вы сняли комнату за ${cost} золотых. Выносливость восстановлена!`, "loot");
             } else {
-                innLog("Недостаточно золота для ночлега!", "combat");
+                setInnStatus("Недостаточно золота для ночлега!");
+                RenderModule.log("Недостаточно золота для ночлега!", "combat");
             }
         } 
         else if (actionType === 'rumor') {
             if (typeof LoreModule !== 'undefined' && LoreModule.getRumor) {
                 const rumor = LoreModule.getRumor();
-                innLog(`Трактирщик шепчет: "${rumor}"`, "lore");
+                setInnStatus(`Трактирщик шепчет: "${rumor}"`);
+                RenderModule.log(`Трактирщик шепчет: "${rumor}"`, "lore");
             }
         } 
         else if (actionType === 'dice') {
@@ -216,76 +235,64 @@ const GameModule = (function() {
                 player.gold -= bet;
                 const roll = Math.random();
                 if (roll < 0.45) {
-                    innLog("Вы проиграли в кости. Трактирщик забирает ваше золото.", "combat");
+                    setInnStatus("Вы проиграли в кости. Трактирщик забирает ваше золото.");
+                    RenderModule.log("Вы проиграли в кости. Трактирщик забирает ваше золото.", "combat");
                 } else if (roll < 0.90) {
                     player.gold += bet * 2;
-                    innLog(`Вы выиграли! Получено ${bet * 2} золотых.`, "loot");
+                    setInnStatus(`Вы выиграли! Получено ${bet * 2} золотых.`);
+                    RenderModule.log(`Вы выиграли! Получено ${bet * 2} золотых.`, "loot");
                 } else {
                     player.gold += bet * 5;
-                    innLog(`ДЖЕКПОТ! Вы выиграли ${bet * 5} золотых!`, "event");
+                    setInnStatus(`ДЖЕКПОТ! Вы выиграли ${bet * 5} золотых!`);
+                    RenderModule.log(`ДЖЕКПОТ! Вы выиграли ${bet * 5} золотых!`, "event");
                 }
             } else {
-                innLog("У вас нет даже 10 золотых, чтобы поставить!", "combat");
+                setInnStatus("У вас нет даже 10 золотых, чтобы поставить!");
+                RenderModule.log("У вас нет даже 10 золотых, чтобы поставить!", "combat");
             }
         }
-        // === ЛОГИКА НАЙМА ОТРЯДА С ОГРАНИЧЕНИЕМ ===
         else if (actionType === 'hire') {
-            // Проверяем наличие модуля данных тактики
             if (typeof TacticalDataModule === 'undefined') {
-                innLog("Система найма временно недоступна.", "combat");
+                setInnStatus("Система найма временно недоступна.");
                 return;
             }
-
-            // ПРОВЕРКА ЛИМИТА ОТРЯДОВ
             const currentSquads = player.armyUnits ? player.armyUnits.length : 0;
             if (currentSquads >= TacticalDataModule.MAX_PLAYER_SQUADS) {
-                innLog(`Вы не можете нанять больше ${TacticalDataModule.MAX_PLAYER_SQUADS} отрядов!`, "combat");
+                setInnStatus(`Вы не можете нанять больше ${TacticalDataModule.MAX_PLAYER_SQUADS} отрядов!`);
                 return;
             }
-
-            const cost = TacticalDataModule.UNIT_COST; // 10000 золотых
+            const cost = TacticalDataModule.UNIT_COST;
             if (player.gold >= cost) {
                 player.gold -= cost;
-                
-                // 1. Устанавливаем глобальный флаг для смены спрайта на карте
                 GameModule.setGlobalFlag('player_has_squad', true);
-                
-                // 2. Инициализируем армию игрока, если её нет
                 if (!player.hasArmy) {
                     player.hasArmy = true;
                     player.armyUnits = [];
                 }
-                
-                // 3. Добавляем случайный отряд
                 if (typeof TacticalArmyModule !== 'undefined') {
                     const unitType = TacticalArmyModule.getRandomUnitType();
-                    const count = Math.floor(5 + Math.random() * 10); // 5-14 юнитов в отряде (для глобальной карты)
-                    
+                    const count = Math.floor(5 + Math.random() * 10);
                     player.armyUnits.push({
                         type: unitType,
                         count: count,
-                        hp: unitType.hp * count, // HP отряда на глобальной карте
+                        hp: unitType.hp * count,
                         maxHp: unitType.hp * count
                     });
-                    
-                    innLog(`Вы наняли отряд "${unitType.name}" (${count} бойцов) за ${cost} золотых!`, "loot");
+                    setInnStatus(`Вы наняли отряд "${unitType.name}" (${count} бойцов)!`);
+                    RenderModule.log(`Вы наняли отряд "${unitType.name}" (${count} бойцов) за ${cost} золотых!`, "loot");
                 } else {
-                    // Фолбэк
                     player.armyUnits.push({ name: "Наемники", count: 10, hp: 200, maxHp: 200 });
-                    innLog(`Вы наняли отряд наемников за ${cost} золотых!`, "loot");
+                    setInnStatus(`Вы наняли отряд наемников!`);
+                    RenderModule.log(`Вы наняли отряд наемников за ${cost} золотых!`, "loot");
                 }
-                
-                // 4. Обновляем UI
-                RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-                RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
             } else {
-                innLog(`Недостаточно золота! Нужно ${cost} золотых.`, "combat");
+                setInnStatus(`Недостаточно золота! Нужно ${cost} золотых.`);
+                RenderModule.log(`Недостаточно золота! Нужно ${cost} золотых.`, "combat");
             }
-        }        
-        // Обновляем окно постоялого двора, если действие не 'hire' (там уже есть свое обновление)
-        if (actionType !== 'hire') {
-             RenderModule.drawInnWindow(player.gold, player.stamina, player.maxStamina);
         }
+        
+        // Обновляем UI после любого действия
+        updateInnUI();
     }
     
     function openShop() {
