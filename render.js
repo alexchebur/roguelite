@@ -1079,6 +1079,7 @@ const RenderModule = (function() {
         // Сохраняем зону клика для кнопки
         window.questCloseButton = { x: btnX, y: btnY, w: btnWidth, h: btnHeight };
     }
+    /*
     function drawInnWindow(gold, stamina, maxStamina) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -1215,7 +1216,7 @@ const RenderModule = (function() {
             btnY += btnH + 4; 
         });
     }
-
+*/
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СТАТУСА МАГАЗИНА ===
     function showShopStatus(msg, type = 'error') {
         const statusEl = document.getElementById('shop-status');
