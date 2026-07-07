@@ -332,8 +332,10 @@
                 </div>
             </div>
         </div>
+
         <!-- Окно Постоялого Двора -->
-        <div id="inn-modal" class="game-modal hidden" style="display:none; min-width:400px; max-width:500px;">
+        <div id="inn-modal" style="display:none; background:#161b22; border:2px solid #8B4513; color:#c9d1d9; padding:20px; border-radius:8px; min-width:400px; max-width:500px; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto;">
+            
             <div class="modal-header" style="border-bottom: 1px solid #8B4513; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0; color:#D2B48C;">🏨 Постоялый Двор</h3>
                 <button onclick="GameModule.closeInn()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
@@ -354,19 +356,19 @@
 
                 <!-- Кнопки действий -->
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                    <button class="inn-action-btn" onclick="GameModule.innAction('rest')">
+                    <button class="inn-action-btn" onclick="GameModule.innAction('rest')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px; font-family:inherit; font-size:13px;">
                         🛌 Ночлег (Восстановить выносливость) — <span style="color:#ffd700">20g</span>
                     </button>
                     
-                    <button class="inn-action-btn" onclick="GameModule.innAction('rumor')">
+                    <button class="inn-action-btn" onclick="GameModule.innAction('rumor')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px; font-family:inherit; font-size:13px;">
                         🗣️ Послушать слухи (Бесплатно)
                     </button>
                     
-                    <button class="inn-action-btn" onclick="GameModule.innAction('dice')">
+                    <button class="inn-action-btn" onclick="GameModule.innAction('dice')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px; font-family:inherit; font-size:13px;">
                         🎲 Сыграть в кости (Ставка 10g)
                     </button>
 
-                    <button class="inn-action-btn" onclick="GameModule.innAction('hire')">
+                    <button class="inn-action-btn" onclick="GameModule.innAction('hire')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px; font-family:inherit; font-size:13px;">
                         ⚔️ Нанять отряд (<span id="inn-hire-cost">10000</span>g)
                     </button>
                 </div>
