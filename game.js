@@ -3098,31 +3098,37 @@ function updateQuestCompass() {
         }
     }    
     return {
+        // === ОСНОВНЫЕ ФУНКЦИИ ===
         init,
         getPlayer,
         getActiveQuests,
         getCompletedQuestIds,
         abandonCurrentQuest,
+        
+        // === TWINE И ТЕКСТОВЫЕ КВЕСТЫ ===
         openTwineQuest, 
         isTextQuestCompleted,
         markCityTextQuestTaken,
         hasCityTakenTextQuest,
+        
+        // === ГЛОБАЛЬНЫЕ ФЛАГИ ===
         setGlobalFlag: (flagName, value) => { globalFlags[flagName] = value; },
         getGlobalFlag: (flagName) => globalFlags[flagName] || false,
+        
+        // === ТАКТИЧЕСКИЙ БОЙ ===
         endTacticalBattle: endTacticalBattle,
         checkBattleEnd: checkBattleEnd, 
         getTacticalState: () => tacticalState,
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
+        
+        // === ПЕРЕХОДЫ МЕЖДУ РЕЖИМАМИ ===
         exitToGlobal,
         
-        // === ФУНКЦИИ МАГАЗИНА (ДОБАВИТЬ ЭТИ СТРОКИ) ===
+        // === МАГАЗИН (HTML Версия) ===
         openShop: openShop,
         closeShop: closeShop,
         buyItem: buyItem,
         sellItem: sellItem,
-        openInn: openInn,
-        closeInn: closeInn,
-        innAction: innAction,
         changeShopPage: function(type, dir) {
             if (type === 'm') window.shopPageMerchant += dir;
             if (type === 'p') window.shopPagePlayer += dir;
@@ -3130,7 +3136,12 @@ function updateQuestCompass() {
             if (currentMerchantInv && player) {
                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
-        }
+        },
+        
+        // === ПОСТОЯЛЫЙ ДВОР (HTML Версия) ===
+        openInn: openInn,
+        closeInn: closeInn,
+        innAction: innAction
     };
 })();
 
