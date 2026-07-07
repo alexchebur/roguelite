@@ -481,6 +481,7 @@ const GameModule = (function() {
 
     // === ОБРАБОТКА ВВОДА (КЛИКИ И КЛАВИШИ) ===
     function handleCanvasClick(clientX, clientY) {
+        // Приоритет 1: Окно квеста (Canvas)
         if (isReadingQuest) {
             handleQuestClick(clientX, clientY);
             return;
