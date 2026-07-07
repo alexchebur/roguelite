@@ -3121,6 +3121,9 @@ function updateQuestCompass() {
         closeShop: closeShop,
         buyItem: buyItem,
         sellItem: sellItem,
+        openInn: openInn,
+        closeInn: closeInn,
+        innAction: innAction,
         changeShopPage: function(type, dir) {
             if (type === 'm') window.shopPageMerchant += dir;
             if (type === 'p') window.shopPagePlayer += dir;
