@@ -370,15 +370,15 @@ const GameModule = (function() {
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
-            RenderModule.log(`Куплено: ${item.name} за ${item.price} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.showShopStatus(`Куплено: ${item.name}`, 'success'); // <--- ИЗМЕНЕНО
             
             // Обновляем HTML интерфейс
             if (typeof RenderModule.renderShopUI === 'function') {
                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
         } else {
-            RenderModule.log("Недостаточно золота!", "combat");
+            RenderModule.showShopStatus("Недостаточно золота!", 'error'); // <--- ИЗМЕНЕНО
         }
     }
 
@@ -387,7 +387,7 @@ const GameModule = (function() {
         const item = player.inventory[index];
         if (!item) return;
         if (item.isQuestItem) {
-            RenderModule.log("Это квестовый предмет, его нельзя продать!", "combat");
+            RenderModule.showShopStatus("Это квестовый предмет!", 'error'); // <--- ИЗМЕНЕНО
             return;
         }
 
@@ -404,15 +404,15 @@ const GameModule = (function() {
             window.shopPageMerchant = 0;
             window.shopPagePlayer = 0;
             
-            RenderModule.log(`Продано: ${item.name} за ${sellPrice} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+            RenderModule.showShopStatus(`Продано: ${item.name} за ${sellPrice}g`, 'success'); // <--- ИЗМЕНЕНО
             
             // Обновляем HTML интерфейс
             if (typeof RenderModule.renderShopUI === 'function') {
                 RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
         } else {
-            RenderModule.log("У торговца недостаточно золота!", "combat");
+            RenderModule.showShopStatus("У торговца нет золота!", 'error'); // <--- ИЗМЕНЕНО
         }
     }
     // === ИНИЦИАЛИЗАЦИЯ ===
