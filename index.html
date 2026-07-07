@@ -469,31 +469,41 @@
         color: #8b949e;
         min-height: 20px;
     }
-    /* === ЖЕСТКИЕ ПРАВИЛА ДЛЯ МОДАЛОК === */
-    #modal-overlay {
-        z-index: 9999 !important; /* Гарантированно выше всего */
-        pointer-events: auto !important; /* Разрешаем клики */
-    }
+    <!-- ========================================== -->
+    <!-- КОНТЕЙНЕР ДЛЯ МОДАЛЬНЫХ ОКОН (HTML)       -->
+    <!-- ВАЖНО: Этот блок должен быть ПЕРЕД </body> -->
+    <!-- ========================================== -->
+    <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
+        
+        <!-- Окно Магазина -->
+        <div id="shop-modal" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
+            
+            <div style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
+                <button onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+            </div>
 
-    .game-modal {
-        z-index: 10000 !important;
-        position: relative;
-        display: block !important; /* Перебиваем скрытие, если класс hidden удален */
-    }
+            <div style="display:flex; gap:20px; flex:1; min-height:0;">
+                <div style="flex:1; border-right:1px solid #30363d; padding-right:10px; display:flex; flex-direction:column;">
+                    <h4 style="color:#8b949e; margin-top:0;">Товары</h4>
+                    <div id="shop-merchant-list" style="overflow-y:auto; flex:1;"></div>
+                </div>
+                <div style="flex:1; padding-left:10px; display:flex; flex-direction:column;">
+                    <h4 style="color:#8b949e; margin-top:0;">Ваш инвентарь</h4>
+                    <div id="shop-player-list" style="overflow-y:auto; flex:1;"></div>
+                </div>
+            </div>
 
-    /* Класс hidden должен скрывать только само окно, но не ломать flex-контейнер оверлея */
-    .hidden {
-        display: none !important;
-    }
-    
-    /* Убедимся, что оверлей не перехватывает клики, когда скрыт */
-    #modal-overlay[style*="display: none"] {
-        pointer-events: none;
-    }
+            <div style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; justify-content:space-between; color:#ffd700; font-weight:bold; align-items:center;">
+                <span id="shop-gold-info">Золото: 0</span>
+                <div class="pagination-controls"></div>
+            </div>
+        </div>
 
-</style>
-</head>
-<body>
+    </div>
+
+</body>
+</html>
 
     <!-- Игровое окно (Канвас) -->
     <div id="map-container"></div>
