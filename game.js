@@ -143,6 +143,7 @@ const GameModule = (function() {
 
     // === ПОСТОЯЛЫЙ ДВОР (HTML Версия) ===
     function openInn() {
+        console.log("🔍 Попытка открыть постоялый двор. isInnOpen:", isInnOpen);
         if (isInnOpen) return;
         isInnOpen = true;
         busy = true; // Блокируем игровой цикл
