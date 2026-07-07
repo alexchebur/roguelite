@@ -1282,7 +1282,14 @@ const RenderModule = (function() {
 
         // --- Обновление золота и пагинации ---
         if (goldInfo) {
-            goldInfo.textContent = `Золото: ${playerGold} | У торговца: ${merchantInv.gold}`;
+            // Левая сторона: Золото игрока
+            goldInfo.textContent = `Ваше золото: ${playerGold}`;
+            
+            // Правая сторона: Золото торговца (ищем второй элемент)
+            const merchantGoldInfo = document.getElementById('shop-merchant-gold-info');
+            if (merchantGoldInfo) {
+                merchantGoldInfo.textContent = `У торговца: ${merchantInv.gold}`;
+            }
         }
 
         if (paginationControls) {
