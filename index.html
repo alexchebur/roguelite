@@ -332,13 +332,45 @@
                 </div>
             </div>
         </div>
-        <!-- Окно Постоялого Двора (заглушка) -->
-        <div id="inn-modal" class="game-modal hidden" style="display:none;">
-             <div class="modal-header">
-                <h3>🏨 Постоялый Двор</h3>
-                <button class="close-btn" onclick="GameModule.closeInn()">❌</button>
+        <!-- Окно Постоялого Двора -->
+        <div id="inn-modal" class="game-modal hidden" style="display:none; min-width:400px; max-width:500px;">
+            <div class="modal-header" style="border-bottom: 1px solid #8B4513; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color:#D2B48C;">🏨 Постоялый Двор</h3>
+                <button onclick="GameModule.closeInn()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
             </div>
-            <div id="inn-content"></div>
+            
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:15px;">
+                
+                <!-- Статус игрока -->
+                <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:4px; text-align:center;">
+                    <div style="color:#ffd700; font-weight:bold; margin-bottom:5px;">💰 Золото: <span id="inn-gold-info">0</span></div>
+                    <div style="color:#4CAF50;">⚡ Выносливость: <span id="inn-stamina-info">0/0</span></div>
+                </div>
+
+                <!-- Сообщение статуса (лог действий) -->
+                <div id="inn-status-msg" style="min-height:40px; text-align:center; font-style:italic; color:#8b949e; font-size:13px;">
+                    Добро пожаловать, путник! Чем могу помочь?
+                </div>
+
+                <!-- Кнопки действий -->
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button class="inn-action-btn" onclick="GameModule.innAction('rest')">
+                        🛌 Ночлег (Восстановить выносливость) — <span style="color:#ffd700">20g</span>
+                    </button>
+                    
+                    <button class="inn-action-btn" onclick="GameModule.innAction('rumor')">
+                        🗣️ Послушать слухи (Бесплатно)
+                    </button>
+                    
+                    <button class="inn-action-btn" onclick="GameModule.innAction('dice')">
+                        🎲 Сыграть в кости (Ставка 10g)
+                    </button>
+
+                    <button class="inn-action-btn" onclick="GameModule.innAction('hire')">
+                        ⚔️ Нанять отряд (<span id="inn-hire-cost">10000</span>g)
+                    </button>
+                </div>
+            </div>
         </div>
 
     </div>
