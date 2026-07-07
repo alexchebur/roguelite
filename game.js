@@ -82,7 +82,6 @@ const GameModule = (function() {
         });
     }
 
-    // === ОКНО СЮЖЕТНОГО КВЕСТА (HTML Версия) ===
     function openQuestWindow(quest, isCompleted) {
         console.log("🔍 [Quest] Попытка открыть окно квеста. isCompleted:", isCompleted);
         
@@ -96,24 +95,28 @@ const GameModule = (function() {
         console.log("🔍 [Quest] Quest Modal:", questModal ? "Найден" : "НЕ НАЙДЕН");
         
         if (overlay && questModal) {
+            // Прямое управление стилями, как в магазине
             overlay.style.display = 'flex';
+            overlay.style.visibility = 'visible';
+            
+            questModal.style.display = 'block'; // Явно показываем само окно
+            questModal.style.visibility = 'visible';
             questModal.classList.remove('hidden');
+            
+            console.log("✅ [Quest] Стили применены. Вызов RenderModule.renderQuestUI...");
             
             // Рендерим контент через RenderModule
             if (typeof RenderModule.renderQuestUI === 'function') {
-                console.log("✅ [Quest] Вызов RenderModule.renderQuestUI...");
                 RenderModule.renderQuestUI(quest, isCompleted);
             } else {
                 console.error("❌ [Quest] Функция renderQuestUI не найдена в RenderModule!");
             }
         } else {
             console.error("❌ [Quest] HTML элементы окна квеста не найдены в DOM!");
-            // Откат, если ошибка
             isReadingQuest = false;
             toggleUI(true);
         }
     }
-
     function closeQuestWindow() {
         console.log("🔍 [Quest] Закрытие окна квеста.");
         isReadingQuest = false;
