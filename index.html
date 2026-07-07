@@ -298,25 +298,45 @@
         <!-- Окно Магазина -->
         <div id="shop-modal" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
             
+            <!-- Шапка -->
             <div style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
-                <button onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+                <h3 style="margin:0; color:#d29922; font-size:18px;">🏪 Лавка Торговца</h3>
+                <button onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer; padding:0 5px;">❌</button>
             </div>
 
-            <div style="display:flex; gap:20px; flex:1; min-height:0;">
+            <!-- Основной контент (2 колонки) -->
+            <div style="display:flex; gap:20px; flex:1; min-height:0; margin-bottom:15px;">
+                
+                <!-- Левая колонка: Товары -->
                 <div style="flex:1; border-right:1px solid #30363d; padding-right:10px; display:flex; flex-direction:column;">
-                    <h4 style="color:#8b949e; margin-top:0;">Товары</h4>
-                    <div id="shop-merchant-list" style="overflow-y:auto; flex:1;"></div>
+                    <h4 style="color:#8b949e; margin:0 0 10px 0; font-size:14px; text-transform:uppercase;">Товары</h4>
+                    <div id="shop-merchant-list" style="overflow-y:auto; flex:1; padding-right:5px;">
+                        <!-- Сюда JS добавит товары -->
+                    </div>
                 </div>
+
+                <!-- Правая колонка: Инвентарь -->
                 <div style="flex:1; padding-left:10px; display:flex; flex-direction:column;">
-                    <h4 style="color:#8b949e; margin-top:0;">Ваш инвентарь</h4>
-                    <div id="shop-player-list" style="overflow-y:auto; flex:1;"></div>
+                    <h4 style="color:#8b949e; margin:0 0 10px 0; font-size:14px; text-transform:uppercase;">Ваш инвентарь</h4>
+                    <div id="shop-player-list" style="overflow-y:auto; flex:1; padding-right:5px;">
+                        <!-- Сюда JS добавит предметы игрока -->
+                    </div>
                 </div>
             </div>
 
-            <div style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; justify-content:space-between; color:#ffd700; font-weight:bold; align-items:center;">
-                <span id="shop-gold-info">Золото: 0</span>
-                <div class="pagination-controls"></div>
+            <!-- Футер: Золото и Пагинация (Вертикальный стек) -->
+            <div style="border-top:1px solid #30363d; padding-top:15px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                
+                <!-- Строка 1: Информация о золоте -->
+                <div style="display:flex; justify-content:space-between; width:100%; color:#ffd700; font-weight:bold; font-size:14px;">
+                    <span id="shop-gold-info">Ваше золото: 0</span>
+                    <span id="shop-merchant-gold-info" style="opacity:0.7;">У торговца: 0</span>
+                </div>
+
+                <!-- Строка 2: Кнопки пагинации -->
+                <div class="pagination-controls" style="display:flex; gap:10px; justify-content:center; width:100%;">
+                    <!-- Кнопки будут добавлены JS -->
+                </div>
             </div>
         </div>
 
