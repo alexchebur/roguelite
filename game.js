@@ -84,11 +84,16 @@ const GameModule = (function() {
 
     // === ОКНО СЮЖЕТНОГО КВЕСТА (HTML Версия) ===
     function openQuestWindow(quest, isCompleted) {
+        console.log("🔍 [Quest] Попытка открыть окно квеста. isCompleted:", isCompleted);
+        
         isReadingQuest = true;
         toggleUI(false); // Скрываем боковые панели
         
         const overlay = document.getElementById('modal-overlay');
         const questModal = document.getElementById('quest-modal');
+        
+        console.log("🔍 [Quest] Overlay:", overlay ? "Найден" : "НЕ НАЙДЕН");
+        console.log("🔍 [Quest] Quest Modal:", questModal ? "Найден" : "НЕ НАЙДЕН");
         
         if (overlay && questModal) {
             overlay.style.display = 'flex';
@@ -96,14 +101,21 @@ const GameModule = (function() {
             
             // Рендерим контент через RenderModule
             if (typeof RenderModule.renderQuestUI === 'function') {
+                console.log("✅ [Quest] Вызов RenderModule.renderQuestUI...");
                 RenderModule.renderQuestUI(quest, isCompleted);
+            } else {
+                console.error("❌ [Quest] Функция renderQuestUI не найдена в RenderModule!");
             }
         } else {
-            console.error("HTML элементы окна квеста не найдены!");
+            console.error("❌ [Quest] HTML элементы окна квеста не найдены в DOM!");
+            // Откат, если ошибка
+            isReadingQuest = false;
+            toggleUI(true);
         }
     }
 
     function closeQuestWindow() {
+        console.log("🔍 [Quest] Закрытие окна квеста.");
         isReadingQuest = false;
         
         const overlay = document.getElementById('modal-overlay');
@@ -116,6 +128,12 @@ const GameModule = (function() {
 
         toggleUI(true); // Возвращаем панели
         RenderModule.requestRedraw();
+    }
+
+    // Обработка кликов больше не нужна для HTML-окна, так как есть кнопка закрытия
+    // Но оставим заглушку для безопасности
+    function handleQuestClick(clientX, clientY) {
+        // Ничего не делаем, клик обрабатывается HTML-кнопкой
     }
 
     // === ПОСТОЯЛЫЙ ДВОР (HTML Версия) ===
