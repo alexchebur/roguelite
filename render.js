@@ -1216,6 +1216,21 @@ const RenderModule = (function() {
         });
     }
 
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СТАТУСА МАГАЗИНА ===
+    function showShopStatus(msg, type = 'error') {
+        const statusEl = document.getElementById('shop-status');
+        if (!statusEl) return;
+        
+        statusEl.textContent = msg;
+        statusEl.style.color = type === 'error' ? '#f85149' : (type === 'success' ? '#3fb950' : '#8b949e');
+        
+        // Автоматически очищаем сообщение через 3 секунды
+        if (window.shopStatusTimeout) clearTimeout(window.shopStatusTimeout);
+        window.shopStatusTimeout = setTimeout(() => {
+            if (statusEl) statusEl.textContent = '';
+        }, 3000);
+    }
+    
     // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-МАГАЗИНА (ЕДИНСТВЕННАЯ ВЕРСИЯ) ===
     function renderShopUI(merchantInv, playerGold) {
         const merchantList = document.getElementById('shop-merchant-list');
@@ -1228,6 +1243,10 @@ const RenderModule = (function() {
         // Очистка списков
         merchantList.innerHTML = '';
         playerList.innerHTML = '';
+        
+        // Очистка статуса при открытии/перерисовке
+        const statusEl = document.getElementById('shop-status');
+        if (statusEl) statusEl.textContent = ''; 
 
         // Настройки пагинации
         const itemsPerPage = 8;
