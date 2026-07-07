@@ -3148,7 +3148,9 @@ function updateQuestCompass() {
         // === ФУНКЦИИ ПОСТОЯЛОГО ДВОРА (ДОБАВЛЕНО) ===
         openInn: openInn,
         closeInn: closeInn,
-        innAction: innAction
+        innAction: innAction,
+        openQuestWindow: openQuestWindow,
+        closeQuestWindow: closeQuestWindow
     };
 })();
 
