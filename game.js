@@ -480,19 +480,22 @@ const GameModule = (function() {
 
     // === ОБРАБОТКА ВВОДА (КЛИКИ И КЛАВИШИ) ===
     function handleCanvasClick(clientX, clientY) {
-        // Приоритет 1: Окно квеста
         if (isReadingQuest) {
             handleQuestClick(clientX, clientY);
             return;
         }
-        /*/ Приоритет 2: Магазин
-        if (isShopOpen) {
-            handleShopClick(clientX, clientY);
-            return;
+        
+        // Магазин и Трактир теперь в HTML, их клики обрабатываются браузером.
+        // Нам нужно только убедиться, что мы не пытаемся двигать персонажа или смотреть под курсор,
+        // если открыто модальное окно.
+        
+        if (isShopOpen || isInnOpen) {
+            // Если открыто HTML-окно, игнорируем клики по канвасу полностью,
+            // чтобы не было случайных движений или осмотра.
+            return; 
         }
-        if (isInnOpen) { handleInnClick(clientX, clientY); return; }
-        */
-        // Приоритет 3: Осмотр карты (только в подземелье)
+
+        // Приоритет 2: Осмотр карты (только в подземелье)
         if (window.gameMode === 'dungeon') {
             handleMapClick(clientX, clientY);
         }
