@@ -295,6 +295,7 @@ const GameModule = (function() {
     }
     
     function openShop() {
+        console.log("🔍 Попытка открыть магазин. isShopOpen:", isShopOpen);
         if (isShopOpen) return;
     
         const depth = currentDepth > 0 ? currentDepth : 1;
