@@ -1013,15 +1013,13 @@ const RenderModule = (function() {
         // 2. Текст
         let content = "";
         if (isCompleted) {
-            // Если квест сдан, показываем текст сдачи или дефолтный
             content = quest.turnInText || "Награда получена! Спасибо за помощь.";
         } else {
-            // Иначе показываем брифинг
             content = quest.briefing;
         }
         textEl.textContent = content;
 
-        // 3. Награда (только если выполнено)
+        // 3. Награда
         if (isCompleted && quest.rewardGold > 0) {
             rewardBlock.style.display = 'block';
             rewardGoldEl.textContent = quest.rewardGold;
@@ -1029,7 +1027,6 @@ const RenderModule = (function() {
             rewardBlock.style.display = 'none';
         }
     }
-
     
     /*/ === ОТРИСОВКА ОКНА КВЕСТА (СЮЖЕТНОГО) ===
     function drawQuestWindow(quest, isCompleted) {
