@@ -3109,23 +3109,17 @@ function updateQuestCompass() {
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
         exitToGlobal,
         
-        // === НОВАЯ ФУНКЦИЯ ПАГИНАЦИИ МАГАЗИНА ===
+        // === ФУНКЦИИ МАГАЗИНА (ДОБАВИТЬ ЭТИ СТРОКИ) ===
+        openShop: openShop,
+        closeShop: closeShop,
+        buyItem: buyItem,
+        sellItem: sellItem,
         changeShopPage: function(type, dir) {
             if (type === 'm') window.shopPageMerchant += dir;
             if (type === 'p') window.shopPagePlayer += dir;
             
-            // Проверка границ страниц
-            if (currentMerchantInv) {
-                const itemsPerPage = 8;
-                const totalMerchantPages = Math.ceil(currentMerchantInv.items.length / itemsPerPage) || 1;
-                
-                if (window.shopPageMerchant >= totalMerchantPages) window.shopPageMerchant = totalMerchantPages - 1;
-                if (window.shopPageMerchant < 0) window.shopPageMerchant = 0;
-
-                // Обновляем UI
-                if (typeof RenderModule.renderShopUI === 'function') {
-                    RenderModule.renderShopUI(currentMerchantInv, player.gold);
-                }
+            if (currentMerchantInv && player) {
+                RenderModule.renderShopUI(currentMerchantInv, player.gold);
             }
         }
     };
