@@ -1397,7 +1397,7 @@ const RenderModule = (function() {
         addProjectileEffect,
         updateQuestBriefing,
         // drawShopWindow, // <--- ЗАКОММЕНТИРОВАНО: Старая Canvas-версия больше не нужна
-        drawQuestWindow,
+        //drawQuestWindow,
         //drawInnWindow,
         renderShopUI,
         renderQuestUI, // <--- ДОБАВИТЬ ЭТО
