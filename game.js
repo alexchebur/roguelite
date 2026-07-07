@@ -203,7 +203,6 @@ const GameModule = (function() {
         const statusEl = document.getElementById('inn-status-msg');
         if (statusEl) {
             statusEl.textContent = msg;
-            // Можно добавить небольшую анимацию или смену цвета для важных сообщений
         }
     }
 
@@ -490,9 +489,9 @@ const GameModule = (function() {
         if (isShopOpen) {
             handleShopClick(clientX, clientY);
             return;
-        }*/
+        }
         if (isInnOpen) { handleInnClick(clientX, clientY); return; }
-        
+        */
         // Приоритет 3: Осмотр карты (только в подземелье)
         if (window.gameMode === 'dungeon') {
             handleMapClick(clientX, clientY);
