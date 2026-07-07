@@ -991,7 +991,47 @@ const RenderModule = (function() {
             }
         }
     }*/
-    // === ОТРИСОВКА ОКНА КВЕСТА (СЮЖЕТНОГО) ===
+
+    // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-ОКНА КВЕСТА ===
+    function renderQuestUI(quest, isCompleted) {
+        const titleEl = document.getElementById('quest-modal-title');
+        const textEl = document.getElementById('quest-modal-text');
+        const rewardBlock = document.getElementById('quest-reward-block');
+        const rewardGoldEl = document.getElementById('quest-reward-gold');
+
+        if (!titleEl || !textEl) return;
+
+        // 1. Заголовок
+        if (isCompleted) {
+            titleEl.textContent = "🏆 Квест Выполнен";
+            titleEl.style.color = "#3fb950"; // Зеленый
+        } else {
+            titleEl.textContent = quest.isChainQuest ? "📜 Сюжетный Квест" : "📜 Новый Квест";
+            titleEl.style.color = "#d29922"; // Золотой
+        }
+
+        // 2. Текст
+        let content = "";
+        if (isCompleted) {
+            // Если квест сдан, показываем текст сдачи или дефолтный
+            content = quest.turnInText || "Награда получена! Спасибо за помощь.";
+        } else {
+            // Иначе показываем брифинг
+            content = quest.briefing;
+        }
+        textEl.textContent = content;
+
+        // 3. Награда (только если выполнено)
+        if (isCompleted && quest.rewardGold > 0) {
+            rewardBlock.style.display = 'block';
+            rewardGoldEl.textContent = quest.rewardGold;
+        } else {
+            rewardBlock.style.display = 'none';
+        }
+    }
+
+    
+    /*/ === ОТРИСОВКА ОКНА КВЕСТА (СЮЖЕТНОГО) ===
     function drawQuestWindow(quest, isCompleted) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
