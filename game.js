@@ -288,7 +288,7 @@ const GameModule = (function() {
         }
     }
     
-    // === МАГАЗИН (HTML Версия) ===    function openShop() {
+    function openShop() {
         if (isShopOpen) return;
     
         const depth = currentDepth > 0 ? currentDepth : 1;
