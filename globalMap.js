@@ -215,7 +215,7 @@ function generatePOIs(rand, cx, cy, tiles) {
     // 1. Определяем размеры чанка здесь, чтобы они были видны во всей функции
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
-    
+    let globalQuestIndex = 0;     
     const MIN_POI_DISTANCE = 7; 
 
     const isTooClose = (localX, localY) => {
@@ -290,8 +290,13 @@ function generatePOIs(rand, cx, cy, tiles) {
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
                     
-                    // Детерминированный выбор квеста из ростера
-                    const questFile = GLOBAL_TEXT_QUESTS_ROSTER[Math.floor(rand.next() * GLOBAL_TEXT_QUESTS_ROSTER.length)];
+                    // === ИЗМЕНЕНИЕ ЗДЕСЬ: Берем квест по индексу ===
+                    // Используем остаток от деления (%), чтобы после последнего квеста снова брали первый
+                    const questIndex = globalQuestIndex % GLOBAL_TEXT_QUESTS_ROSTER.length;
+                    const questFile = GLOBAL_TEXT_QUESTS_ROSTER[questIndex];
+                    
+                    // Увеличиваем счетчик только если свиток успешно создан
+                    globalQuestIndex++;
                     
                     pois.push({ 
                         x: globalX, 
