@@ -113,7 +113,7 @@ const TacticalBattleModule = (function() {
             // Небольшая задержка, чтобы игрок успел прочитать лог перед выходом
             setTimeout(() => GameModule.endTacticalBattle(false), 800);
         } else if (isVictory) {
-            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
+            //RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
             setTimeout(() => GameModule.endTacticalBattle(true), 1500);
         }
     }
