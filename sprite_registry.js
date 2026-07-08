@@ -119,7 +119,7 @@ const SPRITE_REGISTRY = {
     // === АРМИИ НА ГЛОБАЛЬНОЙ КАРТЕ ===
     'ARMY_ENEMY': { 
         char: 'A',   
-        tile: { file: 'creature_sprites', x: 14, y: 1 }, // УКАЖИТЕ РЕАЛЬНЫЕ КООРДИНАТЫ СПРАЙТА АРМИИ
+        tile: { file: 'creature_sprites', x: 13, y: 1 }, // УКАЖИТЕ РЕАЛЬНЫЕ КООРДИНАТЫ СПРАЙТА АРМИИ
         desc: 'Вражеская армия' 
     }
 };
