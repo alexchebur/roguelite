@@ -689,20 +689,23 @@ const GameModule = (function() {
                             // 1. Очистка инвентаря от квестовых предметов
                             if (q.type === 'FETCH' || q.type === 'COLLECT') {
                                 player.inventory = player.inventory.filter(item => {
-                                    // Удаляем предмет, если он помечен как квестовый И совпадает с целью
-                                    if (item.isQuestItem) {
-                                        const isTypeMatch = (item.type === q.target.itemType);
-                                        const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
-                                        
-                                        // Для COLLECT можно добавить проверку uniqueId, если она есть
-                                        const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
+                                    // Если предмет НЕ является квестовым — оставляем его
+                                    if (!item.isQuestItem) return true;
 
-                                        // Если это нужный предмет - удаляем его (возвращаем false)
-                                        if (isTypeMatch && isNameMatch && isUniqueMatch) {
-                                            return false; 
-                                        }
+                                    // Если это квестовый предмет, проверяем, относится ли он к ЭТОМУ квесту
+                                    const isTypeMatch = (item.type === q.target.itemType);
+                                    const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
+                                    
+                                    // Для уникальных предметов проверяем ID
+                                    const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
+
+                                    // Если это нужный предмет — удаляем его (возвращаем false)
+                                    if (isTypeMatch && isNameMatch && isUniqueMatch) {
+                                        return false; 
                                     }
-                                    return true; // Оставляем остальные предметы
+                                    
+                                    // Если это квестовый предмет, но от ДРУГОГО квеста — оставляем
+                                    return true;
                                 });
                             }
 
@@ -799,6 +802,31 @@ const GameModule = (function() {
     if (alreadyActive) {
         const q = activeQuests.find(q => q.id === questId);
         if (q.isCompleted && !q.isTurnedIn) {
+            
+            // === НОВОЕ: ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
+            if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                player.inventory = player.inventory.filter(item => {
+                    // Если предмет НЕ является квестовым — оставляем его
+                    if (!item.isQuestItem) return true;
+
+                    // Проверяем, относится ли этот предмет к ТЕКУЩЕМУ квесту
+                    const isTypeMatch = (item.type === q.target.itemType);
+                    const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
+                    
+                    // Для уникальных предметов проверяем ID
+                    const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
+
+                    // Если это нужный предмет — удаляем его (возвращаем false)
+                    if (isTypeMatch && isNameMatch && isUniqueMatch) {
+                        return false; 
+                    }
+                    
+                    // Если это квестовый предмет от ДРУГОГО квеста — оставляем
+                    return true;
+                });
+            }
+            // ========================================================
+
             player.gold += q.rewardGold;
             q.isTurnedIn = true; 
             
