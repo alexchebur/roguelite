@@ -67,7 +67,7 @@ const TilesetRenderer = (function() {
         // В tileset_renderer.js, внутри TILE_MAP:
 
         // --- ГЛОБАЛЬНЫЕ ОБЪЕКТЫ ---
-        'A': { file: 'creature_sprites', x: 14, y: 1 }, // <-- ТЕ ЖЕ КООРДИНАТЫ, ЧТО И В РЕЕСТРЕ
+        'A': { file: 'creature_sprites', x: 13, y: 1 }, // <-- ТЕ ЖЕ КООРДИНАТЫ, ЧТО И В РЕЕСТРЕ
     
         // ... остальные маппинги ...
         
