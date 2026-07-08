@@ -55,8 +55,8 @@ function spawnArmiesInChunk(cx, cy, tiles) {
     const chunkStartY = cy * height;
 
     // Шанс спавна армии в чанке: 100% для теста
-    if (rand.next() < 1.0) {
-        const armyCount = rand.int(1, 2); 
+    if (rand.next() < 0.5) {
+        const armyCount = rand.int(1, 10); 
         
         for (let i = 0; i < armyCount; i++) {
             let x, y;
