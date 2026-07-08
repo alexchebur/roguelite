@@ -107,15 +107,15 @@ const TacticalBattleModule = (function() {
 
         if (isDead) {
             isBattleEnding = true;
-            RenderModule.log("💀 Вы погибли в бою...", "combat");
+            //RenderModule.log("💀 Вы погибли в бою...", "combat");
             setTimeout(() => GameModule.endTacticalBattle(false), 1000);
         } else if (isCritical) {
             isBattleEnding = true;
-            RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
+            //RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
             setTimeout(() => GameModule.endTacticalBattle(false), 800);
         } else if (isVictory) {
             isBattleEnding = true;
-            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
+            //RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
             setTimeout(() => GameModule.endTacticalBattle(true), 1500);
         }
     }
