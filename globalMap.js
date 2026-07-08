@@ -22,8 +22,8 @@ const GLOBAL_CONFIG = {
 };
 
 const GLOBAL_TEXT_QUESTS_ROSTER = [
-    'twine/RingOfPower.html',
-    'twine/refugees.html'// Заглушка для теста (замените на свои файлы)
+    'twine/refugees.html',
+    'twine/werewolf.html'
 ];
 
 
