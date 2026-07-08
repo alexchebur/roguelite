@@ -71,7 +71,7 @@ const CombatModule = (function() {
         logFn(`${attackerName} ${verb} ${defenderName} на ${dmg}${crit ? " (КРИТ)!" : "."}`, "combat");
 
         if (defender.hp <= 0) {
-            logFn(`${defenderName} погибает!`, "info");
+            logFn(`${defenderName} получает ущерб, несовместимый с жизнью!`, "info");
             return true;
         }
         return false;
