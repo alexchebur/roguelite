@@ -2475,6 +2475,7 @@ function updateQuestCompass() {
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
     // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с поддержкой Боссов) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
@@ -2486,12 +2487,32 @@ function updateQuestCompass() {
             gainXp(10 + (currentDepth * 5));
 
             // 3. Проверка квестов
-            // 3. Проверка квестов
             if (typeof QuestSystemModule !== 'undefined') {
                 [...activeQuests].forEach(q => {
-                    
+                    if (q.isCompleted) return; // Пропускаем уже выполненные
+
+                    // === СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ BOSS_HUNT ===
+                    if (q.type === 'BOSS_HUNT') {
+                        // Проверяем, что это именно тот босс (по имени из квеста)
+                        // И что мы находимся в правильном подземелье
+                        if (enemy.isBoss && 
+                            enemy.name === q.target.enemyName && 
+                            dungeonX === q.target.targetX && 
+                            dungeonY === q.target.targetY) {
+                            
+                            q.progress++;
+                            q.isCompleted = true; // Босс всегда один, поэтому сразу завершаем
+                            
+                            RenderModule.log(`🏆 БОСС ПОВЕРЖЕН! Квест "${q.target.enemyName}" выполнен!`, "event");
+                            RenderModule.updateQuestBriefing(q); // Обновляем футер на "Награда"
+                            updateQuestCompass(); // Переключаем стрелку на город выдачи
+                            
+                            // Сохраняем имя убитого босса в память уровня, чтобы он не респаунился с другим именем
+                            saveBossNameToCache(dungeonX, dungeonY, currentDepth, enemy.name);
+                        }
+                    }
                     // >>> СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ СЮЖЕТНОГО BOUNTY <<<
-                    if (q.isChainQuest && q.type === 'BOUNTY' && !q.isCompleted) {
+                    else if (q.isChainQuest && q.type === 'BOUNTY' && !q.isCompleted) {
                         if (enemy.name === q.target.enemyName) {
                             q.progress++;
                             RenderModule.log(`🏹 Охота: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
@@ -2507,19 +2528,20 @@ function updateQuestCompass() {
                             return; // Прерываем итерацию для этого квеста
                         }
                     }
-
                     // Стандартная проверка для остальных квестов
-                    const eventData = {
-                        type: 'kill',
-                        enemyName: enemy.name,
-                        locX: dungeonX,
-                        locY: dungeonY
-                    };
+                    else {
+                        const eventData = {
+                            type: 'kill',
+                            enemyName: enemy.name,
+                            locX: dungeonX,
+                            locY: dungeonY
+                        };
 
-                    const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
+                        const progressUpdated = QuestSystemModule.checkProgress(q, eventData);
 
-                    if (progressUpdated && q.isCompleted) {
-                        updateQuestCompass(); 
+                        if (progressUpdated && q.isCompleted) {
+                            updateQuestCompass(); 
+                        }
                     }
                 });
             }
@@ -2528,7 +2550,6 @@ function updateQuestCompass() {
         // Удаляем мертвых врагов из основного массива
         enemies = enemies.filter(e => e.hp > 0);
     }
-
     // === ОБРАБОТКА КЛИКА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
         // 1. Если открыт магазин, обрабатываем клик по товарам
