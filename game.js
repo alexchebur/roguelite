@@ -29,7 +29,8 @@ const GameModule = (function() {
 
     // === Режимы ===
     window.gameMode = 'global';
-    let entrancePos = null; 
+    let entrancePos = null;
+    let isEraWindowOpen = false;
     
     // === Подземельные координаты ===
     let dungeonX = 0;
