@@ -73,12 +73,10 @@ const RenderModule = (function() {
     function updateQuestBriefing(quest) {
         const el = document.getElementById("ui-quest-briefing");
         if (!el) return;
-
         if (!quest) {
             el.textContent = " ";
             return;
         }
-
         let statusIcon = "📜 ";
         if (quest.isCompleted && !quest.isTurnedIn) statusIcon = "🏆 ";
         
@@ -92,6 +90,11 @@ const RenderModule = (function() {
             // Для BOUNTY и HUNT показываем счетчик убитых
             goalText = `Убить: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
         }
+        // === НОВОЕ: ДОБАВИТЬ ЭТО УСЛОВИЕ ===
+        else if (quest.type === 'BOSS_HUNT') {
+            goalText = `Ликвидировать: ${quest.target.enemyName}`;
+        }
+        // ======================================
         else if (quest.type === 'COLLECT') {
             goalText = `Собрать: ${quest.target.itemName} (${quest.progress}/${quest.maxProgress})`;
         }
