@@ -559,7 +559,7 @@ const GameModule = (function() {
             return; 
         }
 
-        // 4. ЧИТ-КОД: Восстановление здоровья и золота (Enter)
+        // 4. ЧИТ-КОД: Восстановление здоровья, золота и УРОВНЯ (Enter)
         if (e.key === "Enter") {
             e.preventDefault();
             if (player && player.hp > 0) {
@@ -568,11 +568,23 @@ const GameModule = (function() {
                 
                 // Добавляем золото
                 player.gold += 1000;
+
+                // === НОВОЕ: Повышение уровня ===
+                player.level++;
+                
+                // Пересчитываем характеристики на основе нового уровня
+                // (используем ту же логику, что и при обычном повышении уровня)
+                player.maxHp = 20 + (player.level * 10); 
+                player.strength = 5 + Math.floor(player.level / 2);
+                
+                // Восстанавливаем HP до максимума после повышения уровня (как бонус)
+                player.hp = player.maxHp;
                 
                 RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
                 RenderModule.log(`💰 ЧИТ: Получено 1000 золотых!`, "loot");
+                RenderModule.log(`🆙 ЧИТ: Уровень повышен до ${player.level}! Характеристики обновлены.`, "event");
                 
-                // Важно: обновляем интерфейс, чтобы увидеть новое золото
+                // Важно: обновляем интерфейс, чтобы увидеть новое золото и статы
                 RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             }
             return;
