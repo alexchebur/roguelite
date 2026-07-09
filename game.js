@@ -1885,35 +1885,77 @@ function updateQuestCompass() {
         const bossAlreadyDefeated = savedState && savedState.bossDefeated;
 
         if (currentDungeonTypeName === 'boss' && !bossAlreadyDefeated) {
-            let bossPos = null;
-            let attempts = 0;
-            while (!bossPos && attempts < 100) {
-                const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
-                const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
-                
-                if (!MapModule.isWall(rx, ry) && 
-                    !MapModule.isWall(rx+1, ry) && 
-                    !MapModule.isWall(rx, ry+1) && 
-                    !MapModule.isWall(rx+1, ry+1)) {
-                    
-                    const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
-                    if (distToPlayer > 15) {
-                        bossPos = { x: rx, y: ry };
-                    }
-                }
-                attempts++;
-            }
+            // Проверяем, жив ли уже босс на этом уровне (чтобы не спавнить второго)
+            const isBossAlive = enemies.some(e => e.isBoss);
 
-            if (bossPos) {
-                if (typeof EntityModule.createBoss === 'function') {
-                    const bossNameData = NameGeneratorModule.generateBossName(gx, gy, depth);
-                    const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossNameData);
-                    enemies.push(bossEntity);
-                    RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
+            if (!isBossAlive) {
+                let bossPos = null;
+                let attempts = 0;
+                
+                // Поиск позиции подальше от игрока (>15 клеток)
+                while (!bossPos && attempts < 100) {
+                    const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+                    const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+                    
+                    // Проверка: пол 2x2 и дистанция
+                    if (!MapModule.isWall(rx, ry) && 
+                        !MapModule.isWall(rx+1, ry) && 
+                        !MapModule.isWall(rx, ry+1) && 
+                        !MapModule.isWall(rx+1, ry+1)) {
+                        
+                        const distToPlayer = Math.abs(rx - player.x) + Math.abs(ry - player.y);
+                        if (distToPlayer > 15) {
+                            bossPos = { x: rx, y: ry };
+                        }
+                    }
+                    attempts++;
+                }
+
+                if (bossPos) {
+                    if (typeof EntityModule.createBoss === 'function') {
+                        let bossData;
+                        let isQuestBoss = false;
+
+                        // === 1. ПРОВЕРКА АКТИВНОГО КВЕСТА BOSS_HUNT ===
+                        if (typeof QuestSystemModule !== 'undefined') {
+                            const bossQuest = activeQuests.find(q => 
+                                q.type === 'BOSS_HUNT' && 
+                                !q.isCompleted && 
+                                q.target.targetX === gx && 
+                                q.target.targetY === gy
+                            );
+
+                            if (bossQuest) {
+                                // Используем данные из квеста
+                                bossData = {
+                                    fullName: bossQuest.target.enemyName,
+                                    bossType: bossQuest.target.enemyName // Для подбора спрайта
+                                };
+                                isQuestBoss = true;
+                                console.log(`🎯 [Boss Spawn] Спавн целевого босса по квесту: ${bossData.fullName}`);
+                            }
+                        }
+
+                        // === 2. ФОЛБЭК: СЛУЧАЙНЫЙ БОСС ===
+                        if (!bossData) {
+                            bossData = NameGeneratorModule.generateBossName(gx, gy, depth);
+                        }
+
+                        // Создаем сущность босса
+                        const bossEntity = EntityModule.createBoss(bossPos.x, bossPos.y, depth, bossData);
+                        enemies.push(bossEntity);
+
+                        // Логирование
+                        if (isQuestBoss) {
+                            RenderModule.log(`⚠️ ВЫ ЧУВСТВУЕТЕ ПРИСУТСТВИЕ ЦЕЛИ: ${bossEntity.name}!`, "combat");
+                        } else {
+                            RenderModule.log(`⚠️ Вы чувствуете присутствие: ${bossEntity.name}!`, "combat");
+                        }
+                    }
                 }
             }
         } else if (bossAlreadyDefeated) {
-            // Сообщение о боссе тоже можно скрыть, если оно мешает
+            // Опционально: сообщение о зачищенном логове
             // RenderModule.log("💀 Логово босса пусто. Хозяин повержен навсегда.", "info");
         }
         const totalEnemies = enemies.length;
