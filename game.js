@@ -2115,6 +2115,20 @@ function updateQuestCompass() {
             });
         }
     }
+
+
+    // === СОХРАНЕНИЕ ИМЕНИ УБИТОГО БОССА В КЭШ ===
+    function saveBossNameToCache(gx, gy, depth, bossName) {
+        const cacheKey = `${gx}_${gy}_${depth}`;
+        let state = dungeonClearState.get(cacheKey);
+        if (!state) state = {};
+        
+        state.bossDefeated = true;
+        state.bossName = bossName; // Запоминаем конкретное имя
+        
+        dungeonClearState.set(cacheKey, state);
+    }
+    
     function renderGlobalMap() {
         const playerPos = GlobalMapModule.getPlayerPosition();
         RenderModule.drawGlobalMap(playerPos.x, playerPos.y);
