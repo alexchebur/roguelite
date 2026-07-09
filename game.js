@@ -676,8 +676,8 @@ const GameModule = (function() {
     function tryGiveQuest(npc) {
         if (typeof QuestSystemModule === 'undefined') return false;
         if (!npc.isQuestGiver) return false;
-
         if (!entrancePos) return false;
+
         const cityGx = entrancePos.x;
         const cityGy = entrancePos.y;
 
@@ -699,7 +699,8 @@ const GameModule = (function() {
                         
                         if (q.isCompleted && !q.isTurnedIn) {
                             // 1. Очистка инвентаря от квестовых предметов
-                            if (q.type === 'FETCH' || q.type === 'COLLECT') {
+                            // Добавлен BOSS_HUNT для полноты логики
+                            if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT') {
                                 player.inventory = player.inventory.filter(item => {
                                     // Если предмет НЕ является квестовым — оставляем его
                                     if (!item.isQuestItem) return true;
@@ -815,8 +816,9 @@ const GameModule = (function() {
         const q = activeQuests.find(q => q.id === questId);
         if (q.isCompleted && !q.isTurnedIn) {
             
-            // === НОВОЕ: ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
-            if (q.type === 'FETCH' || q.type === 'COLLECT') {
+            // === ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
+            // Добавлена проверка BOSS_HUNT для единообразия
+            if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT') {
                 player.inventory = player.inventory.filter(item => {
                     // Если предмет НЕ является квестовым — оставляем его
                     if (!item.isQuestItem) return true;
@@ -853,6 +855,11 @@ const GameModule = (function() {
             updateAbandonButton(activeQuests.length > 0);
             updateQuestCompass();
             
+            // === ВАЖНО: Открываем окно завершения для всех типов квестов ===
+            if (typeof openQuestWindow === 'function') {
+                openQuestWindow(q, true);
+            }
+
             if (typeof RenderModule.updateInspector === 'function') {
                 RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
             }
@@ -903,7 +910,6 @@ const GameModule = (function() {
     
     return false;
 }
-
     
     // === НАГРАДА ЗА КВЕСТ ===
     function grantReward(quest) {
