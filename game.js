@@ -673,6 +673,7 @@ const GameModule = (function() {
 
 
     // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule и Окном Сюжета) ===
+    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Исправленная версия) ===
     function tryGiveQuest(npc) {
         if (typeof QuestSystemModule === 'undefined') return false;
         if (!npc.isQuestGiver) return false;
@@ -699,25 +700,15 @@ const GameModule = (function() {
                         
                         if (q.isCompleted && !q.isTurnedIn) {
                             // 1. Очистка инвентаря от квестовых предметов
-                            // Добавлен BOSS_HUNT для полноты логики
                             if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT') {
                                 player.inventory = player.inventory.filter(item => {
-                                    // Если предмет НЕ является квестовым — оставляем его
                                     if (!item.isQuestItem) return true;
-
-                                    // Если это квестовый предмет, проверяем, относится ли он к ЭТОМУ квесту
                                     const isTypeMatch = (item.type === q.target.itemType);
                                     const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
-                                    
-                                    // Для уникальных предметов проверяем ID
                                     const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
-
-                                    // Если это нужный предмет — удаляем его (возвращаем false)
                                     if (isTypeMatch && isNameMatch && isUniqueMatch) {
                                         return false; 
                                     }
-                                    
-                                    // Если это квестовый предмет, но от ДРУГОГО квеста — оставляем
                                     return true;
                                 });
                             }
@@ -744,7 +735,6 @@ const GameModule = (function() {
                             if (typeof openQuestWindow === 'function') {
                                 openQuestWindow(q, true);
                             } else {
-                                // Фолбэк, если окно еще не подключено
                                 if (q.turnInText) {
                                     RenderModule.log(`🗣️ ${npc.name}: "${q.turnInText}"`, "event");
                                 }
@@ -777,7 +767,6 @@ const GameModule = (function() {
                             RenderModule.updateInspector(`📜 Квест принят!`, chainQuest.briefing, "npc");
                         }
 
-                        // ОТКРЫТИЕ ОКНА СЮЖЕТА (Взятие)
                         if (typeof openQuestWindow === 'function') {
                             openQuestWindow(chainQuest, false);
                         }
@@ -802,6 +791,36 @@ const GameModule = (function() {
     // ==========================================
     // 2. СТАНДАРТНЫЕ СЛУЧАЙНЫЕ КВЕСТЫ (Fallback)
     // ==========================================
+    
+    // === ПРОВЕРКА: ЕСТЬ ЛИ УЖЕ АКТИВНЫЙ НЕВЫПОЛНЕННЫЙ КВЕСТ? ===
+    const hasActiveUnfinishedQuest = activeQuests.some(q => !q.isCompleted);
+    
+    if (hasActiveUnfinishedQuest) {
+        const unfinishedQuest = activeQuests.find(q => !q.isCompleted);
+        RenderModule.log(`${npc.name}: "Сначала заверши предыдущее задание! Ищи ${unfinishedQuest.target.locationName}."`, "info");
+        return true; // Блокируем выдачу нового квеста
+    }
+
+    // === ПРОВЕРКА: ЕСТЬ ЛИ КВЕСТ, КОТОРЫЙ ВЫПОЛНЕН, НО НЕ СДАН? ===
+    const hasUnclaimedReward = activeQuests.some(q => q.isCompleted && !q.isTurnedIn);
+    if (hasUnclaimedReward) {
+        const rewardQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
+        // Если этот квест был взят в ЭТОМ же городе, то сдаем его
+        if (rewardQuest.originX === cityGx && rewardQuest.originY === cityGy) {
+             // Логика сдачи квеста (копия из Сценария 0 ниже)
+             // ... (код сдачи квеста) ...
+             // Для краткости я опущу полный код сдачи здесь, так как он ниже в Сценарии 0
+             // Но важно: если мы здесь, значит мы в родном городе и можем сдать квест.
+             // Лучше всего перенаправить поток вниз к "Сценарию 0", но для этого нужно правильно сгенерировать ID.
+             // Поэтому проще всего оставить логику сдачи в "Сценарии 0", а здесь просто подсказать игроку.
+             RenderModule.log(`${npc.name}: "Ты выполнил мое поручение! Подойди ближе, чтобы получить награду."`, "info");
+             // Мы не возвращаем true, чтобы позволить коду ниже обработать клик как попытку сдачи.
+        } else {
+             RenderModule.log(`${npc.name}: "Ты выполнил чье-то поручение, но это не мое. Вернись туда, где брал задание."`, "info");
+             return true;
+        }
+    }
+
     let npcIndex = 0;
     for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
 
@@ -812,30 +831,21 @@ const GameModule = (function() {
     const alreadyDone = completedQuestIds.has(questId);
 
     // Сценарий 0: Квест выполнен, но награда еще не получена (СДАЧА КВЕСТА)
+    // Этот блок сработает, если мы в том же городе, где брали квест
     if (alreadyActive) {
         const q = activeQuests.find(q => q.id === questId);
         if (q.isCompleted && !q.isTurnedIn) {
             
             // === ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
-            // Добавлена проверка BOSS_HUNT для единообразия
             if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT') {
                 player.inventory = player.inventory.filter(item => {
-                    // Если предмет НЕ является квестовым — оставляем его
                     if (!item.isQuestItem) return true;
-
-                    // Проверяем, относится ли этот предмет к ТЕКУЩЕМУ квесту
                     const isTypeMatch = (item.type === q.target.itemType);
                     const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
-                    
-                    // Для уникальных предметов проверяем ID
                     const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
-
-                    // Если это нужный предмет — удаляем его (возвращаем false)
                     if (isTypeMatch && isNameMatch && isUniqueMatch) {
                         return false; 
                     }
-                    
-                    // Если это квестовый предмет от ДРУГОГО квеста — оставляем
                     return true;
                 });
             }
@@ -847,7 +857,6 @@ const GameModule = (function() {
             RenderModule.log(`🏆 Квест сдан! Получено: ${q.rewardGold} золотых.`, "loot");
             RenderModule.updateUI(player, currentLocData, currentWorldTrend);
             
-            // Очищаем футер, так как квест сдан
             RenderModule.updateQuestBriefing(null); 
 
             activeQuests = activeQuests.filter(aq => aq.id !== questId);
@@ -875,7 +884,7 @@ const GameModule = (function() {
         newQuest.originX = cityGx;
         newQuest.originY = cityGy;
         activeQuests.push(newQuest);
-        updateAbandonButton(true); // <--- ДОБАВИТЬ
+        updateAbandonButton(true);
         RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
         RenderModule.log(newQuest.briefing, "info");
         
