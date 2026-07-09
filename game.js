@@ -1882,7 +1882,7 @@ function updateQuestCompass() {
         }
 
         // === СПАВН БОССА ===
-        const savedState = dungeonClearState.get(`${gx}_${gy}_${depth}`);
+        // Используем savedState, который уже объявлен в начале функции
         const bossAlreadyDefeated = savedState && savedState.bossDefeated;
         const savedBossName = savedState ? savedState.bossName : null;
 
@@ -1957,10 +1957,6 @@ function updateQuestCompass() {
         // === ЛОГИКА ДЛЯ УЖЕ ПОБЕЖДЕННОГО БОССА ===
         else if (bossAlreadyDefeated) {
              // Если босс уже убит, мы НЕ спавним его снова.
-             // Это решает проблему с "вечным респауном" и несоответствием имен.
-             // Если игрок зашел сюда по квесту, а босс уже убит, квест останется активным,
-             // но игрок увидит пустое логово. 
-             // (В идеале можно выдать сообщение, что босс уже повержен кем-то другим)
              if (savedBossName) {
                  // RenderModule.log(`💀 Логово пусто. ${savedBossName} уже повержен.`, "info");
              }
