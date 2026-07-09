@@ -656,7 +656,42 @@ const GameModule = (function() {
             }
             return;
         }
+        // ... (код выше, заканчивающийся на return;) ...
 
+        // === ЧИТ-КОД: СМЕНА ЭПОХИ (TAB) ===
+        if (e.key === "Tab") {
+            e.preventDefault(); // Чтобы фокус не улетал в браузер
+            
+            // Определяем текущую эпоху и выбираем следующую по кругу
+            let currentEra = 'dawn';
+            if (typeof WorldErasModule !== 'undefined') {
+                currentEra = WorldErasModule.getCurrentEraId();
+            }
+
+            let nextEra = 'shadows'; // По умолчанию следующая - Тени
+            
+            if (currentEra === 'dawn') {
+                nextEra = 'shadows';
+            } else if (currentEra === 'shadows') {
+                nextEra = 'war';
+            } else if (currentEra === 'war') {
+                nextEra = 'dawn'; // Возврат к началу для тестов
+            }
+
+            // Вызываем функцию смены эпохи из GameModule
+            if (typeof GameModule.changeEra === 'function') {
+                GameModule.changeEra(nextEra);
+                RenderModule.log(`🧪 ЧИТ: Принудительная смена эры на '${nextEra}'`, "event");
+            } else {
+                RenderModule.log("⚠️ Ошибка: Функция changeEra не найдена!", "combat");
+            }
+            
+            return;
+        }
+
+        // Временная клавиша для теста Twine
+        if (e.key === 'k' || e.key === 'K') {
+        // ... (код ниже) ...
         // Временная клавиша для теста Twine
         if (e.key === 'k' || e.key === 'K') {
             e.preventDefault();
