@@ -690,8 +690,7 @@ const GameModule = (function() {
         }
 
         // Временная клавиша для теста Twine
-        if (e.key === 'k' || e.key === 'K') {
-        // ... (код ниже) ...
+
         // Временная клавиша для теста Twine
         if (e.key === 'k' || e.key === 'K') {
             e.preventDefault();
