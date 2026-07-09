@@ -1882,10 +1882,12 @@ function updateQuestCompass() {
         }
 
         // === СПАВН БОССА ===
+        const savedState = dungeonClearState.get(`${gx}_${gy}_${depth}`);
         const bossAlreadyDefeated = savedState && savedState.bossDefeated;
+        const savedBossName = savedState ? savedState.bossName : null;
 
         if (currentDungeonTypeName === 'boss' && !bossAlreadyDefeated) {
-            // Проверяем, жив ли уже босс на этом уровне (чтобы не спавнить второго)
+            // Проверяем, жив ли уже босс на этом уровне (защита от дублей)
             const isBossAlive = enemies.some(e => e.isBoss);
 
             if (!isBossAlive) {
@@ -1897,7 +1899,6 @@ function updateQuestCompass() {
                     const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
                     const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
                     
-                    // Проверка: пол 2x2 и дистанция
                     if (!MapModule.isWall(rx, ry) && 
                         !MapModule.isWall(rx+1, ry) && 
                         !MapModule.isWall(rx, ry+1) && 
@@ -1926,17 +1927,15 @@ function updateQuestCompass() {
                             );
 
                             if (bossQuest) {
-                                // Используем данные из квеста
                                 bossData = {
                                     fullName: bossQuest.target.enemyName,
-                                    bossType: bossQuest.target.enemyName // Для подбора спрайта
+                                    bossType: bossQuest.target.enemyName
                                 };
                                 isQuestBoss = true;
-                                console.log(`🎯 [Boss Spawn] Спавн целевого босса по квесту: ${bossData.fullName}`);
                             }
                         }
 
-                        // === 2. ФОЛБЭК: СЛУЧАЙНЫЙ БОСС ===
+                        // === 2. ФОЛБЭК: СЛУЧАЙНЫЙ БОСС (если нет квеста) ===
                         if (!bossData) {
                             bossData = NameGeneratorModule.generateBossName(gx, gy, depth);
                         }
@@ -1954,9 +1953,17 @@ function updateQuestCompass() {
                     }
                 }
             }
-        } else if (bossAlreadyDefeated) {
-            // Опционально: сообщение о зачищенном логове
-            // RenderModule.log("💀 Логово босса пусто. Хозяин повержен навсегда.", "info");
+        } 
+        // === ЛОГИКА ДЛЯ УЖЕ ПОБЕЖДЕННОГО БОССА ===
+        else if (bossAlreadyDefeated) {
+             // Если босс уже убит, мы НЕ спавним его снова.
+             // Это решает проблему с "вечным респауном" и несоответствием имен.
+             // Если игрок зашел сюда по квесту, а босс уже убит, квест останется активным,
+             // но игрок увидит пустое логово. 
+             // (В идеале можно выдать сообщение, что босс уже повержен кем-то другим)
+             if (savedBossName) {
+                 // RenderModule.log(`💀 Логово пусто. ${savedBossName} уже повержен.`, "info");
+             }
         }
         const totalEnemies = enemies.length;
         console.log(`🕷️ [DEBUG] Уровень ${depth}: Создано врагов: ${totalEnemies}`, enemies.map(e => e.name));
