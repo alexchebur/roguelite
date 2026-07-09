@@ -34,7 +34,12 @@ const QuestSystemModule = (function() {
         ],
         SCHOLAR: [
             "Библиотекарь просит принести знания. Прочитай {count} древних книг, которые найдешь. Награда: {gold} золотых."
-        ]
+        ],
+        // Внутри QUEST_TEMPLATES в quest_system.js
+        BOSS_HUNT: [
+            "Гильдия охотников объявляет чрезвычайную награду! В {location} обосновался ужасающий монстр: {enemy}. Ликвидируйте монстра, пока он не уничтожил ближайшие поселения. Награда: {gold} золотых.",
+            "Старейшины в панике. {enemy} из подземелья {location} творит в округе мерзкие деяния. Только герой способен прекратить этот кошмар. Убейте чудовище, и слава (и {gold} монет) будет вашей."
+        ],    
     };
 
     function pickRandom(rng, array) { return array[Math.floor(rng.next() * array.length)]; }
@@ -69,37 +74,71 @@ const QuestSystemModule = (function() {
         return candidates.length > 0 ? candidates : null;
     }
 
-    function calculateTargetParams(gx, gy, type, difficultyLevel) {
+    function calculateTargetParams(gx, gy, type, difficultyLevel, playerLevel) {
         const seed = createSeed(gx, gy, difficultyLevel) + 777; 
         const rng = new SeededRandom(seed);
         let targetData = {};
 
         // 1. Определение локации (Подземелья)
-        const candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
-        let targetPoi = null;
-        
-        if (candidates && candidates.length > 0) {
-            targetPoi = rng.choice(candidates);
-        } else {
-            const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
-            if (wideCandidates && wideCandidates.length > 0) {
-                targetPoi = rng.choice(wideCandidates);
+        let candidates = [];
+        let searchRadius = MAX_QUEST_RADIUS; // 50 по умолчанию
+
+        // === ЛОГИКА ПОИСКА БОССОВ ===
+        if (type === 'BOSS_HUNT') {
+            searchRadius = 80; // Увеличиваем радиус для эпичных квестов
+            
+            // Ищем только подземелья типа 'boss'
+            for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+                for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > searchRadius) continue;
+                    
+                    const tx = gx + dx;
+                    const ty = gy + dy;
+                    
+                    if (typeof GlobalMapModule !== 'undefined' && GlobalMapModule.getPOI) {
+                        const poi = GlobalMapModule.getPOI(tx, ty);
+                        // Проверяем, что это вход в подземелье И оно типа 'boss'
+                        if (poi && (poi.type === 'dungeon' || poi.type === 'dungeon_entrance') && poi.dungeonType === 'boss') {
+                            candidates.push(poi);
+                        }
+                    }
+                }
+            }
+        } 
+        // Стандартный поиск для остальных типов
+        else {
+            candidates = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
+            if (!candidates || candidates.length === 0) {
+                 const wideCandidates = findRealPOI(gx, gy, FALLBACK_RADIUS, 'dungeon');
+                 if (wideCandidates) candidates = wideCandidates;
             }
         }
 
+        let targetPoi = null;
+        if (candidates && candidates.length > 0) {
+            targetPoi = rng.choice(candidates);
+        } 
+        
+        // Если для BOSS_HUNT ничего не нашли, меняем тип на обычный HUNT, чтобы не ломать игру
+        if (!targetPoi && type === 'BOSS_HUNT') {
+             type = 'HUNT';
+             const fallbackPOIs = findRealPOI(gx, gy, MAX_QUEST_RADIUS, 'dungeon');
+             if (fallbackPOIs) targetPoi = rng.choice(fallbackPOIs);
+        }
+
         if (targetPoi) {
-            targetData.targetX = targetPoi.x;
-            targetData.targetY = targetPoi.y;
-            targetData.locationName = targetPoi.name;
-            targetData.dungeonType = targetPoi.dungeonType;
+             targetData.targetX = targetPoi.x;
+             targetData.targetY = targetPoi.y;
+             targetData.locationName = targetPoi.name;
+             targetData.dungeonType = targetPoi.dungeonType;
         } else {
-            // Фолбэк: случайные координаты
-            const angle = rng.next() * Math.PI * 2;
-            const r = rng.int(10, MAX_QUEST_RADIUS);
-            targetData.targetX = gx + Math.round(Math.cos(angle) * r);
-            targetData.targetY = gy + Math.round(Math.sin(angle) * r);
-            targetData.locationName = "Забытых руинах";
-            targetData.dungeonType = 'rogue';
+             // Фолбэк координаты (если вообще ничего не нашли)
+             const angle = rng.next() * Math.PI * 2;
+             const r = rng.int(10, searchRadius);
+             targetData.targetX = gx + Math.round(Math.cos(angle) * r);
+             targetData.targetY = gy + Math.round(Math.sin(angle) * r);
+             targetData.locationName = "Забытых руинах";
+             targetData.dungeonType = 'rogue';
         }
 
         // 2. Специфичные параметры для типов квестов
@@ -144,39 +183,79 @@ const QuestSystemModule = (function() {
             targetData.count = rng.int(1, 3);
             targetData.locationName = "древних библиотеках";
         }
+        // === НОВОЕ: ПАРАМЕТРЫ ДЛЯ БОССА ===
+        else if (type === 'BOSS_HUNT') {
+            // Генерируем имя босса детерминировано для этого квеста
+            // Используем координаты цели как сид, чтобы имя было постоянным для этого данжа
+            const bossSeed = createSeed(targetData.targetX, targetData.targetY, 999);
+            const bossRng = new SeededRandom(bossSeed);
+            
+            // Выбираем случайную расу босса из списка
+            const races = ["Древний Дракон", "Повелитель Бездны", "Каменный Голем", "Король Личей", "Матриарх Пауков", "Падший Ангел"];
+            const race = bossRng.choice(races);
+            
+            // Генерируем уникальное имя
+            const pre = bossRng.choice(["Зул", "Мор", "Гар", "Тар", "Ксар", "Вул"]);
+            const root = bossRng.choice(["го", "рак", "тар", "мун", "дор"]);
+            const suf = bossRng.choice(["гор", "акс", "ум", "иус", "ар"]);
+            const properName = (pre + root + suf).charAt(0).toUpperCase() + (pre + root + suf).slice(1);
+            
+            targetData.enemyName = `${race} ${properName}`;
+            targetData.count = 1; // Всегда один босс
+            targetData.isBoss = true; // Флаг для системы отслеживания
+        }
 
         return targetData;
     }
 
     function createQuest(gx, gy, questIndex) {
+        // Добавляем новый тип BOSS_HUNT
         const types = ['FETCH', 'HUNT', 'EXPLORE', 'DIGGER', 'COLLECT', 'BOUNTY', 'SCHOLAR'];
-        const rng = new SeededRandom(createSeed(gx, gy, questIndex));
-        const type = pickRandom(rng, types);
         
-        const globalDist = Math.abs(gx) + Math.abs(gy);
+        const rng = new SeededRandom(createSeed(gx, gy, questIndex));
+        
+        // === ЛОГИКА ВЫБОРА ТИПА С УЧЕТОМ БОССА ===
         let playerLevel = 1;
         if (typeof GameModule !== 'undefined' && GameModule.getPlayer) {
             const p = GameModule.getPlayer();
             if (p) playerLevel = p.level;
         }
 
+        // Шанс квеста на босса: 0% на 1 ур, ~50% на 10 ур
+        const bossChance = Math.min(0.5, playerLevel * 0.05); 
+        let type;
+
+        if (Math.random() < bossChance) {
+            type = 'BOSS_HUNT';
+        } else {
+            type = pickRandom(rng, types);
+        }
+        // ==========================================
+        
+        const globalDist = Math.abs(gx) + Math.abs(gy);
         const questEnemyTier = Math.min(6, Math.floor(globalDist / 15) + playerLevel);
-        const targetData = calculateTargetParams(gx, gy, type, questEnemyTier);
+        
+        // Передаем playerLevel в calculateTargetParams для поиска боссов
+        const targetData = calculateTargetParams(gx, gy, type, questEnemyTier, playerLevel);
         
         const recommendedDepth = Math.max(1, Math.min(5, Math.floor(questEnemyTier / 1.5)));
         targetData.recommendedDepth = recommendedDepth;
 
         const goldBase = rng.int(50, 150);
         const goldMult = WorldCurveModule.getGoldMultiplier(globalDist, 0); 
-        const finalGold = Math.floor(goldBase * goldMult) + (playerLevel * 10);
+        // Боссы дают больше золота
+        const goldBonus = (type === 'BOSS_HUNT') ? 2.0 : 1.0;
+        const finalGold = Math.floor(goldBase * goldMult * goldBonus) + (playerLevel * 10);
         
         const id = generateQuestId(gx, gy, type, questIndex);
-        const templates = QUEST_TEMPLATES[type];
+        
+        // Проверка наличия шаблонов (на случай если BOSS_HUNT еще не добавлен в QUEST_TEMPLATES)
+        const templates = QUEST_TEMPLATES[type] || QUEST_TEMPLATES['HUNT']; 
         const template = pickRandom(rng, templates);
         
         const briefingData = {
             itemName: targetData.itemName,
-            enemyName: targetData.enemyName,
+            enemyName: targetData.enemyName, // Для боссов здесь будет уникальное имя
             locationName: targetData.locationName,
             count: targetData.count,
             gold: finalGold,
@@ -186,6 +265,7 @@ const QuestSystemModule = (function() {
         const briefing = formatBriefing(template, briefingData);
 
         let maxProg = 1;
+        // Для BOSS_HUNT прогресс всегда 1 (убить одного босса)
         if (type === 'HUNT' || type === 'COLLECT' || type === 'BOUNTY' || type === 'SCHOLAR') {
             maxProg = targetData.count || 1;
         }
