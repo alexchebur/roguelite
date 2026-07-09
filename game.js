@@ -82,6 +82,69 @@ const GameModule = (function() {
         });
     }
 
+
+
+    // === СИСТЕМА ФАЗ МИРА (WORLD ERAS) ===
+    function changeEra(newEraId) {
+        if (typeof WorldErasModule === 'undefined') return;
+    
+        const oldEraId = WorldErasModule.getCurrentEraId();
+        if (oldEraId === newEraId) return; // Уже в этой эпохе
+
+        // 1. Обновляем состояние
+        WorldErasModule.setCurrentEraId(newEraId);
+        const eraData = WorldErasModule.getCurrentEra();
+    
+        RenderModule.log(`🌍 МИР ИЗМЕНИЛСЯ: Наступила ${eraData.name}!`, "event");
+
+        // 2. Открываем модальное окно
+        openEraWindow(eraData);
+    }
+
+    function openEraWindow(eraData) {
+        isEraWindowOpen = true;
+        busy = true; // Блокируем игровой цикл
+        toggleUI(false); // Скрываем панели
+
+        const overlay = document.getElementById('modal-overlay');
+        const eraModal = document.getElementById('era-modal');
+        const titleEl = document.getElementById('era-modal-title');
+        const textEl = document.getElementById('era-modal-text');
+
+        if (overlay && eraModal && titleEl && textEl) {
+            titleEl.textContent = eraData.modalTitle || eraData.name;
+            textEl.textContent = eraData.modalText;
+        
+            overlay.style.display = 'flex';
+            overlay.style.visibility = 'visible';
+            eraModal.style.display = 'flex'; // Используем flex для центрирования контента
+            eraModal.classList.remove('hidden');
+        } else {
+            console.error("❌ [Era] Элементы модального окна эпохи не найдены!");
+            closeEraWindow();
+        }
+    }
+
+    function closeEraWindow() {
+        isEraWindowOpen = false;
+        busy = false;
+    
+        const overlay = document.getElementById('modal-overlay');
+        const eraModal = document.getElementById('era-modal');
+    
+        if (overlay && eraModal) {
+            eraModal.classList.add('hidden');
+            eraModal.style.display = 'none';
+            // Если других окон нет, скрываем оверлей
+            if (!isShopOpen && !isInnOpen && !isReadingQuest && !isTwineActive) {
+                overlay.style.display = 'none';
+            }
+        }
+    
+        toggleUI(true);
+        RenderModule.requestRedraw();
+    }
+    
     function openQuestWindow(quest, isCompleted) {
         console.log("🔍 [Quest] Попытка открыть окно квеста. isCompleted:", isCompleted);
         
@@ -540,7 +603,11 @@ const GameModule = (function() {
         if (player && player.hp <= 0) {
              return; 
         }    
-
+        if (isEraWindowOpen) {
+            // Разрешаем только Enter или Escape для закрытия, если вдруг кнопка не сработала
+            if (e.key === "Escape" || e.key === "Enter") closeEraWindow();
+            return; 
+        }
         // 1. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
         if (isReadingQuest) {
             if (e.key === "Escape") closeQuestWindow();
@@ -3314,7 +3381,9 @@ function updateQuestCompass() {
         closeInn: closeInn,
         innAction: innAction,
         openQuestWindow: openQuestWindow,
-        closeQuestWindow: closeQuestWindow
+        closeQuestWindow: closeQuestWindow,
+        changeEra,
+        closeEraWindow
     };
 })();
 
