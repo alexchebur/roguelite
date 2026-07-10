@@ -3426,8 +3426,8 @@ function updateQuestCompass() {
         innAction: innAction,
         openQuestWindow: openQuestWindow,
         closeQuestWindow: closeQuestWindow,
-        changeEra,
-        closeEraWindow
+        changeEra: changeEra,
+        closeEraWindow: closeEraWindow
     };
 })();
 
