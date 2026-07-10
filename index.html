@@ -299,7 +299,7 @@
     <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
         
         <!-- Окно Магазина -->
-        <div id="shop-modal" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
+        <div id="shop-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
             
             <div style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
@@ -336,7 +336,7 @@
         </div>
 
         <!-- Окно Постоялого Двора -->
-        <div id="inn-modal" style="display:none; background:#161b22; border:2px solid #8B4513; color:#c9d1d9; padding:20px; border-radius:8px; min-width:400px; max-width:500px; min-height:300px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
+        <div id="inn-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #8B4513; color:#c9d1d9; padding:20px; border-radius:8px; min-width:400px; max-width:500px; min-height:300px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
             
             <div class="modal-header" style="border-bottom: 1px solid #8B4513; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0; color:#D2B48C;">🏨 Постоялый Двор</h3>
@@ -357,8 +357,9 @@
                 </div>
             </div>
         </div>
+
         <!-- Окно Сюжетного Квеста -->
-        <div id="quest-modal" style="display:none; background:#161b22; border:2px solid #d29922; color:#c9d1d9; padding:20px; border-radius:8px; min-width:500px; max-width:700px; min-height:300px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
+        <div id="quest-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #d29922; color:#c9d1d9; padding:20px; border-radius:8px; min-width:500px; max-width:700px; min-height:300px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
             
             <div class="modal-header" style="border-bottom: 1px solid #d29922; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 id="quest-modal-title" style="margin:0; color:#d29922;">📜 Новый Квест</h3>
@@ -376,22 +377,24 @@
                     💰 Награда получена: <span id="quest-reward-gold">0</span> золотых
                 </div>
             </div>
-            <!-- Окно Смены Эпохи -->
-            <div id="era-modal" class="game-modal hidden" style="display:none; background:#0d1117; border:2px solid #8b949e; color:#c9d1d9; padding:30px; border-radius:8px; min-width:500px; max-width:700px; text-align:center; box-shadow:0 0 30px rgba(0,0,0,0.8); flex-direction:column; align-items:center;">
-                <h2 id="era-modal-title" style="color:#ffd700; font-size:24px; margin-bottom:20px; text-transform:uppercase; letter-spacing:2px;">Название Эпохи</h2>
-                <div id="era-modal-text" style="font-size:16px; line-height:1.6; margin-bottom:30px; font-style:italic; color:#e6edf3;">
-                    Текст описания эпохи...
-                </div>
-                <button onclick="GameModule.closeEraWindow()" style="padding:12px 30px; background:#238636; color:white; border:none; border-radius:4px; cursor:pointer; font-family:inherit; font-size:16px; font-weight:bold; transition:background 0.2s;">
-                    Принять Судьбу
-                </button>
-            </div>
+            
             <div style="margin-top: 20px; text-align: right;">
                 <button onclick="GameModule.closeQuestWindow()" style="padding: 8px 20px; background: #da3633; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: inherit;">Закрыть</button>
             </div>
         </div>
 
-    </div>
+        <!-- === ОКНО СМЕНЫ ЭПОХИ (ВЫНЕСЕНО ОТДЕЛЬНО) === -->
+        <div id="era-modal" class="game-modal hidden" style="display:none; background:#0d1117; border:2px solid #8b949e; color:#c9d1d9; padding:30px; border-radius:8px; min-width:500px; max-width:700px; text-align:center; box-shadow:0 0 30px rgba(0,0,0,0.8); flex-direction:column; align-items:center;">
+            <h2 id="era-modal-title" style="color:#ffd700; font-size:24px; margin-bottom:20px; text-transform:uppercase; letter-spacing:2px;">Название Эпохи</h2>
+            <div id="era-modal-text" style="font-size:16px; line-height:1.6; margin-bottom:30px; font-style:italic; color:#e6edf3;">
+                Текст описания эпохи...
+            </div>
+            <button onclick="GameModule.closeEraWindow()" style="padding:12px 30px; background:#238636; color:white; border:none; border-radius:4px; cursor:pointer; font-family:inherit; font-size:16px; font-weight:bold; transition:background 0.2s;">
+                Принять Судьбу
+            </button>
+        </div>
+
+    </div> <!-- Конец modal-overlay -->
 
 </body>
 </html>
