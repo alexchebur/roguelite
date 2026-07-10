@@ -103,6 +103,8 @@ const GameModule = (function() {
     }
 
     function openEraWindow(eraData) {
+        console.log("🚀 [Era] Попытка открыть окно эпохи:", eraData.name);
+        
         isEraWindowOpen = true;
         busy = true; // Блокируем игровой цикл
         toggleUI(false); // Скрываем панели
@@ -113,19 +115,26 @@ const GameModule = (function() {
         const textEl = document.getElementById('era-modal-text');
 
         if (overlay && eraModal && titleEl && textEl) {
+            console.log("✅ [Era] Элементы DOM найдены. Применяем стили...");
+
+            // 1. Заполняем контент
             titleEl.textContent = eraData.modalTitle || eraData.name;
             textEl.textContent = eraData.modalText;
-        
+
+            // 2. ЖЕСТКОЕ управление стилями (в обход CSS классов)
             overlay.style.display = 'flex';
             overlay.style.visibility = 'visible';
-            eraModal.style.display = 'flex'; // Используем flex для центрирования контента
-            eraModal.classList.remove('hidden');
+            
+            eraModal.style.display = 'flex'; 
+            eraModal.style.visibility = 'visible';
+            eraModal.classList.remove('hidden'); // Убираем класс, если он есть
+
+            console.log("✅ [Era] Окно должно быть видно. Проверьте экран!");
         } else {
-            console.error("❌ [Era] Элементы модального окна эпохи не найдены!");
+            console.error("❌ [Era] ОШИБКА: Не найдены элементы модального окна в HTML!");
             closeEraWindow();
         }
     }
-
     function closeEraWindow() {
         isEraWindowOpen = false;
         busy = false;
