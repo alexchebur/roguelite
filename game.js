@@ -1214,15 +1214,17 @@ function updateQuestCompass() {
 
         const rect = canvas.getBoundingClientRect();
         
-        // 1. Переводим экранные координаты тапа во внутренние координаты канваса
-        // Учитываем CSS-масштабирование канваса
+        // 1. УЧИТЫВАЕМ МАСШТАБИРОВАНИЕ CANVAS (CSS Transform)
+        // Это критически важно для мобильных устройств!
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         
+        // Переводим экранные координаты тапа во внутренние координаты канваса
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
 
         // 2. Проверяем, попал ли тап в панель Инвентаря (теперь это Меню Тактики)
+        // Находим элемент инвентаря в DOM
         const invPanel = document.getElementById("inventory-panel");
         if (invPanel) {
             const invRect = invPanel.getBoundingClientRect();
@@ -1280,7 +1282,6 @@ function updateQuestCompass() {
              TacticalBattleModule.processBattleTurn(0, 0, window.currentTactic);
         }
     }
-
     
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
