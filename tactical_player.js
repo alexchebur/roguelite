@@ -4,11 +4,14 @@
 const TacticalPlayerModule = (function() {
     'use strict';
 
+    /**
+     * Обработка тактики игрока и генерация действий для его армии
+     */
     function processPlayerTactic(tacticId, playerArmy, playerUnit, enemyUnits, arena) {
         const actions = [];
         if (!playerArmy || playerArmy.length === 0) return actions;
 
-        // Группируем юнитов по отрядам
+        // Группируем юнитов по отрядам для сохранения строя
         const squads = {};
         playerArmy.forEach(u => {
             if (!squads[u.squadId]) squads[u.squadId] = [];
@@ -17,32 +20,40 @@ const TacticalPlayerModule = (function() {
 
         Object.values(squads).forEach(squad => {
             squad.forEach(unit => {
+                if (unit.hp <= 0) return; // Пропускаем мертвых
+
                 let action = null;
+                const nearestEnemy = findNearestEnemy(unit, enemyUnits);
+                const distToEnemy = nearestEnemy ? getDistance(unit, nearestEnemy) : Infinity;
+                
+                // Определяем тип юнита (melee или range)
+                const isRanged = (unit.type && (unit.type === 'range' || unit.type.type === 'range'));
+                const attackRange = unit.range || (isRanged ? 8 : 1);
 
                 // === 1. ЛОГИКА ПОБЕГА (FLEE) ===
                 if (tacticId === 'flee') {
-                    if (unit.x > 0) {
-                        // Пытаемся отступить влево
+                    // Если достигли левого края (x <= 1), исчезаем
+                    if (unit.x <= 1) {
+                        action = { type: 'remove', unit: unit };
+                    } else {
+                        // Иначе бежим влево
                         action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena, true);
                         if (!action) action = { type: 'wait', unit: unit };
-                    } else {
-                        // Достигли левого края (x=0) -> Исчезаем
-                        action = { type: 'remove', unit: unit };
                     }
                 } 
                 // === 2. ЛОГИКА ОТСТУПЛЕНИЯ (RETREAT) ===
                 else if (tacticId === 'retreat') {
-                    // Проверяем врага вплотную для контратаки
-                    const nearestEnemy = findNearestEnemy(unit, enemyUnits);
-                    const distToEnemy = nearestEnemy ? getDistance(unit, nearestEnemy) : Infinity;
-
+                    // Если враг вплотную — бьемся насмерть
                     if (distToEnemy === 1) {
                         action = { type: 'attack', target: nearestEnemy, unit: unit };
-                    } else if (unit.x > 2) {
-                        // Отходим к безопасной зоне (x=2)
+                    } 
+                    // Если есть безопасная зона (x > 2), отходим туда
+                    else if (unit.x > 2) {
                         action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena, false);
                         if (!action) action = { type: 'wait', unit: unit };
-                    } else {
+                    } 
+                    // Если прижаты к стене (x <= 2), стоим и ждем
+                    else {
                         action = { type: 'wait', unit: unit };
                     }
                 }
@@ -50,44 +61,57 @@ const TacticalPlayerModule = (function() {
                 else {
                     switch (tacticId) {
                         case 'advance':
-                            const targetAdv = findNearestEnemy(unit, enemyUnits);
-                            if (targetAdv) action = getMoveOrAttackAction(unit, targetAdv, arena, enemyUnits);
+                            // Агрессивное наступление на ближайшего врага
+                            if (nearestEnemy) {
+                                action = getMoveOrAttackAction(unit, nearestEnemy, arena, enemyUnits);
+                            }
                             break;
+
                         case 'ranged':
-                            if (unit.type === 'range' || unit.type.type === 'range') {
-                                const targetRng = findNearestEnemy(unit, enemyUnits);
-                                if (targetRng && getDistance(unit, targetRng) <= unit.range) {
-                                    action = { type: 'attack', target: targetRng, unit: unit };
-                                } else if (targetRng) {
-                                    action = getMoveOrAttackAction(unit, targetRng, arena, enemyUnits);
+                            // Приоритет дистанционной атаки
+                            if (nearestEnemy) {
+                                if (isRanged && distToEnemy <= attackRange) {
+                                    // Стреляем, не двигаясь
+                                    action = { type: 'attack', target: nearestEnemy, unit: unit };
+                                } else {
+                                    // Если не можем стрелять (или это милишник), идем к врагу
+                                    action = getMoveOrAttackAction(unit, nearestEnemy, arena, enemyUnits);
+                                }
+                            }
+                            break;
+
+                        case 'hold':
+                            // Оборона: стреляем/бьем только если враг в досягаемости, иначе стоим
+                            if (nearestEnemy) {
+                                if (isRanged && distToEnemy <= attackRange) {
+                                    action = { type: 'attack', target: nearestEnemy, unit: unit };
+                                } else if (!isRanged && distToEnemy === 1) {
+                                    action = { type: 'attack', target: nearestEnemy, unit: unit };
+                                } else {
+                                    action = { type: 'wait', unit: unit };
                                 }
                             } else {
-                                const targetMelee = findNearestEnemy(unit, enemyUnits);
-                                if (targetMelee) action = getMoveOrAttackAction(unit, targetMelee, arena, enemyUnits);
+                                action = { type: 'wait', unit: unit };
                             }
                             break;
-                        case 'hold':
-                            const targetHold = findNearestEnemy(unit, enemyUnits);
-                            if (targetHold) {
-                                const dist = getDistance(unit, targetHold);
-                                const range = unit.range || 1;
-                                if ((unit.type === 'range' || unit.type.type === 'range') && dist <= range) {
-                                    action = { type: 'attack', target: targetHold, unit: unit };
-                                } else if (dist === 1) {
-                                    action = { type: 'attack', target: targetHold, unit: unit };
-                                }
-                            }
-                            break;
+                            
+                        default:
+                            action = { type: 'wait', unit: unit };
                     }
                 }
 
+                // Пост-обработка действия
                 if (action) {
-                    // Применяем разделение строя для движений
+                    // Применяем разделение строя только для движений, чтобы юниты не слипались
                     if (action.type === 'move') {
                         const separatedPos = applySeparation(unit, squad, action.x, action.y, arena, enemyUnits);
                         action.x = separatedPos.x;
                         action.y = separatedPos.y;
-                        if (action.x === unit.x && action.y === unit.y) action.type = 'wait';
+                        
+                        // Если после разделения координаты не изменились, отменяем движение
+                        if (action.x === unit.x && action.y === unit.y) {
+                            action.type = 'wait';
+                        }
                     }
                     actions.push(action);
                 }
