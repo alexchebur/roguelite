@@ -30,17 +30,61 @@ const TacticalPlayerModule = (function() {
                 const isRanged = (unit.type && (unit.type === 'range' || unit.type.type === 'range'));
                 const attackRange = unit.range || (isRanged ? 8 : 1);
 
-                // === 1. ЛОГИКА ПОБЕГА (FLEE) ===
-                if (tacticId === 'flee') {
-                    // Если достигли левого края (x <= 1), исчезаем
-                    if (unit.x <= 1) {
-                        action = { type: 'remove', unit: unit };
-                    } else {
-                        // Иначе бежим влево
-                        action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena, true);
-                        if (!action) action = { type: 'wait', unit: unit };
+        
+        // === ЛОГИКА ПОБЕГА (FLEE) ===
+        if (tacticId === 'flee') {
+            // 1. Обрабатываем армию игрока
+            if (playerArmy) {
+                playerArmy.forEach(unit => {
+                    if (unit.hp > 0) {
+                        // Если юнит уже у левого края - он исчезает
+                        if (unit.x <= 0) {
+                            actions.push({ type: 'remove', unit: unit });
+                        } else {
+                            // Иначе бежим влево
+                            // Используем простую логику движения влево с обходом препятствий
+                            let targetX = unit.x - 1;
+                            let targetY = unit.y;
+                            
+                            // Простая проверка занятости клетки (можно улучшить через getRetreatMove)
+                            const isBlocked = playerArmy.some(u => u !== unit && u.hp > 0 && u.x === targetX && u.y === targetY) ||
+                                              enemyUnits.some(e => e.hp > 0 && e.x === targetX && e.y === targetY) ||
+                                              (playerUnit && playerUnit.hp > 0 && playerUnit.x === targetX && playerUnit.y === targetY);
+                            
+                            if (!isBlocked && targetX >= 0) {
+                                actions.push({ type: 'move', x: targetX, y: targetY, unit: unit });
+                            } else {
+                                // Если заблокировано, пробуем вверх/вниз, но все равно влево
+                                // Для простоты пока просто ждем, если путь закрыт, или используем getRetreatMove
+                                actions.push({ type: 'wait', unit: unit }); 
+                            }
+                        }
                     }
-                } 
+                });
+            }
+
+            // 2. Обрабатываем самого игрока (если он отдельный юнит)
+            if (playerUnit && playerUnit.hp > 0) {
+                if (playerUnit.x <= 0) {
+                    actions.push({ type: 'remove', unit: playerUnit, isHero: true });
+                } else {
+                    // Герой тоже бежит влево
+                    let targetX = playerUnit.x - 1;
+                    let targetY = playerUnit.y;
+                    
+                    const isBlocked = playerArmy.some(u => u.hp > 0 && u.x === targetX && u.y === targetY) ||
+                                      enemyUnits.some(e => e.hp > 0 && e.x === targetX && e.y === targetY);
+                                      
+                    if (!isBlocked && targetX >= 0) {
+                         actions.push({ type: 'move', x: targetX, y: targetY, unit: playerUnit });
+                    } else {
+                         actions.push({ type: 'wait', unit: playerUnit });
+                    }
+                }
+            }
+            
+            return actions; // Возвращаем только действия побега
+        }
                 // === 2. ЛОГИКА ОТСТУПЛЕНИЯ (RETREAT) ===
                 else if (tacticId === 'retreat') {
                     // Если враг вплотную — бьемся насмерть
