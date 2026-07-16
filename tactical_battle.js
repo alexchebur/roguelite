@@ -105,27 +105,38 @@ const TacticalBattleModule = (function() {
     function checkBattleEnd(state) {
         if (isBattleEnding) return; 
 
-        // 1. Проверка поражения:
-        // А) Игрок мертв (HP <= 0)
-        // Б) Игрок при смерти (HP <= 10) -> Автоматический побег по ТЗ
+        // 1. Проверка поражения по HP (смерть или критическое состояние)
         const isDead = state.playerUnit.hp <= 0;
         const isCritical = state.playerUnit.hp <= 10 && state.playerUnit.hp > 0;
-        
-        // 2. Проверка победы: все враги мертвы
+
+        // 2. Проверка победы (все враги мертвы)
         const isVictory = state.enemyUnits.length === 0;
+
+        // 3. Проверка полного бегства (НОВОЕ)
+        // Если у игрока нет живой армии И выбрана тактика отступления/побега
+        const hasNoArmy = !state.playerArmy || state.playerArmy.length === 0;
+        const isRetreating = (window.currentTactic === 'flee' || window.currentTactic === 'retreat');
 
         if (isDead) {
             isBattleEnding = true;
-            RenderModule.log("💀 Ваш отряд разбит! Вы погибли.", "combat");
+            RenderModule.log("💀 Вы погибли в бою...", "combat");
             setTimeout(() => GameModule.endTacticalBattle(false), 1000);
-        } else if (isCritical) {
+        } 
+        else if (isCritical) {
             isBattleEnding = true;
             RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
             setTimeout(() => GameModule.endTacticalBattle(false), 800);
-        } else if (isVictory) {
+        } 
+        else if (isVictory) {
             isBattleEnding = true;
             RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
             setTimeout(() => GameModule.endTacticalBattle(true), 1500);
+        }
+        // === НОВАЯ ЛОГИКА: Если армии нет и мы пытаемся сбежать ===
+        else if (hasNoArmy && isRetreating) {
+            isBattleEnding = true;
+            RenderModule.log("💨 Ваша армия покинула поле боя. Вы следуете за ними!", "info");
+            setTimeout(() => GameModule.endTacticalBattle(false), 500);
         }
     }
 
