@@ -376,7 +376,7 @@ const MapModule = (function() {
         
         stairsDown = null; 
         return { x: stairsUp.x, y: stairsUp.y };
-    }
+    } 
 
     function clearCache() {
         stairsCache.clear();
