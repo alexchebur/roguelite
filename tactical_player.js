@@ -1,12 +1,9 @@
 /**
- * МОДУЛЬ УПРАВЛЕНИЯ АРМИЕЙ ИГРОКА (tactical_player.js) - С ПОЛНОЙ ЛОГИКОЙ ОТСТУПЛЕНИЯ
+ * МОДУЛЬ УПРАВЛЕНИЯ АРМИЕЙ ИГРОКА (tactical_player.js)
  */
 const TacticalPlayerModule = (function() {
     'use strict';
 
-    /**
-     * Обработка тактики игрока и генерация действий для его армии
-     */
     function processPlayerTactic(tacticId, playerArmy, playerUnit, enemyUnits, arena) {
         const actions = [];
         if (!playerArmy || playerArmy.length === 0) return actions;
@@ -20,84 +17,35 @@ const TacticalPlayerModule = (function() {
 
         Object.values(squads).forEach(squad => {
             squad.forEach(unit => {
-                if (unit.hp <= 0) return; // Пропускаем мертвых
+                if (unit.hp <= 0) return;
 
                 let action = null;
                 const nearestEnemy = findNearestEnemy(unit, enemyUnits);
                 const distToEnemy = nearestEnemy ? getDistance(unit, nearestEnemy) : Infinity;
                 
-                // Определяем тип юнита (melee или range)
+                // Определяем тип юнита
                 const isRanged = (unit.type && (unit.type === 'range' || unit.type.type === 'range'));
                 const attackRange = unit.range || (isRanged ? 8 : 1);
 
-        
-        // === ЛОГИКА ПОБЕГА (FLEE) ===
-        if (tacticId === 'flee') {
-            // 1. Обрабатываем армию игрока
-            if (playerArmy) {
-                playerArmy.forEach(unit => {
-                    if (unit.hp > 0) {
-                        // Если юнит уже у левого края - он исчезает
-                        if (unit.x <= 0) {
-                            actions.push({ type: 'remove', unit: unit });
-                        } else {
-                            // Иначе бежим влево
-                            // Используем простую логику движения влево с обходом препятствий
-                            let targetX = unit.x - 1;
-                            let targetY = unit.y;
-                            
-                            // Простая проверка занятости клетки (можно улучшить через getRetreatMove)
-                            const isBlocked = playerArmy.some(u => u !== unit && u.hp > 0 && u.x === targetX && u.y === targetY) ||
-                                              enemyUnits.some(e => e.hp > 0 && e.x === targetX && e.y === targetY) ||
-                                              (playerUnit && playerUnit.hp > 0 && playerUnit.x === targetX && playerUnit.y === targetY);
-                            
-                            if (!isBlocked && targetX >= 0) {
-                                actions.push({ type: 'move', x: targetX, y: targetY, unit: unit });
-                            } else {
-                                // Если заблокировано, пробуем вверх/вниз, но все равно влево
-                                // Для простоты пока просто ждем, если путь закрыт, или используем getRetreatMove
-                                actions.push({ type: 'wait', unit: unit }); 
-                            }
-                        }
-                    }
-                });
-            }
-
-            // 2. Обрабатываем самого игрока (если он отдельный юнит)
-            if (playerUnit && playerUnit.hp > 0) {
-                if (playerUnit.x <= 0) {
-                    actions.push({ type: 'remove', unit: playerUnit, isHero: true });
-                } else {
-                    // Герой тоже бежит влево
-                    let targetX = playerUnit.x - 1;
-                    let targetY = playerUnit.y;
-                    
-                    const isBlocked = playerArmy.some(u => u.hp > 0 && u.x === targetX && u.y === targetY) ||
-                                      enemyUnits.some(e => e.hp > 0 && e.x === targetX && e.y === targetY);
-                                      
-                    if (!isBlocked && targetX >= 0) {
-                         actions.push({ type: 'move', x: targetX, y: targetY, unit: playerUnit });
+                // === 1. ЛОГИКА ПОБЕГА (FLEE) ===
+                if (tacticId === 'flee') {
+                    // Если достигли левого края (x <= 1), исчезаем
+                    if (unit.x <= 1) {
+                        action = { type: 'remove', unit: unit };
                     } else {
-                         actions.push({ type: 'wait', unit: playerUnit });
+                        // Иначе бежим влево
+                        action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena, true);
+                        if (!action) action = { type: 'wait', unit: unit };
                     }
-                }
-            }
-            
-            return actions; // Возвращаем только действия побега
-        }
+                } 
                 // === 2. ЛОГИКА ОТСТУПЛЕНИЯ (RETREAT) ===
                 else if (tacticId === 'retreat') {
-                    // Если враг вплотную — бьемся насмерть
                     if (distToEnemy === 1) {
                         action = { type: 'attack', target: nearestEnemy, unit: unit };
-                    } 
-                    // Если есть безопасная зона (x > 2), отходим туда
-                    else if (unit.x > 2) {
+                    } else if (unit.x > 2) {
                         action = getRetreatMove(unit, squad, enemyUnits, playerUnit, arena, false);
                         if (!action) action = { type: 'wait', unit: unit };
-                    } 
-                    // Если прижаты к стене (x <= 2), стоим и ждем
-                    else {
+                    } else {
                         action = { type: 'wait', unit: unit };
                     }
                 }
@@ -105,27 +53,20 @@ const TacticalPlayerModule = (function() {
                 else {
                     switch (tacticId) {
                         case 'advance':
-                            // Агрессивное наступление на ближайшего врага
                             if (nearestEnemy) {
-                                action = getMoveOrAttackAction(unit, nearestEnemy, arena, enemyUnits);
+                                action = getMoveOrAttackAction(unit, nearestEnemy, arena, enemyUnits, playerUnit);
                             }
                             break;
-
                         case 'ranged':
-                            // Приоритет дистанционной атаки
                             if (nearestEnemy) {
                                 if (isRanged && distToEnemy <= attackRange) {
-                                    // Стреляем, не двигаясь
                                     action = { type: 'attack', target: nearestEnemy, unit: unit };
                                 } else {
-                                    // Если не можем стрелять (или это милишник), идем к врагу
-                                    action = getMoveOrAttackAction(unit, nearestEnemy, arena, enemyUnits);
+                                    action = getMoveOrAttackAction(unit, nearestEnemy, arena, enemyUnits, playerUnit);
                                 }
                             }
                             break;
-
                         case 'hold':
-                            // Оборона: стреляем/бьем только если враг в досягаемости, иначе стоим
                             if (nearestEnemy) {
                                 if (isRanged && distToEnemy <= attackRange) {
                                     action = { type: 'attack', target: nearestEnemy, unit: unit };
@@ -138,24 +79,18 @@ const TacticalPlayerModule = (function() {
                                 action = { type: 'wait', unit: unit };
                             }
                             break;
-                            
                         default:
                             action = { type: 'wait', unit: unit };
                     }
                 }
 
-                // Пост-обработка действия
                 if (action) {
-                    // Применяем разделение строя только для движений, чтобы юниты не слипались
+                    // Применяем разделение строя только для движений
                     if (action.type === 'move') {
-                        const separatedPos = applySeparation(unit, squad, action.x, action.y, arena, enemyUnits);
+                        const separatedPos = applySeparation(unit, squad, action.x, action.y, arena, enemyUnits, playerUnit);
                         action.x = separatedPos.x;
                         action.y = separatedPos.y;
-                        
-                        // Если после разделения координаты не изменились, отменяем движение
-                        if (action.x === unit.x && action.y === unit.y) {
-                            action.type = 'wait';
-                        }
+                        if (action.x === unit.x && action.y === unit.y) action.type = 'wait';
                     }
                     actions.push(action);
                 }
@@ -166,10 +101,9 @@ const TacticalPlayerModule = (function() {
     }
 
     /**
-     * Умный поиск клетки для отступления (влево, но с обходом препятствий)
+     * Умный поиск клетки для отступления
      */
     function getRetreatMove(unit, squad, enemies, playerUnit, arena, isFleeing) {
-        // Приоритет: Влево, Влево-Вверх, Влево-Вниз, Вверх, Вниз
         const candidates = [
             { x: unit.x - 1, y: unit.y },
             { x: unit.x - 1, y: unit.y - 1 },
@@ -177,36 +111,34 @@ const TacticalPlayerModule = (function() {
             { x: unit.x, y: unit.y - 1 },
             { x: unit.x, y: unit.y + 1 }
         ];
-
         for (const pos of candidates) {
             if (pos.x < 0 || pos.x >= arena.width || pos.y < 0 || pos.y >= arena.height) continue;
-            
             // Проверка врагов
             if (enemies.some(e => e.hp > 0 && e.x === pos.x && e.y === pos.y)) continue;
-            // Проверка игрока
+            // Проверка игрока (Героя)
             if (playerUnit && playerUnit.hp > 0 && playerUnit.x === pos.x && playerUnit.y === pos.y) continue;
             // Проверка своих
             if (squad.some(a => a !== unit && a.hp > 0 && a.x === pos.x && a.y === pos.y)) continue;
-
             return { type: 'move', x: pos.x, y: pos.y, unit: unit };
         }
         return null;
     }
 
-    function applySeparation(me, squad, targetX, targetY, arena, enemies) {
+    function applySeparation(me, squad, targetX, targetY, arena, enemies, playerUnit) {
         let bestX = targetX;
         let bestY = targetY;
         let minScore = Infinity;
-
         const candidates = [
             { x: targetX, y: targetY },
             { x: targetX + 1, y: targetY }, { x: targetX - 1, y: targetY },
             { x: targetX, y: targetY + 1 }, { x: targetX, y: targetY - 1 }
         ];
-
         for (const pos of candidates) {
             if (pos.x < 0 || pos.x >= arena.width || pos.y < 0 || pos.y >= arena.height) continue;
             if (enemies.some(e => e.hp > 0 && e.x === pos.x && e.y === pos.y)) continue;
+            // Не встаем на героя
+            if (playerUnit && playerUnit.hp > 0 && playerUnit.x === pos.x && playerUnit.y === pos.y) continue;
+            // Не встаем на своих
             if (squad.some(a => a !== me && a.hp > 0 && a.x === pos.x && a.y === pos.y)) continue;
             
             let separationScore = 0;
@@ -216,10 +148,8 @@ const TacticalPlayerModule = (function() {
                     if (d < 2) separationScore += (2 - d) * 10;
                 }
             });
-            
             const deviation = Math.abs(pos.x - targetX) + Math.abs(pos.y - targetY);
             const totalScore = separationScore + deviation;
-            
             if (totalScore < minScore) {
                 minScore = totalScore;
                 bestX = pos.x;
@@ -245,17 +175,30 @@ const TacticalPlayerModule = (function() {
         return Math.abs(u1.x - u2.x) + Math.abs(u1.y - u2.y);
     }
 
-    function getMoveOrAttackAction(unit, target, arena, enemies) {
+    function getMoveOrAttackAction(unit, target, arena, enemies, playerUnit) {
         const dist = getDistance(unit, target);
         if (dist === 1) return { type: 'attack', target: target, unit: unit };
         
         const dx = Math.sign(target.x - unit.x);
         const dy = Math.sign(target.y - unit.y);
-        let nx = unit.x + dx;
-        let ny = unit.y + dy;
         
-        if (nx >= 0 && nx < arena.width && ny >= 0 && ny < arena.height) {
-             return { type: 'move', x: nx, y: ny, unit: unit };
+        // Пробуем пойти по диагонали, потом по осям
+        const moves = [
+            { x: unit.x + dx, y: unit.y + dy },
+            { x: unit.x + dx, y: unit.y },
+            { x: unit.x, y: unit.y + dy }
+        ];
+
+        for (const move of moves) {
+            if (move.x >= 0 && move.x < arena.width && move.y >= 0 && move.y < arena.height) {
+                // Проверка на занятость клетки
+                const isBlockedByEnemy = enemies.some(e => e.hp > 0 && e.x === move.x && e.y === move.y);
+                const isBlockedByHero = playerUnit && playerUnit.hp > 0 && playerUnit.x === move.x && playerUnit.y === move.y;
+                
+                if (!isBlockedByEnemy && !isBlockedByHero) {
+                     return { type: 'move', x: move.x, y: move.y, unit: unit };
+                }
+            }
         }
         return { type: 'wait', unit: unit };
     }
