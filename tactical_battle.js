@@ -99,23 +99,30 @@ const TacticalBattleModule = (function() {
     }
 
     function checkBattleEnd(state) {
-        if (isBattleEnding) return; // Если уже заканчиваем, выходим
-    
-        const isDead = state.playerUnit.hp <= 0;
-        const isCritical = state.playerUnit.hp <= 10 && state.playerUnit.hp > 0;
-        const isVictory = state.enemyUnits.length === 0;
+        if (isBattleEnding) return; 
 
-        if (isDead) {
-            isBattleEnding = true;
-            //RenderModule.log("💀 Вы погибли в бою...", "combat");
-            setTimeout(() => GameModule.endTacticalBattle(false), 1000);
-        } else if (isCritical) {
-            isBattleEnding = true;
-            //RenderModule.log("💨 Ваши силы на исходе! Вы в панике сбегаете с поля боя!", "combat");
-            setTimeout(() => GameModule.endTacticalBattle(false), 800);
+        // Проверяем, жив ли еще герой и есть ли у него армия
+        const heroAlive = state.playerUnit && state.playerUnit.hp > 0;
+        const armyAlive = state.playerArmy && state.playerArmy.some(u => u.hp > 0);
+        
+        const isVictory = state.enemyUnits.length === 0;
+        
+        // Если герой мертв ИЛИ вся армия уничтожена/сбежала
+        if (!heroAlive && !armyAlive) {
+             // Но нам нужно отличить смерть от бегства. 
+             // В tactical_player.js при flee мы ставим hp=0 через executeUnitActions? 
+             // Нет, мы используем тип 'remove'.
+             
+             // Давайте проверим, был ли инициирован побег.
+             // Проще всего: если враги живы, а у игрока никого нет — это поражение.
+             if (state.enemyUnits.length > 0) {
+                 isBattleEnding = true;
+                 RenderModule.log("💨 Вы сбежали с поля боя!", "info");
+                 setTimeout(() => GameModule.endTacticalBattle(false), 500); // false = не победа
+             }
         } else if (isVictory) {
             isBattleEnding = true;
-            //RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
+            RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
             setTimeout(() => GameModule.endTacticalBattle(true), 1500);
         }
     }
