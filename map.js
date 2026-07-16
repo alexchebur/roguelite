@@ -343,8 +343,9 @@ const MapModule = (function() {
         };
     
         // 2. Определяем точку входа/выхода (лестницу вверх)
-        const upSeed = `up_city_${gx}_${gy}_${depth}`;
-        const rng = new Math.seedrandom(upSeed);
+        // 2. Определяем точку входа/выхода (лестницу вверх)
+        const upSeed = createSeed(gx, gy, depth) + 555; // Используем ваш createSeed для уникальности
+        const rng = new SeededRandom(upSeed); // Используем ваш класс SeededRandom
         const w = DataModule.MAP_WIDTH;
         const h = DataModule.MAP_HEIGHT;
         
