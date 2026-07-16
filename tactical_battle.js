@@ -1,22 +1,23 @@
 /**
- * ГЛАВНЫЙ КОНТРОЛЛЕР ТАКТИЧЕСКОГО БОЯ (tactical_battle.js) - ФИНАЛЬНЫЙ
+ * ГЛАВНЫЙ КОНТРОЛЛЕР ТАКТИЧЕСКОГО БОЯ (tactical_battle.js)
  */
-// В начале файла tactical_battle.js добавь переменную
 let isBattleEnding = false;
+
 const TacticalBattleModule = (function() {
     'use strict';
 
     function processBattleTurn(playerDx, playerDy, currentTactic) {
-        isBattleEnding = false; // <--- СБРОС ФЛАГА
+        isBattleEnding = false;
         const state = GameModule.getTacticalState();
         if (!state) return;
 
         const { arena, playerUnit, playerArmy, enemyUnits } = state;
 
-        // 1. Движение/Действие Игрока (Героя)
+        // 1. Движение/Действие Игрока (Героя) - РУЧНОЕ УПРАВЛЕНИЕ
         handlePlayerHeroAction(playerUnit, playerDx, playerDy, enemyUnits, arena);
 
-        // 2. Действия Армии Игрока (AI союзников)
+        // 2. Действия Армии Игрока (AI союзников) - АВТОМАТИЧЕСКОЕ
+        // Передаем playerUnit, чтобы армия знала, где герой
         const playerActions = TacticalPlayerModule.processPlayerTactic(currentTactic, playerArmy, playerUnit, enemyUnits, arena);
         executeUnitActions(playerActions, [playerUnit, ...enemyUnits]);
 
@@ -43,17 +44,22 @@ const TacticalBattleModule = (function() {
 
     function handlePlayerHeroAction(player, dx, dy, enemies, arena) {
         if (dx === 0 && dy === 0) return; 
-
+        
         const nx = player.x + dx;
         const ny = player.y + dy;
 
+        // Проверка границ
         if (nx < 0 || nx >= arena.width || ny < 0 || ny >= arena.height) return;
 
+        // Проверка врага
         const enemy = enemies.find(e => e.hp > 0 && e.x === nx && e.y === ny);
         if (enemy) {
             performAttack(player, enemy);
         } else {
-            const isBlockedByAlly = GameModule.getPlayerArmy().some(a => a.x === nx && a.y === ny && a.hp > 0);
+            // Проверка своих юнитов (чтобы не наступать на них)
+            const state = GameModule.getTacticalState();
+            const isBlockedByAlly = state.playerArmy.some(a => a.x === nx && a.y === ny && a.hp > 0);
+            
             if (!isBlockedByAlly) {
                 player.x = nx;
                 player.y = ny;
@@ -66,15 +72,13 @@ const TacticalBattleModule = (function() {
             const unit = action.unit; 
             if (!unit || unit.hp <= 0) return;
 
-            // === ОБРАБОТКА ПОБЕГА (Исчезновение) ===
             if (action.type === 'remove') {
-                unit.hp = 0; // Помечаем как мертвого, чтобы cleanUpDeadUnits удалил его
+                unit.hp = 0; 
                 RenderModule.log(`${unit.name} сбегает с поля боя!`, "info");
                 return;
             }
 
             if (action.type === 'move') {
-                // Проверяем, не занята ли клетка (исключаем самого юнита из проверки)
                 const isOccupied = targets.some(t => t !== unit && t && t.hp > 0 && t.x === action.x && t.y === action.y);
                 if (!isOccupied) {
                     unit.x = action.x;
@@ -101,40 +105,30 @@ const TacticalBattleModule = (function() {
     function checkBattleEnd(state) {
         if (isBattleEnding) return; 
 
-        // Проверяем, жив ли еще герой
         const heroAlive = state.playerUnit && state.playerUnit.hp > 0;
-        
-        // Проверяем, жива ли еще хоть какая-то часть армии
         const armyAlive = state.playerArmy && state.playerArmy.some(u => u.hp > 0);
-        
-        // Проверяем, живы ли враги
         const enemiesAlive = state.enemyUnits.length > 0;
 
-        // === УСЛОВИЯ ОКОНЧАНИЯ БОЯ ===
-
-        // 1. ПОРАЖЕНИЕ (Смерть): Игрок мертв И армия уничтожена
+        // Поражение: Герой мертв ИЛИ (Герой сбежал/мертв И армия уничтожена)
+        // Для простоты: если герой мертв - конец. Если герой жив, но армия мертва - продолжаем (хардкор).
+        // Но по ТЗ: если все свои исчезли - конец.
+        
         if (!heroAlive && !armyAlive) {
-             // Если враги еще живы, значит мы проиграли бой (или сбежали, если это был flee)
-             // Но так как мы удаляем юнитов через 'remove' при побеге, здесь мы ловим именно смерть.
-             // Однако, если мы сбежали, то юнитов тоже не будет. 
-             // Как отличить? Можно проверить флаг currentTactic.
-             
              if (window.currentTactic === 'flee') {
                  RenderModule.log("💨 Ваш отряд успешно покинул поле боя!", "info");
-                 setTimeout(() => GameModule.endTacticalBattle(false), 500); // false = не победа
              } else {
                  RenderModule.log("💀 Ваш отряд разбит! Вы погибли.", "combat");
-                 setTimeout(() => GameModule.endTacticalBattle(false), 1000);
              }
+             setTimeout(() => GameModule.endTacticalBattle(false), 1000);
              isBattleEnding = true;
         } 
-        // 2. ПОБЕДА: Все враги мертвы
         else if (!enemiesAlive) {
-            isBattleEnding = true;
             RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
             setTimeout(() => GameModule.endTacticalBattle(true), 1500);
+            isBattleEnding = true;
         }
     }
+
     return { processBattleTurn: processBattleTurn };
 })();
 window.TacticalBattleModule = TacticalBattleModule;
