@@ -101,32 +101,40 @@ const TacticalBattleModule = (function() {
     function checkBattleEnd(state) {
         if (isBattleEnding) return; 
 
-        // Проверяем, жив ли еще герой и есть ли у него армия
+        // Проверяем, жив ли еще герой
         const heroAlive = state.playerUnit && state.playerUnit.hp > 0;
+        
+        // Проверяем, жива ли еще хоть какая-то часть армии
         const armyAlive = state.playerArmy && state.playerArmy.some(u => u.hp > 0);
         
-        const isVictory = state.enemyUnits.length === 0;
-        
-        // Если герой мертв ИЛИ вся армия уничтожена/сбежала
+        // Проверяем, живы ли враги
+        const enemiesAlive = state.enemyUnits.length > 0;
+
+        // === УСЛОВИЯ ОКОНЧАНИЯ БОЯ ===
+
+        // 1. ПОРАЖЕНИЕ (Смерть): Игрок мертв И армия уничтожена
         if (!heroAlive && !armyAlive) {
-             // Но нам нужно отличить смерть от бегства. 
-             // В tactical_player.js при flee мы ставим hp=0 через executeUnitActions? 
-             // Нет, мы используем тип 'remove'.
+             // Если враги еще живы, значит мы проиграли бой (или сбежали, если это был flee)
+             // Но так как мы удаляем юнитов через 'remove' при побеге, здесь мы ловим именно смерть.
+             // Однако, если мы сбежали, то юнитов тоже не будет. 
+             // Как отличить? Можно проверить флаг currentTactic.
              
-             // Давайте проверим, был ли инициирован побег.
-             // Проще всего: если враги живы, а у игрока никого нет — это поражение.
-             if (state.enemyUnits.length > 0) {
-                 isBattleEnding = true;
-                 RenderModule.log("💨 Вы сбежали с поля боя!", "info");
+             if (window.currentTactic === 'flee') {
+                 RenderModule.log("💨 Ваш отряд успешно покинул поле боя!", "info");
                  setTimeout(() => GameModule.endTacticalBattle(false), 500); // false = не победа
+             } else {
+                 RenderModule.log("💀 Ваш отряд разбит! Вы погибли.", "combat");
+                 setTimeout(() => GameModule.endTacticalBattle(false), 1000);
              }
-        } else if (isVictory) {
+             isBattleEnding = true;
+        } 
+        // 2. ПОБЕДА: Все враги мертвы
+        else if (!enemiesAlive) {
             isBattleEnding = true;
             RenderModule.log("🎉 ПОБЕДА! Враг повержен!", "event");
             setTimeout(() => GameModule.endTacticalBattle(true), 1500);
         }
     }
-
     return { processBattleTurn: processBattleTurn };
 })();
 window.TacticalBattleModule = TacticalBattleModule;
