@@ -321,20 +321,19 @@ const MapModule = (function() {
         return { grid, interiorCoords, shopCoords, innCoords };
     }
     function generateCity(gx, gy, depth) {
-        // 1. Генерация планировки города (используем наш класс SeededRandom)
         const seedVal = createSeed(gx, gy, depth);
-        const rand = new SeededRandom(seedVal);
+        const rand = new SeededRandom(seedVal); // Используем наш SeededRandom для планировки
         const density = rand.next() * 0.3 + 0.3; 
         
-        // Генерируем здания, улицы, магазин и постоялый двор
+        // 1. Генерируем планировку (здания, улицы, магазин)
         const layoutResult = generateCityLayout(rand, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, density);
         
         currentMapData = layoutResult.grid;
         currentMapInteriorCoords = layoutResult.interiorCoords || [];
         
-        // === Сохраняем координаты для отрисовки декора ===
+        // === НОВОЕ: Сохраняем координаты магазина для отрисовки ===
         window.currentShopCoords = layoutResult.shopCoords || [];
-        window.currentInnCoords = layoutResult.innCoords || [];
+        window.currentInnCoords = layoutResult.innCoords || []; 
 
         currentDungeonType = { 
             name: 'city',
@@ -345,17 +344,14 @@ const MapModule = (function() {
         };
     
         // 2. Определяем точку входа/выхода (лестницу вверх)
-        // Здесь используем библиотеку seedrandom.min.js через Math.seedrandom
-        const upSeed = `up_city_${gx}_${gy}_${depth}`;
-        
-        // ВАЖНО: Без ключевого слова 'new', так как seedrandom возвращает функцию
-        const rng = Math.seedrandom(upSeed);
+        // ИСПОЛЬЗУЕМ НАШ SeededRandom ВМЕСТО Math.seedrandom
+        const upSeed = createSeed(gx, gy, depth) + 555; // Добавляем смещение для уникальности
+        const rng = new SeededRandom(upSeed);
         
         const w = DataModule.MAP_WIDTH;
         const h = DataModule.MAP_HEIGHT;
         
         const edgeTiles = [];
-        // Ищем проходимые клетки по краям карты
         for (let y = 1; y < h - 1; y++) {
             if (currentMapData[y][1] === 0) edgeTiles.push({x: 1, y});
             if (currentMapData[y][w-2] === 0) edgeTiles.push({x: w-2, y});
@@ -365,19 +361,16 @@ const MapModule = (function() {
             if (currentMapData[h-2][x] === 0) edgeTiles.push({x, y: h-2});
         }
         
-        // Выбираем случайную клетку из найденных
         if (edgeTiles.length > 0) {
-            // rng() возвращает число от 0 до 1
-            stairsUp = edgeTiles[Math.floor(rng() * edgeTiles.length)];
+            // Теперь rng.next() вернет число от 0 до 1, как и ожидается
+            stairsUp = edgeTiles[Math.floor(rng.next() * edgeTiles.length)];
         } else {
-            // Фолбэк, если края полностью закрыты стенами (редко)
             stairsUp = { x: 2, y: 2 };
         }
         
         stairsDown = null; 
         return { x: stairsUp.x, y: stairsUp.y };
-    } 
-
+    }
     function clearCache() {
         stairsCache.clear();
         currentMapInteriorCoords = [];
