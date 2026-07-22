@@ -61,9 +61,9 @@ const TilesetRenderer = (function() {
         // В файле tileset_renderer.js, внутри TILE_MAP
         // === ТАКТИЧЕСКИЕ ТАЙЛЫ ПОЛА (Добавить или обновить) ===
         '.':  { file: 'terrain_sprites', x: 10, y: 2 }, // Равнина (Plain)
-        '"':  { file: 'terrain_sprites', x: 10, y: 2 }, // Лес (Forest) - используйте уникальный символ
+        'F':  { file: 'terrain_sprites', x: 10, y: 2 }, // Лес (Forest) - используйте уникальный символ
         ',':  { file: 'terrain_sprites', x: 1, y: 2 }, // Дорога (Road)
-        '~':  { file: 'terrain_sprites', x: 7, y: 2 }, // Болото (Water)
+        '≈':  { file: 'terrain_sprites', x: 7, y: 2 }, // Болото (Water)
         '^':  { file: 'terrain_sprites', x: 5, y: 2 }, // Предгорье (Mountain)
 
         // --- ГЛОБАЛЬНЫЕ ВАРИАНТЫ ИГРОКА ---
