@@ -64,7 +64,7 @@ const TilesetRenderer = (function() {
         '"':  { file: 'terrain_sprites', x: 10, y: 2 }, // Лес (Forest) - используйте уникальный символ
         ',':  { file: 'terrain_sprites', x: 1, y: 2 }, // Дорога (Road)
         '~':  { file: 'terrain_sprites', x: 7, y: 2 }, // Болото (Water)
-        '^':  { file: 'terrain_sprites', x: 10, y: 2 }, // Предгорье (Mountain)
+        '^':  { file: 'terrain_sprites', x: 5, y: 2 }, // Предгорье (Mountain)
 
         // --- ГЛОБАЛЬНЫЕ ВАРИАНТЫ ИГРОКА ---
         'p': { file: 'creature_sprites', x: 12, y: 1 }, // Соответствует PLAYER_GLOBAL_SMALL
