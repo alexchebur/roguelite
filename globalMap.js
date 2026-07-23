@@ -23,7 +23,8 @@ const GLOBAL_CONFIG = {
 
 const GLOBAL_TEXT_QUESTS_ROSTER = [
     'twine/refugees.html',
-    'twine/werewolf.html'
+    'twine/werewolf.html',
+    'twine/dragon.html'
 ];
 
 
