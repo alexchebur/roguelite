@@ -7,7 +7,7 @@ const TacticalMapModule = (function() {
 
     // Маппинг типов ландшафта на цвета/символы для тактической карты
     const TERRAIN_MAP = {
-        'plain': { char: '.', color: '#3e4a3e', name: 'Равнина' },
+        'plain': { char: '░', color: '#3e4a3e', name: 'Равнина' },
         'forest': { char: 'F', color: '#2e5a2e', name: 'Лес' },
         'road': { char: ',', color: '#5c4d3c', name: 'Дорога' },
         'water': { char: '≈', color: '#2e4a6e', name: 'Болото' },
