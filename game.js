@@ -1943,6 +1943,7 @@ function updateQuestCompass() {
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         saveCurrentDungeonState();
         enemies = [];
@@ -1959,6 +1960,7 @@ function updateQuestCompass() {
         currentDungeonTypeName = dungeonType;
         currentDungeonFullName = dungeonName;
     
+        // 1. Сначала обновляем позицию игрока!
         if (!player) player = EntityModule.createPlayer(startPos.x, startPos.y);
         else {
             player.x = startPos.x;
@@ -1967,7 +1969,8 @@ function updateQuestCompass() {
     
         spawnDungeonEntities(gx, gy, depth);
 
-        // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
+        // 2. И ТОЛЬКО ТЕПЕРЬ проверяем квесты и спавним предметы
+        // Теперь player.x и player.y указывают на реальное положение на новом уровне
         if (typeof QuestSystemModule !== 'undefined') {
             activeQuests.forEach(q => {
                 // Пропускаем уже выполненные или неактивные квесты
@@ -1981,7 +1984,6 @@ function updateQuestCompass() {
                 }
 
                 // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
-                // Проверяем, что цель квеста - именно книги
                 if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
                     q.target.itemType === 'book') {
                     
@@ -2000,25 +2002,20 @@ function updateQuestCompass() {
 
                 // 3. ПРОВЕРКА DIGGER (Глубинный разведчик)
                 if (q.type === 'DIGGER') {
-                    // Проверяем координаты подземелья и глубину
-                    // ВАЖНО: currentDepth начинается с 0, а targetDepth - это "Уровень" (с 1)
-                    // Поэтому сравниваем (currentDepth + 1)
                     if (q.target.targetX === gx && 
                         q.target.targetY === gy && 
                         (currentDepth + 1) >= q.target.targetDepth) { 
                         
-                        // Завершаем квест
                         q.progress = q.maxProgress;
                         q.isCompleted = true;
                         
                         RenderModule.log(`🏆 Квест выполнен: Вы достигли глубины ${currentDepth + 1} в ${dungeonName}!`, "event");
-                        RenderModule.updateQuestBriefing(q); // Обновляем футер
-                        updateQuestCompass(); // Переключаем стрелку на "Награда"
+                        RenderModule.updateQuestBriefing(q);
+                        updateQuestCompass();
                     }
                 }
 
                 // 4. ПРОВЕРКА EXPLORE (Исследователь)
-                // Для EXPLORE цель - просто добраться до определенного подземелья (любой глубины)
                 if (q.type === 'EXPLORE') {
                      if (q.target.targetX === gx && q.target.targetY === gy) {
                         q.progress = q.maxProgress;
@@ -2031,7 +2028,6 @@ function updateQuestCompass() {
                 }
             });
         }
-        // >>> КОНЕЦ ВСТАВКИ <<<
     
         currentLocData = {
             fullName: `${dungeonName} [Уровень ${depth + 1}]`,
@@ -2046,7 +2042,7 @@ function updateQuestCompass() {
     
         RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
         renderFrame();
-    }   
+    }     
     
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
