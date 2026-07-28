@@ -1941,6 +1941,7 @@ function updateQuestCompass() {
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         saveCurrentDungeonState();
         enemies = [];
@@ -1968,26 +1969,36 @@ function updateQuestCompass() {
         // >>> ВСТАВЛЕННЫЙ БЛОК: ПРОВЕРКА И СПАВН КВЕСТОВЫХ ПРЕДМЕТОВ <<<
         if (typeof QuestSystemModule !== 'undefined') {
             activeQuests.forEach(q => {
+                // Пропускаем уже выполненные или неактивные квесты
+                if (!q.isActive || q.isCompleted) return;
+
                 // 1. Спавн предмета для FETCH
-                if (q.isActive && !q.isCompleted && 
-                    q.type === 'FETCH' && 
+                if (q.type === 'FETCH' && 
                     q.target.targetX === gx && 
                     q.target.targetY === gy) {
                     spawnQuestItem(q);
                 }
 
                 // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
-                if (q.isActive && !q.isCompleted && 
-                   (q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
+                // Проверяем, что цель квеста - именно книги
+                if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
                     q.target.itemType === 'book') {
-                    const booksToSpawn = Math.min(q.maxProgress, 3); 
-                    for(let i=0; i<booksToSpawn; i++) {
-                        spawnScholarBook(q);
+                    
+                    // Считаем, сколько книг уже есть на уровне (чтобы не дублировать при перезаходе)
+                    const existingBooks = items.filter(i => i.type === 'book' && i.isQuestItem).length;
+                    // Сколько всего нужно для квеста (но не более 3 за раз, чтобы не захламлять)
+                    const targetCount = Math.min(q.maxProgress, 3);
+                    
+                    if (existingBooks < targetCount) {
+                        const booksToSpawn = targetCount - existingBooks;
+                        for(let i = 0; i < booksToSpawn; i++) {
+                            spawnScholarBook(q);
+                        }
                     }
                 }
 
                 // 3. ПРОВЕРКА DIGGER (Глубинный разведчик)
-                if (q.isActive && !q.isCompleted && q.type === 'DIGGER') {
+                if (q.type === 'DIGGER') {
                     // Проверяем координаты подземелья и глубину
                     // ВАЖНО: currentDepth начинается с 0, а targetDepth - это "Уровень" (с 1)
                     // Поэтому сравниваем (currentDepth + 1)
@@ -2007,7 +2018,7 @@ function updateQuestCompass() {
 
                 // 4. ПРОВЕРКА EXPLORE (Исследователь)
                 // Для EXPLORE цель - просто добраться до определенного подземелья (любой глубины)
-                if (q.isActive && !q.isCompleted && q.type === 'EXPLORE') {
+                if (q.type === 'EXPLORE') {
                      if (q.target.targetX === gx && q.target.targetY === gy) {
                         q.progress = q.maxProgress;
                         q.isCompleted = true;
@@ -2034,7 +2045,7 @@ function updateQuestCompass() {
     
         RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
         renderFrame();
-    }    
+    }   
     
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
