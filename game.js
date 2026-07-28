@@ -2300,27 +2300,34 @@ function updateQuestCompass() {
     }
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR/COLLECT ===
+    // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
     function spawnScholarBook(quest) {
         const bookTemplate = DataModule.ITEM_TYPES.find(t => t.type === 'book');
         if (!bookTemplate) return;
 
         const questBook = EntityModule.createItem(bookTemplate, 0, 0, 1.0);
         questBook.name = `✨ ${questBook.name} (Квест)`;
-        questBook.isQuestItem = true;
+        questBook.isQuestItem = true; // Помечаем как квестовый, чтобы нельзя было продать/выкинуть случайно
 
         let spawnPos = null;
-        
-        // Стратегия: Ищем место рядом с игроком, но с небольшим случайным смещением,
-        // чтобы несколько книг не спаунились в одной точке
+        // Стратегия: Ищем место рядом с игроком или лестницей
         if (player) {
-            // Пробуем найти место в радиусе 5 клеток от игрока
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 5) : null;
-            
-            // Если не вышло или занято, пробуем чуть дальше
-            if (!spawnPos || items.some(i => i.x === spawnPos.x && i.y === spawnPos.y)) {
-                 spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
-            }
         }
+        
+        // Если рядом с игроком занято, ищем случайное место
+        if (!spawnPos || items.some(i => i.x === spawnPos.x && i.y === spawnPos.y)) {
+             spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
+        }
+
+        if (spawnPos) {
+            questBook.x = spawnPos.x;
+            questBook.y = spawnPos.y;
+            items.push(questBook);
+            // Не спамим логом каждую книгу, иначе будет много текста при входе
+            // RenderModule.log(`📚 Вы замечаете древний фолиант...`, "event");
+        }
+    }
 
         if (spawnPos) {
             questBook.x = spawnPos.x;
