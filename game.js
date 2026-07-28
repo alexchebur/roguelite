@@ -1286,6 +1286,56 @@ function updateQuestCompass() {
     function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
+
+
+    // === ОСМОТР ЮНИТА В ТАКТИЧЕСКОМ БОЮ ===
+    function inspectTacticalUnit(clientX, clientY) {
+        if (!tacticalState) return;
+
+        const canvas = document.querySelector("#map-container canvas");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        // Переводим координаты клика в пиксели канваса
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        const tileW = TilesetRenderer.TILE_SIZE;
+        const tileH = TilesetRenderer.TILE_SIZE;
+
+        // Рассчитываем смещение арены (центрование), точно как в рендере
+        const arenaPixelWidth = tacticalState.arena.width * tileW;
+        const arenaPixelHeight = tacticalState.arena.height * tileH;
+        
+        const offsetX = Math.floor((canvas.width - arenaPixelWidth) / 2);
+        const offsetY = Math.floor((canvas.height - arenaPixelHeight) / 2);
+
+        // Вычисляем координаты клетки в сетке арены
+        const gridX = Math.floor((clickX - offsetX) / tileW);
+        const gridY = Math.floor((clickY - offsetY) / tileH);
+
+        // Ищем врага в этой клетке
+        const enemy = tacticalState.enemyUnits.find(e => 
+            e.hp > 0 && e.x === gridX && e.y === gridY
+        );
+
+        if (enemy) {
+            // Формируем текст для инспектора
+            const details = `HP: ${enemy.hp}/${enemy.maxHp}\nATK: ${enemy.atk} | DEF: ${enemy.def}`;
+            
+            // Вызываем стандартную функцию обновления инспектора
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(`⚔️ ${enemy.name}`, details, "enemy");
+            }
+        } else {
+            // Если кликнули в пустоту, можно очистить инспектор или оставить как есть
+            // RenderModule.updateInspector("Пусто", "Здесь никого нет...", "neutral");
+        }
+    }
+
     
     // === ГЛОБАЛЬНЫЙ РЕЖИМ ===
     // === ГЛОБАЛЬНЫЙ РЕЖИМ ===
