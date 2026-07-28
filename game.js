@@ -1246,7 +1246,7 @@ function updateQuestCompass() {
         }
     }    
 
-    // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ (ФИНАЛЬНАЯ ВЕРСИЯ) ===
+    // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ (ИСПРАВЛЕННАЯ) ===
     function handleTacticalTouch(clientX, clientY) {
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas || !tacticalState) return;
@@ -1254,6 +1254,7 @@ function updateQuestCompass() {
         const rect = canvas.getBoundingClientRect();
         
         // 1. УЧИТЫВАЕМ МАСШТАБИРОВАНИЕ CANVAS (CSS Transform)
+        // Это критически важно для мобильных устройств!
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         
@@ -1261,10 +1262,12 @@ function updateQuestCompass() {
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
 
-        // 2. Проверяем, попал ли тап в панель Инвентаря (Меню Тактики)
+        // 2. Проверяем, попал ли тап в панель Инвентаря (теперь это Меню Тактики)
+        // Находим элемент инвентаря в DOM
         const invPanel = document.getElementById("inventory-panel");
         if (invPanel) {
             const invRect = invPanel.getBoundingClientRect();
+            // Если тап внутри прямоугольника панели инвентаря
             if (clientX >= invRect.left && clientX <= invRect.right &&
                 clientY >= invRect.top && clientY <= invRect.bottom) {
                 
@@ -1284,8 +1287,8 @@ function updateQuestCompass() {
             }
         }
 
-        // 3. Тап по полю боя -> Осмотр или Движение/Атака
-        // Используем размер тайла из TilesetRenderer (16px)
+        // 3. Тап по полю боя -> Движение/Атака героя
+        // Используем тот же размер тайла, что и в TilesetRenderer (16px)
         const tileW = TilesetRenderer.TILE_SIZE; 
         const tileH = TilesetRenderer.TILE_SIZE;
 
@@ -1296,45 +1299,26 @@ function updateQuestCompass() {
         const offsetX = Math.floor((canvas.width - arenaPixelWidth) / 2);
         const offsetY = Math.floor((canvas.height - arenaPixelHeight) / 2);
 
-        // Вычисляем координаты тапа ВНУТРИ сетки арены (в тайлах)
-        const gridX = Math.floor((clickX - offsetX) / tileW);
-        const gridY = Math.floor((clickY - offsetY) / tileH);
+        // Вычисляем координаты тапа ВНУТРИ арены (в тайлах)
+        // Вычитаем смещение offsetX/Y, чтобы получить координату относительно левого верхнего угла арены
+        const arenaX = Math.floor((clickX - offsetX) / tileW);
+        const arenaY = Math.floor((clickY - offsetY) / tileH);
 
-        // Проверка: попал ли тап внутрь арены
-        if (gridX >= 0 && gridX < tacticalState.arena.width && 
-            gridY >= 0 && gridY < tacticalState.arena.height) {
-            
-            // А. ПРОВЕРКА НА ОСМОТР ЮНИТА (Враг или Союзник)
-            let inspectedUnit = null;
-            
-            // Ищем врага
-            const enemy = tacticalState.enemyUnits.find(e => e.hp > 0 && e.x === gridX && e.y === gridY);
-            if (enemy) {
-                inspectedUnit = { name: enemy.name, hp: enemy.hp, maxHp: enemy.maxHp, atk: enemy.atk, def: enemy.def, type: "enemy" };
-            } else {
-                // Ищем союзника (армию игрока)
-                const ally = tacticalState.playerArmy.find(a => a.hp > 0 && a.x === gridX && a.y === gridY);
-                if (ally) {
-                    inspectedUnit = { name: ally.name, hp: ally.hp, maxHp: ally.maxHp, atk: ally.atk, def: ally.def, type: "ally" };
-                }
-            }
+        // Разница между позицией игрока и точкой тапа
+        const dx = arenaX - tacticalState.playerUnit.x;
+        const dy = arenaY - tacticalState.playerUnit.y;
 
-            if (inspectedUnit) {
-                // Если кликнули по юниту — показываем статы в инспекторе
-                const details = `HP: ${inspectedUnit.hp}/${inspectedUnit.maxHp}\nATK: ${inspectedUnit.atk} | DEF: ${inspectedUnit.def}`;
-                RenderModule.updateInspector(inspectedUnit.type === "enemy" ? `⚔️ ${inspectedUnit.name}` : `🛡️ ${inspectedUnit.name}`, details, inspectedUnit.type);
-                return; // Прерываем, чтобы не двигаться после осмотра
-            }
+        // Разрешаем движение только на 1 клетку (или атаку, если враг рядом)
+        // Math.sign вернет -1, 0 или 1
+        const moveDx = Math.sign(dx);
+        const moveDy = Math.sign(dy);
 
-            // Б. ДВИЖЕНИЕ / АТАКА ГЕРОЯ
-            // Если кликнули в пустую клетку или рядом с героем
-            const dx = gridX - tacticalState.playerUnit.x;
-            const dy = gridY - tacticalState.playerUnit.y;
-
-            // Разрешаем действие только если тапнули рядом (радиус 1 клетка) или в себя
-            if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
-                TacticalBattleModule.processBattleTurn(Math.sign(dx), Math.sign(dy), window.currentTactic);
-            }
+        // Если тапнули не в ту же клетку, где стоит игрок
+        if (dx !== 0 || dy !== 0) {
+             TacticalBattleModule.processBattleTurn(moveDx, moveDy, window.currentTactic);
+        } else {
+             // Если тапнули в себя — пропуск хода
+             TacticalBattleModule.processBattleTurn(0, 0, window.currentTactic);
         }
     }
     function isMobileDevice() {
