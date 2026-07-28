@@ -1135,7 +1135,7 @@ function updateQuestCompass() {
         
         if (!canvas) return;
 
-        // Удаляем старый слушатель, если он был
+        // Удаляем старые слушатели, чтобы не дублировать события
         canvas.onmousedown = null; 
         canvas.ontouchstart = null; 
 
@@ -1153,15 +1153,8 @@ function updateQuestCompass() {
                 return; 
             }
 
-            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА
-            if (isInnOpen) {
-                // Для HTML-окна клики обрабатываются самим окном, но блокируем канвас
-                return; 
-            }
-
-            // 2. ПРОВЕРКА МАГАЗИНА
-            if (isShopOpen) {
-                // Для HTML-окна клики обрабатываются самим окном
+            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА И МАГАЗИНА (HTML-окна блокируют канвас)
+            if (isInnOpen || isShopOpen) {
                 return; 
             }
 
@@ -1171,7 +1164,7 @@ function updateQuestCompass() {
                 return;
             }
 
-            // 3. СТАНДАРТНЫЙ РЕЖИМ (Подземелье / Город)
+            // 2. СТАНДАРТНЫЙ РЕЖИМ (Подземелье / Город)
             if (window.gameMode === 'dungeon') {
                 handleMapClick(clientX, clientY);
             }
@@ -1212,7 +1205,7 @@ function updateQuestCompass() {
             // 3. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
             if (busy || (player && player.hp <= 0)) return;
 
-            // 4. СТАНДАРТНОЕ ДВИЖЕНИЕ (Подземелье / Глобальная карта)
+            // 4. СТАНДАРТНОЕ ДВИЖЕНИЕ И ОСМОТР (Подземелье / Глобальная карта)
             const rect = canvas.getBoundingClientRect();
             const touchX = clientX - rect.left;
             const touchY = clientY - rect.top;
@@ -1220,9 +1213,23 @@ function updateQuestCompass() {
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
             
-            let dx = 0, dy = 0;
             const offsetX = touchX - centerX;
             const offsetY = touchY - centerY;
+
+            // === ЛОГИКА "ВИРТУАЛЬНОГО ДЖОЙСТИКА" С ОСМОТРОМ ===
+            
+            // А. Если тап далеко от центра -> Считаем это кликом по объекту (Осмотр)
+            // Это позволяет тапать по врагам/предметам в подземелье для просмотра статов
+            if (Math.abs(offsetX) > 30 || Math.abs(offsetY) > 30) {
+                if (window.gameMode === 'dungeon') {
+                    handleMapClick(clientX, clientY);
+                    return; // Прерываем, чтобы не сработало движение
+                }
+                // Для глобальной карты можно добавить аналогичную логику позже, если нужно
+            }
+
+            // Б. Если тап близко к центру -> Движение или пропуск хода
+            let dx = 0, dy = 0;
             
             // Если тап очень близко к центру (радиус 20px), считаем это пропуском хода
             if (Math.abs(offsetX) < 20 && Math.abs(offsetY) < 20) {
@@ -1242,7 +1249,7 @@ function updateQuestCompass() {
         }, { passive: false });
         
         if (isMobileDevice()) {
-            RenderModule.log("💡 Коснитесь части экрана для движения", "info");
+            RenderModule.log("💡 Тапните по объекту для осмотра или по краю экрана для движения", "info");
         }
     }    
 
