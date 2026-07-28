@@ -1135,42 +1135,81 @@ function updateQuestCompass() {
         
         if (!canvas) return;
 
-        // Удаляем старый слушатель, если он был, чтобы не дублировать события
+        // Удаляем старый слушатель, если он был
+        canvas.onmousedown = null; 
         canvas.ontouchstart = null; 
 
-        canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            
-            // Получаем координаты тапа один раз для всех проверок
-            const touch = e.touches[0];
-            const clientX = touch.clientX;
-            const clientY = touch.clientY;
+        // === ОБРАБОТКА КЛИКОВ МЫШЬЮ (ДЛЯ ПК) ===
+        canvas.addEventListener("mousedown", (e) => {
+            // Игнорируем правый клик и средний
+            if (e.button !== 0) return;
 
-            // 0. ПРОВЕРКА ОКНА СЮЖЕТА (Приоритет №0)
+            const clientX = e.clientX;
+            const clientY = e.clientY;
+
+            // 0. ПРОВЕРКА ОКНА СЮЖЕТА
             if (isReadingQuest) {
                 handleQuestClick(clientX, clientY);
                 return; 
             }
 
-            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА (Приоритет №1)
+            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА
+            if (isInnOpen) {
+                // Для HTML-окна клики обрабатываются самим окном, но блокируем канвас
+                return; 
+            }
+
+            // 2. ПРОВЕРКА МАГАЗИНА
+            if (isShopOpen) {
+                // Для HTML-окна клики обрабатываются самим окном
+                return; 
+            }
+
+            // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Осмотр юнитов) ===
+            if (window.gameMode === 'tactical') {
+                inspectTacticalUnit(clientX, clientY);
+                return;
+            }
+
+            // 3. СТАНДАРТНЫЙ РЕЖИМ (Подземелье / Город)
+            if (window.gameMode === 'dungeon') {
+                handleMapClick(clientX, clientY);
+            }
+        });
+
+        // === ОБРАБОТКА ТАПОВ (ДЛЯ МОБИЛЬНЫХ) ===
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const clientX = touch.clientX;
+            const clientY = touch.clientY;
+
+            // 0. ПРОВЕРКА ОКНА СЮЖЕТА
+            if (isReadingQuest) {
+                handleQuestClick(clientX, clientY);
+                return; 
+            }
+
+            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА
             if (isInnOpen) {
                 handleInnClick(clientX, clientY);
                 return; 
             }
 
-            // 2. ПРОВЕРКА МАГАЗИНА (Приоритет №2)
+            // 2. ПРОВЕРКА МАГАЗИНА
             if (isShopOpen) {
                 handleShopClick(clientX, clientY);
                 return; 
             }
 
-            // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Приоритет №3) ===
+            // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ ===
             if (window.gameMode === 'tactical') {
                 handleTacticalTouch(clientX, clientY);
                 return;
             }
 
-            // 3. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ (для обычных режимов)
+            // 3. БЛОКИРОВКА ПРИ ЗАНЯТОСТИ ИЛИ СМЕРТИ
             if (busy || (player && player.hp <= 0)) return;
 
             // 4. СТАНДАРТНОЕ ДВИЖЕНИЕ (Подземелье / Глобальная карта)
