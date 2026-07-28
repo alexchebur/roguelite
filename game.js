@@ -3018,40 +3018,67 @@ function updateQuestCompass() {
                     RenderModule.log(`📖 Вы подобрали "${item.name}". Внутри написано:`, "info ");
                     RenderModule.log(fragment, "event ");
                     
+                    // === ПРОВЕРКА КВЕСТА SCHOLAR (ЧТЕНИЕ КНИГ) ===
                     if (typeof QuestSystemModule !== 'undefined') {
+                        let questUpdated = false;
                         activeQuests.forEach(q => {
-                            QuestSystemModule.checkProgress(q, { type: 'read_book' });
+                            if (!q.isCompleted && q.type === 'SCHOLAR') {
+                                const wasUpdated = QuestSystemModule.checkProgress(q, { type: 'read_book' });
+                                if (wasUpdated) questUpdated = true;
+                            }
                         });
+                        
+                        // Если прогресс изменился, обновляем нижнюю панель
+                        if (questUpdated) {
+                            const scholarQuest = activeQuests.find(q => q.type === 'SCHOLAR' && !q.isCompleted);
+                            if (scholarQuest) {
+                                RenderModule.updateQuestBriefing(scholarQuest);
+                            }
+                            // Если квест завершился, переключаем компас на "Награда"
+                            const completedScholar = activeQuests.find(q => q.type === 'SCHOLAR' && q.isCompleted);
+                            if (completedScholar) {
+                                updateQuestCompass();
+                            }
+                        }
                     }
                 } else {
                      RenderModule.log(`Вы подобрали "${item.name}".`, "info ");
                 }
             }  
             else {
+                // Обычные предметы (оружие, броня, зелья, еда)
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
-                
-            // Проверка квестов на подбор (FETCH/COLLECT)
-            if (typeof QuestSystemModule !== 'undefined') {
+            }
+
+            // === ОБЩАЯ ПРОВЕРКА КВЕСТОВ НА ПОДБОР (FETCH / COLLECT) ===
+            // Выполняется для любых подобранных предметов (кроме золота)
+            if (item.type !== 'gold' && typeof QuestSystemModule !== 'undefined') {
                 [...activeQuests].forEach(q => {
-                    if (q.isCompleted) return;
+                    if (q.isCompleted) return; // Пропускаем выполненные
                     
+                    // Проверяем только типы, требующие подбора
                     if (q.type === 'FETCH' || q.type === 'COLLECT') {
                         
                         let isItemMatch = false;
+                        // 1. Проверка по уникальному ID (для сюжетных квестов)
                         if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
                             isItemMatch = true;
-                        } else if ((item.type === q.target.itemType) && 
+                        } 
+                        // 2. Проверка по типу и имени (для процедурных квестов)
+                        else if ((item.type === q.target.itemType) && 
                                  (!q.target.itemName || item.name.includes(q.target.itemName))) {
                             isItemMatch = true;
                         }
 
                         if (isItemMatch) {
+                            // Проверка локации (подземелья)
                             const isCorrectLocation = (
                                 dungeonX === q.target.targetX && 
                                 dungeonY === q.target.targetY
                             );
 
+                            // Проверка глубины (если требуется)
                             const requiredDepth = q.target.recommendedDepth || q.target.targetDepth;
                             const isCorrectDepth = !requiredDepth || ((currentDepth + 1) >= requiredDepth);
 
@@ -3065,14 +3092,19 @@ function updateQuestCompass() {
                                 return; 
                             }
 
+                            // Помечаем предмет как квестовый (визуально или для логики сдачи)
                             item.isQuestItem = true;
 
                             if (q.type === 'FETCH') {
+                                // FETCH завершается мгновенно при находке
                                 q.progress = q.maxProgress;
                                 q.isCompleted = true;
                                 RenderModule.updateQuestBriefing(q);
                                 RenderModule.log(`📦 Это тот самый предмет! Квест выполнен.`, "info ");
-                            } else if (q.type === 'COLLECT') {
+                                updateQuestCompass(); // Переключаем стрелку на "Награда"
+                            } 
+                            else if (q.type === 'COLLECT') {
+                                // COLLECT накапливает прогресс
                                 QuestSystemModule.checkProgress(q, { 
                                     type: 'pickup', 
                                     itemType: item.type,
@@ -3082,16 +3114,24 @@ function updateQuestCompass() {
                                     locY: dungeonY,
                                     currentDepth: currentDepth 
                                 });
+                                
+                                // Обновляем UI после каждого подбора
+                                RenderModule.updateQuestBriefing(q);
                                 RenderModule.log(`📦 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
+                                
+                                // Если квест только что завершился
+                                if (q.isCompleted) {
+                                    updateQuestCompass();
+                                }
                             }
-                            updateQuestCompass();
                         }
                     }
                 });
              }
+            
+            // Удаляем предмет с карты
+            items.splice(itemIdx, 1);
         }
-        items.splice(itemIdx, 1);
-    }
 
     // 9. Лестницы
     if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
