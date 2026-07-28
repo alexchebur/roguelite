@@ -1136,35 +1136,27 @@ function updateQuestCompass() {
         if (!canvas) return;
 
         // Удаляем старые слушатели, чтобы не дублировать события
-        canvas.onmousedown = null; 
         canvas.ontouchstart = null; 
+        canvas.onmousedown = null;
 
         // === ОБРАБОТКА КЛИКОВ МЫШЬЮ (ДЛЯ ПК) ===
         canvas.addEventListener("mousedown", (e) => {
-            // Игнорируем правый клик и средний
-            if (e.button !== 0) return;
-
+            if (e.button !== 0) return; // Только левая кнопка
+            
             const clientX = e.clientX;
             const clientY = e.clientY;
 
-            // 0. ПРОВЕРКА ОКНА СЮЖЕТА
-            if (isReadingQuest) {
-                handleQuestClick(clientX, clientY);
-                return; 
-            }
-
-            // 1. ПРОВЕРКА ПОСТОЯЛОГО ДВОРА И МАГАЗИНА (HTML-окна блокируют канвас)
-            if (isInnOpen || isShopOpen) {
-                return; 
-            }
-
-            // === НОВОЕ: ТАКТИЧЕСКИЙ РЕЖИМ (Осмотр юнитов) ===
+            // Приоритет модальных окон
+            if (isReadingQuest) { handleQuestClick(clientX, clientY); return; }
+            if (isShopOpen || isInnOpen) return; // Блокируем клики сквозь HTML-окна
+            
+            // Тактический режим: осмотр юнитов
             if (window.gameMode === 'tactical') {
                 inspectTacticalUnit(clientX, clientY);
                 return;
             }
-
-            // 2. СТАНДАРТНЫЙ РЕЖИМ (Подземелье / Город)
+            
+            // Подземелье: осмотр врагов/предметов/NPC
             if (window.gameMode === 'dungeon') {
                 handleMapClick(clientX, clientY);
             }
