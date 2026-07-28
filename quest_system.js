@@ -164,7 +164,7 @@ const QuestSystemModule = (function() {
             targetData.targetDepth = rng.int(2, 5); 
         }
         else if (type === 'COLLECT') {
-            const collectibleTypes = ['potion_hp', 'book', 'food'];
+            const collectibleTypes = ['potion_hp', 'food'];
             const possibleItems = DataModule.ITEM_TYPES.filter(i => collectibleTypes.includes(i.type));
             const itemTemplate = pickRandom(rng, possibleItems);
             
