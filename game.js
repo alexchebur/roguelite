@@ -1246,6 +1246,7 @@ function updateQuestCompass() {
     }    
 
     // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ (ИСПРАВЛЕННАЯ) ===
+    // === ОБРАБОТКА ТАПОВ В ТАКТИЧЕСКОМ БОЮ (ФИНАЛЬНАЯ ВЕРСИЯ) ===
     function handleTacticalTouch(clientX, clientY) {
         const canvas = document.querySelector("#map-container canvas");
         if (!canvas || !tacticalState) return;
@@ -1253,7 +1254,6 @@ function updateQuestCompass() {
         const rect = canvas.getBoundingClientRect();
         
         // 1. УЧИТЫВАЕМ МАСШТАБИРОВАНИЕ CANVAS (CSS Transform)
-        // Это критически важно для мобильных устройств!
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         
@@ -1261,20 +1261,15 @@ function updateQuestCompass() {
         const clickX = (clientX - rect.left) * scaleX;
         const clickY = (clientY - rect.top) * scaleY;
 
-        // 2. Проверяем, попал ли тап в панель Инвентаря (теперь это Меню Тактики)
-        // Находим элемент инвентаря в DOM
+        // 2. Проверяем, попал ли тап в панель Инвентаря (Меню Тактики)
         const invPanel = document.getElementById("inventory-panel");
         if (invPanel) {
             const invRect = invPanel.getBoundingClientRect();
-            // Если тап внутри прямоугольника панели инвентаря
             if (clientX >= invRect.left && clientX <= invRect.right &&
                 clientY >= invRect.top && clientY <= invRect.bottom) {
                 
-                // Вычисляем относительные координаты внутри панели
                 const panelY = clientY - invRect.top;
                 const panelHeight = invRect.height;
-                
-                // Панель делится на 5 зон по вертикали для выбора тактики
                 const sectionHeight = panelHeight / 5;
                 const index = Math.floor(panelY / sectionHeight);
                 const keys = ['1', '2', '3', '4', '5'];
@@ -1282,42 +1277,59 @@ function updateQuestCompass() {
                 if (keys[index]) {
                     handleInput({ key: keys[index] });
                 }
-                return; // Тап обработан как смена тактики
+                return; 
             }
         }
 
-        // 3. Тап по полю боя -> Движение/Атака героя
-        // Используем тот же размер тайла, что и в TilesetRenderer (16px)
+        // 3. Тап по полю боя
         const tileW = TilesetRenderer.TILE_SIZE; 
         const tileH = TilesetRenderer.TILE_SIZE;
 
-        // Рассчитываем смещение арены (центрование), точно как в tactical_render.js
+        // Рассчитываем смещение арены (центрование)
         const arenaPixelWidth = tacticalState.arena.width * tileW;
         const arenaPixelHeight = tacticalState.arena.height * tileH;
         
         const offsetX = Math.floor((canvas.width - arenaPixelWidth) / 2);
         const offsetY = Math.floor((canvas.height - arenaPixelHeight) / 2);
 
-        // Вычисляем координаты тапа ВНУТРИ арены (в тайлах)
-        // Вычитаем смещение offsetX/Y, чтобы получить координату относительно левого верхнего угла арены
-        const arenaX = Math.floor((clickX - offsetX) / tileW);
-        const arenaY = Math.floor((clickY - offsetY) / tileH);
+        // Вычисляем координаты тапа ВНУТРИ сетки арены (в тайлах)
+        const gridX = Math.floor((clickX - offsetX) / tileW);
+        const gridY = Math.floor((clickY - offsetY) / tileH);
 
-        // Разница между позицией игрока и точкой тапа
-        const dx = arenaX - tacticalState.playerUnit.x;
-        const dy = arenaY - tacticalState.playerUnit.y;
+        // Проверка: попал ли тап внутрь арены
+        if (gridX >= 0 && gridX < tacticalState.arena.width && 
+            gridY >= 0 && gridY < tacticalState.arena.height) {
+            
+            // А. ПРОВЕРКА НА ОСМОТР ЮНИТА (Враг или Союзник)
+            let inspectedUnit = null;
+            
+            // Ищем врага в этой клетке (независимо от расстояния до игрока)
+            const enemy = tacticalState.enemyUnits.find(e => e.hp > 0 && e.x === gridX && e.y === gridY);
+            if (enemy) {
+                inspectedUnit = { name: enemy.name, hp: enemy.hp, maxHp: enemy.maxHp, atk: enemy.atk, def: enemy.def, type: "enemy" };
+            } else {
+                // Ищем союзника в этой клетке
+                const ally = tacticalState.playerArmy.find(a => a.hp > 0 && a.x === gridX && a.y === gridY);
+                if (ally) {
+                    inspectedUnit = { name: ally.name, hp: ally.hp, maxHp: ally.maxHp, atk: ally.atk, def: ally.def, type: "ally" };
+                }
+            }
 
-        // Разрешаем движение только на 1 клетку (или атаку, если враг рядом)
-        // Math.sign вернет -1, 0 или 1
-        const moveDx = Math.sign(dx);
-        const moveDy = Math.sign(dy);
+            if (inspectedUnit) {
+                // Если кликнули по юниту — показываем статы в инспекторе и НЕ двигаемся
+                const details = `HP: ${inspectedUnit.hp}/${inspectedUnit.maxHp}\nATK: ${inspectedUnit.atk} | DEF: ${inspectedUnit.def}`;
+                RenderModule.updateInspector(inspectedUnit.type === "enemy" ? `⚔️ ${inspectedUnit.name}` : `🛡️ ${inspectedUnit.name}`, details, inspectedUnit.type);
+                return; // Прерываем функцию, чтобы не сработало движение
+            }
 
-        // Если тапнули не в ту же клетку, где стоит игрок
-        if (dx !== 0 || dy !== 0) {
-             TacticalBattleModule.processBattleTurn(moveDx, moveDy, window.currentTactic);
-        } else {
-             // Если тапнули в себя — пропуск хода
-             TacticalBattleModule.processBattleTurn(0, 0, window.currentTactic);
+            // Б. ДВИЖЕНИЕ В СТОРОНУ ТАПА
+            // Если клетка пуста, вычисляем направление от игрока к точке тапа
+            const dx = gridX - tacticalState.playerUnit.x;
+            const dy = gridY - tacticalState.playerUnit.y;
+
+            // Math.sign вернет -1, 0 или 1, определяя направление движения
+            // Это позволяет тапать в любой конец карты, и герой сделает шаг в ту сторону
+            TacticalBattleModule.processBattleTurn(Math.sign(dx), Math.sign(dy), window.currentTactic);
         }
     }
     function isMobileDevice() {
