@@ -2319,15 +2319,15 @@ function updateQuestCompass() {
 
         const questBook = EntityModule.createItem(bookTemplate, 0, 0, 1.0);
         questBook.name = `✨ ${questBook.name} (Квест)`;
-        questBook.isQuestItem = true; // Помечаем как квестовый, чтобы нельзя было продать/выкинуть случайно
+        questBook.isQuestItem = true;
 
         let spawnPos = null;
-        // Стратегия: Ищем место рядом с игроком или лестницей
+        // Стратегия: Ищем место рядом с игроком
         if (player) {
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 5) : null;
         }
         
-        // Если рядом с игроком занято, ищем случайное место
+        // Если рядом занято, ищем случайное место
         if (!spawnPos || items.some(i => i.x === spawnPos.x && i.y === spawnPos.y)) {
              spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
         }
@@ -2336,19 +2336,9 @@ function updateQuestCompass() {
             questBook.x = spawnPos.x;
             questBook.y = spawnPos.y;
             items.push(questBook);
-            // Не спамим логом каждую книгу, иначе будет много текста при входе
-            // RenderModule.log(`📚 Вы замечаете древний фолиант...`, "event");
         }
     }
 
-        if (spawnPos) {
-            questBook.x = spawnPos.x;
-            questBook.y = spawnPos.y;
-            items.push(questBook);
-            // Не спамим логом каждую книгу, иначе будет много текста при входе
-            // RenderModule.log(`📚 Вы замечаете древний фолиант...`, "event");
-        }
-    }
     // === СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ПОКИДАНИИ УРОВНЯ ===
     function saveCurrentDungeonState() {
         if (window.gameMode === 'dungeon' && currentDepth >= 0) {
