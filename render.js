@@ -1045,12 +1045,9 @@ const RenderModule = (function() {
         addBlinkEffect,
         addProjectileEffect,
         updateQuestBriefing,
-        // drawShopWindow, // <--- ЗАКОММЕНТИРОВАНО: Старая Canvas-версия больше не нужна
-        //drawQuestWindow,
-        //drawInnWindow,
         renderShopUI,
-        renderQuestUI, // <--- ДОБАВИТЬ ЭТО
-        showShopStatus, // <--- НОВАЯ HTML-ВЕРСИЯ
+        renderQuestUI,
+        showShopStatus,
         COLS,
         ROWS,
         _ctx: null, 
