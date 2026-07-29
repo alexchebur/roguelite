@@ -1466,4 +1466,6 @@ const RenderModule = (function() {
         _ctx: null, 
         TILE_SIZE   
     };
-})();
+})();tyle.display = 'none';
+        }ctx.fillRect(player.x * cw, player.y * ch, cw + 1, ch + 1);
+    }
