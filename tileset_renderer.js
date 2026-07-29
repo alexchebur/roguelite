@@ -279,7 +279,9 @@ const TilesetRenderer = (function() {
         drawBig, // <--- ДОБАВИТЬ ЭТО
         drawByKey, // Если вы добавляли её ранее
         TILE_SIZE,
-        isReady: () => isReady
+        isReady: () => isReady,
+        spriteSheets: spriteSheets, // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+        TILE_MAP: TILE_MAP          // <--- И ЭТУ, ДЛЯ ДОСТУПА К КООРДИНАТАМ        
     };
 })();
 
