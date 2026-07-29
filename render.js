@@ -439,7 +439,6 @@ const RenderModule = (function() {
                         isSnowy = true; // Всегда снег (глубокий север)
                     } else if (gy <= -200) {
                         // От -200 до -300: плавный переход от 0% до 100%
-                        // Используем детерминированный "шум" на основе координат, чтобы узор снега не менялся при движении камеры
                         const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF; 
                         const progress = Math.abs(gy + 200) / 100; // 0..1
                         if (noise < progress) isSnowy = true;
@@ -451,21 +450,47 @@ const RenderModule = (function() {
                     }
 
                     if (isSnowy) {
+                        const destX = sx * TilesetRenderer.TILE_SIZE;
+                        const destY = sy * TilesetRenderer.TILE_SIZE;
+                        const tileSize = TilesetRenderer.TILE_SIZE;
+
                         // 1. Рисуем белый фон (снег)
                         ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(sx * TilesetRenderer.TILE_SIZE, sy * TilesetRenderer.TILE_SIZE, TilesetRenderer.TILE_SIZE, TilesetRenderer.TILE_SIZE);
+                        ctx.fillRect(destX, destY, tileSize, tileSize);
                         
-                        // 2. Рисуем спрайт тайла ПОВЕРХ белого фона.
-                        // Так как спрайты имеют прозрачность, зеленый символ останется, а черный фон заменится на белый.
-                        TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-                        continue; // Пропускаем стандартную отрисовку ниже
+                        // 2. Рисуем спрайт вручную, чтобы избежать clearRect из TilesetRenderer.draw
+                        // Получаем данные тайла для символа '░'
+                        const tileData = TilesetRenderer.TILE_MAP ? TilesetRenderer.TILE_MAP[ch] : null;
+                        
+                        if (tileData) {
+                            const img = TilesetRenderer.spriteSheets ? TilesetRenderer.spriteSheets[tileData.file] : null;
+                            if (img) {
+                                const srcX = tileData.x * tileSize;
+                                const srcY = tileData.y * tileSize;
+                                
+                                ctx.save();
+                                // Рисуем изображение
+                                ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
+                                
+                                // Накладываем зеленый цвет только на непрозрачные части (символ)
+                                if (fg && fg !== '#fff' && fg !== '#000') {
+                                    ctx.globalCompositeOperation = 'source-atop';
+                                    ctx.fillStyle = fg;
+                                    ctx.fillRect(destX, destY, tileSize, tileSize);
+                                }
+                                ctx.restore();
+                            } else {
+                                // Фолбэк, если картинка не загрузилась
+                                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+                            }
+                        } else {
+                            // Фолбэк, если нет маппинга
+                            TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+                        }
+                        
+                        continue; // Пропускаем стандартную отрисовку
                     }
                 }
-
-                // Стандартная отрисовка (если не снег или не равнина)
-                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
-            }
-        }
 
         // 2. РИСУЕМ АРМИИ (НОВОЕ)
         if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getActiveArmies === 'function') {
