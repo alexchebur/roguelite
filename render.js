@@ -400,7 +400,7 @@ const RenderModule = (function() {
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
 
-        // 1. РИСУЕМ ЛАНДШАФТ
+        // 1. РИСУЕМ ЛАНДШАФТ (С УЧЕТОМ СНЕГА НА СЕВЕРЕ)
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
@@ -429,6 +429,40 @@ const RenderModule = (function() {
                     default: ch = '·'; fg = '#555';
                 }
 
+                // === ЛОГИКА СНЕГА ===
+                // Проверяем, является ли это равниной и насколько мы далеко на севере
+                if (tileType === 'plain' && gy < -150) {
+                    let isSnowy = false;
+                    
+                    // Расчет вероятности снега в зависимости от глубины севера
+                    if (gy <= -300) {
+                        isSnowy = true; // Всегда снег (глубокий север)
+                    } else if (gy <= -200) {
+                        // От -200 до -300: плавный переход от 0% до 100%
+                        // Используем детерминированный "шум" на основе координат, чтобы узор снега не менялся при движении камеры
+                        const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF; 
+                        const progress = Math.abs(gy + 200) / 100; // 0..1
+                        if (noise < progress) isSnowy = true;
+                    } else {
+                        // От -150 до -200: редкие вкрапления (до 30%)
+                        const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF;
+                        const progress = Math.abs(gy + 150) / 50; 
+                        if (noise < (progress * 0.3)) isSnowy = true;
+                    }
+
+                    if (isSnowy) {
+                        // 1. Рисуем белый фон (снег)
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(sx * TilesetRenderer.TILE_SIZE, sy * TilesetRenderer.TILE_SIZE, TilesetRenderer.TILE_SIZE, TilesetRenderer.TILE_SIZE);
+                        
+                        // 2. Рисуем спрайт тайла ПОВЕРХ белого фона.
+                        // Так как спрайты имеют прозрачность, зеленый символ останется, а черный фон заменится на белый.
+                        TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+                        continue; // Пропускаем стандартную отрисовку ниже
+                    }
+                }
+
+                // Стандартная отрисовка (если не снег или не равнина)
                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
