@@ -36,9 +36,9 @@ const fortressRng = new SeededRandom(FORTRESS_SEED);
 
 // Генерируем "идеальные" координаты в северной зоне
 // Y должен быть между -800 и -900
-const fortressTargetY = -100 - Math.floor(fortressRng.next() * 100); // От -800 до -899
+const fortressTargetY = -50 - Math.floor(fortressRng.next() * 100); // От -800 до -899
 // X должен быть недалеко от центра, например, от -200 до 200
-const fortressTargetX = Math.floor((fortressRng.next() - 0.5) * 100); 
+const fortressTargetX = Math.floor((fortressRng.next() - 0.5) * 50); 
 
 console.log(`🏰 [System] Запланированные координаты Крепости: X=${fortressTargetX}, Y=${fortressTargetY}`);
 /**
@@ -608,21 +608,43 @@ const GlobalMapModule = {
 
 // В GlobalMapModule.getDisplayTileType
      getDisplayTileType(globalX, globalY) {
+         // 1. Сначала проверяем наличие POI (Point of Interest) в этой клетке
          const poi = this.getPOI(globalX, globalY);
+         
          if (poi) {
+             // Обработка глобальных свитков (текстовые квесты)
              if (poi.type === 'global_scroll') {
+                 // Если квест уже выполнен, скрываем свиток и показываем обычный ландшафт
                  if (typeof GameModule !== 'undefined' && GameModule.isTextQuestCompleted(poi.questFile)) {
                      return this.getTileType(globalX, globalY);
                  }
                  return 'global_scroll';
              }
-             // Добавляем обработку крепости
+             
+             // === НОВОЕ: Обработка Крепости ===
              if (poi.type === 'fortress') {
                  return 'fortress';
              }
-             return poi.type === 'city' ? 'city' : 'dungeon_entrance';
+
+             // Стандартная обработка городов и входов в подземелья
+             if (poi.type === 'city') {
+                 return 'city';
+             }
+             
+             if (poi.type === 'dungeon') {
+                 return 'dungeon_entrance';
+             }
          }
-        return this.getTileType(globalX, globalY); 
+
+         // 2. Если POI нет, возвращаем базовый тип тайла местности (равнина, лес, вода и т.д.)
+         // Это также сработает, если крепость была сгенерирована в tiles, но по какой-то причине 
+         // не попала в массив pois (дополнительная защита)
+         const baseTileType = this.getTileType(globalX, globalY);
+         if (baseTileType === 'fortress') {
+             return 'fortress';
+         }
+
+         return baseTileType; 
      },
     isWalkable(globalX, globalY) {
         const type = this.getTileType(globalX, globalY);
