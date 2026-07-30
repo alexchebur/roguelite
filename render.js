@@ -390,6 +390,7 @@ const RenderModule = (function() {
 
                 let ch, fg;
                 
+                // Базовый тайл местности
                 switch(tileType) {
                     case 'plain': ch = '░'; fg = '#2e8b57'; break;
                     case 'forest': ch = 'T'; fg = '#336649'; break;
@@ -405,76 +406,57 @@ const RenderModule = (function() {
                     default: ch = '·'; fg = '#555';
                 }
 
-                // === ЛОГИКА СНЕГА (ИСПРАВЛЕННАЯ: БЕЗ ОЧИСТКИ ФОНА) ===
+                // Стандартная отрисовка тайла
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+
+                // === ЛОГИКА НАЛОЖЕНИЯ СНЕГА (ПОВЕРХ ТАЙЛА) ===
                 if (tileType === 'plain' && gy < -150) {
-                    let isSnowy = false;
+                    let snowOpacity = 0;
                     
-                    // Расчет вероятности снега
+                    // Расчет плотности снега
                     if (gy <= -300) {
-                        isSnowy = true;
+                        snowOpacity = 1.0; // Полный снег
                     } else if (gy <= -200) {
-                        const noise = ((gx ^ gy) * 2654435761) & 0xFFFF; 
+                        // Плавный переход от 0 до 1
                         const progress = Math.abs(gy + 200) / 100;
-                        if ((noise / 0xFFFF) < progress) isSnowy = true;
+                        snowOpacity = progress;
                     } else {
+                        // Редкие вкрапления (от 0 до 0.3)
+                        const progress = Math.abs(gy + 150) / 50;
+                        // Используем детерминированный шум для "пятнистости"
                         const noise = ((gx ^ gy) * 2654435761) & 0xFFFF;
-                        const progress = Math.abs(gy + 150) / 50; 
-                        if ((noise / 0xFFFF) < (progress * 0.3)) isSnowy = true;
+                        if ((noise / 0xFFFF) < 0.3) {
+                            snowOpacity = progress * 0.5; // Полупрозрачные пятна
+                        }
                     }
 
-                    if (isSnowy) {
-                        const destX = sx * TilesetRenderer.TILE_SIZE;
-                        const destY = sy * TilesetRenderer.TILE_SIZE;
-                        const tileSize = TilesetRenderer.TILE_SIZE;
-
-                        // 1. Рисуем белый фон (снег)
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(destX, destY, tileSize, tileSize);
+                    if (snowOpacity > 0) {
+                        // Рисуем спрайт снега поверх
+                        // Используем символ '*' который мы добавили в TILE_MAP
+                        ctx.save();
+                        ctx.globalAlpha = snowOpacity; // Прозрачность слоя снега
                         
-                        // 2. Рисуем спрайт вручную, КОПИРУЯ логику из tileset_renderer.js, но БЕЗ clearRect
-                        const tileData = TilesetRenderer.TILE_MAP ? TilesetRenderer.TILE_MAP[ch] : null;
-                        
+                        // Рисуем спрайт снега. 
+                        // Важно: TilesetRenderer.draw очистит ячейку, поэтому мы делаем это вручную
+                        const tileData = TilesetRenderer.TILE_MAP['*'];
                         if (tileData) {
-                            const img = TilesetRenderer.spriteSheets ? TilesetRenderer.spriteSheets[tileData.file] : null;
-                            
+                            const img = TilesetRenderer.spriteSheets[tileData.file];
                             if (img) {
+                                const destX = sx * TilesetRenderer.TILE_SIZE;
+                                const destY = sy * TilesetRenderer.TILE_SIZE;
+                                const tileSize = TilesetRenderer.TILE_SIZE;
                                 const srcX = tileData.x * tileSize;
                                 const srcY = tileData.y * tileSize;
                                 
-                                ctx.save();
-                                // ВАЖНО: Мы НЕ делаем ctx.clearRect здесь, чтобы сохранить белый фон!
-                                
-                                // Рисуем сам спрайт
+                                // Рисуем без очистки фона (поверх зеленого тайла)
                                 ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
-
-                                // Программная окраска (как в оригинальном draw)
-                                // Используем светло-зеленый/серый цвет для эффекта "травы под снегом"
-                                const snowColor = '#c0d8c0'; 
-                                
-                                if (snowColor && snowColor !== '#fff' && snowColor !== '#000') {
-                                    ctx.globalCompositeOperation = 'source-atop';
-                                    ctx.fillStyle = snowColor;
-                                    ctx.fillRect(destX, destY, tileSize, tileSize);
-                                }
-                                
-                                ctx.restore();
-                            } else {
-                                // Фолбэк, если картинка не загрузилась
-                                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                             }
-                        } else {
-                            // Фолбэк, если нет маппинга
-                            TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                         }
-                        
-                        continue; // Пропускаем стандартную отрисовку
+                        ctx.restore();
                     }
                 }
-
-                // Стандартная отрисовка
-                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
-        } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ЦИКЛА LANDSCAPE (БЫЛА ПРОПУЩЕНА)
+        }
 
         // 2. РИСУЕМ АРМИИ
         if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getActiveArmies === 'function') {
