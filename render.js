@@ -405,7 +405,7 @@ const RenderModule = (function() {
                     default: ch = '·'; fg = '#555';
                 }
 
-                // === ЛОГИКА СНЕГА (ИСПРАВЛЕННАЯ: ТЕКСТУРА + БЕЛЫЙ ФОН) ===
+                // === ЛОГИКА СНЕГА (ИСПРАВЛЕННАЯ: БЕЗ ОЧИСТКИ ФОНА) ===
                 if (tileType === 'plain' && gy < -150) {
                     let isSnowy = false;
                     
@@ -431,35 +431,39 @@ const RenderModule = (function() {
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillRect(destX, destY, tileSize, tileSize);
                         
-                        // 2. Рисуем спрайт травы поверх белого фона
-                        // Используем светло-зеленый/серый цвет, чтобы трава выглядела "под снегом"
-                        // Но не чисто белый, чтобы сохранить текстуру символа
-                        const snowGrassColor = '#c0d8c0'; // Светло-зеленый, почти белый
-                        
+                        // 2. Рисуем спрайт вручную, КОПИРУЯ логику из tileset_renderer.js, но БЕЗ clearRect
                         const tileData = TilesetRenderer.TILE_MAP ? TilesetRenderer.TILE_MAP[ch] : null;
                         
                         if (tileData) {
                             const img = TilesetRenderer.spriteSheets ? TilesetRenderer.spriteSheets[tileData.file] : null;
+                            
                             if (img) {
                                 const srcX = tileData.x * tileSize;
                                 const srcY = tileData.y * tileSize;
                                 
                                 ctx.save();
-                                // Рисуем исходный спрайт
-                                ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
+                                // ВАЖНО: Мы НЕ делаем ctx.clearRect здесь, чтобы сохранить белый фон!
                                 
-                                // Накладываем цвет "снежной травы" только на непрозрачные пиксели
-                                ctx.globalCompositeOperation = 'source-atop';
-                                ctx.fillStyle = snowGrassColor;
-                                ctx.fillRect(destX, destY, tileSize, tileSize);
+                                // Рисуем сам спрайт
+                                ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
+
+                                // Программная окраска (как в оригинальном draw)
+                                // Используем светло-зеленый/серый цвет для эффекта "травы под снегом"
+                                const snowColor = '#c0d8c0'; 
+                                
+                                if (snowColor && snowColor !== '#fff' && snowColor !== '#000') {
+                                    ctx.globalCompositeOperation = 'source-atop';
+                                    ctx.fillStyle = snowColor;
+                                    ctx.fillRect(destX, destY, tileSize, tileSize);
+                                }
                                 
                                 ctx.restore();
                             } else {
-                                // Фолбэк
+                                // Фолбэк, если картинка не загрузилась
                                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                             }
                         } else {
-                            // Фолбэк
+                            // Фолбэк, если нет маппинга
                             TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                         }
                         
