@@ -405,20 +405,25 @@ const RenderModule = (function() {
                     default: ch = '·'; fg = '#555';
                 }
 
-                // === ЛОГИКА СНЕГА ===
+                // === ЛОГИКА СНЕГА (ИСПРАВЛЕННАЯ) ===
+                // Проверяем, является ли это равниной и насколько мы далеко на севере
                 if (tileType === 'plain' && gy < -150) {
                     let isSnowy = false;
                     
+                    // Расчет вероятности снега
                     if (gy <= -300) {
-                        isSnowy = true;
+                        isSnowy = true; // Всегда снег
                     } else if (gy <= -200) {
-                        const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF; 
-                        const progress = Math.abs(gy + 200) / 100;
-                        if (noise < progress) isSnowy = true;
+                        // От -200 до -300: плавный переход
+                        // Используем более хаотичную функцию для "диффузного" распределения
+                        const noise = ((gx ^ gy) * 2654435761) & 0xFFFF; 
+                        const progress = Math.abs(gy + 200) / 100; // 0..1
+                        if ((noise / 0xFFFF) < progress) isSnowy = true;
                     } else {
-                        const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF;
+                        // От -150 до -200: редкие вкрапления
+                        const noise = ((gx ^ gy) * 2654435761) & 0xFFFF;
                         const progress = Math.abs(gy + 150) / 50; 
-                        if (noise < (progress * 0.3)) isSnowy = true;
+                        if ((noise / 0xFFFF) < (progress * 0.3)) isSnowy = true;
                     }
 
                     if (isSnowy) {
@@ -426,9 +431,7 @@ const RenderModule = (function() {
                         const destY = sy * TilesetRenderer.TILE_SIZE;
                         const tileSize = TilesetRenderer.TILE_SIZE;
 
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(destX, destY, tileSize, tileSize);
-                        
+                        // Получаем данные тайла
                         const tileData = TilesetRenderer.TILE_MAP ? TilesetRenderer.TILE_MAP[ch] : null;
                         
                         if (tileData) {
@@ -438,22 +441,26 @@ const RenderModule = (function() {
                                 const srcY = tileData.y * tileSize;
                                 
                                 ctx.save();
+                                // 1. Рисуем исходный спрайт
                                 ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
                                 
-                                if (fg && fg !== '#fff' && fg !== '#000') {
-                                    ctx.globalCompositeOperation = 'source-atop';
-                                    ctx.fillStyle = fg;
-                                    ctx.fillRect(destX, destY, tileSize, tileSize);
-                                }
+                                // 2. Инвертируем цвет в белый (эффект снега)
+                                // source-atop закрасит только непрозрачные пиксели спрайта белым цветом
+                                ctx.globalCompositeOperation = 'source-atop';
+                                ctx.fillStyle = '#FFFFFF';
+                                ctx.fillRect(destX, destY, tileSize, tileSize);
+                                
                                 ctx.restore();
                             } else {
+                                // Фолбэк
                                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                             }
                         } else {
+                            // Фолбэк
                             TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                         }
                         
-                        continue; 
+                        continue; // Пропускаем стандартную отрисовку
                     }
                 }
 
