@@ -29,7 +29,18 @@ const GLOBAL_TEXT_QUESTS_ROSTER = [
 // === ГРАНИЦЫ МИРА ===
 const WORLD_BORDER_RADIUS = 1000; // Радиус "материка"
 const BORDER_NOISE_SCALE = 0.02;  // Масштаб искривления берега (чем меньше, тем плавнее)
+// === ВЫЧИСЛЕНИЕ КООРДИНАТ КРЕПОСТИ (ДЕТЕРМИНИРОВАННОЕ) ===
+// Мы используем отдельный сид, чтобы крепость не зависела от генерации чанков
+const FORTRESS_SEED = GLOBAL_CONFIG.WORLD_SEED + 999999;
+const fortressRng = new SeededRandom(FORTRESS_SEED);
 
+// Генерируем "идеальные" координаты в северной зоне
+// Y должен быть между -800 и -900
+const fortressTargetY = -800 - Math.floor(fortressRng.next() * 100); // От -800 до -899
+// X должен быть недалеко от центра, например, от -200 до 200
+const fortressTargetX = Math.floor((fortressRng.next() - 0.5) * 400); 
+
+console.log(`🏰 [System] Запланированные координаты Крепости: X=${fortressTargetX}, Y=${fortressTargetY}`);
 /**
  * Простая детерминированная функция шума для границы
  * Возвращает число от -1 до 1
@@ -60,6 +71,8 @@ let playerGlobalY = 0;
 // === МАССИВ АКТИВНЫХ АРМИЙ ===
 let activeArmies = [];
 let globalTurnCounter = 0;
+// === КООРДИНАТЫ КРЕПОСТИ (Глобальный синглтон) ===
+let fortressGlobalCoords = null; // { x, y } или null, если еще не найдена
 
 // === ФУНКЦИЯ СПАВНА АРМИЙ В ЧАНКЕ (ТЕСТОВАЯ ВЕРСИЯ) ===
 function spawnArmiesInChunk(cx, cy, tiles) {
@@ -256,7 +269,40 @@ function generateTerrain(rand, width, height, cx, cy) { // <--- ДОБАВИЛИ
 
     return tiles;
 }
+/**
+ * Находит единственные координаты для Крепости на Севере.
+ * Вызывается лениво (только когда игрок приближается к зоне).
+ */
+function findUniqueFortressLocation() {
+    if (fortressGlobalCoords) return fortressGlobalCoords;
 
+    // Диапазон поиска по Y (северная зона)
+    const startY = -800;
+    const endY = -900;
+    
+    // Центр мира по X, чтобы крепость была посередине севера
+    const centerX = 0; 
+    const searchRadiusX = 200; // Ищем в пределах +/- 200 клеток от центра по X
+
+    let bestDist = Infinity;
+    let bestPos = null;
+
+    // Сканируем зону. Так как мир бесконечен, мы не можем проверить ВСЕ чанки сразу.
+    // Но мы можем использовать детерминированный сид для каждой клетки в этой зоне,
+    // чтобы найти "идеальное" место, которое всегда будет одним и тем же.
+    
+    // Для оптимизации мы будем проверять только те чанки, которые уже сгенерированы или генерируются.
+    // Но для гарантии "одного экземпляра" лучше всего использовать жесткий алгоритм выбора.
+    
+    // Упрощенный подход: Мы будем искать крепость динамически при генерации чанков в этой зоне.
+    // Но чтобы она была ОДНА, мы используем глобальный флаг.
+    
+    // Поскольку у нас нет единого момента "генерации всего мира", мы сделаем так:
+    // При генерации любого чанка в зоне Y[-800, -900] мы проверяем, не занята ли уже крепость.
+    // Если нет, мы используем детерминированный алгоритм, чтобы решить, должна ли крепость быть ЗДЕСЬ.
+    
+    return null; // Логика перенесена в generatePOIs для корректной работы с чанками
+}
 // Генерация точек интереса (ПОЛНАЯ ВЕРСИЯ С КРЕПОСТЬЮ)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
@@ -277,52 +323,71 @@ function generatePOIs(rand, cx, cy, tiles) {
         return false;
     };
 
-    // === 1. ГЕНЕРАЦИЯ КРЕПОСТИ НА СЕВЕРЕ (Детерминированная) ===
-    // Проверяем, находится ли чанк в зоне "Северных Земель" (Y < -100 и Y > -200)
-    const chunkStartGlobalY = cy * height;
-    // Расширяем диапазон проверки чуть больше, чтобы захватить границу чанков
-    const isNorthernZone = (chunkStartGlobalY < -100 && chunkStartGlobalY > -200); 
+    // === 1. ГЕНЕРАЦИЯ КРЕПОСТИ НА СЕВЕРЕ (СТРОГО ПО КООРДИНАТАМ) ===
+    // Проверяем, находятся ли запланированные координаты крепости внутри текущего чанка
+    const chunkStartX = cx * width;
+    const chunkStartY = cy * height;
+    const chunkEndX = chunkStartX + width;
+    const chunkEndY = chunkStartY + height;
 
-    if (isNorthernZone) {
-        // Ищем подходящее место внутри чанка для крепости
-        // Используем уникальный сид для крепости, чтобы она была одна и та же при перезагрузке
-        const fortressSeed = createSeed(cx, cy) + 77777; 
-        const fRng = new SeededRandom(fortressSeed);
+    // Проверяем, пересекается ли чанк с целевыми координатами крепости
+    const isFortressInThisChunk = (
+        fortressTargetX >= chunkStartX && fortressTargetX < chunkEndX &&
+        fortressTargetY >= chunkStartY && fortressTargetY < chunkEndY
+    );
+
+    if (isFortressInThisChunk) {
+        const localX = fortressTargetX - chunkStartX;
+        const localY = fortressTargetY - chunkStartY;
         
-        // Шанс спавна крепости в этом чанке. 
-        // Так как зона узкая (100 клеток), а чанки 50x50, шанс 5% гарантирует появление ~1-2 крепостей в зоне.
-        if (fRng.next() < 0.5) { 
-             for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const globalY = chunkStartGlobalY + y;
-                    
-                    // Строгая проверка координат Y согласно заданию
-                    if (globalY < -100 && globalY > -200) {
-                        const currentTile = tiles[y][x];
-                        
-                        // Крепость может стоять только на равнине или в лесу
-                        // И важно: проверяем, что здесь еще нет города или данжа (isTooClose проверяет дистанцию, но не тип тайла)
-                        const isFreeOfOtherPOIs = (currentTile !== 'city' && currentTile !== 'dungeon_entrance');
-
-                        if ((currentTile === 'plain' || currentTile === 'forest') && isFreeOfOtherPOIs && !isTooClose(x, y)) {
-                            tiles[y][x] = 'fortress';
-                            const globalX = cx * width + x;
-                            
-                            pois.push({ 
-                                x: globalX, 
-                                y: globalY, 
-                                type: 'fortress', 
-                                name: "Крепость, Выросшая Из-Под Земли" 
-                            });
-                             // === ВОТ СЮДА ДОБАВЛЯЕМ СООБЩЕНИЕ В КОНСОЛЬ ===
-                            console.log(`🏰 [DEBUG] Крепость сгенерирована на координатах: X=${globalX}, Y=${globalY}`);                           
-                            // === ЛОГИКА ДОМИНИРОВАНИЯ ===
-                            // Если крепость найдена, мы возвращаем pois сразу.
-                            // Это предотвращает спавн городов и данжей в этом же чанке, делая крепость единственным важным объектом.
-                            return pois; 
+        // Проверяем, свободна ли эта клетка
+        const currentTile = tiles[localY][localX];
+        const isValidTerrain = (currentTile === 'plain' || currentTile === 'forest');
+        
+        if (isValidTerrain) {
+            // Ставим крепость точно в рассчитанные координаты
+            tiles[localY][localX] = 'fortress';
+            
+            pois.push({ 
+                x: fortressTargetX, 
+                y: fortressTargetY, 
+                type: 'fortress', 
+                name: "Крепость, Выросшая Из-Под Земли" 
+            });
+            
+            console.log(`🏰 [Gen] Крепость размещена в чанке (${cx}, ${cy}) на координатах (${fortressTargetX}, ${fortressTargetY})`);
+            
+            // Важно: так как крепость — уникальный объект, мы можем запретить спавн других POI в этом чанке,
+            // чтобы она выделялась, или просто вернуть pois.
+            // Возвращаем сразу, чтобы города/данжи не переписали тайл 'fortress' (хотя проверка isValidTerrain уже защитила)
+            // Но лучше позволить другим POI генерироваться вокруг, если они не слишком близко.
+            // Однако, чтобы крепость была "доминирующей", можно вернуть pois здесь.
+            // Для безопасности оставим генерацию других POI, но isTooClose их отсеет, если они рядом.
+        } else {
+            // Если в идеальной точке гора или вода, ищем ближайшее свободное место вокруг
+            console.warn(`⚠️ [Gen] Идеальная точка крепости (${fortressTargetX}, ${fortressTargetY}) занята или непроходима. Ищем замену...`);
+            
+            let found = false;
+            for (let r = 1; r < 10; r++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        const nx = localX + dx;
+                        const ny = localY + dy;
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            if ((tiles[ny][nx] === 'plain' || tiles[ny][nx] === 'forest') && !isTooClose(nx, ny)) {
+                                tiles[ny][nx] = 'fortress';
+                                const gx = chunkStartX + nx;
+                                const gy = chunkStartY + ny;
+                                pois.push({ x: gx, y: gy, type: 'fortress', name: "Крепость, Выросшая Из-Под Земли" });
+                                console.log(`🏰 [Gen] Крепость смещена на (${gx}, ${gy})`);
+                                found = true;
+                                break;
+                            }
                         }
                     }
+                    if (found) break;
                 }
+                if (found) break;
             }
         }
     }
