@@ -540,21 +540,24 @@ const GlobalMapModule = {
         return 'plain';
     },
 
-    getDisplayTileType(globalX, globalY) {
-        const poi = this.getPOI(globalX, globalY);
-        if (poi) {
-            if (poi.type === 'global_scroll') {
-                // Если квест уже пройден, возвращаем базовый тайл ландшафта
-                if (typeof GameModule !== 'undefined' && GameModule.isTextQuestCompleted(poi.questFile)) {
-                    return this.getTileType(globalX, globalY);
-                }
-                return 'global_scroll';
-            }
-            return poi.type === 'city' ? 'city' : 'dungeon_entrance';
-        }
-       return this.getTileType(globalX, globalY); 
-    },
-    
+// В GlobalMapModule.getDisplayTileType
+     getDisplayTileType(globalX, globalY) {
+         const poi = this.getPOI(globalX, globalY);
+         if (poi) {
+             if (poi.type === 'global_scroll') {
+                 if (typeof GameModule !== 'undefined' && GameModule.isTextQuestCompleted(poi.questFile)) {
+                     return this.getTileType(globalX, globalY);
+                 }
+                 return 'global_scroll';
+             }
+             // Добавляем обработку крепости
+             if (poi.type === 'fortress') {
+                 return 'fortress';
+             }
+             return poi.type === 'city' ? 'city' : 'dungeon_entrance';
+         }
+        return this.getTileType(globalX, globalY); 
+     },
     isWalkable(globalX, globalY) {
         const type = this.getTileType(globalX, globalY);
         return type !== 'mountain' && type !== 'water';
