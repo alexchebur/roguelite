@@ -1834,15 +1834,25 @@ function updateQuestCompass() {
         renderGlobalMap();
     }
 
+    // В game.js, внутри enterPOI
     function enterPOI(poi) {
         busy = true;
         entrancePos = GlobalMapModule.getPlayerPosition();
         window.gameMode = 'dungeon';
-        
+         
         if (poi.type === 'city') {
             RenderModule.log(`Вы входите в город ${poi.name}`, "info");
             loadCityLevel(poi.x, poi.y, poi.name);
-        } else if (poi.type === 'dungeon') {
+        } 
+        else if (poi.type === 'fortress') {
+            RenderModule.log(`Вы входите в ${poi.name}... Воздух здесь тяжелый от злобы.`, "event");
+            // Загружаем как подземелье, но с флагом fortress
+            currentDepth = 0;
+            currentDungeonTypeName = 'fortress'; // Специальный тип
+            currentDungeonFullName = poi.name;
+            loadDungeonLevel(poi.x, poi.y, currentDepth, 'fortress', poi.name);
+        }
+        else if (poi.type === 'dungeon') {
             RenderModule.log(`Вы входите в подземелье ${poi.name}`, "info");
             currentDepth = 0;
             currentDungeonTypeName = poi.dungeonType;
