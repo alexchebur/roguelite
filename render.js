@@ -405,22 +405,18 @@ const RenderModule = (function() {
                     default: ch = '·'; fg = '#555';
                 }
 
-                // === ЛОГИКА СНЕГА (ИСПРАВЛЕННАЯ) ===
-                // Проверяем, является ли это равниной и насколько мы далеко на севере
+                // === ЛОГИКА СНЕГА (ИСПРАВЛЕННАЯ: ТЕКСТУРА + БЕЛЫЙ ФОН) ===
                 if (tileType === 'plain' && gy < -150) {
                     let isSnowy = false;
                     
                     // Расчет вероятности снега
                     if (gy <= -300) {
-                        isSnowy = true; // Всегда снег
+                        isSnowy = true;
                     } else if (gy <= -200) {
-                        // От -200 до -300: плавный переход
-                        // Используем более хаотичную функцию для "диффузного" распределения
                         const noise = ((gx ^ gy) * 2654435761) & 0xFFFF; 
-                        const progress = Math.abs(gy + 200) / 100; // 0..1
+                        const progress = Math.abs(gy + 200) / 100;
                         if ((noise / 0xFFFF) < progress) isSnowy = true;
                     } else {
-                        // От -150 до -200: редкие вкрапления
                         const noise = ((gx ^ gy) * 2654435761) & 0xFFFF;
                         const progress = Math.abs(gy + 150) / 50; 
                         if ((noise / 0xFFFF) < (progress * 0.3)) isSnowy = true;
@@ -431,7 +427,15 @@ const RenderModule = (function() {
                         const destY = sy * TilesetRenderer.TILE_SIZE;
                         const tileSize = TilesetRenderer.TILE_SIZE;
 
-                        // Получаем данные тайла
+                        // 1. Рисуем белый фон (снег)
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(destX, destY, tileSize, tileSize);
+                        
+                        // 2. Рисуем спрайт травы поверх белого фона
+                        // Используем светло-зеленый/серый цвет, чтобы трава выглядела "под снегом"
+                        // Но не чисто белый, чтобы сохранить текстуру символа
+                        const snowGrassColor = '#c0d8c0'; // Светло-зеленый, почти белый
+                        
                         const tileData = TilesetRenderer.TILE_MAP ? TilesetRenderer.TILE_MAP[ch] : null;
                         
                         if (tileData) {
@@ -441,13 +445,12 @@ const RenderModule = (function() {
                                 const srcY = tileData.y * tileSize;
                                 
                                 ctx.save();
-                                // 1. Рисуем исходный спрайт
+                                // Рисуем исходный спрайт
                                 ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
                                 
-                                // 2. Инвертируем цвет в белый (эффект снега)
-                                // source-atop закрасит только непрозрачные пиксели спрайта белым цветом
+                                // Накладываем цвет "снежной травы" только на непрозрачные пиксели
                                 ctx.globalCompositeOperation = 'source-atop';
-                                ctx.fillStyle = '#FFFFFF';
+                                ctx.fillStyle = snowGrassColor;
                                 ctx.fillRect(destX, destY, tileSize, tileSize);
                                 
                                 ctx.restore();
