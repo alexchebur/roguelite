@@ -26,7 +26,31 @@ const GLOBAL_TEXT_QUESTS_ROSTER = [
     'twine/werewolf.html',
     'twine/dragon.html'
 ];
+// === ГРАНИЦЫ МИРА ===
+const WORLD_BORDER_RADIUS = 1000; // Радиус "материка"
+const BORDER_NOISE_SCALE = 0.05;  // Масштаб искривления берега (чем меньше, тем плавнее)
 
+/**
+ * Простая детерминированная функция шума для границы
+ * Возвращает число от -1 до 1
+ */
+function getBorderNoise(x, y) {
+    // Используем тот же SeededRandom, но с уникальным сидом для шума границы
+    // Мы берем синус от координат, чтобы получить плавные волны, 
+    // и добавляем случайность на основе сида клетки
+    const seed = x * 12345 + y * 67890; 
+    const rng = new SeededRandom(seed);
+    
+    // Комбинируем несколько синусоид для естественности
+    const wave1 = Math.sin(x * 0.1) * Math.cos(y * 0.1);
+    const wave2 = Math.sin(x * 0.05 + 100) * Math.cos(y * 0.05 + 100);
+    
+    // Случайный фактор для "шероховатости"
+    const randomFactor = (rng.next() - 0.5) * 2; 
+    
+    // Смешиваем волны и случайность
+    return (wave1 * 0.5 + wave2 * 0.3 + randomFactor * 0.2);
+}
 
 // Текущая позиция игрока
 let playerGlobalX = 0;
@@ -143,7 +167,8 @@ function getChunkRandom(cx, cy) {
 }
 
 // Генерация ландшафта
-function generateTerrain(rand, width, height) {
+// Генерация ландшафта
+function generateTerrain(rand, width, height, cx, cy) { // <--- ДОБАВИЛИ cx, cy для расчета глобальных координат
     const tiles = Array(height).fill().map(() => Array(width).fill('plain'));
     
     // 1. Горы
@@ -156,27 +181,23 @@ function generateTerrain(rand, width, height) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = mx+dx, y = my+dy;
                 if (x >= 0 && x < width && y >= 0 && y < height && Math.abs(dx)+Math.abs(dy) <= radius) {
-                    // Горы не стирают города, но города еще не созданы, так что это просто земля
                     tiles[y][x] = 'mountain';
                 }
             }
         }
     }
     
-    // 2. Леса (кластерами)
+    // 2. Леса
     const forestClusterCount = rand.int(20, 40); 
     for (let i = 0; i < forestClusterCount; i++) {
         const fx = rand.int(0, width-1);
         const fy = rand.int(0, height-1);
         const radius = rand.int(1, 3); 
-
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const x = fx + dx;
                 const y = fy + dy;
-                
                 if (x >= 0 && x < width && y >= 0 && y < height) {
-                    // Лес растет только на равнинах (не на горах)
                     if (tiles[y][x] === 'plain') {
                         if (rand.next() < 0.8) {
                             tiles[y][x] = 'forest';
@@ -186,7 +207,7 @@ function generateTerrain(rand, width, height) {
             }
         }
     }
-     
+    
     // 3. Реки
     const riverCount = rand.int(1, 3);
     for (let r = 0; r < riverCount; r++) {
@@ -194,7 +215,6 @@ function generateTerrain(rand, width, height) {
         let y = rand.int(0, height-1);
         for (let step = 0; step < 30; step++) {
             if (x >= 0 && x < width && y >= 0 && y < height) {
-                // Река НЕ может быть там, где уже есть горы
                 if (tiles[y][x] !== 'mountain') {
                     tiles[y][x] = 'water';
                 }
@@ -206,6 +226,34 @@ function generateTerrain(rand, width, height) {
             else y--;
         }
     }
+
+    // === НОВОЕ: ПРИМЕНЕНИЕ ГРАНИЦ МИРА ===
+    const chunkStartX = cx * GLOBAL_CONFIG.CHUNK_SIZE;
+    const chunkStartY = cy * GLOBAL_CONFIG.CHUNK_SIZE;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            // Вычисляем глобальные координаты этой клетки
+            const globalX = chunkStartX + x;
+            const globalY = chunkStartY + y;
+            
+            // Расстояние от центра мира (0,0)
+            const dist = Math.sqrt(globalX * globalX + globalY * globalY);
+            
+            // Получаем значение шума для этой точки (-1 ... 1)
+            const noise = getBorderNoise(globalX, globalY);
+            
+            // Эффективный радиус границы с учетом шума
+            // Если noise положительный, граница отодвигается дальше (залив)
+            // Если noise отрицательный, граница приближается (мыс)
+            const effectiveRadius = WORLD_BORDER_RADIUS + (noise * 100); // 100 - амплитуда искривления
+            
+            if (dist > effectiveRadius) {
+                tiles[y][x] = 'water';
+            }
+        }
+    }
+
     return tiles;
 }
 
@@ -368,21 +416,22 @@ function connectPOIsWithRoads(tiles, poisLocal, rand) {
 
 // В функции generateChunk добавьте в конец:
 function generateChunk(cx, cy) {
-    const rand = getChunkRandom(cx, cy);
-    const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE);
-    const pois = generatePOIs(rand, cx, cy, tiles);
-    
-    const poisLocal = pois.map(p => ({ 
-        x: p.x - cx * GLOBAL_CONFIG.CHUNK_SIZE, 
-        y: p.y - cy * GLOBAL_CONFIG.CHUNK_SIZE 
-    }));
-    connectPOIsWithRoads(tiles, poisLocal, rand);
-    
-    // === НОВОЕ: Спавн армий в чанке ===
-    spawnArmiesInChunk(cx, cy, tiles);
-    
-    return { tiles, pois };
-}
+     const rand = getChunkRandom(cx, cy);
+     // === ИЗМЕНЕНИЕ ЗДЕСЬ: передаем cx и cy ===
+     const tiles = generateTerrain(rand, GLOBAL_CONFIG.CHUNK_SIZE, GLOBAL_CONFIG.CHUNK_SIZE, cx, cy);
+     
+     const pois = generatePOIs(rand, cx, cy, tiles);
+     const poisLocal = pois.map(p => ({ 
+         x: p.x - cx * GLOBAL_CONFIG.CHUNK_SIZE, 
+         y: p.y - cy * GLOBAL_CONFIG.CHUNK_SIZE 
+     }));
+     connectPOIsWithRoads(tiles, poisLocal, rand);
+     
+     // === НОВОЕ: Спавн армий в чанке ===
+     spawnArmiesInChunk(cx, cy, tiles);
+     
+     return { tiles, pois };
+ }
 
 // Получить чанк по глобальной клетке
 function getChunkForCell(globalX, globalY) {
