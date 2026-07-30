@@ -399,10 +399,14 @@ const RenderModule = (function() {
                     case 'city': ch = 'C'; fg = '#ffd700'; break;
                     case 'dungeon_entrance': ch = 'D'; fg = '#cd5c5c'; break;
                     case 'road': ch = '─'; fg = '#b8860b'; break;
-                    case 'global_scroll': 
-                        ch = '&';       
-                        fg = '#ff00ff'; 
+                    case 'global_scroll': ch = '&'; fg = '#ff00ff'; break;
+                     
+                    // === НОВОЕ: КРЕПОСТЬ ===
+                    case 'fortress': 
+                        ch = 'F'; 
+                        fg = '#00FFFF'; // Ярко-голубой (Cyan)
                         break;
+                         
                     default: ch = '·'; fg = '#555';
                 }
 
@@ -536,6 +540,7 @@ const RenderModule = (function() {
                     case 'dungeon_entrance': color = '#cd5c5c'; break;
                     case 'road': color = '#b8860b'; break;
                     case 'global_scroll': color = '#ff00ff'; break;
+                    case 'fortress': color = '#00FFFF'; break;
                     default: color = '#333';
                 }
                 
