@@ -12,6 +12,7 @@ const SPRITE_REGISTRY = {
     'TILE_CITY':             { char: 'C',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Город' },
     'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход' },
     'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Дорога' }, // Было: '█'
+    'TILE_FORTRESS': { char: 'F', tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Крепость' }
 
     // === 2. ПОДЗЕМЕЛЬЕ (стандартные символы, без изменений) ===
     'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 0 }, desc: 'Пол' },
