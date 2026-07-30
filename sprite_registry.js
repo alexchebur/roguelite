@@ -5,14 +5,16 @@
 
 const SPRITE_REGISTRY = {
     // === 1. ГЛОБАЛЬНАЯ КАРТА (уникальные символы) ===
-    'TILE_PLAIN':            { char: '░',   tile: { file: 'terrain_sprites', x: 10, y: 2 }, desc: 'Равнина' }, // Было: '.'
+    'TILE_PLAIN':            { char: '░',   tile: { file: 'terrain_sprites', x: 10, y: 2 }, desc: 'Равнина' }, 
     'TILE_FOREST':           { char: 'T',   tile: { file: 'terrain_sprites', x: 8, y: 2 }, desc: 'Лес' },
     'TILE_MOUNTAIN':         { char: '^',   tile: { file: 'terrain_sprites', x: 5, y: 2 }, desc: 'Горы' },
     'TILE_WATER':            { char: '≈',   tile: { file: 'terrain_sprites', x: 7, y: 2 }, desc: 'Вода' },
     'TILE_CITY':             { char: 'C',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Город' },
     'TILE_DUNGEON_ENTRANCE': { char: 'D',   tile: { file: 'terrain_sprites', x: 6, y: 0 }, desc: 'Вход' },
-    'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Дорога' }, // Было: '█'
-    'TILE_FORTRESS': { char: 'F', tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Крепость' }
+    'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Дорога' }, 
+    
+    // === НОВОЕ: КРЕПОСТЬ ===
+    'TILE_FORTRESS':         { char: 'F',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Крепость' }, // <--- ЗАПЯТАЯ ЗДЕСЬ ОБЯЗАТЕЛЬНА
 
     // === 2. ПОДЗЕМЕЛЬЕ (стандартные символы, без изменений) ===
     'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 0 }, desc: 'Пол' },
@@ -24,6 +26,7 @@ const SPRITE_REGISTRY = {
     'STAIRS_UP':             { char: '>',  tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница ↑' },
     'STAIRS_DOWN':           { char: '<',  tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница ↓' },
     
+    // ... остальной код ...
 
     // ==========================================
     // 3. СУЩНОСТИ (Игрок и NPC)
