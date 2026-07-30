@@ -133,12 +133,34 @@ const MapModule = (function() {
     function generateLevel(gx, gy, depth, dungeonType, entryPoint = null) {
         const result = DungeonGeneratorModule.generateLevelWithType(gx, gy, depth, DataModule.MAP_WIDTH, DataModule.MAP_HEIGHT, dungeonType);
         currentMapData = result.mapData;
-        currentDungeonType = result.dungeonType;
-        window.currentShopCoords = [];
-        window.currentInnCoords = []; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
-
         
-        generateStaircase(gx, gy, depth);
+        // === СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ КРЕПОСТИ ===
+        if (dungeonType === 'fortress') {
+            currentDungeonType = { 
+                name: 'fortress',
+                wallChar: getChar('WALL_DEFAULT'), // Или можно создать специальный тайл стены крепости
+                floorChar: getChar('FLOOR_DEFAULT'),
+                wallColor: '#4a4a4a', // Темно-серые стены
+                floorColor: '#2a2a2a' // Темный пол
+            };
+        } else {
+            currentDungeonType = result.dungeonType;
+        }
+
+        window.currentShopCoords = [];
+        window.currentInnCoords = []; 
+
+        // === ГЕНЕРАЦИЯ ЛЕСТНИЦ ===
+        // Для крепости лестница вниз НЕ генерируется (один уровень)
+        if (dungeonType === 'fortress') {
+            // Генерируем только лестницу ВВЕРХ (выход), если это не самый первый вход (хотя в крепость входят с поверхности)
+            // Но логика generateStaircase сама разберется, если мы передадим тип.
+            // Однако, чтобы гарантировать отсутствие stairsDown, лучше вызвать вручную или обнулить после.
+            generateStaircase(gx, gy, depth);
+            stairsDown = null; // !!! ВАЖНО: В крепости нет лестницы вниз !!!
+        } else {
+            generateStaircase(gx, gy, depth);
+        }
         
         let startPos;
         
@@ -146,8 +168,10 @@ const MapModule = (function() {
         if (entryPoint === 'down') {
             startPos = getSafePosNearby(stairsUp, 5);
         } else if (entryPoint === 'up') {
-            startPos = getSafePosNearby(stairsDown, 5);
+            // Если вход сверху (из города или с поверхности), стартуем у stairsUp
+            startPos = getSafePosNearby(stairsUp, 5);
         } else {
+            // Стандартный вход (первый заход в данж)
             const genStart = result.startPos;
             if (genStart && currentMapData[genStart.y]?.[genStart.x] === 0) {
                  startPos = getSafePosNearby(stairsUp, 5);
@@ -157,8 +181,9 @@ const MapModule = (function() {
         }
 
         // ==========================================================
-        // 🛠️ НОВОЕ: ГАРАНТИЯ СВЯЗНОСТИ (FIX ЗАМКНУТЫХ ПОЛОСТЕЙ)
+        // 🛠️ ГАРАНТИЯ СВЯЗНОСТИ (FIX ЗАМКНУТЫХ ПОЛОСТЕЙ)
         // ==========================================================
+        // Проверяем связность только если есть куда идти (stairsDown существует)
         if (stairsDown && startPos) {
             // Проверяем, существует ли путь от старта до лестницы вниз
             const astar = new ROT.Path.AStar(stairsDown.x, stairsDown.y,
