@@ -257,8 +257,7 @@ function generateTerrain(rand, width, height, cx, cy) { // <--- ДОБАВИЛИ
     return tiles;
 }
 
-// Генерация точек интереса (ИСПРАВЛЕННАЯ ВЕРСИЯ)
-// Генерация точек интереса (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// Генерация точек интереса (ПОЛНАЯ ВЕРСИЯ С КРЕПОСТЬЮ)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
     // 1. Определяем размеры чанка здесь, чтобы они были видны во всей функции
@@ -267,6 +266,7 @@ function generatePOIs(rand, cx, cy, tiles) {
     let globalQuestIndex = 0;     
     const MIN_POI_DISTANCE = 7; 
 
+    // Функция проверки расстояния до уже созданных POI
     const isTooClose = (localX, localY) => {
         const globalX = cx * width + localX;
         const globalY = cy * height + localY;
@@ -276,13 +276,63 @@ function generatePOIs(rand, cx, cy, tiles) {
         }
         return false;
     };
-    
-    // 2. Города
+
+    // === 1. ГЕНЕРАЦИЯ КРЕПОСТИ НА СЕВЕРЕ (Детерминированная) ===
+    // Проверяем, находится ли чанк в зоне "Северных Земель" (Y < -800 и Y > -900)
+    const chunkStartGlobalY = cy * height;
+    // Расширяем диапазон проверки чуть больше, чтобы захватить границу чанков
+    const isNorthernZone = (chunkStartGlobalY < -800 && chunkStartGlobalY > -950); 
+
+    if (isNorthernZone) {
+        // Ищем подходящее место внутри чанка для крепости
+        // Используем уникальный сид для крепости, чтобы она была одна и та же при перезагрузке
+        const fortressSeed = createSeed(cx, cy) + 77777; 
+        const fRng = new SeededRandom(fortressSeed);
+        
+        // Шанс спавна крепости в этом чанке (достаточно высокий, т.к. зона узкая, но чанков много)
+        // Если хотим гарантированно одну крепость на весь мир, логика должна быть сложнее (проверка глобального флага),
+        // но для процедурной генерации достаточно высокого шанса в нужной полосе.
+        if (fRng.next() < 0.05) { // 5% шанс на чанк в этой зоне
+             for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const globalY = chunkStartGlobalY + y;
+                    
+                    // Строгая проверка координат Y
+                    if (globalY < -800 && globalY > -900) {
+                        const currentTile = tiles[y][x];
+                        // Крепость может стоять на равнине или в лесу
+                        if ((currentTile === 'plain' || currentTile === 'forest') && !isTooClose(x, y)) {
+                            tiles[y][x] = 'fortress';
+                            const globalX = cx * width + x;
+                            
+                            pois.push({ 
+                                x: globalX, 
+                                y: globalY, 
+                                type: 'fortress', 
+                                name: "Крепость, Выросшая Из-Под Земли" 
+                            });
+                            
+                            // Прерываем циклы, так как крепость должна быть одна на чанк (и скорее всего одна на зону)
+                            // Возвращаем pois сразу, чтобы пропустить генерацию других POI в этом чанке? 
+                            // Нет, лучше просто прервать циклы поиска крепости, но позволить другим POI генерироваться вокруг, если они не слишком близко.
+                            // Но для драматичности лучше сделать крепость доминирующим объектом.
+                            // Для простоты просто выходим из циклов поиска крепости.
+                            y = height; // break outer loop hack
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // === 2. Города ===
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const currentTile = tiles[y][x];
             
             // 🛠️ ЖЕСТКАЯ ПРОВЕРКА: Только равнина или лес. Никакой воды, гор или дорог.
+            // Также проверяем, не занята ли клетка крепостью
             const isValidCityTerrain = (currentTile === 'plain' || currentTile === 'forest');
 
             if (isValidCityTerrain && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
@@ -300,16 +350,16 @@ function generatePOIs(rand, cx, cy, tiles) {
         }
     }
     
-    // 3. Входы в подземелья
+    // === 3. Входы в подземелья ===
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const currentTile = tiles[y][x];
             
-            // 🛠️ ПРОВЕРКА: Равнина, лес или дорога. Не вода, не горы, не город.
+            // 🛠️ ПРОВЕРКА: Равнина, лес или дорога. Не вода, не горы, не город, не крепость.
             const isValidTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
             
             if (isValidTerrain && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
-                if (currentTile !== 'city') {
+                if (currentTile !== 'city' && currentTile !== 'fortress') {
                     
                     if (isTooClose(x, y)) continue;
 
@@ -325,12 +375,12 @@ function generatePOIs(rand, cx, cy, tiles) {
         }
     }
 
-    // 4. Глобальные свитки (НОВОЕ)
+    // === 4. Глобальные свитки (НОВОЕ) ===
     if (typeof GLOBAL_TEXT_QUESTS_ROSTER !== 'undefined' && GLOBAL_TEXT_QUESTS_ROSTER.length > 0) {
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const currentTile = tiles[y][x];
-                // Свитки появляются только на проходимых ландшафтах
+                // Свитки появляются только на проходимых ландшафтах (не на крепостях и городах)
                 const isValidScrollTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
                 
                 if (isValidScrollTerrain && rand.next() < GLOBAL_CONFIG.GLOBAL_SCROLL_DENSITY) {
