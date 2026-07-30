@@ -438,7 +438,7 @@ const RenderModule = (function() {
                         
                         // Рисуем спрайт снега. 
                         // Важно: TilesetRenderer.draw очистит ячейку, поэтому мы делаем это вручную
-                        const tileData = TilesetRenderer.TILE_MAP['*'];
+                        const tileData = TilesetRenderer.TILE_MAP['3'];
                         if (tileData) {
                             const img = TilesetRenderer.spriteSheets[tileData.file];
                             if (img) {
