@@ -323,71 +323,51 @@ function generatePOIs(rand, cx, cy, tiles) {
         return false;
     };
 
-    // === 1. ГЕНЕРАЦИЯ КРЕПОСТИ НА СЕВЕРЕ (СТРОГО ПО КООРДИНАТАМ) ===
-    // Проверяем, находятся ли запланированные координаты крепости внутри текущего чанка
-    const chunkStartX = cx * width;
-    const chunkStartY = cy * height;
-    const chunkEndX = chunkStartX + width;
-    const chunkEndY = chunkStartY + height;
+    // === 1. ГЕНЕРАЦИЯ КРЕПОСТИ НА СЕВЕРЕ (Детерминированная) ===
+    // Проверяем, находится ли чанк в зоне "Северных Земель" (Y < -100 и Y > -200)
+    const chunkStartGlobalY = cy * height;
+    const isNorthernZone = (chunkStartGlobalY < -100 && chunkStartGlobalY > -250); 
 
-    // Проверяем, пересекается ли чанк с целевыми координатами крепости
-    const isFortressInThisChunk = (
-        fortressTargetX >= chunkStartX && fortressTargetX < chunkEndX &&
-        fortressTargetY >= chunkStartY && fortressTargetY < chunkEndY
-    );
+    if (isNorthernZone) {
+        // Ищем подходящее место внутри чанка для крепости
+        const fortressSeed = createSeed(cx, cy) + 77777; 
+        const fRng = new SeededRandom(fortressSeed);
+        
+        // Шанс спавна крепости в этом чанке
+        if (fRng.next() < 0.05) { 
+             for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const globalY = chunkStartGlobalY + y;
+                    
+                    // Строгая проверка координат Y согласно заданию
+                    if (globalY < -100 && globalY > -200) {
+                        const currentTile = tiles[y][x];
+                        
+                        // Крепость может стоять только на равнине или в лесу
+                        // И важно: проверяем, что здесь еще нет города или данжа (isTooClose проверяет дистанцию, но не тип тайла)
+                        const isFreeOfOtherPOIs = (currentTile !== 'city' && currentTile !== 'dungeon_entrance');
 
-    if (isFortressInThisChunk) {
-        const localX = fortressTargetX - chunkStartX;
-        const localY = fortressTargetY - chunkStartY;
-        
-        // Проверяем, свободна ли эта клетка
-        const currentTile = tiles[localY][localX];
-        const isValidTerrain = (currentTile === 'plain' || currentTile === 'forest');
-        
-        if (isValidTerrain) {
-            // Ставим крепость точно в рассчитанные координаты
-            tiles[localY][localX] = 'fortress';
-            
-            pois.push({ 
-                x: fortressTargetX, 
-                y: fortressTargetY, 
-                type: 'fortress', 
-                name: "Крепость, Выросшая Из-Под Земли" 
-            });
-            
-            console.log(`🏰 [Gen] Крепость размещена в чанке (${cx}, ${cy}) на координатах (${fortressTargetX}, ${fortressTargetY})`);
-            
-            // Важно: так как крепость — уникальный объект, мы можем запретить спавн других POI в этом чанке,
-            // чтобы она выделялась, или просто вернуть pois.
-            // Возвращаем сразу, чтобы города/данжи не переписали тайл 'fortress' (хотя проверка isValidTerrain уже защитила)
-            // Но лучше позволить другим POI генерироваться вокруг, если они не слишком близко.
-            // Однако, чтобы крепость была "доминирующей", можно вернуть pois здесь.
-            // Для безопасности оставим генерацию других POI, но isTooClose их отсеет, если они рядом.
-        } else {
-            // Если в идеальной точке гора или вода, ищем ближайшее свободное место вокруг
-            console.warn(`⚠️ [Gen] Идеальная точка крепости (${fortressTargetX}, ${fortressTargetY}) занята или непроходима. Ищем замену...`);
-            
-            let found = false;
-            for (let r = 1; r < 10; r++) {
-                for (let dy = -r; dy <= r; dy++) {
-                    for (let dx = -r; dx <= r; dx++) {
-                        const nx = localX + dx;
-                        const ny = localY + dy;
-                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                            if ((tiles[ny][nx] === 'plain' || tiles[ny][nx] === 'forest') && !isTooClose(nx, ny)) {
-                                tiles[ny][nx] = 'fortress';
-                                const gx = chunkStartX + nx;
-                                const gy = chunkStartY + ny;
-                                pois.push({ x: gx, y: gy, type: 'fortress', name: "Крепость, Выросшая Из-Под Земли" });
-                                console.log(`🏰 [Gen] Крепость смещена на (${gx}, ${gy})`);
-                                found = true;
-                                break;
-                            }
+                        if ((currentTile === 'plain' || currentTile === 'forest') && isFreeOfOtherPOIs && !isTooClose(x, y)) {
+                            tiles[y][x] = 'fortress';
+                            const globalX = cx * width + x;
+                            
+                            pois.push({ 
+                                x: globalX, 
+                                y: globalY, 
+                                type: 'fortress', 
+                                name: "Крепость, Выросшая Из-Под Земли" 
+                            });
+                            
+                            console.log(`🏰 [DEBUG] Крепость сгенерирована на координатах: X=${globalX}, Y=${globalY}`);
+                            
+                            // ВАЖНО: Не делаем return здесь! Позволяем другим POI генерироваться вокруг,
+                            // но isTooClose не даст им появиться слишком близко к крепости.
+                            // Прерываем только поиск самой крепости, так как она одна на чанк.
+                            y = height; // break outer loop hack
+                            break;
                         }
                     }
-                    if (found) break;
                 }
-                if (found) break;
             }
         }
     }
