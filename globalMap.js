@@ -281,7 +281,7 @@ function generatePOIs(rand, cx, cy, tiles) {
     // Проверяем, находится ли чанк в зоне "Северных Земель" (Y < -100 и Y > -200)
     const chunkStartGlobalY = cy * height;
     // Расширяем диапазон проверки чуть больше, чтобы захватить границу чанков
-    const isNorthernZone = (chunkStartGlobalY < -100 && chunkStartGlobalY > -250); 
+    const isNorthernZone = (chunkStartGlobalY < -100 && chunkStartGlobalY > -200); 
 
     if (isNorthernZone) {
         // Ищем подходящее место внутри чанка для крепости
@@ -291,7 +291,7 @@ function generatePOIs(rand, cx, cy, tiles) {
         
         // Шанс спавна крепости в этом чанке. 
         // Так как зона узкая (100 клеток), а чанки 50x50, шанс 5% гарантирует появление ~1-2 крепостей в зоне.
-        if (fRng.next() < 0.05) { 
+        if (fRng.next() < 0.5) { 
              for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
                     const globalY = chunkStartGlobalY + y;
