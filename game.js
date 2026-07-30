@@ -2059,24 +2059,27 @@ function updateQuestCompass() {
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
         const savedState = dungeonClearState.get(cacheKey);
 
-        // 1. Количество врагов: база 8 + 1.5 за каждый этаж
+        // === ЛОГИКА КОЛИЧЕСТВА ВРАГОВ ===
         let enemyCount = 8 + Math.floor(depth * 1.5);
         
-        // Если уровень уже посещался, ограничиваем спавн сохраненным числом
-        if (savedState) {
-            // Используем savedState.enemies, так как именно так мы сохраняли значение
+        // === КРЕПОСТЬ: КИШИТ МОНСТРАМИ ===
+        const isFortress = (currentDungeonTypeName === 'fortress');
+        
+        if (isFortress) {
+            enemyCount = 50; // Фиксированное большое количество
+            RenderModule.log("⚠️ Здесь невероятно много врагов! Они повсюду!", "combat");
+        } else if (savedState) {
+            // Если уровень уже посещался, ограничиваем спавн сохраненным числом
             enemyCount = Math.min(enemyCount, savedState.enemies);
             
             // Выводим сообщение только если враги еще остались
             if (savedState.enemies > 0) {
                 RenderModule.log(`👣 Вы замечаете следы своей предыдущей битвы. Осталось врагов: ~${savedState.enemies}`, "info");
-            } else {
-                // Опционально: можно вывести тихое сообщение или вообще ничего
-                // RenderModule.log("🕸️ Это место кажется подозрительно тихим... (зачищено)", "info");
             }
         }
         
@@ -2085,10 +2088,12 @@ function updateQuestCompass() {
         
         // 3. Фильтрация врагов по уровню сложности
         let availableEnemies = DataModule.ENEMY_TYPES;
-        if (depth < 3) {
-            availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
-        } else if (depth < 7) {
-            availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
+        if (!isFortress) { // В крепости могут быть любые монстры
+            if (depth < 3) {
+                availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
+            } else if (depth < 7) {
+                availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
+            }
         }
 
         // Спавн врагов (если их больше 0)
@@ -2099,14 +2104,20 @@ function updateQuestCompass() {
                 availableEnemies,
                 enemyCount,
                 enemyMult,
-                3,
+                3, // Минимальная дистанция от игрока
                 depth
             );
         } else {
             enemies = []; // Гарантируем пустой массив для зачищенного уровня
         }
         
-        // 4. Спавн предметов и золота (без изменений)
+        // === ЛОГИКА КОЛИЧЕСТВА ПРЕДМЕТОВ ===
+        let itemCount = 4;
+        if (isFortress) {
+            itemCount = 20; // Больше лута в крепости
+        }
+
+        // 4. Спавн предметов и золота
         const itemMult = WorldCurveModule.getItemPowerMultiplier(gx, gy) * (1 + depth * 0.15);
         
         if (EntityModule.spawnItems) {
@@ -2114,7 +2125,7 @@ function updateQuestCompass() {
                 MapModule.currentMapData,
                 player,
                 DataModule.ITEM_TYPES,
-                4,
+                itemCount,
                 itemMult,
                 3
             );
@@ -2141,7 +2152,9 @@ function updateQuestCompass() {
         const bossAlreadyDefeated = savedState && savedState.bossDefeated;
         const savedBossName = savedState ? savedState.bossName : null;
 
-        if (currentDungeonTypeName === 'boss' && !bossAlreadyDefeated) {
+        // Босс спавнится только в обычных данжах типа 'boss' или если это квестовый босс
+        // В крепости босс не спавнится автоматически, если только это не специальный тип
+        if ((currentDungeonTypeName === 'boss' || currentDungeonTypeName === 'fortress') && !bossAlreadyDefeated) {
             // Проверяем, жив ли уже босс на этом уровне (защита от дублей)
             const isBossAlive = enemies.some(e => e.isBoss);
 
@@ -2192,7 +2205,15 @@ function updateQuestCompass() {
 
                         // === 2. ФОЛБЭК: СЛУЧАЙНЫЙ БОСС (если нет квеста) ===
                         if (!bossData) {
-                            bossData = NameGeneratorModule.generateBossName(gx, gy, depth);
+                            // Если это крепость, можно дать ей уникальное имя или использовать стандартное
+                            if (isFortress) {
+                                bossData = {
+                                    fullName: "Страж Крепости",
+                                    bossType: "Каменный Голем" // Или любой другой тип
+                                };
+                            } else {
+                                bossData = NameGeneratorModule.generateBossName(gx, gy, depth);
+                            }
                         }
 
                         // Создаем сущность босса
@@ -2216,21 +2237,20 @@ function updateQuestCompass() {
                  // RenderModule.log(`💀 Логово пусто. ${savedBossName} уже повержен.`, "info");
              }
         }
+        
         const totalEnemies = enemies.length;
         console.log(`🕷️ [DEBUG] Уровень ${depth}: Создано врагов: ${totalEnemies}`, enemies.map(e => e.name));
-        // === НОВОЕ: ОТЛАДКА ПРЕДМЕТОВ И ЗОЛОТА ===
+        
+        // === ОТЛАДКА ПРЕДМЕТОВ И ЗОЛОТА ===
         if (items.length > 0) {
-            // Группируем предметы по типам для компактного вывода
             const itemSummary = items.reduce((acc, item) => {
                 acc[item.name] = (acc[item.name] || 0) + 1;
                 return acc;
             }, {});
-            
             console.log(`🎒 [DEBUG] Уровень ${depth}: Сгенерировано предметов: ${items.length}`, itemSummary);
         } else {
             console.log(`🎒 [DEBUG] Уровень ${depth}: Предметы не сгенерированы.`);
         }
-        
     }
      
 
