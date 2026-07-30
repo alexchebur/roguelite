@@ -281,7 +281,7 @@ function generatePOIs(rand, cx, cy, tiles) {
     // Проверяем, находится ли чанк в зоне "Северных Земель" (Y < -800 и Y > -900)
     const chunkStartGlobalY = cy * height;
     // Расширяем диапазон проверки чуть больше, чтобы захватить границу чанков
-    const isNorthernZone = (chunkStartGlobalY < -800 && chunkStartGlobalY > -950); 
+    const isNorthernZone = (chunkStartGlobalY < -100 && chunkStartGlobalY > -200); 
 
     if (isNorthernZone) {
         // Ищем подходящее место внутри чанка для крепости
@@ -298,7 +298,7 @@ function generatePOIs(rand, cx, cy, tiles) {
                     const globalY = chunkStartGlobalY + y;
                     
                     // Строгая проверка координат Y
-                    if (globalY < -800 && globalY > -900) {
+                    if (globalY < -100 && globalY > -150) {
                         const currentTile = tiles[y][x];
                         // Крепость может стоять на равнине или в лесу
                         if ((currentTile === 'plain' || currentTile === 'forest') && !isTooClose(x, y)) {
