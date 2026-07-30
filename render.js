@@ -68,7 +68,7 @@ const RenderModule = (function() {
         
         console.log("🚀 RenderModule полностью инициализирован.");
     }
-    // === ОБНОВЛЕНИЕ ТЕКУЩЕГО КВЕСТА В ФУТЕРЕ ===
+
     // === ОБНОВЛЕНИЕ ТЕКУЩЕГО КВЕСТА В ФУТЕРЕ ===
     function updateQuestBriefing(quest) {
         const el = document.getElementById("ui-quest-briefing");
@@ -87,14 +87,11 @@ const RenderModule = (function() {
             goalText = `Найти: ${quest.target.itemName}`;
         } 
         else if (quest.type === 'HUNT' || quest.type === 'BOUNTY') {
-            // Для BOUNTY и HUNT показываем счетчик убитых
             goalText = `Убить: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`;
         }
-        // === НОВОЕ: ДОБАВИТЬ ЭТО УСЛОВИЕ ===
         else if (quest.type === 'BOSS_HUNT') {
             goalText = `Ликвидировать: ${quest.target.enemyName}`;
         }
-        // ======================================
         else if (quest.type === 'COLLECT') {
             goalText = `Собрать: ${quest.target.itemName} (${quest.progress}/${quest.maxProgress})`;
         }
@@ -111,8 +108,6 @@ const RenderModule = (function() {
         el.innerHTML = `<span style="color:${statusIcon === '🏆' ? '#00ff00' : 'var(--gold)'}">${statusIcon} ${goalText}</span>`;
     }
 
-
-    
     // === ДОБАВЛЕНИЕ ЭФФЕКТОВ ===
     function addBlinkEffect(x, y, duration = 500, color = null) {
         activeEffects.push({
@@ -202,12 +197,13 @@ const RenderModule = (function() {
         currentCameraOffset = cam;
         return cam;
     }
+
     // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ОТРИСОВКА БОССА 2x2 ===
     function drawBoss(ctx, bossType, sx, sy, color) {
         let prefix = 'BOSS_DRAGON'; 
         if (bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
         else if (bossType.includes('Лич')) prefix = 'BOSS_LICH';
-        else if (bossType.includes('Паук')) prefix = 'BOSS_DRAGON'; // Заглушка, добавьте свои ключи
+        else if (bossType.includes('Паук')) prefix = 'BOSS_DRAGON';
 
         const parts = [
             { key: `${prefix}_TL`, dx: 0, dy: 0 },
@@ -220,13 +216,13 @@ const RenderModule = (function() {
             const drawX = sx + part.dx;
             const drawY = sy + part.dy;
             if (drawX >= 0 && drawX < COLS && drawY >= 0 && drawY < ROWS) {
-                // Вызываем новый метод, который мы добавили в TilesetRenderer
                 if (typeof TilesetRenderer.drawByKey === 'function') {
                     TilesetRenderer.drawByKey(ctx, part.key, drawX, drawY, color);
                 }
             }
         });
     }
+
     // === ОТРИСОВКА ПОДЗЕМЕЛЬЯ (Использует TilesetRenderer) ===
     function draw(player, enemies, items, npcs = []) {
         const ctx = RenderModule._ctx;
@@ -235,7 +231,6 @@ const RenderModule = (function() {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Проверка готовности рендерера
         if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
             ctx.fillStyle = '#fff';
             ctx.font = '16px Consolas, monospace';
@@ -254,7 +249,6 @@ const RenderModule = (function() {
         });
 
         // 1. РИСУЕМ ТАЙЛЫ
-        // 1. РИСУЕМ ТАЙЛЫ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
@@ -265,41 +259,30 @@ const RenderModule = (function() {
                 const isVisible = visible.has(`${wx},${wy}`);
                 let ch, fg;
 
-                // === ПРОВЕРКА НА МАГАЗИН И ПОСТОЯЛЫЙ ДВОР ===
                 let shopDecor = null;
                 let innDecor = null;
 
                 if (window.currentShopCoords) {
                     const shopTile = window.currentShopCoords.find(pos => pos.x === wx && pos.y === wy);
-                    if (shopTile) {
-                        shopDecor = shopTile.decor;
-                    }
+                    if (shopTile) shopDecor = shopTile.decor;
                 }
                 
                 if (window.currentInnCoords) {
                     const innTile = window.currentInnCoords.find(pos => pos.x === wx && pos.y === wy);
-                    if (innTile) {
-                        innDecor = innTile.decor;
-                    }
+                    if (innTile) innDecor = innTile.decor;
                 }
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
                     fg = isVisible ? dtype.wallColor : '#222';
                 } else {
-                    // 1. Приоритет: Кровать в постоялом дворе
                     if (innDecor) {
                         ch = innDecor; 
-                        // Цвет дерева/кровати (коричневый/бежевый)
                         fg = isVisible ? '#D2B48C' : '#3e1f09'; 
-                    } 
-                    // 2. Декор магазина (оружие, зелья на полу)
-                    else if (shopDecor) {
+                    } else if (shopDecor) {
                         ch = shopDecor;
                         fg = isVisible ? '#8B4513' : '#3e1f09'; 
-                    } 
-                    // 3. Обычный пол
-                    else {
+                    } else {
                         ch = dtype.floorChar;
                         fg = isVisible ? dtype.floorColor : '#111';
                     }
@@ -312,10 +295,10 @@ const RenderModule = (function() {
                     ch = "<"; fg = isVisible ? "#888" : "#222";
                 }
 
-                // Используем TilesetRenderer для подземелья
                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
             }
         }
+
         // 2. ПРЕДМЕТЫ
         if (items) {
             items.forEach(i => {
@@ -326,36 +309,31 @@ const RenderModule = (function() {
             });
         }
 
-        // 3. ВРАГИ (включая боссов 2x2)
+        // 3. ВРАГИ
         if (enemies) {
             enemies.forEach(e => {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
-                    
-                    // Проверяем видимость хотя бы одной части босса
                     const isVisible = visible.has(`${e.x},${e.y}`);
                     
                     if (sx >= -2 && sx < COLS && sy >= -2 && sy < ROWS && isVisible) {
                         if (e.isBoss) {
-                            // === ОТРИСОВКА БОССА 2x2 ИЗ 4 ЧАСТЕЙ ===
-                            // Определяем префикс ключей в зависимости от типа босса
                             let prefix = 'BOSS_DRAGON'; 
                             if (e.bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
                             else if (e.bossType.includes('Лич')) prefix = 'BOSS_LICH';
                             
-                            // Рисуем 4 тайла: TL (Top-Left), TR, BL, BR
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_TL`, sx, sy, e.color);       // Верх-Лево
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_TR`, sx + 1, sy, e.color);   // Верх-Право
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_BL`, sx, sy + 1, e.color);   // Низ-Лево
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_BR`, sx + 1, sy + 1, e.color); // Низ-Право
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_TL`, sx, sy, e.color);
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_TR`, sx + 1, sy, e.color);
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_BL`, sx, sy + 1, e.color);
+                            TilesetRenderer.drawByKey(ctx, `${prefix}_BR`, sx + 1, sy + 1, e.color);
                         } else {
-                            // Обычный враг
                             TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
                         }
                     }
                 }
             });
         }
+
         // 4. NPC
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
@@ -379,7 +357,7 @@ const RenderModule = (function() {
         return visible;
     }
 
-    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (Использует TilesetRenderer) ===
+    // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (С УЧЕТОМ СНЕГА) ===
     function drawGlobalMap(centerX, centerY) {
         const ctx = RenderModule._ctx;
         if (!ctx) return;
@@ -387,7 +365,6 @@ const RenderModule = (function() {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Проверка готовности
         if (typeof TilesetRenderer === 'undefined' || !TilesetRenderer.isReady()) {
             ctx.fillStyle = '#fff';
             ctx.font = '16px Consolas, monospace';
@@ -400,7 +377,7 @@ const RenderModule = (function() {
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
 
-        // 1. РИСУЕМ ЛАНДШАФТ (С УЧЕТОМ СНЕГА НА СЕВЕРЕ)
+        // 1. РИСУЕМ ЛАНДШАФТ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const gx = centerX + sx - halfW;
@@ -413,7 +390,6 @@ const RenderModule = (function() {
 
                 let ch, fg;
                 
-                // Базовый тайл местности
                 switch(tileType) {
                     case 'plain': ch = '░'; fg = '#2e8b57'; break;
                     case 'forest': ch = 'T'; fg = '#336649'; break;
@@ -430,20 +406,16 @@ const RenderModule = (function() {
                 }
 
                 // === ЛОГИКА СНЕГА ===
-                // Проверяем, является ли это равниной и насколько мы далеко на севере
                 if (tileType === 'plain' && gy < -150) {
                     let isSnowy = false;
                     
-                    // Расчет вероятности снега в зависимости от глубины севера
                     if (gy <= -300) {
-                        isSnowy = true; // Всегда снег (глубокий север)
+                        isSnowy = true;
                     } else if (gy <= -200) {
-                        // От -200 до -300: плавный переход от 0% до 100%
                         const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF; 
-                        const progress = Math.abs(gy + 200) / 100; // 0..1
+                        const progress = Math.abs(gy + 200) / 100;
                         if (noise < progress) isSnowy = true;
                     } else {
-                        // От -150 до -200: редкие вкрапления (до 30%)
                         const noise = ((gx * 12345 + gy * 67890) & 0xFFFF) / 0xFFFF;
                         const progress = Math.abs(gy + 150) / 50; 
                         if (noise < (progress * 0.3)) isSnowy = true;
@@ -454,12 +426,9 @@ const RenderModule = (function() {
                         const destY = sy * TilesetRenderer.TILE_SIZE;
                         const tileSize = TilesetRenderer.TILE_SIZE;
 
-                        // 1. Рисуем белый фон (снег)
                         ctx.fillStyle = '#FFFFFF';
                         ctx.fillRect(destX, destY, tileSize, tileSize);
                         
-                        // 2. Рисуем спрайт вручную, чтобы избежать clearRect из TilesetRenderer.draw
-                        // Получаем данные тайла для символа '░'
                         const tileData = TilesetRenderer.TILE_MAP ? TilesetRenderer.TILE_MAP[ch] : null;
                         
                         if (tileData) {
@@ -469,10 +438,8 @@ const RenderModule = (function() {
                                 const srcY = tileData.y * tileSize;
                                 
                                 ctx.save();
-                                // Рисуем изображение
                                 ctx.drawImage(img, srcX, srcY, tileSize, tileSize, destX, destY, tileSize, tileSize);
                                 
-                                // Накладываем зеленый цвет только на непрозрачные части (символ)
                                 if (fg && fg !== '#fff' && fg !== '#000') {
                                     ctx.globalCompositeOperation = 'source-atop';
                                     ctx.fillStyle = fg;
@@ -480,42 +447,36 @@ const RenderModule = (function() {
                                 }
                                 ctx.restore();
                             } else {
-                                // Фолбэк, если картинка не загрузилась
                                 TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                             }
                         } else {
-                            // Фолбэк, если нет маппинга
                             TilesetRenderer.draw(ctx, ch, sx, sy, fg);
                         }
                         
-                        continue; // Пропускаем стандартную отрисовку
+                        continue; 
                     }
                 }
 
-        // 2. РИСУЕМ АРМИИ (НОВОЕ)
+                // Стандартная отрисовка
+                TilesetRenderer.draw(ctx, ch, sx, sy, fg);
+            }
+        } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ЦИКЛА LANDSCAPE (БЫЛА ПРОПУЩЕНА)
+
+        // 2. РИСУЕМ АРМИИ
         if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getActiveArmies === 'function') {
             const armies = GlobalMapModule.getActiveArmies();
             
             armies.forEach(army => {
-                // Вычисляем экранные координаты армии
                 const sx = army.x - centerX + halfW;
                 const sy = army.y - centerY + halfH;
 
-                // Проверяем, видима ли армия на экране
                 if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
-
-                }   
-                    // Рисуем спрайт армии. Используем символ 'A' и красный цвет.
-                    // Если у вас есть специальный спрайт в реестре, замените 'A' на нужный ключ или символ.
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
-                    console.log(`👁️ Рисуем армию ID:${army.id} на экране в точке (${sx}, ${sy}). Глобальные коорд: (${army.x}, ${army.y})`);    
                     TilesetRenderer.draw(ctx, 'A', sx, sy, '#ff0000'); 
                 }
             });
         }
 
-        // 3. РИСУЕМ ИГРОКА (поверх всего)
-        // Проходим по сетке еще раз только для клетки игрока, чтобы гарантировать отрисовку поверх армии
+        // 3. РИСУЕМ ИГРОКА
         const playerScreenX = halfW;
         const playerScreenY = halfH;
         
@@ -525,30 +486,26 @@ const RenderModule = (function() {
         let hasScale = false;
         let hasSquad = false;
 
-        // Проверяем флаги через GameModule
         if (typeof GameModule !== 'undefined' && typeof GameModule.getGlobalFlag === 'function') {
             hasScale = GameModule.getGlobalFlag('player_global_scale');
             hasSquad = GameModule.getGlobalFlag('player_has_squad');
         }
 
-        // Логика выбора символа-маркера для спрайта
         if (hasSquad) {
-            playerCh = 'S'; // Отряд
+            playerCh = 'S';
         } else if (hasScale) {
-            playerCh = 'p'; // Маленький игрок
+            playerCh = 'p';
         } else {
-            playerCh = '@'; // Стандартный игрок
+            playerCh = '@';
         }
 
         TilesetRenderer.draw(ctx, playerCh, playerScreenX, playerScreenY, playerFg);
     }
 
-    
     function drawGlobalMinimap(centerX, centerY) {
         const cvs = document.getElementById("minimap");
         if (!cvs) return;
         
-        // Настраиваем размер миникарты
         const rect = cvs.parentElement.getBoundingClientRect();
         cvs.width = rect.width - 20;
         cvs.height = rect.height - 40;
@@ -563,7 +520,6 @@ const RenderModule = (function() {
         const startX = centerX - Math.floor(MINIMAP_SIZE / 2);
         const startY = centerY - Math.floor(MINIMAP_SIZE / 2);
     
-        // 1. РИСУЕМ ЛАНДШАФТ
         for (let dy = 0; dy < MINIMAP_SIZE; dy++) {
             for (let dx = 0; dx < MINIMAP_SIZE; dx++) {
                 const gx = startX + dx;
@@ -592,33 +548,27 @@ const RenderModule = (function() {
             }
         }
 
-        // 2. РИСУЕМ АРМИИ (НОВОЕ)
         if (typeof GlobalMapModule !== 'undefined' && typeof GlobalMapModule.getActiveArmies === 'function') {
             const armies = GlobalMapModule.getActiveArmies();
             
             armies.forEach(army => {
-                // Координаты армии относительно левого верхнего угла миникарты
                 const mx = army.x - startX;
                 const my = army.y - startY;
                 
-                // Проверяем, попадает ли армия в область миникарты (50x50)
                 if (mx >= 0 && mx < MINIMAP_SIZE && my >= 0 && my < MINIMAP_SIZE) {
-                    ctx.fillStyle = '#ff0000'; // Красный цвет для врагов
-                    // Рисуем точку чуть меньше клетки, чтобы было аккуратно
+                    ctx.fillStyle = '#ff0000';
                     ctx.fillRect(mx * cellW + 2, my * cellH + 2, cellW - 4, cellH - 4);
                 }
             });
         }
 
-        // 3. РИСУЕМ ИГРОКА (поверх армий)
-        // Игрок всегда в центре миникарты
         const playerMX = Math.floor(MINIMAP_SIZE / 2);
         const playerMY = Math.floor(MINIMAP_SIZE / 2);
         
-        ctx.fillStyle = '#0f0'; // Зеленый цвет для игрока
+        ctx.fillStyle = '#0f0';
         ctx.fillRect(playerMX * cellW, playerMY * cellH, cellW + 0.5, cellH + 0.5);
     }
-    // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
+
     // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI) ===
     function updateUI(player, locData, worldTrend) {
         if (locData) {
@@ -631,7 +581,6 @@ const RenderModule = (function() {
             }
         }
 
-        // === ЛОГИКА КОМПАСА / ВЫХОДА ===
         const exitEl = document.getElementById("ui-loc-coords");
         if (exitEl) {
             const isDungeon = locData && locData.themeName !== "Поверхность";
@@ -656,9 +605,7 @@ const RenderModule = (function() {
             } 
         }
         
-        // === СТАТИСТИКА И ИНВЕНТАРЬ ===
         if (player && player.hp !== undefined) {
-            
             let atkText = `${player.atk}`;
             let defText = `${player.def}`;
 
@@ -702,17 +649,13 @@ const RenderModule = (function() {
             if (invDiv) {
                 invDiv.innerHTML = "";
                 
-                // === ПРОВЕРКА ТАКТИЧЕСКОГО РЕЖИМА ===
-                // Проверяем глобальную переменную window.gameMode
                 if (typeof window.gameMode !== 'undefined' && window.gameMode === 'tactical') {
-                    
                     const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                     
                     tactics.forEach(tactic => {
                         const div = document.createElement("div");
                         div.className = "inv-item";
                         
-                        // Подсветка выбранной тактики
                         const isSelected = typeof window.currentTactic !== 'undefined' && window.currentTactic === tactic.id;
                         div.style.color = isSelected ? "#ffd700" : "#fff";
                         div.style.fontWeight = isSelected ? "bold" : "normal";
@@ -720,18 +663,11 @@ const RenderModule = (function() {
                         
                         div.textContent = `${tactic.key}. ${tactic.name}`;
                         
-                        // При клике меняем тактику
                         div.onclick = () => {
-                            // 1. Меняем глобальную переменную
                             window.currentTactic = tactic.id;
-                            
-                            // 2. Логируем изменение
                             if (typeof RenderModule.log === 'function') {
                                 RenderModule.log(`Тактика изменена: ${tactic.name}`, "info");
                             }
-                            
-                            // 3. Принудительно перерисовываем кадр, чтобы обновить поле боя и меню
-                            // Мы знаем, что renderFrame находится в GameModule, но он также назначен как redrawCallback
                             if (typeof RenderModule.requestRedraw === 'function') {
                                 RenderModule.requestRedraw();
                             }
@@ -739,14 +675,10 @@ const RenderModule = (function() {
                         
                         invDiv.appendChild(div);
                     });
-                } 
-                // ... остальной код инвентаря ...
-                // === СТАНДАРТНЫЙ ИНВЕНТАРЬ ===
-                else {
+                } else {
                     if (player.inventory.length === 0) {
                         invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
                     } else {
-                        // ... здесь ваш старый код отрисовки предметов ...
                          const grouped = {};
                         const order = []; 
                         player.inventory.forEach((item, originalIndex) => {
@@ -791,8 +723,8 @@ const RenderModule = (function() {
                     }
                 }
             }
-        } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ if (player && player.hp !== undefined)
-    } // <--- ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ ФУНКЦИИ updateUI
+        }
+    }
 
     function log(msg, type = "info") {
         const list = document.getElementById("log-list");
@@ -802,17 +734,12 @@ const RenderModule = (function() {
         div.className = `log-msg log-${type}`;
         div.textContent = `> ${msg}`;
         
-        // 1. Добавляем новое сообщение в КОНЕЦ списка (стандартный поток)
         list.appendChild(div);
         
-        // 2. Ограничиваем историю (удаляем самые СТАРЫЕ сообщения сверху)
         if (list.children.length > 50) {
             list.removeChild(list.firstChild);
         }
 
-        // 3. Железобетонная прокрутка вниз для мобильных браузеров
-        // setTimeout дает браузеру 10 мс на то, чтобы физически отрисовать новый div 
-        // и корректно пересчитать list.scrollHeight
         setTimeout(() => {
             list.scrollTop = list.scrollHeight;
         }, 10);
@@ -864,11 +791,6 @@ const RenderModule = (function() {
         }
     }
 
-
-
-
-
-    // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-ОКНА КВЕСТА ===
     function renderQuestUI(quest, isCompleted) {
         const titleEl = document.getElementById('quest-modal-title');
         const textEl = document.getElementById('quest-modal-text');
@@ -877,16 +799,14 @@ const RenderModule = (function() {
 
         if (!titleEl || !textEl) return;
 
-        // 1. Заголовок
         if (isCompleted) {
             titleEl.textContent = "🏆 Квест Выполнен";
-            titleEl.style.color = "#3fb950"; // Зеленый
+            titleEl.style.color = "#3fb950";
         } else {
             titleEl.textContent = quest.isChainQuest ? "📜 Сюжетный Квест" : "📜 Новый Квест";
-            titleEl.style.color = "#d29922"; // Золотой
+            titleEl.style.color = "#d29922";
         }
 
-        // 2. Текст
         let content = "";
         if (isCompleted) {
             content = quest.turnInText || "Награда получена! Спасибо за помощь.";
@@ -895,7 +815,6 @@ const RenderModule = (function() {
         }
         textEl.textContent = content;
 
-        // 3. Награда
         if (isCompleted && quest.rewardGold > 0) {
             rewardBlock.style.display = 'block';
             rewardGoldEl.textContent = quest.rewardGold;
@@ -903,10 +822,7 @@ const RenderModule = (function() {
             rewardBlock.style.display = 'none';
         }
     }
-    
 
-
-    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СТАТУСА МАГАЗИНА ===
     function showShopStatus(msg, type = 'error') {
         const statusEl = document.getElementById('shop-status');
         if (!statusEl) return;
@@ -914,14 +830,12 @@ const RenderModule = (function() {
         statusEl.textContent = msg;
         statusEl.style.color = type === 'error' ? '#f85149' : (type === 'success' ? '#3fb950' : '#8b949e');
         
-        // Автоматически очищаем сообщение через 3 секунды
         if (window.shopStatusTimeout) clearTimeout(window.shopStatusTimeout);
         window.shopStatusTimeout = setTimeout(() => {
             if (statusEl) statusEl.textContent = '';
         }, 3000);
     }
     
-    // === НОВАЯ ФУНКЦИЯ ДЛЯ HTML-МАГАЗИНА (ЕДИНСТВЕННАЯ ВЕРСИЯ) ===
     function renderShopUI(merchantInv, playerGold) {
         const merchantList = document.getElementById('shop-merchant-list');
         const playerList = document.getElementById('shop-player-list');
@@ -930,15 +844,12 @@ const RenderModule = (function() {
         
         if (!merchantList || !playerList) return;
 
-        // Очистка списков
         merchantList.innerHTML = '';
         playerList.innerHTML = '';
         
-        // Очистка статуса при открытии/перерисовке
         const statusEl = document.getElementById('shop-status');
         if (statusEl) statusEl.textContent = ''; 
 
-        // Настройки пагинации
         const itemsPerPage = 8;
         const totalMerchantPages = Math.ceil(merchantInv.items.length / itemsPerPage) || 1;
         
@@ -951,17 +862,14 @@ const RenderModule = (function() {
             }
         }
 
-        // Инициализация страниц, если их нет
         if (typeof window.shopPageMerchant === 'undefined') window.shopPageMerchant = 0;
         if (typeof window.shopPagePlayer === 'undefined') window.shopPagePlayer = 0;
 
-        // Коррекция границ страниц
         if (window.shopPageMerchant >= totalMerchantPages) window.shopPageMerchant = totalMerchantPages - 1;
         if (window.shopPageMerchant < 0) window.shopPageMerchant = 0;
         if (player && window.shopPagePlayer >= totalPlayerPages) window.shopPagePlayer = totalPlayerPages - 1;
         if (player && window.shopPagePlayer < 0) window.shopPagePlayer = 0;
 
-        // --- Рендер товаров торговца ---
         const startIdxM = window.shopPageMerchant * itemsPerPage;
         const endIdxM = startIdxM + itemsPerPage;
         
@@ -974,7 +882,6 @@ const RenderModule = (function() {
             merchantList.appendChild(div);
         });
 
-        // --- Рендер инвентаря игрока ---
         if (player) {
             const startIdxP = window.shopPagePlayer * itemsPerPage;
             const endIdxP = startIdxP + itemsPerPage;
@@ -989,12 +896,9 @@ const RenderModule = (function() {
             });
         }
 
-        // --- Обновление золота и пагинации ---
         if (goldInfo) {
-            // Левая сторона: Золото игрока
             goldInfo.textContent = `Ваше золото: ${playerGold}`;
             
-            // Правая сторона: Золото торговца (ищем второй элемент)
             const merchantGoldInfo = document.getElementById('shop-merchant-gold-info');
             if (merchantGoldInfo) {
                 merchantGoldInfo.textContent = `У торговца: ${merchantInv.gold}`;
@@ -1016,14 +920,10 @@ const RenderModule = (function() {
         }
     }
 
-    // Вспомогательная функция для смены страниц
     window.changeShopPage = function(type, dir) {
         if (type === 'm') window.shopPageMerchant += dir;
         if (type === 'p') window.shopPagePlayer += dir;
-        // Получаем доступ к данным через GameModule, так как currentMerchantInv может быть скрыт
         if (typeof GameModule !== 'undefined') {
-             // В game.js нужно будет добавить геттер или сделать переменную доступной
-             // Пока используем глобальную переменную, если она есть, или передаем через замыкание
              if (typeof currentMerchantInv !== 'undefined' && typeof player !== 'undefined') {
                  RenderModule.renderShopUI(currentMerchantInv, player.gold);
              }
@@ -1053,4 +953,4 @@ const RenderModule = (function() {
         _ctx: null, 
         TILE_SIZE   
     };
-})(); 
+})();
