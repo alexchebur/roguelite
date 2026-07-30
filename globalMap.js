@@ -27,7 +27,7 @@ const GLOBAL_TEXT_QUESTS_ROSTER = [
     'twine/dragon.html'
 ];
 // === ГРАНИЦЫ МИРА ===
-const WORLD_BORDER_RADIUS = 100; // Радиус "материка"
+const WORLD_BORDER_RADIUS = 1000; // Радиус "материка"
 const BORDER_NOISE_SCALE = 0.02;  // Масштаб искривления берега (чем меньше, тем плавнее)
 
 /**
