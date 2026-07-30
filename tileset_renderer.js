@@ -39,6 +39,7 @@ const TilesetRenderer = (function() {
         'C':  { file: 'terrain_sprites', x: 9, y: 2 },  // TILE_CITY
         'D':  { file: 'terrain_sprites', x: 6, y: 0 },  // TILE_DUNGEON_ENTRANCE
         '3':  { file: 'terrain_sprites', x: 6, y: 2 }, // Спрайт снежного покрова
+        'F': { file: 'terrain_sprites', x: 9, y: 2 }, // Тайл города, но цвет зададим в render.js
 
         // --- СУЩЕСТВА ---
         '@': { file: 'creature_sprites', x: 2,  y: 0 },  // Игрок
