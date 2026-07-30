@@ -2502,6 +2502,7 @@ function updateQuestCompass() {
 
     function moveEnemies() {
         const PLAYER_SPEED_THRESHOLD = 10;
+        const isFortress = (currentDungeonTypeName === 'fortress');
 
         enemies.forEach(e => {
             if (e.hp <= 0) return;
@@ -2515,8 +2516,13 @@ function updateQuestCompass() {
                 e.energy -= PLAYER_SPEED_THRESHOLD;
 
                 const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-                const inSight = dist <= 8;
+                
+                // === ЛОГИКА КРЕПОСТИ ===
+                // В крепости радиус обнаружения увеличен до 20
+                const aggroRange = isFortress ? 20 : (e.aggroOverride || 8);
+                const inSight = dist <= aggroRange;
 
+                // === БОССЫ ===
                 if (e.isBoss) {
                     let nextX = e.x, nextY = e.y;
 
@@ -2530,15 +2536,33 @@ function updateQuestCompass() {
                         });
 
                         if (next) {
-                            if (next.x === player.x && next.y === player.y) {
+                            // Босс атакует, если достиг игрока (учитывая размер 2x2)
+                            const hitPlayer = (next.x === player.x && next.y === player.y) ||
+                                              (next.x+1 === player.x && next.y === player.y) ||
+                                              (next.x === player.x && next.y+1 === player.y) ||
+                                              (next.x+1 === player.x && next.y+1 === player.y);
+                            
+                            if (hitPlayer) {
                                 CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                                 checkDeath();
                                 return;
                             }
-                            nextX = next.x;
-                            nextY = next.y;
+                            
+                            // Проверка коллизий для босса (2x2)
+                            const blockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && (
+                                (other.x === next.x && other.y === next.y) ||
+                                (other.x === next.x+1 && other.y === next.y) ||
+                                (other.x === next.x && other.y === next.y+1) ||
+                                (other.x === next.x+1 && other.y === next.y+1)
+                            ));
+                            
+                            if (!blockedByEnemy) {
+                                nextX = next.x;
+                                nextY = next.y;
+                            }
                         }
                     } else {
+                        // Случайное блуждание босса
                         const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
                         dirs.sort(() => Math.random() - 0.5);
                         
@@ -2551,12 +2575,12 @@ function updateQuestCompass() {
                                 !MapModule.isWall(nx, ny+1) && 
                                 !MapModule.isWall(nx+1, ny+1)) {
                                 
-                                if ((nx === player.x && ny === player.y) || 
-                                    (nx+1 === player.x && ny === player.y) ||
-                                    (nx === player.x && ny+1 === player.y) ||
-                                    (nx+1 === player.x && ny+1 === player.y)) {
-                                    continue;
-                                }
+                                // Не наступаем на игрока при блуждании
+                                const hitPlayer = (nx === player.x && ny === player.y) || 
+                                                  (nx+1 === player.x && ny === player.y) ||
+                                                  (nx === player.x && ny+1 === player.y) ||
+                                                  (nx+1 === player.x && ny+1 === player.y);
+                                if (hitPlayer) continue;
                                 
                                 nextX = nx;
                                 nextY = ny;
@@ -2570,9 +2594,10 @@ function updateQuestCompass() {
                         e.y = nextY;
                     }
 
-                } else {
-                    const aggroRange = e.aggroOverride || 8;
-                    if (dist < aggroRange) {
+                } 
+                // === ОБЫЧНЫЕ ВРАГИ ===
+                else {
+                    if (inSight) {
                         if (dist === 1) {
                             CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                             checkDeath();
@@ -2583,14 +2608,37 @@ function updateQuestCompass() {
                             astar.compute(e.x, e.y, (x, y) => {
                                 if (!next && (x !== e.x || y !== e.y)) next = { x, y };
                             });
+                            
                             if (next) {
                                 const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
                                 const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
+                                
                                 if (!isBlockedByNpc && !isBlockedByEnemy) {
                                     e.x = next.x;
                                     e.y = next.y;
                                 }
                             }
+                        }
+                    } 
+                    // Если игрок далеко (>20 в крепости или >8 в обычном данже)
+                    else if (isFortress) {
+                        // В крепости, если игрок далеко, враги могут стоять на страже или медленно бродить
+                        // Для простоты оставим их неподвижными, если игрок вне радиуса 20
+                        // Или можно добавить редкое случайное движение:
+                        if (Math.random() < 0.1) {
+                             const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
+                             const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                             const nx = e.x + dir.dx;
+                             const ny = e.y + dir.dy;
+                             
+                             if (!MapModule.isWall(nx, ny)) {
+                                 const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === nx && n.y === ny);
+                                 const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === nx && other.y === ny);
+                                 if (!isBlockedByNpc && !isBlockedByEnemy) {
+                                     e.x = nx;
+                                     e.y = ny;
+                                 }
+                             }
                         }
                     }
                 }
