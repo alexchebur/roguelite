@@ -273,6 +273,22 @@ const DataModule = (function() {
             color: "#9b59b6", // Фиолетовый (эпический)
             desc: "Излучает холодную ауру власти."
         },
+
+        // В файле data.js, внутри массива UNIQUE_ITEM_TEMPLATES
+
+    // ... существующие шаблоны ...
+
+        {
+            id: "unique_helm_vision",      // Уникальный ID для проверки
+            baseType: "armor",             // Тип предмета (броня)
+            baseName: "Шлем зоркости",     // Имя
+            uniquePrefix: "Древний",       // Префикс для красивого названия
+            def: [3, 5],                   // Защита (хороший шлем)
+            color: "#00FFFF",              // Циановый цвет (магический)
+            char: getChar('ITEM_HELMET'),  // Спрайт обычного шлема
+            desc: "Этот шлем позволяет видеть то, что скрыто от глаз обычных смертных."
+        },
+        
         {
             id: "unique_weapon_excalibur",
             baseType: "weapon",
