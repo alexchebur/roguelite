@@ -304,9 +304,9 @@ function findUniqueFortressLocation() {
     return null; // Логика перенесена в generatePOIs для корректной работы с чанками
 }
 // Генерация точек интереса (ПОЛНАЯ ВЕРСИЯ С КРЕПОСТЬЮ)
+// Генерация точек интереса (ФИНАЛЬНАЯ ВЕРСИЯ С КРЕПОСТЬЮ)
 function generatePOIs(rand, cx, cy, tiles) {
     const pois = [];
-    // 1. Определяем размеры чанка здесь, чтобы они были видны во всей функции
     const width = GLOBAL_CONFIG.CHUNK_SIZE;
     const height = GLOBAL_CONFIG.CHUNK_SIZE;
     let globalQuestIndex = 0;     
@@ -323,96 +323,33 @@ function generatePOIs(rand, cx, cy, tiles) {
         return false;
     };
 
-    // === 1. ГЕНЕРАЦИЯ КРЕПОСТИ НА СЕВЕРЕ (Детерминированная) ===
-    // Проверяем, находится ли чанк в зоне "Северных Земель" (Y < -100 и Y > -200)
-    const chunkStartGlobalY = cy * height;
-    const isNorthernZone = (chunkStartGlobalY < -100 && chunkStartGlobalY > -250); 
-
-    if (isNorthernZone) {
-        // Ищем подходящее место внутри чанка для крепости
-        const fortressSeed = createSeed(cx, cy) + 77777; 
-        const fRng = new SeededRandom(fortressSeed);
-        
-        // Шанс спавна крепости в этом чанке
-        if (fRng.next() < 0.05) { 
-             for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const globalY = chunkStartGlobalY + y;
-                    
-                    // Строгая проверка координат Y согласно заданию
-                    if (globalY < -100 && globalY > -200) {
-                        const currentTile = tiles[y][x];
-                        
-                        // Крепость может стоять только на равнине или в лесу
-                        // И важно: проверяем, что здесь еще нет города или данжа (isTooClose проверяет дистанцию, но не тип тайла)
-                        const isFreeOfOtherPOIs = (currentTile !== 'city' && currentTile !== 'dungeon_entrance');
-
-                        if ((currentTile === 'plain' || currentTile === 'forest') && isFreeOfOtherPOIs && !isTooClose(x, y)) {
-                            tiles[y][x] = 'fortress';
-                            const globalX = cx * width + x;
-                            
-                            pois.push({ 
-                                x: globalX, 
-                                y: globalY, 
-                                type: 'fortress', 
-                                name: "Крепость, Выросшая Из-Под Земли" 
-                            });
-                            
-                            console.log(`🏰 [DEBUG] Крепость сгенерирована на координатах: X=${globalX}, Y=${globalY}`);
-                            
-                            // ВАЖНО: Не делаем return здесь! Позволяем другим POI генерироваться вокруг,
-                            // но isTooClose не даст им появиться слишком близко к крепости.
-                            // Прерываем только поиск самой крепости, так как она одна на чанк.
-                            y = height; // break outer loop hack
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // === 2. Города ===
+    // === 1. Города (Стандартная генерация) ===
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const currentTile = tiles[y][x];
-            
-            // 🛠️ ЖЕСТКАЯ ПРОВЕРКА: Только равнина или лес. Никакой воды, гор или дорог.
-            // Также проверяем, не занята ли клетка крепостью
             const isValidCityTerrain = (currentTile === 'plain' || currentTile === 'forest');
-
             if (isValidCityTerrain && rand.next() < GLOBAL_CONFIG.CITY_DENSITY) {
-                
                 if (isTooClose(x, y)) continue;
-
-                // Ставим город
                 tiles[y][x] = 'city';
-                 const globalX = cx * width + x;
+                const globalX = cx * width + x;
                 const globalY = cy * height + y;
                 const cityName = NameGeneratorModule.generateCityName(globalX, globalY);
-                 
                 pois.push({ x: globalX, y: globalY, type: 'city', name: cityName });
             }
         }
     }
     
-    // === 3. Входы в подземелья ===
+    // === 2. Входы в подземелья (Стандартная генерация) ===
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const currentTile = tiles[y][x];
-            
-            // 🛠️ ПРОВЕРКА: Равнина, лес или дорога. Не вода, не горы, не город, не крепость.
             const isValidTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
-            
             if (isValidTerrain && rand.next() < GLOBAL_CONFIG.DUNGEON_DENSITY) {
-                if (currentTile !== 'city' && currentTile !== 'fortress') {
-                    
+                if (currentTile !== 'city') {
                     if (isTooClose(x, y)) continue;
-
                     tiles[y][x] = 'dungeon_entrance';
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
-                    
                     const dungeonType = DungeonGeneratorModule.getRandomDungeonType(rand).name;
                     const { fullName } = NameGeneratorModule.generateLocationData(globalX, globalY, dungeonType);
                     pois.push({ x: globalX, y: globalY, type: 'dungeon', dungeonType: dungeonType, name: fullName });
@@ -421,35 +358,86 @@ function generatePOIs(rand, cx, cy, tiles) {
         }
     }
 
-    // === 4. Глобальные свитки (НОВОЕ) ===
+    // === 3. Глобальные свитки (Стандартная генерация) ===
     if (typeof GLOBAL_TEXT_QUESTS_ROSTER !== 'undefined' && GLOBAL_TEXT_QUESTS_ROSTER.length > 0) {
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const currentTile = tiles[y][x];
-                // Свитки появляются только на проходимых ландшафтах (не на крепостях и городах)
                 const isValidScrollTerrain = (currentTile === 'plain' || currentTile === 'forest' || currentTile === 'road');
-                
                 if (isValidScrollTerrain && rand.next() < GLOBAL_CONFIG.GLOBAL_SCROLL_DENSITY) {
                     if (isTooClose(x, y)) continue;
-                    
                     const globalX = cx * width + x;
                     const globalY = cy * height + y;
-                    
-                    // === ИЗМЕНЕНИЕ ЗДЕСЬ: Берем квест по индексу ===
-                    // Используем остаток от деления (%), чтобы после последнего квеста снова брали первый
                     const questIndex = globalQuestIndex % GLOBAL_TEXT_QUESTS_ROSTER.length;
                     const questFile = GLOBAL_TEXT_QUESTS_ROSTER[questIndex];
-                    
-                    // Увеличиваем счетчик только если свиток успешно создан
                     globalQuestIndex++;
-                    
-                    pois.push({ 
-                        x: globalX, 
-                        y: globalY, 
-                        type: 'global_scroll', 
-                        questFile: questFile 
-                    });
+                    pois.push({ x: globalX, y: globalY, type: 'global_scroll', questFile: questFile });
                 }
+            }
+        }
+    }
+
+    // === 4. ГЕНЕРАЦИЯ КРЕПОСТИ (В САМОМ КОНЦЕ, ПО ЖЕСТКИМ КООРДИНАТАМ) ===
+    // Мы используем отдельный детерминированный расчет, чтобы крепость была ВСЕГДА в одном месте мира
+    const FORTRESS_SEED = GLOBAL_CONFIG.WORLD_SEED + 999999;
+    const fortressRng = new SeededRandom(FORTRESS_SEED);
+    
+    // Вычисляем целевые координаты крепости один раз для всего мира
+    // Y между -800 и -900 (как в изначальной задумке) или -100/-200 по вашему новому запросу
+    // Давайте используем диапазон -100 ... -200, как вы просили
+    const targetY = -100 - Math.floor(fortressRng.next() * 100); // От -100 до -199
+    const targetX = Math.floor((fortressRng.next() - 0.5) * 400); // От -200 до 200 по X
+    
+    // Проверяем, попадают ли эти координаты в ТЕКУЩИЙ чанк
+    const chunkStartX = cx * width;
+    const chunkStartY = cy * height;
+    
+    if (targetX >= chunkStartX && targetX < chunkStartX + width &&
+        targetY >= chunkStartY && targetY < chunkStartY + height) {
+        
+        const localX = targetX - chunkStartX;
+        const localY = targetY - chunkStartY;
+        
+        // Проверяем, свободна ли клетка и подходит ли ландшафт
+        const currentTile = tiles[localY][localX];
+        const isFree = (currentTile === 'plain' || currentTile === 'forest') && 
+                       !isTooClose(localX, localY) &&
+                       currentTile !== 'city' && 
+                       currentTile !== 'dungeon_entrance';
+
+        if (isFree) {
+            tiles[localY][localX] = 'fortress';
+            pois.push({ 
+                x: targetX, 
+                y: targetY, 
+                type: 'fortress', 
+                name: "Крепость, Выросшая Из-Под Земли" 
+            });
+            console.log(`🏰 [DEBUG] Крепость размещена в чанке (${cx},${cy}) на координатах: X=${targetX}, Y=${targetY}`);
+        } else {
+            // Если идеальная точка занята, ищем ближайшую свободную вокруг неё
+            let found = false;
+            for (let r = 1; r < 10; r++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        const nx = localX + dx;
+                        const ny = localY + dy;
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            const t = tiles[ny][nx];
+                            if ((t === 'plain' || t === 'forest') && !isTooClose(nx, ny) && t !== 'city' && t !== 'dungeon_entrance') {
+                                tiles[ny][nx] = 'fortress';
+                                const gx = chunkStartX + nx;
+                                const gy = chunkStartY + ny;
+                                pois.push({ x: gx, y: gy, type: 'fortress', name: "Крепость, Выросшая Из-Под Земли" });
+                                console.log(`🏰 [DEBUG] Крепость смещена на: X=${gx}, Y=${gy}`);
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                }
+                if (found) break;
             }
         }
     }
