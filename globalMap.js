@@ -36,9 +36,9 @@ const fortressRng = new SeededRandom(FORTRESS_SEED);
 
 // Генерируем "идеальные" координаты в северной зоне
 // Y должен быть между -800 и -900
-const fortressTargetY = -50 - Math.floor(fortressRng.next() * 100); // От -800 до -899
+const fortressTargetY = -10 - Math.floor(fortressRng.next() * 20); // От -800 до -899
 // X должен быть недалеко от центра, например, от -200 до 200
-const fortressTargetX = Math.floor((fortressRng.next() - 0.5) * 50); 
+const fortressTargetX = Math.floor((fortressRng.next() - 0.5) * 40); 
 
 console.log(`🏰 [System] Запланированные координаты Крепости: X=${fortressTargetX}, Y=${fortressTargetY}`);
 /**
