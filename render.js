@@ -403,7 +403,7 @@ const RenderModule = (function() {
                      
                     // === НОВОЕ: КРЕПОСТЬ ===
                     case 'fortress': 
-                        ch = 'F'; 
+                        ch = 'f'; 
                         fg = '#00FFFF'; // Ярко-голубой (Cyan)
                         break;
                          
