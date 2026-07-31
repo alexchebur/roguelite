@@ -2994,7 +2994,7 @@ function updateQuestCompass() {
         }
     }
     
-    // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ) ===
+    // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ С ЛОВУШКАМИ) ===
     function processTurn(dx, dy) {
         // 0. ГЛОБАЛЬНЫЕ ПРОВЕРКИ
         if (player.hp <= 0) return; 
@@ -3099,6 +3099,18 @@ function updateQuestCompass() {
         // 7. Движение игрока
         player.x = nx;
         player.y = ny;
+
+        // === 8.5. ПРОВЕРКА ЛОВУШЕК ===
+        // Проверяем, наступил ли игрок на ловушку
+        checkTrapTrigger(player.x, player.y);
+        
+        // Если игрок умер от ловушки, прерываем ход
+        if (player.hp <= 0) {
+            RenderModule.log("ВЫ ПОГИБЛИ в ловушке. F5 для рестарта.", "combat");
+            busy = true;
+            renderFrame();
+            return;
+        }
 
         // 8. Подбор предметов
         const itemIdx = items.findIndex(i => i.x === nx && i.y === ny);
@@ -3269,6 +3281,9 @@ function updateQuestCompass() {
         RenderModule.log("ВЫ ПОГИБЛИ. F5 для рестарта.", "combat");
         busy = true; 
     }
+    
+    // === ОБНОВЛЕНИЕ ВИДИМОСТИ ЛОВУШЕК ПЕРЕД ОТРИСОВКОЙ ===
+    updateTrapVisibility();
     
     renderFrame();
 }
