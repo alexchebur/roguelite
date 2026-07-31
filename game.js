@@ -1992,7 +1992,7 @@ function updateQuestCompass() {
 
         // === ГЕНЕРАЦИЯ ЛОВУШЕК ===
         // Генерируем до 8-10 ловушек, чем глубже, тем больше шанс максимума
-        const maxTraps = Math.min(10, 3 + Math.floor(depth / 2));
+        const maxTraps = Math.min(20, 15 + Math.floor(depth / 2));
         if (typeof EntityModule.spawnTraps === 'function') {
             traps = EntityModule.spawnTraps(MapModule.currentMapData, startPos, maxTraps, depth);
             if (traps.length > 0) {
