@@ -14,7 +14,7 @@ const SPRITE_REGISTRY = {
     'TILE_ROAD':             { char: '─',   tile: { file: 'terrain_sprites', x: 1, y: 2 }, desc: 'Дорога' }, 
     
     // === НОВОЕ: КРЕПОСТЬ ===
-    'TILE_FORTRESS':         { char: 'F',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Крепость' }, // <--- ЗАПЯТАЯ ЗДЕСЬ ОБЯЗАТЕЛЬНА
+    'TILE_FORTRESS':         { char: 'f',   tile: { file: 'terrain_sprites', x: 9, y: 2 }, desc: 'Крепость' }, // <--- ЗАПЯТАЯ ЗДЕСЬ ОБЯЗАТЕЛЬНА
 
     // === 2. ПОДЗЕМЕЛЬЕ (стандартные символы, без изменений) ===
     'FLOOR_DEFAULT':         { char: '.',   tile: { file: 'terrain_sprites', x: 0, y: 0 }, desc: 'Пол' },
