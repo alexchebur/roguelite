@@ -3288,6 +3288,44 @@ function updateQuestCompass() {
     renderFrame();
 }
 
+// Новая функция проверки ловушки
+function checkTrapTrigger(x, y) {
+    const trapIndex = traps.findIndex(t => t.x === x && t.y === y);
+    if (trapIndex !== -1) {
+        const trap = traps[trapIndex];
+        // Наносим урон
+        player.hp -= trap.damage;
+        RenderModule.log(`⚠️ Вы наступили на ловушку! Получено ${trap.damage} урона.`, "combat");
+        
+        // Визуальный эффект (мигание экрана или игрока)
+        RenderModule.addBlinkEffect(player.x, player.y, 300, "rgba(255, 0, 0, 0.5)");
+
+        // Удаляем ловушку после срабатывания (одноразовая)
+        traps.splice(trapIndex, 1);
+        
+        // Проверка смерти
+        if (player.hp <= 0) {
+             RenderModule.log("ВЫ ПОГИБЛИ в ловушке. F5 для рестарта.", "combat");
+             busy = true;
+             return;
+        }
+    }
+}
+
+// Новая функция обновления видимости
+function updateTrapVisibility() {
+    visibleTraps.clear();
+    const viewRadius = 2; // Радиус обнаружения
+
+    traps.forEach(trap => {
+        const dist = Math.abs(trap.x - player.x) + Math.abs(trap.y - player.y);
+        if (dist <= viewRadius) {
+            visibleTraps.add(`${trap.x},${trap.y}`);
+        }
+    });
+}
+
+    
     // === ОТРИСОВКА КАДРА (Обновленная) ===
     function renderFrame() {
         if (!player) return;
