@@ -3713,6 +3713,7 @@ function updateTrapVisibility() {
         getTacticalState: () => tacticalState,
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
         exitToGlobal,
+        getVisibleTraps: () => [...visibleTraps], // Возвращает копию массива видимых ловушек
         
         // === ФУНКЦИИ МАГАЗИНА ===
         openShop: openShop,
