@@ -309,6 +309,23 @@ const RenderModule = (function() {
             });
         }
 
+        // 2.5. ЛОВУШКИ (Невидимые, пока не подойдешь близко)
+        if (typeof GameModule !== 'undefined' && typeof GameModule.getVisibleTraps === 'function') {
+            const vTraps = GameModule.getVisibleTraps();
+            
+            vTraps.forEach(key => {
+                const [tx, ty] = key.split(',').map(Number);
+                const sx = tx - cam.x;
+                const sy = ty - cam.y;
+                
+                // Проверяем, попадает ли ловушка в экран и видна ли клетка (FOV)
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${tx},${ty}`)) {
+                    // Рисуем спрайт ловушки (красный цвет для опасности)
+                    TilesetRenderer.draw(ctx, getChar('TRAP_SPIKES'), sx, sy, '#ff0000');
+                }
+            });
+        }
+
         // 3. ВРАГИ
         if (enemies) {
             enemies.forEach(e => {
@@ -356,7 +373,6 @@ const RenderModule = (function() {
 
         return visible;
     }
-
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (С УЧЕТОМ СНЕГА) ===
     function drawGlobalMap(centerX, centerY) {
         const ctx = RenderModule._ctx;
