@@ -14,7 +14,58 @@ const EntityModule = (function() {
              equipment: { weapon: null, armor: null }
         };
     }
+// В файле entity.js, внутри модуля EntityModule, добавить новую функцию:
 
+    function spawnTraps(mapGrid, startPos, count, depth) {
+        const height = mapGrid.length;
+        const width = mapGrid[0].length;
+        const traps = [];
+    
+        // Детерминированный сид для ловушек этого уровня
+        const seedVal = createSeed(startPos.x, startPos.y, depth) + 5555; 
+        const rng = new SeededRandom(seedVal);
+
+        let attempts = 0;
+        while (traps.length < count && attempts < 1000) {
+            attempts++;
+            const x = rng.int(1, width - 2);
+            const y = rng.int(1, height - 2);
+
+            // Проверки:
+            // 1. Это пол?
+            if (mapGrid[y][x] !== 0) continue;
+        
+            // 2. Не слишком близко к старту игрока (чтобы не умереть сразу)
+            const distToStart = Math.abs(x - startPos.x) + Math.abs(y - startPos.y);
+            if (distToStart < 4) continue;
+
+            // 3. Не слишком близко к другим ловушкам (минимум 5 клеток)
+            let tooClose = false;
+            for (const trap of traps) {
+                if (Math.abs(trap.x - x) + Math.abs(trap.y - y) < 5) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (tooClose) continue;
+
+            // Расчет урона от глубины (например, 2 + глубина * 1.5)
+            const damage = Math.floor(2 + (depth * 1.5));
+
+            traps.push({
+                x: x,
+                y: y,
+                damage: damage,
+                triggered: false, // Флаг, сработала ли уже (опционально, пока сделаем многоразовой или одноразовой?)
+                // Сделаем одноразовой для интереса, но пока просто храним урон
+                id: `trap_${x}_${y}`
+            });
+        }
+        return traps;
+    }
+
+// Не забудьте экспортировать функцию в return модуля EntityModule:
+// return { ..., spawnTraps };
     // В файле entity.js, функция createEnemy
 
     function createEnemy(template, x, y, difficultyMult) {
@@ -397,6 +448,7 @@ const EntityModule = (function() {
         spawnGold,
         spawnItemsInCity,
         createBoss,
-        createMerchantInventory // <--- ДОБАВИТЬ ЭКСПОРТ
+        createMerchantInventory,
+        spawnTraps// <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
