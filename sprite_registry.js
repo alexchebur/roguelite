@@ -25,8 +25,17 @@ const SPRITE_REGISTRY = {
     'WALL_CITY':             { char: '█',   tile: { file: 'terrain_sprites', x: 11, y: 2 }, desc: 'Стена города' },
     'STAIRS_UP':             { char: '>',  tile: { file: 'terrain_sprites', x: 3, y: 0 }, desc: 'Лестница ↑' },
     'STAIRS_DOWN':           { char: '<',  tile: { file: 'terrain_sprites', x: 2, y: 0 }, desc: 'Лестница ↓' },
-    
-    // ... остальной код ...
+    // В файле sprite_registry.js, внутри объекта SPRITE_REGISTRY
+
+    // ... существующие записи ...
+
+    // === ЛОВУШКИ ===
+    'TRAP_SPIKES': { 
+        char: '9', // Символ-заглушка, рендерер использует tile
+        tile: { file: 'terrain_sprites', x: 26, y: 1 }, 
+        desc: 'Ловушка' 
+    },    
+  
 
     // ==========================================
     // 3. СУЩНОСТИ (Игрок и NPC)
