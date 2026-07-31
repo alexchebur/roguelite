@@ -37,7 +37,9 @@ const GameModule = (function() {
     let dungeonY = 0;
     let currentDepth = 0;  
     let currentDungeonTypeName = null; 
-    let currentDungeonFullName = null; 
+    let currentDungeonFullName = null;
+    let traps = []; // Массив всех ловушек на уровне
+    let visibleTraps = new Set(); // Set строк "x,y" для ловушек, которые сейчас видит игрок
     
     // === Глобальные координаты и магазин ===
     let currentLocData = null;
@@ -1954,14 +1956,23 @@ function updateQuestCompass() {
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
+    // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
         saveCurrentDungeonState();
+        
+        // Очистка текущих сущностей
         enemies = [];
         items = [];
         npcs = [];
         window.currentCityNpcs = [];
         explored.clear();
-    
+        
+        // === ОЧИСТКА ЛОВУШЕК ===
+        traps = [];
+        if (typeof visibleTraps !== 'undefined') {
+            visibleTraps.clear();
+        }
+
         const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType, entryPoint);
     
         dungeonX = gx;
@@ -1978,6 +1989,16 @@ function updateQuestCompass() {
         }
     
         spawnDungeonEntities(gx, gy, depth);
+
+        // === ГЕНЕРАЦИЯ ЛОВУШЕК ===
+        // Генерируем до 8-10 ловушек, чем глубже, тем больше шанс максимума
+        const maxTraps = Math.min(10, 3 + Math.floor(depth / 2));
+        if (typeof EntityModule.spawnTraps === 'function') {
+            traps = EntityModule.spawnTraps(MapModule.currentMapData, startPos, maxTraps, depth);
+            if (traps.length > 0) {
+                RenderModule.log(`⚠️ Вы чувствуете запах опасности... здесь много ловушек.`, "info");
+            }
+        }
 
         // 2. И ТОЛЬКО ТЕПЕРЬ проверяем квесты и спавним предметы
         // Теперь player.x и player.y указывают на реальное положение на новом уровне
@@ -2052,7 +2073,7 @@ function updateQuestCompass() {
     
         RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
         renderFrame();
-    }     
+    }
     
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
