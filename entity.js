@@ -50,7 +50,7 @@ const EntityModule = (function() {
             if (tooClose) continue;
 
             // Расчет урона от глубины (например, 2 + глубина * 1.5)
-            const damage = Math.floor(2 + (depth * 1.5));
+            const damage = Math.floor(2 + (depth * 1.0));
 
             traps.push({
                 x: x,
