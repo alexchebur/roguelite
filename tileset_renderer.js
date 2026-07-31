@@ -29,7 +29,8 @@ const TilesetRenderer = (function() {
         '█':  { file: 'terrain_sprites', x: 11, y: 2 }, // WALL_CITY
         '>': { file: 'terrain_sprites', x: 3, y: 0 },  // STAIRS_UP
         '<': { file: 'terrain_sprites', x: 2, y: 0 },  // STAIRS_DOWN
-
+        // === ЛОВУШКИ (НОВОЕ) ===
+        '9':  { file: 'terrain_sprites', x: 26, y: 1 }, // TRAP_SPIKES
         // === ГЛОБАЛЬНАЯ КАРТА (новые уникальные символы) ===
         '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // TILE_PLAIN
         '─':  { file: 'terrain_sprites', x: 1, y: 2 }, // TILE_ROAD
