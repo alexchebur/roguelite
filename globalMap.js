@@ -36,7 +36,7 @@ const fortressRng = new SeededRandom(FORTRESS_SEED);
 
 // Генерируем "идеальные" координаты в северной зоне
 // Y должен быть между -800 и -900
-const fortressTargetY = -10 - Math.floor(fortressRng.next() * 20); // От -800 до -899
+const fortressTargetY = -800 - Math.floor(fortressRng.next() * 100); // От -800 до -899
 // X должен быть недалеко от центра, например, от -200 до 200
 const fortressTargetX = Math.floor((fortressRng.next() - 0.5) * 40); 
 
@@ -385,7 +385,7 @@ function generatePOIs(rand, cx, cy, tiles) {
     // Вычисляем целевые координаты крепости один раз для всего мира
     // Y между -800 и -900 (как в изначальной задумке) или -100/-200 по вашему новому запросу
     // Давайте используем диапазон -100 ... -200, как вы просили
-    const targetY = -10 - Math.floor(fortressRng.next() * 20); // От -100 до -199
+    const targetY = -800 - Math.floor(fortressRng.next() * 100); // От -100 до -199
     const targetX = Math.floor((fortressRng.next() - 0.5) * 40); // От -200 до 200 по X
     
     // Проверяем, попадают ли эти координаты в ТЕКУЩИЙ чанк
