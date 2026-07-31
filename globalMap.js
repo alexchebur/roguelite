@@ -385,8 +385,8 @@ function generatePOIs(rand, cx, cy, tiles) {
     // Вычисляем целевые координаты крепости один раз для всего мира
     // Y между -800 и -900 (как в изначальной задумке) или -100/-200 по вашему новому запросу
     // Давайте используем диапазон -100 ... -200, как вы просили
-    const targetY = -100 - Math.floor(fortressRng.next() * 100); // От -100 до -199
-    const targetX = Math.floor((fortressRng.next() - 0.5) * 400); // От -200 до 200 по X
+    const targetY = -10 - Math.floor(fortressRng.next() * 20); // От -100 до -199
+    const targetX = Math.floor((fortressRng.next() - 0.5) * 40); // От -200 до 200 по X
     
     // Проверяем, попадают ли эти координаты в ТЕКУЩИЙ чанк
     const chunkStartX = cx * width;
