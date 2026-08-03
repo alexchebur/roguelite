@@ -2546,7 +2546,7 @@ function updateQuestCompass() {
             let effectiveSpeed = e.speed;
             if (hasEnemySlow) {
                 // Уменьшаем скорость на 1, но не ниже 1 (чтобы враги не останавливались совсем)
-                effectiveSpeed = Math.max(1, e.speed - 1);
+                effectiveSpeed = Math.max(1, e.speed - 3);
             }
 
             // Начисляем энергию с учетом замедления
