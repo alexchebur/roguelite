@@ -3314,32 +3314,29 @@ function checkTrapTrigger(x, y) {
 
 // В game.js
 
+// В game.js
+
 function updateTrapVisibility() {
     visibleTraps.clear();
     
-    let hasVisionHelm = false;
-    
-    // Проверяем экипированную броню
-    if (player && player.equipment && player.equipment.armor) {
-        const armor = player.equipment.armor;
-        
-        // Способ 1: Проверка по уникальному ID (самый надежный)
-        if (armor.uniqueId === 'unique_helm_vision') {
-            hasVisionHelm = true;
+    // Спрашиваем у системы эффектов, есть ли у нас пассивная способность видеть ловушки
+    let hasVision = false;
+    if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
+        const passives = EffectSystemModule.getPassiveEffects(player);
+        if (passives.includes('trap_vision')) {
+            hasVision = true;
         }
-        // Способ 2: Проверка по имени (если ID не прокидывается в объект предмета)
-        else if (armor.name === "Древний Шлем зоркости" || armor.name === "Шлем зоркости") {
-            hasVisionHelm = true;
+    } 
+    // Fallback: если система эффектов еще не обновлена, проверяем по старинке (для совместимости)
+    else if (player && player.equipment && player.equipment.armor) {
+        if (player.equipment.armor.uniqueId === 'unique_helm_vision') {
+            hasVision = true;
         }
     }
 
-    if (hasVisionHelm) {
-        // Если шлем надет - видны ВСЕ ловушки на уровне
-        traps.forEach(trap => {
-            visibleTraps.add(`${trap.x},${trap.y}`);
-        });
+    if (hasVision) {
+        traps.forEach(trap => visibleTraps.add(`${trap.x},${trap.y}`));
     } else {
-        // Если шлема нет - видны только те, что в радиусе 2 клеток
         const viewRadius = 2; 
         traps.forEach(trap => {
             const dist = Math.abs(trap.x - player.x) + Math.abs(trap.y - player.y);
