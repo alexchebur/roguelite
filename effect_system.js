@@ -119,23 +119,26 @@ const EffectSystemModule = (function() {
     function getPassiveEffects(player) {
         const effects = [];
     
-        if (!player || !player.equipment) return effects;
+        if (!player || !player.equipment) {
+            console.log("[EffectSystem] Player or equipment missing.");
+            return effects;
+        }
 
-        // Проверяем каждый слот экипировки на наличие уникальных свойств
         const slots = ['weapon', 'armor', 'ring'];
     
         slots.forEach(slot => {
             const item = player.equipment[slot];
+            console.log(`[EffectSystem] Checking slot ${slot}:`, item ? item.name : "Empty", "| isUnique:", item?.isUnique, "| ID:", item?.uniqueId);
+            
             if (item && item.isUnique) {
-                // Здесь можно мапить uniqueId на название эффекта
                 if (item.uniqueId === 'unique_helm_vision') {
+                    console.log("[EffectSystem] ✅ FOUND VISION HELM!");
                     effects.push('trap_vision');
                 }
-                // Можно добавить другие эффекты в будущем
-                // if (item.uniqueId === 'unique_ring_strength') effects.push('bonus_strength');
             }
         });
 
+        console.log("[EffectSystem] Final passive effects:", effects);
         return effects;
     }
 
