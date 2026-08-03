@@ -2072,6 +2072,7 @@ function updateQuestCompass() {
         }
     
         RenderModule.log(`=== УРОВЕНЬ ${depth + 1} подземелья "${dungeonName}" ===`, "info");
+        updateTrapVisibility();
         renderFrame();
     }
     
