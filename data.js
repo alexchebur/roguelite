@@ -267,7 +267,7 @@ const DataModule = (function() {
             baseName: "Зелье Ясновидения", 
             effect: "buff_vision",           // Уникальный ID эффекта
             val: [0, 0],                     // Не влияет на статы
-            duration: 100,                   // Длительность: 100 ходов
+            duration: 300,                   // Длительность: 300 ходов
             gender: "it",   
             plural: false
         },
