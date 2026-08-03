@@ -210,13 +210,15 @@ const EffectSystemModule = (function() {
         recalculateStats: recalculateStats,
         getEffectDuration: getEffectDuration,
         
+        // === ДОБАВЛЕНО: Экспорт функции пассивных эффектов ===
+        getPassiveEffects: getPassiveEffects, 
+
         Effects: {
             createBuffAtk: createBuffAtk,
             createBuffDef: createBuffDef,
             createBurn: createBurn,
             createRegen: createRegen
         },
-        getPassiveEffects,
         TYPES: EFFECT_TYPES // Экспортируем типы для использования в combat.js
     };
 
