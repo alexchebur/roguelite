@@ -259,6 +259,18 @@ const DataModule = (function() {
             gender: "it",   // Оно (зелье)
             plural: false
         },
+        // В файле data.js, внутри массива ITEM_TYPES ЗЕЛЬЕ ЯСНОВИДЕНИЯ
+        { 
+            type: "potion_vision", 
+            char: getChar('ITEM_POTION_HP'), // Можно использовать спрайт зелья
+            color: "#E0FFFF",                // Светло-голубой (цвет ясновидения)
+            baseName: "Зелье Ясновидения", 
+            effect: "buff_vision",           // Уникальный ID эффекта
+            val: [0, 0],                     // Не влияет на статы
+            duration: 100,                   // Длительность: 100 ходов
+            gender: "it",   
+            plural: false
+        },
         
     ];
 // В data.js, после ADJECTIVE_TIERS и ITEM_TYPES
