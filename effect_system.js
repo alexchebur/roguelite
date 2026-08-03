@@ -11,7 +11,7 @@ const EffectSystemModule = (function() {
         BUFF_ATK: 'buff_atk',   // Временное увеличение атаки
         BUFF_DEF: 'buff_def',   // Временное увеличение защиты
         DOT: 'dot',             // Урон со временем
-        HOT: 'hot'              // Лечение со временем
+        HOT: 'hot',              // Лечение со временем
         FULL_VISION: 'buff_vision' // <--- НОВОЕ
     };
 
