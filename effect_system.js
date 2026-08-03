@@ -119,27 +119,29 @@ const EffectSystemModule = (function() {
 
     function getPassiveEffects(player) {
         const effects = [];
-    
+
         if (!player || !player.equipment) {
-            console.log("[EffectSystem] Player or equipment missing.");
             return effects;
         }
 
         const slots = ['weapon', 'armor', 'ring'];
-    
+
         slots.forEach(slot => {
             const item = player.equipment[slot];
-            //console.log(`[EffectSystem] Checking slot ${slot}:`, item ? item.name : "Empty", "| isUnique:", item?.isUnique, "| ID:", item?.uniqueId);
             
             if (item && item.isUnique) {
+                // Эффект: Видимость ловушек (Шлем Зоркости)
                 if (item.uniqueId === 'unique_helm_vision') {
-                    //console.log("[EffectSystem] ✅ FOUND VISION HELM!");
                     effects.push('trap_vision');
+                }
+                
+                // === НОВОЕ: Эффект замедления врагов (Сапоги Ветра) ===
+                if (item.uniqueId === 'unique_armor_wind_boots') {
+                    effects.push('enemy_slow');
                 }
             }
         });
 
-        console.log("[EffectSystem] Final passive effects:", effects);
         return effects;
     }
 
