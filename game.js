@@ -2328,6 +2328,7 @@ function updateQuestCompass() {
                 isItem: true,
                 isQuestItem: true,
                 isUnique: true, // Флаг для рендера и логики
+                uniqueId: template.id, 
                 uniqueAtk: template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0,
                 uniqueDef: template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 0,
                 desc: template.desc || ""
@@ -3645,6 +3646,7 @@ function checkTrapTrigger(x, y) {
                     isItem: true,
                     isQuestItem: false,
                     isUnique: true,
+                    uniqueId: template.id, 
                     uniqueAtk: template.atk ? Math.floor((template.atk[0] + template.atk[1]) / 2) : 0,
                     uniqueDef: template.def ? Math.floor((template.def[0] + template.def[1]) / 2) : 0,
                     desc: template.desc || ""
