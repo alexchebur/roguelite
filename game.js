@@ -3330,11 +3330,11 @@ function checkTrapTrigger(x, y) {
         // Спрашиваем у системы эффектов
         if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
             const passives = EffectSystemModule.getPassiveEffects(player);
-            console.log("[GameModule] Получены пассивные эффекты:", passives); // <--- ЛОГ
+            //console.log("[GameModule] Получены пассивные эффекты:", passives); // <--- ЛОГ
             
             if (passives.includes('trap_vision')) {
                 hasVision = true;
-                console.log("[GameModule] ✅ Обнаружен эффект trap_vision!"); // <--- ЛОГ
+                //console.log("[GameModule] ✅ Обнаружен эффект trap_vision!"); // <--- ЛОГ
             }
         } 
         // Fallback: проверка по старинке (если система эффектов еще не подключена)
@@ -3348,7 +3348,7 @@ function checkTrapTrigger(x, y) {
         }
 
         if (hasVision) {
-            console.log(`[GameModule] 🟢 Режим "Все ловушки видимы". Всего ловушек на уровне: ${traps.length}`);
+            //console.log(`[GameModule] 🟢 Режим "Все ловушки видимы". Всего ловушек на уровне: ${traps.length}`);
             traps.forEach(trap => visibleTraps.add(`${trap.x},${trap.y}`));
         } else {
             // console.log("[GameModule] 🔴 Стандартный режим видимости ловушек (радиус 2).");
