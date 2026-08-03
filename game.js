@@ -3316,37 +3316,42 @@ function checkTrapTrigger(x, y) {
 
 // В game.js
 
-function updateTrapVisibility() {
-    visibleTraps.clear();
-    
-    // Спрашиваем у системы эффектов, есть ли у нас пассивная способность видеть ловушки
-    let hasVision = false;
-    if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
-        const passives = EffectSystemModule.getPassiveEffects(player);
-        if (passives.includes('trap_vision')) {
-            hasVision = true;
-        }
-    } 
-    // Fallback: если система эффектов еще не обновлена, проверяем по старинке (для совместимости)
-    else if (player && player.equipment && player.equipment.armor) {
-        if (player.equipment.armor.uniqueId === 'unique_helm_vision') {
-            hasVision = true;
-        }
-    }
+    // В game.js
 
-    if (hasVision) {
-        traps.forEach(trap => visibleTraps.add(`${trap.x},${trap.y}`));
-    } else {
-        const viewRadius = 2; 
-        traps.forEach(trap => {
-            const dist = Math.abs(trap.x - player.x) + Math.abs(trap.y - player.y);
-            if (dist <= viewRadius) {
-                visibleTraps.add(`${trap.x},${trap.y}`);
+    function updateTrapVisibility() {
+        visibleTraps.clear();
+        
+        let hasVision = false;
+        
+        // Спрашиваем у системы эффектов
+        if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
+            const passives = EffectSystemModule.getPassiveEffects(player);
+            if (passives.includes('trap_vision')) {
+                hasVision = true;
             }
-        });
-    }
-}
+        } 
+        // Fallback: проверка по старинке (если система эффектов еще не подключена)
+        else if (player && player.equipment && player.equipment.armor) {
+            if (player.equipment.armor.uniqueId === 'unique_helm_vision') {
+                hasVision = true;
+                console.log("[GameModule] Fallback: Шлем зоркости найден напрямую.");
+            }
+        }
 
+        if (hasVision) {
+            console.log(`[GameModule] 🟢 Режим "Все ловушки видимы". Всего ловушек на уровне: ${traps.length}`);
+            traps.forEach(trap => visibleTraps.add(`${trap.x},${trap.y}`));
+        } else {
+            // console.log("[GameModule] 🔴 Стандартный режим видимости ловушек (радиус 2).");
+            const viewRadius = 2; 
+            traps.forEach(trap => {
+                const dist = Math.abs(trap.x - player.x) + Math.abs(trap.y - player.y);
+                if (dist <= viewRadius) {
+                    visibleTraps.add(`${trap.x},${trap.y}`);
+                }
+            });
+        }
+    }
     
     // === ОТРИСОВКА КАДРА (Обновленная) ===
     function renderFrame() {
