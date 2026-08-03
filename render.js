@@ -243,12 +243,22 @@ const RenderModule = (function() {
         const dtype = MapModule.currentDungeonType || DUNGEON_TYPES[0];
         const cam = getCameraOffset(player);
 
+        // === 1. РАСЧЕТ FOV И ПРОВЕРКА ЭФФЕКТА ЯСНОВИДЕНИЯ ===
         const visible = new Set();
         fov.compute(player.x, player.y, 25, (x, y, r, vis) => {
             if (vis) visible.add(`${x},${y}`);
         });
 
-        // 1. РИСУЕМ ТАЙЛЫ
+        let hasFullVision = false;
+        if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getEffectDuration === 'function') {
+            // Проверяем наличие активного эффекта buff_vision
+            const duration = EffectSystemModule.getEffectDuration(player, EffectSystemModule.TYPES.FULL_VISION);
+            if (duration > 0) {
+                hasFullVision = true;
+            }
+        }
+
+        // 2. РИСУЕМ ТАЙЛЫ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
                 const wx = sx + cam.x;
@@ -256,9 +266,10 @@ const RenderModule = (function() {
                 
                 if (wx < 0 || wx >= DataModule.MAP_WIDTH || wy < 0 || wy >= DataModule.MAP_HEIGHT) continue;
 
-                const isVisible = visible.has(`${wx},${wy}`);
+                // Если есть полное зрение, считаем клетку видимой всегда
+                const isVisible = hasFullVision || visible.has(`${wx},${wy}`);
+                
                 let ch, fg;
-
                 let shopDecor = null;
                 let innDecor = null;
 
@@ -274,6 +285,7 @@ const RenderModule = (function() {
 
                 if (MapModule.isWall(wx, wy)) {
                     ch = dtype.wallChar;
+                    // При полном зрении стены видны нормально, иначе затемняются
                     fg = isVisible ? dtype.wallColor : '#222';
                 } else {
                     if (innDecor) {
@@ -299,17 +311,19 @@ const RenderModule = (function() {
             }
         }
 
-        // 2. ПРЕДМЕТЫ
+        // 3. ПРЕДМЕТЫ (Рисуем если видим ИЛИ есть полное зрение)
         if (items) {
             items.forEach(i => {
                 const sx = i.x - cam.x, sy = i.y - cam.y;
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${i.x},${i.y}`)) {
-                    TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
+                    if (hasFullVision || visible.has(`${i.x},${i.y}`)) {
+                        TilesetRenderer.draw(ctx, i.char, sx, sy, i.color);
+                    }
                 }
             });
         }
 
-        // 2.5. ЛОВУШКИ (Невидимые, пока не подойдешь близко)
+        // 4. ЛОВУШКИ (Невидимые, пока не подойдешь близко или нет зрения)
         if (typeof GameModule !== 'undefined' && typeof GameModule.getVisibleTraps === 'function') {
             const vTraps = GameModule.getVisibleTraps();
             
@@ -318,59 +332,72 @@ const RenderModule = (function() {
                 const sx = tx - cam.x;
                 const sy = ty - cam.y;
                 
-                // Проверяем, попадает ли ловушка в экран и видна ли клетка (FOV)
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${tx},${ty}`)) {
-                    // Рисуем спрайт ловушки (красный цвет для опасности)
+                // Ловушки видны только если они в FOV (или если trap_vision включен в game.js)
+                // Полное зрение (buff_vision) НЕ открывает ловушки автоматически, 
+                // так как это отдельная механика (trap_vision). Но если хотите, можно добавить:
+                // const canSeeTrap = visible.has(`${tx},${ty}`) || hasFullVision;
+                const canSeeTrap = visible.has(`${tx},${ty}`); 
+
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && canSeeTrap) {
                     TilesetRenderer.draw(ctx, getChar('TRAP_SPIKES'), sx, sy, '#ff0000');
                 }
             });
         }
 
-        // 3. ВРАГИ
+        // 5. ВРАГИ (Рисуем сквозь стены при полном зрении)
         if (enemies) {
             enemies.forEach(e => {
                 if (e.hp > 0) {
                     const sx = e.x - cam.x, sy = e.y - cam.y;
-                    const isVisible = visible.has(`${e.x},${e.y}`);
                     
-                    if (sx >= -2 && sx < COLS && sy >= -2 && sy < ROWS && isVisible) {
-                        if (e.isBoss) {
-                            let prefix = 'BOSS_DRAGON'; 
-                            if (e.bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
-                            else if (e.bossType.includes('Лич')) prefix = 'BOSS_LICH';
-                            
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_TL`, sx, sy, e.color);
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_TR`, sx + 1, sy, e.color);
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_BL`, sx, sy + 1, e.color);
-                            TilesetRenderer.drawByKey(ctx, `${prefix}_BR`, sx + 1, sy + 1, e.color);
-                        } else {
-                            TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                    // Проверяем границы экрана (с запасом для боссов 2x2)
+                    if (sx >= -2 && sx < COLS && sy >= -2 && sy < ROWS) {
+                        const isVisible = hasFullVision || visible.has(`${e.x},${e.y}`);
+                        
+                        if (isVisible) {
+                            if (e.isBoss) {
+                                let prefix = 'BOSS_DRAGON'; 
+                                if (e.bossType.includes('Голем')) prefix = 'BOSS_GOLEM';
+                                else if (e.bossType.includes('Лич')) prefix = 'BOSS_LICH';
+                                
+                                TilesetRenderer.drawByKey(ctx, `${prefix}_TL`, sx, sy, e.color);
+                                TilesetRenderer.drawByKey(ctx, `${prefix}_TR`, sx + 1, sy, e.color);
+                                TilesetRenderer.drawByKey(ctx, `${prefix}_BL`, sx, sy + 1, e.color);
+                                TilesetRenderer.drawByKey(ctx, `${prefix}_BR`, sx + 1, sy + 1, e.color);
+                            } else {
+                                TilesetRenderer.draw(ctx, e.char, sx, sy, e.color);
+                            }
                         }
                     }
                 }
             });
         }
 
-        // 4. NPC
+        // 6. NPC
         if (window.currentCityNpcs) {
             window.currentCityNpcs.forEach(npc => {
                 const sx = npc.x - cam.x, sy = npc.y - cam.y;
-                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS && visible.has(`${npc.x},${npc.y}`)) {
-                    TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
+                if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
+                    if (hasFullVision || visible.has(`${npc.x},${npc.y}`)) {
+                        TilesetRenderer.draw(ctx, npc.char, sx, sy, npc.color);
+                    }
                 }
             });
         }
 
-        // 5. ИГРОК
+        // 7. ИГРОК
         if (player) {
             const px = Math.floor(COLS / 2);
             const py = Math.floor(ROWS / 2);
             TilesetRenderer.draw(ctx, player.char, px, py, player.color);
         }
 
-        // 6. ЭФФЕКТЫ
+        // 8. ЭФФЕКТЫ
         drawEffects(ctx, cam);
 
+        // Возвращаем оригинальный FOV для логики игры!
+        // Это важно: игрок видит всё, но монстры не агрятся сквозь стены,
+        // и стрелять сквозь стены нельзя.
         return visible;
     }
     // === ОТРИСОВКА ГЛОБАЛЬНОЙ КАРТЫ (С УЧЕТОМ СНЕГА) ===
