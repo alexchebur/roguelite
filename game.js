@@ -2527,13 +2527,30 @@ function updateQuestCompass() {
         const PLAYER_SPEED_THRESHOLD = 10;
         const isFortress = (currentDungeonTypeName === 'fortress');
 
+        // === НОВОЕ: Проверка эффекта замедления один раз за кадр ===
+        let hasEnemySlow = false;
+        if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
+            const passives = EffectSystemModule.getPassiveEffects(player);
+            if (passives.includes('enemy_slow')) {
+                hasEnemySlow = true;
+            }
+        }
+
         enemies.forEach(e => {
             if (e.hp <= 0) return;
             
             if (e.speed === undefined) e.speed = 10; 
             if (e.energy === undefined) e.energy = Math.floor(Math.random() * e.speed);
 
-            e.energy += e.speed;
+            // === РАСЧЕТ ЭФФЕКТИВНОЙ СКОРОСТИ ===
+            let effectiveSpeed = e.speed;
+            if (hasEnemySlow) {
+                // Уменьшаем скорость на 1, но не ниже 1 (чтобы враги не останавливались совсем)
+                effectiveSpeed = Math.max(1, e.speed - 1);
+            }
+
+            // Начисляем энергию с учетом замедления
+            e.energy += effectiveSpeed;
 
             if (e.energy >= PLAYER_SPEED_THRESHOLD) {
                 e.energy -= PLAYER_SPEED_THRESHOLD;
@@ -2646,8 +2663,6 @@ function updateQuestCompass() {
                     // Если игрок далеко (>20 в крепости или >8 в обычном данже)
                     else if (isFortress) {
                         // В крепости, если игрок далеко, враги могут стоять на страже или медленно бродить
-                        // Для простоты оставим их неподвижными, если игрок вне радиуса 20
-                        // Или можно добавить редкое случайное движение:
                         if (Math.random() < 0.1) {
                              const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
                              const dir = dirs[Math.floor(Math.random() * dirs.length)];
