@@ -397,28 +397,26 @@ const EntityModule = (function() {
         // === НОВАЯ ФУНКЦИЯ: Создание инвентаря торговца ===
     function createMerchantInventory(depth, goldAmount) {
         const items = [];
-        // Используем детерминированный сид на основе глубины и текущего времени (чтобы ассортимент менялся при перезаходе, но был стабилен в рамках сессии)
-        // Если хочешь полностью статичный магазин для каждой глубины, убери Date.now()
+        // Используем детерминированный сид на основе глубины и текущего времени
         const rng = new Math.seedrandom(`merchant_${depth}_${Math.floor(Date.now() / 60000)}`); 
         
         // 1. Оружие и Броня (Экипировка)
         const equipTemplates = DataModule.ITEM_TYPES.filter(i => i.type === 'weapon' || i.type === 'armor');
-        // Количество зависит от глубины: минимум 5 предметов
         const equipCount = 5 + Math.floor(depth / 2);
         
         for (let i = 0; i < equipCount; i++) {
             const template = equipTemplates[Math.floor(rng() * equipTemplates.length)];
-            // Сила предмета растет с глубиной
             const powerMult = 1.0 + (depth * 0.15);
             const item = EntityModule.createItem(template, 0, 0, powerMult);
             
-            // Расчет цены продажи: (Базовая ценность * 10) + (Глубина * 5)
-            // Это гарантирует, что крутые вещи стоят дорого
+            // Цена экипировки
             item.price = Math.floor((item.val * 10) + (depth * 10)); 
             items.push(item);
         }
 
         // 2. Зелья и Еда (Расходники)
+        // Добавляем potion_vision в фильтр, если он еще не покрыт i.type.includes('potion')
+        // (обычно includes('potion') ловит и potion_vision, но для надежности можно проверить явно)
         const consumableTemplates = DataModule.ITEM_TYPES.filter(i => 
             i.type.includes('potion') || i.type === 'food' || i.type === 'scroll_teleport'
         );
@@ -428,8 +426,19 @@ const EntityModule = (function() {
             const template = consumableTemplates[Math.floor(rng() * consumableTemplates.length)];
             const item = EntityModule.createItem(template, 0, 0, 1.0);
             
-            // Цена расходников зависит от их лечебной/боевой силы (val)
-            item.price = Math.floor(item.val * 3); 
+            // === РАСЧЕТ ЦЕНЫ С УЧЕТОМ РЕДКОСТИ ===
+            let basePrice = Math.floor(item.val * 4); // Немного подняли базу (было 3)
+            
+            // Зелье Ясновидения стоит значительно дороже (x5)
+            if (template.type === 'potion_vision') {
+                basePrice *= 5;
+            }
+            // Свитки телепортации тоже дорогие
+            else if (template.type === 'scroll_teleport') {
+                basePrice *= 3;
+            }
+
+            item.price = Math.max(5, basePrice); // Минимум 5 золотых
             items.push(item);
         }
 
