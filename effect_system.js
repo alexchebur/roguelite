@@ -132,7 +132,7 @@ const EffectSystemModule = (function() {
             
             if (item && item.isUnique) {
                 if (item.uniqueId === 'unique_helm_vision') {
-                    console.log("[EffectSystem] ✅ FOUND VISION HELM!");
+                    //console.log("[EffectSystem] ✅ FOUND VISION HELM!");
                     effects.push('trap_vision');
                 }
             }
