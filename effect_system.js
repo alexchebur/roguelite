@@ -114,7 +114,33 @@ const EffectSystemModule = (function() {
         const effect = entity.effects.find(e => e.type === type);
         return effect ? effect.value : 0;
     }
+    // В effect_system.js, внутри модуля EffectSystemModule
+
+    function getPassiveEffects(player) {
+        const effects = [];
     
+        if (!player || !player.equipment) return effects;
+
+        // Проверяем каждый слот экипировки на наличие уникальных свойств
+        const slots = ['weapon', 'armor', 'ring'];
+    
+        slots.forEach(slot => {
+            const item = player.equipment[slot];
+            if (item && item.isUnique) {
+                // Здесь можно мапить uniqueId на название эффекта
+                if (item.uniqueId === 'unique_helm_vision') {
+                    effects.push('trap_vision');
+                }
+                // Можно добавить другие эффекты в будущем
+                // if (item.uniqueId === 'unique_ring_strength') effects.push('bonus_strength');
+            }
+        });
+
+        return effects;
+    }
+
+    // Не забудь добавить в return модуля:
+    // return { ..., getPassiveEffects };    
     /**
      * Получает оставшуюся длительность эффекта
      */
@@ -190,6 +216,7 @@ const EffectSystemModule = (function() {
             createBurn: createBurn,
             createRegen: createRegen
         },
+        getPassiveEffects,
         TYPES: EFFECT_TYPES // Экспортируем типы для использования в combat.js
     };
 
