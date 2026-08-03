@@ -3318,6 +3318,8 @@ function checkTrapTrigger(x, y) {
 
     // В game.js
 
+    // В game.js
+
     function updateTrapVisibility() {
         visibleTraps.clear();
         
@@ -3326,8 +3328,11 @@ function checkTrapTrigger(x, y) {
         // Спрашиваем у системы эффектов
         if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
             const passives = EffectSystemModule.getPassiveEffects(player);
+            console.log("[GameModule] Получены пассивные эффекты:", passives); // <--- ЛОГ
+            
             if (passives.includes('trap_vision')) {
                 hasVision = true;
+                console.log("[GameModule] ✅ Обнаружен эффект trap_vision!"); // <--- ЛОГ
             }
         } 
         // Fallback: проверка по старинке (если система эффектов еще не подключена)
@@ -3336,6 +3341,8 @@ function checkTrapTrigger(x, y) {
                 hasVision = true;
                 console.log("[GameModule] Fallback: Шлем зоркости найден напрямую.");
             }
+        } else {
+             console.warn("[GameModule] ⚠️ EffectSystemModule.getPassiveEffects не найден или экипировка отсутствует.");
         }
 
         if (hasVision) {
