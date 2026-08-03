@@ -12,6 +12,7 @@ const EffectSystemModule = (function() {
         BUFF_DEF: 'buff_def',   // Временное увеличение защиты
         DOT: 'dot',             // Урон со временем
         HOT: 'hot'              // Лечение со временем
+        FULL_VISION: 'buff_vision' // <--- НОВОЕ
     };
 
     /**
@@ -189,7 +190,10 @@ const EffectSystemModule = (function() {
     }
 
     // --- Конструкторы стандартных эффектов ---
-
+    function createBuffVision(duration) {
+        // val=0, так как это бинарный эффект (вкл/выкл)
+        return createEffect('buff_vision', 'Ясновидение', EFFECT_TYPES.FULL_VISION, duration, 0, '#E0FFFF');
+    }
     function createBuffAtk(duration, value) {
         return createEffect('buff_atk', 'Ярость', EFFECT_TYPES.BUFF_ATK, duration, value, '#ff9800');
     }
@@ -220,7 +224,8 @@ const EffectSystemModule = (function() {
             createBuffAtk: createBuffAtk,
             createBuffDef: createBuffDef,
             createBurn: createBurn,
-            createRegen: createRegen
+            createRegen: createRegen,
+            createBuffVision: createBuffVision
         },
         TYPES: EFFECT_TYPES // Экспортируем типы для использования в combat.js
     };
