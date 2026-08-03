@@ -267,6 +267,22 @@ const CombatModule = (function() {
             used = true;
         }
 
+
+        // === НОВОЕ: Зелье Ясновидения ===
+        else if (item.effect === "buff_vision") {
+            if (item.duration && typeof EffectSystemModule !== 'undefined') {
+                const effect = EffectSystemModule.Effects.createBuffVision(item.duration);
+                EffectSystemModule.addEffect(player, effect);
+                // Пересчет статов не обязателен для зрения, но вызовем для порядка
+                EffectSystemModule.recalculateStats(player); 
+                logFn(`Вы выпили ${item.name}. Туман войны рассеялся на ${item.duration} ходов!`, "loot");
+            } else {
+                logFn(`Ошибка: Зелье ясновидения не имеет длительности.`, "info");
+            }
+            used = true;
+        }
+        
+            
         // 4. Экипировка Оружия
         else if (item.type === "weapon") {
             if (player.equipment.weapon) {
@@ -314,7 +330,8 @@ const CombatModule = (function() {
             logFn(`Вы надели ${item.name}. Защита +${defBonus}.`, "loot");
             used = true;
         }
-        
+
+
         // 6. Свиток телепортации
         else if (item.effect === "teleport_exit") {
             if (typeof GameModule !== 'undefined' && typeof GameModule.exitToGlobal === 'function') {
