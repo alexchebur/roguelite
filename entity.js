@@ -431,11 +431,11 @@ const EntityModule = (function() {
             
             // Зелье Ясновидения стоит значительно дороже (x5)
             if (template.type === 'potion_vision') {
-                basePrice *= 5;
+                basePrice *= 200;
             }
             // Свитки телепортации тоже дорогие
             else if (template.type === 'scroll_teleport') {
-                basePrice *= 3;
+                basePrice *= 300;
             }
 
             item.price = Math.max(5, basePrice); // Минимум 5 золотых
