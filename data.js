@@ -287,8 +287,16 @@ const DataModule = (function() {
         },
 
         // В файле data.js, внутри массива UNIQUE_ITEM_TEMPLATES
-
-    // ... существующие шаблоны ...
+        {
+            id: "unique_armor_wind_boots",
+            baseType: "armor",             // Экипируется в слот брони
+            baseName: "Сапоги Ветра",
+            uniquePrefix: "Легкие",
+            def: [2, 4],                   // Небольшая защита
+            color: "#87CEEB",              // Небесно-голубой
+            char: getChar('ITEM_GREAVES'), // Используем спрайт наголенников/сапог
+            desc: "Эти сапоги окутаны вихрем. Враги вокруг вас движутся словно сквозь кисель."
+        },
 
         {
             id: "unique_helm_vision",      // Уникальный ID для проверки
