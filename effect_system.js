@@ -119,29 +119,29 @@ const EffectSystemModule = (function() {
 
     function getPassiveEffects(player) {
         const effects = [];
+        if (!player || !player.equipment) return effects;
 
-        if (!player || !player.equipment) {
-            return effects;
-        }
-
-        const slots = ['weapon', 'armor', 'ring'];
-
+        // Проверяем все слоты экипировки
+        const slots = ['weapon', 'armor']; 
         slots.forEach(slot => {
             const item = player.equipment[slot];
-            
             if (item && item.isUnique) {
                 // Эффект: Видимость ловушек (Шлем Зоркости)
                 if (item.uniqueId === 'unique_helm_vision') {
                     effects.push('trap_vision');
                 }
-                
-                // === НОВОЕ: Эффект замедления врагов (Сапоги Ветра) ===
+                // Эффект замедления врагов (Сапоги Ветра)
                 if (item.uniqueId === 'unique_armor_wind_boots') {
                     effects.push('enemy_slow');
                 }
+                
+                // === НОВОЕ: ПРОКЛЯТОЕ КОЛЬЦО ВСЕВЛАСТИЯ ===
+                if (item.uniqueId === 'unique_item_ring_power') {
+                    effects.push('cursed_attraction'); // Притяжение монстров
+                    effects.push('passive_def_10');     // +10 к защите
+                }
             }
         });
-
         return effects;
     }
 
