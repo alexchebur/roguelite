@@ -59,7 +59,7 @@ const TilesetRenderer = (function() {
         't': { file: 'creature_sprites', x: 1, y: 4 },  // Тролль
         'L': { file: 'creature_sprites', x: 5, y: 7 },  // Лич
         'M': { file: 'creature_sprites', x: 3, y: 4 },  // Голем
-        'q': { file: 'creature_sprites', x: 0, y: 16 },  // Дракон
+        'q': { file: 'creature_sprites', x: 0, y: 15 },  // Дракон
         '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
         // В файле tileset_renderer.js, внутри TILE_MAP
         // === ТАКТИЧЕСКИЕ ТАЙЛЫ ПОЛА (Добавить или обновить) ===
