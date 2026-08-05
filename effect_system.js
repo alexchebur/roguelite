@@ -140,6 +140,10 @@ const EffectSystemModule = (function() {
                     effects.push('cursed_attraction'); // Притяжение монстров
                     effects.push('passive_def_10');     // +10 к защите
                 }
+                // === НОВОЕ: Иммунитет к ловушкам (Каменные Башмаки) ===
+                if (item.uniqueId === 'unique_armor_stone_boots') {
+                    effects.push('trap_immune');
+                }
             }
         });
         return effects;
