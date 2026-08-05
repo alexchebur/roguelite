@@ -161,32 +161,29 @@ const EffectSystemModule = (function() {
      */
     function recalculateStats(player) {
         if (!player) return;
-
-        // 1. Базовые статы от уровня
+        
         const baseAtk = WorldCurveModule.getPlayerBaseAtk(player.level);
         const baseDef = WorldCurveModule.getPlayerBaseDef(player.level);
-
-        // 2. Бонусы от экипировки (они хранятся в bonusAtk/bonusDef постоянно)
-        // Примечание: в текущей архитектуре bonusAtk уже включает экипировку.
-        // Нам нужно отделить "постоянные" бонусы от "временных".
-        // Но проще всего: пересчитать Atk = Base + EquipmentBonus + ActiveEffectBonus
-        
-        // Чтобы это работало корректно, нам нужно знать "чистый" бонус от вещей.
-        // В текущем коде player.bonusAtk меняется при надевании. 
-        // Давайте считать, что player.bonusAtk - это бонус ОТ ВЕЩЕЙ.
         
         const equipAtkBonus = player.bonusAtk || 0;
         const equipDefBonus = player.bonusDef || 0;
-
-        // 3. Бонусы от активных эффектов
+        
         const buffAtk = getActiveEffectValue(player, EFFECT_TYPES.BUFF_ATK);
         const buffDef = getActiveEffectValue(player, EFFECT_TYPES.BUFF_DEF);
 
-        // Итоговые значения
-        player.atk = baseAtk + equipAtkBonus + buffAtk;
-        player.def = baseDef + equipDefBonus + buffDef;
+        // === НОВОЕ: Учет пассивных эффектов от уникальных предметов ===
+        let passiveDef = 0;
+        if (typeof getPassiveEffects === 'function') {
+            const passives = getPassiveEffects(player);
+            if (passives.includes('passive_def_10')) {
+                passiveDef += 10;
+            }
+        }
+        // ==========================================================
 
-        // Защита от отрицательных значений
+        player.atk = baseAtk + equipAtkBonus + buffAtk;
+        player.def = baseDef + equipDefBonus + buffDef + passiveDef; // Добавляем passiveDef
+
         if (player.atk < 1) player.atk = 1;
         if (player.def < 0) player.def = 0;
     }
