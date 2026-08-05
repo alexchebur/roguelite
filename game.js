@@ -2526,7 +2526,7 @@ function updateQuestCompass() {
     function moveEnemies() {
         const PLAYER_SPEED_THRESHOLD = 10;
         const isFortress = (currentDungeonTypeName === 'fortress');
-
+        window._cachedPassives = null; // Сбрасываем кэш перед циклом
         // === НОВОЕ: Проверка эффекта замедления один раз за кадр ===
         let hasEnemySlow = false;
         if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
