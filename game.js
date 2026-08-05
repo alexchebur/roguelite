@@ -2556,11 +2556,23 @@ function updateQuestCompass() {
                 e.energy -= PLAYER_SPEED_THRESHOLD;
 
                 const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
-                
-                // === ЛОГИКА КРЕПОСТИ ===
-                // В крепости радиус обнаружения увеличен до 20
                 const aggroRange = isFortress ? 20 : (e.aggroOverride || 8);
-                const inSight = dist <= aggroRange;
+                
+                // === ПРОВЕРКА ПРОКЛЯТОГО КОЛЬЦА ===
+                let isCursedAttraction = false;
+                if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
+                    // Кэшируем результат, чтобы не вызывать функцию для каждого врага отдельно
+                    // (в идеале вынести проверку из цикла forEach, но для простоты оставим здесь, 
+                    // т.к. getPassiveEffects очень легкая функция)
+                    if (!window._cachedPassives) {
+                        window._cachedPassives = EffectSystemModule.getPassiveEffects(player);
+                    }
+                    isCursedAttraction = window._cachedPassives.includes('cursed_attraction');
+                }
+                // ==================================
+
+                // Если есть проклятие - враг видит игрока сквозь стены и на любом расстоянии
+                const inSight = isCursedAttraction || (dist <= aggroRange);
 
                 // === БОССЫ ===
                 if (e.isBoss) {
