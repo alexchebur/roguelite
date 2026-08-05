@@ -54,18 +54,18 @@ const SPRITE_REGISTRY = {
     'ENEMY_RAT':             { char: 'r',   tile: { file: 'creature_sprites', x: 8, y: 9 }, desc: 'Крыса' },
     'ENEMY_GOBLIN':          { char: 'g',   tile: { file: 'creature_sprites', x: 12, y: 3 }, desc: 'Гоблин' },
     'ENEMY_WOLF':            { char: 'w',   tile: { file: 'creature_sprites', x: 1, y: 9 }, desc: 'Волк' },
-    'ENEMY_BANDIT':          { char: 'b',   tile: { file: 'creature_sprites', x: 5, y: 0 }, desc: 'Бандит' },
-    'ENEMY_SKELETON':        { char: 's',   tile: { file: 'creature_sprites', x: 6, y: 0 }, desc: 'Скелет' },
+    'ENEMY_BANDIT':          { char: 'b',   tile: { file: 'creature_sprites', x: 7, y: 0 }, desc: 'Бандит' },
+    'ENEMY_SKELETON':        { char: 's',   tile: { file: 'creature_sprites', x: 4, y: 3 }, desc: 'Скелет' },
     'ENEMY_SLIME':           { char: 'j',   tile: { file: 'creature_sprites', x: 3, y: 15 }, desc: 'Слизень' },
-    'ENEMY_ORC':             { char: 'k',   tile: { file: 'creature_sprites', x: 7, y: 0 }, desc: 'Орк' }, // Внимание: символ совпадает с WALL_ORGANIC
-    'ENEMY_ZOMBIE':          { char: 'z',   tile: { file: 'creature_sprites', x: 8, y: 0 }, desc: 'Зомби' },
-    'ENEMY_HARPY':           { char: 'h',   tile: { file: 'creature_sprites', x: 9, y: 0 }, desc: 'Гарпия' },
-    'ENEMY_GHOST':           { char: 'G',   tile: { file: 'creature_sprites', x: 10, y: 0 }, desc: 'Призрак' }, // Совпадает с ITEM_GLOVES
-    'ENEMY_VAMPIRE':         { char: 'V',   tile: { file: 'creature_sprites', x: 11, y: 0 }, desc: 'Вампир' },
-    'ENEMY_TROLL':           { char: 't',   tile: { file: 'creature_sprites', x: 12, y: 0 }, desc: 'Тролль' }, // Совпадает с TILE_FOREST
-    'ENEMY_LICH':            { char: 'L',   tile: { file: 'creature_sprites', x: 13, y: 0 }, desc: 'Лич' },
-    'ENEMY_GOLEM':           { char: 'M',   tile: { file: 'creature_sprites', x: 14, y: 0 }, desc: 'Голем' },
-    'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature_sprites', x: 15, y: 0 }, desc: 'Дракон' },
+    'ENEMY_ORC':             { char: 'k',   tile: { file: 'creature_sprites', x: 14, y: 3 }, desc: 'Орк' }, // Внимание: символ совпадает с WALL_ORGANIC
+    'ENEMY_ZOMBIE':          { char: 'z',   tile: { file: 'creature_sprites', x: 1, y: 6 }, desc: 'Зомби' },
+    'ENEMY_HARPY':           { char: 'h',   tile: { file: 'creature_sprites', x: 15, y: 6 }, desc: 'Гарпия' },
+    'ENEMY_GHOST':           { char: 'G',   tile: { file: 'creature_sprites', x: 4, y: 6 }, desc: 'Призрак' }, // Совпадает с ITEM_GLOVES
+    'ENEMY_VAMPIRE':         { char: 'V',   tile: { file: 'creature_sprites', x: 6, y: 7 }, desc: 'Вампир' },
+    'ENEMY_TROLL':           { char: 't',   tile: { file: 'creature_sprites', x: 1, y: 4 }, desc: 'Тролль' }, // Совпадает с TILE_FOREST
+    'ENEMY_LICH':            { char: 'L',   tile: { file: 'creature_sprites', x: 5, y: 7 }, desc: 'Лич' },
+    'ENEMY_GOLEM':           { char: 'M',   tile: { file: 'creature_sprites', x: 3, y: 4 }, desc: 'Голем' },
+    'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature_sprites', x: 0, y: 16 }, desc: 'Дракон' },
 
     // ==========================================
     // 5. ПРЕДМЕТЫ (ITEM_TYPES)
