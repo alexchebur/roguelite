@@ -42,23 +42,24 @@ const TilesetRenderer = (function() {
         '3':  { file: 'terrain_sprites', x: 6, y: 2 }, // Спрайт снежного покрова
         'f':  { file: 'terrain_sprites', x: 9, y: 2 }, // Тайл города, но цвет зададим в render.js
 
+        
         // --- СУЩЕСТВА ---
         '@': { file: 'creature_sprites', x: 2,  y: 0 },  // Игрок
         'r': { file: 'creature_sprites', x: 8,  y: 9 },  // Крыса
         'g': { file: 'creature_sprites', x: 12, y: 3 },  // Гоблин
         'w': { file: 'creature_sprites', x: 1,  y: 9 },  // Волк
         'j': { file: 'creature_sprites', x: 3,  y: 15 }, // Слизень
-        'b': { file: 'creature_sprites', x: 5,  y: 0 },  // Бандит
-        's': { file: 'creature_sprites', x: 6,  y: 0 },  // Скелет
-        'k': { file: 'creature_sprites', x: 7,  y: 0 },  // Орк
-        'z': { file: 'creature_sprites', x: 8,  y: 0 },  // Зомби
-        'h': { file: 'creature_sprites', x: 9,  y: 0 },  // Гарпия
-        'G': { file: 'creature_sprites', x: 10, y: 0 },  // Призрак
-        'V': { file: 'creature_sprites', x: 11, y: 0 },  // Вампир
-        't': { file: 'creature_sprites', x: 12, y: 0 },  // Тролль
-        'L': { file: 'creature_sprites', x: 13, y: 0 },  // Лич
-        'M': { file: 'creature_sprites', x: 14, y: 0 },  // Голем
-        'q': { file: 'creature_sprites', x: 15, y: 0 },  // Дракон
+        'b': { file: 'creature_sprites', x: 7,  y: 0 },  // Бандит
+        's': { file: 'creature_sprites', x: 4,  y: 3 },  // Скелет
+        'k': { file: 'creature_sprites', x: 14,  y: 3 },  // Орк
+        'z': { file: 'creature_sprites', x: 1,  y: 6 },  // Зомби
+        'h': { file: 'creature_sprites', x: 15,  y: 6 },  // Гарпия
+        'G': { file: 'creature_sprites', x: 4, y: 6 },  // Призрак
+        'V': { file: 'creature_sprites', x: 6, y: 7 },  // Вампир
+        't': { file: 'creature_sprites', x: 1, y: 4 },  // Тролль
+        'L': { file: 'creature_sprites', x: 5, y: 7 },  // Лич
+        'M': { file: 'creature_sprites', x: 3, y: 4 },  // Голем
+        'q': { file: 'creature_sprites', x: 0, y: 16 },  // Дракон
         '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
         // В файле tileset_renderer.js, внутри TILE_MAP
         // === ТАКТИЧЕСКИЕ ТАЙЛЫ ПОЛА (Добавить или обновить) ===
