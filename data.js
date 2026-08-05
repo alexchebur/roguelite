@@ -334,6 +334,17 @@ const DataModule = (function() {
             uniquePrefix: "Изначальный",
             color: "#00ffff", // Циан
             desc: "Пахнет озоном и древней магией."
+        },
+        // В data.js, внутри массива UNIQUE_ITEM_TEMPLATES
+        {
+            id: "unique_armor_stone_boots",
+            baseType: "armor",
+            baseName: "Каменные Башмаки",
+            uniquePrefix: "Древние",
+            def: [1, 2],          // Минимальная защита
+            color: "#808080",     // Серый каменный цвет
+            char: getChar('ITEM_GREAVES'), // Используем спрайт наголенников
+            desc: "Тяжелая обувь из зачарованного камня. Ловушки под ногами не причиняют вреда."
         }
     ];
 
