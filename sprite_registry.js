@@ -65,7 +65,7 @@ const SPRITE_REGISTRY = {
     'ENEMY_TROLL':           { char: 't',   tile: { file: 'creature_sprites', x: 1, y: 4 }, desc: 'Тролль' }, // Совпадает с TILE_FOREST
     'ENEMY_LICH':            { char: 'L',   tile: { file: 'creature_sprites', x: 5, y: 7 }, desc: 'Лич' },
     'ENEMY_GOLEM':           { char: 'M',   tile: { file: 'creature_sprites', x: 3, y: 4 }, desc: 'Голем' },
-    'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature_sprites', x: 0, y: 16 }, desc: 'Дракон' },
+    'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature_sprites', x: 0, y: 15 }, desc: 'Дракон' },
 
     // ==========================================
     // 5. ПРЕДМЕТЫ (ITEM_TYPES)
