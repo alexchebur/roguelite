@@ -3317,26 +3317,40 @@ function updateQuestCompass() {
     renderFrame();
 }
 
-// Новая функция проверки ловушки
+// В game.js
 function checkTrapTrigger(x, y) {
     const trapIndex = traps.findIndex(t => t.x === x && t.y === y);
     if (trapIndex !== -1) {
         const trap = traps[trapIndex];
-        // Наносим урон
-        player.hp -= trap.damage;
-        RenderModule.log(`⚠️ Вы наступили на ловушку! Получено ${trap.damage} урона.`, "combat");
         
-        // Визуальный эффект (мигание экрана или игрока)
-        RenderModule.addBlinkEffect(player.x, player.y, 300, "rgba(255, 0, 0, 0.5)");
+        // === ПРОВЕРКА ИММУНИТЕТА К ЛОВУШКАМ ===
+        let isImmune = false;
+        if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
+            const passives = EffectSystemModule.getPassiveEffects(player);
+            if (passives.includes('trap_immune')) {
+                isImmune = true;
+            }
+        }
 
-        // Удаляем ловушку после срабатывания (одноразовая)
-        traps.splice(trapIndex, 1);
-        
-        // Проверка смерти
-        if (player.hp <= 0) {
-             RenderModule.log("ВЫ ПОГИБЛИ в ловушке. F5 для рестарта.", "combat");
-             busy = true;
-             return;
+        if (isImmune) {
+            RenderModule.log(`🥾 Ваши Каменные Башмаки выдержали удар ловушки! Урона нет.`, "info");
+            // Ловушку можно удалить (она сломалась об башмаки) или оставить. 
+            // Давайте удалим, чтобы игрок видел, что взаимодействие произошло.
+            traps.splice(trapIndex, 1);
+            // Обновляем видимость, чтобы ловушка исчезла с экрана
+            updateTrapVisibility(); 
+        } else {
+            // Стандартная логика получения урона
+            player.hp -= trap.damage;
+            RenderModule.log(`⚠️ Вы наступили на ловушку! Получено ${trap.damage} урона.`, "combat");
+            RenderModule.addBlinkEffect(player.x, player.y, 300, "rgba(255, 0, 0, 0.5)");
+            traps.splice(trapIndex, 1);
+            
+            if (player.hp <= 0) {
+                 RenderModule.log("ВЫ ПОГИБЛИ в ловушке. F5 для рестарта.", "combat");
+                 busy = true;
+                 return;
+            }
         }
     }
 }
