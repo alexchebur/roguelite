@@ -1115,6 +1115,7 @@ const RenderModule = (function() {
         updateQuestBriefing,
         renderShopUI,
         renderQuestUI,
+        renderFullInventory,
         showShopStatus,
         COLS,
         ROWS,
