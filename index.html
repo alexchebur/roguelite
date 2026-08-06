@@ -200,14 +200,12 @@
     #modal-overlay {
         z-index: 9999 !important;
         pointer-events: auto !important;
-        /* Убираем display:none отсюда, управляем через JS */
     }
 
     /* Само окно модалки */
     .game-modal {
         z-index: 10000 !important;
         position: relative;
-        /* УБИРАЕМ display: block !important, чтобы класс .hidden мог работать */
     }
     
     /* Класс для скрытия элементов */
@@ -215,12 +213,19 @@
         display: none !important; 
     }
 
-    /* Элементы внутри модалок */
-    .modal-header { border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    /* Общие элементы внутри модалок */
+    .modal-header { 
+        border-bottom: 1px solid #30363d; 
+        padding-bottom: 10px; 
+        margin-bottom: 15px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
     .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
     .close-btn:hover { color: #ff7b72; }
 
-    /* Стили для Магазина */
+    /* --- Стили для Магазина --- */
     .shop-columns { display: flex; gap: 20px; }
     .shop-col { flex: 1; min-width: 200px; }
     .shop-col h4 { color: #8b949e; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
@@ -231,12 +236,12 @@
     .pagination-controls button:hover { background: #30363d; }
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
-    /* Стили для Постоялого Двора */
+    /* --- Стили для Постоялого Двора --- */
     .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
     .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
     .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
 
-    /* Стили для колонок инвентаря */
+    /* --- Стили для Полного Инвентаря --- */
     .inv-col {
         display: flex;
         flex-direction: column;
@@ -253,6 +258,8 @@
         text-align: center;
         border-bottom: 1px solid #30363d;
         font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     .inv-list {
         flex: 1;
@@ -277,6 +284,7 @@
         font-size: 13px;
         color: #c9d1d9;
         margin-bottom: 2px;
+        line-height: 1.2;
     }
     .inv-item-desc {
         font-size: 11px;
@@ -284,9 +292,48 @@
         font-style: italic;
         line-height: 1.2;
     }
-    /* Адаптив для мобильных: 2 колонки вместо 4 */
+
+    /* --- Адаптив для мобильных (Инвентарь) --- */
     @media (max-width: 700px) {
-        #inv-grid { grid-template-columns: repeat(2, 1fr); }
+        /* Сетка: 2 колонки вместо 4 */
+        #inv-grid { 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px; /* Уменьшаем отступы между колонками */
+        }
+        
+        /* Заголовки колонок */
+        .inv-col h4 {
+            font-size: 9px;
+            padding: 4px;
+        }
+        
+        /* Элементы списка */
+        .inv-full-item {
+            padding: 4px;
+            margin-bottom: 4px;
+        }
+        
+        /* Название предмета: совпадает с .inv-item в мобильном UI (8px) */
+        .inv-item-name {
+            font-size: 9px; 
+            line-height: 1.2;
+        }
+        
+        /* Описание предмета: совпадает с общим шрифтом UI (8px) */
+        .inv-item-desc {
+            font-size: 8px; 
+            line-height: 1.1;
+        }
+
+        /* Заголовок самого окна */
+        #inventory-modal .modal-header h3 {
+            font-size: 11px;
+        }
+        
+        /* Кнопка закрытия */
+        #inventory-modal .close-btn {
+            font-size: 14px;
+        }
     }
     
 </style>
