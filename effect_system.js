@@ -1,7 +1,7 @@
 /**
  * МОДУЛЬ СИСТЕМЫ ЭФФЕКТОВ (effect_system.js)
  * Управляет временными состояниями существ (баффы, дебаффы, DoT).
- */
+ */ 
 
 const EffectSystemModule = (function() {
     'use strict';
