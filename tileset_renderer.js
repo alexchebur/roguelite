@@ -137,8 +137,8 @@ const TilesetRenderer = (function() {
     function draw(ctx, char, screenX, screenY, color) {
         if (!ctx) return;
 
-        const destX = screenX * TILE_SIZE;
-        const destY = screenY * TILE_SIZE;
+        const destX = Math.round(screenX * TILE_SIZE);
+        const destY = Math.round(screenY * TILE_SIZE);
         const tileData = TILE_MAP[char];
 
         // 1. Fallback: Если символ не найден в маппинге -> рисуем текст
