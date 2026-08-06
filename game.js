@@ -48,6 +48,62 @@ const GameModule = (function() {
     let isInnOpen = false;
     let currentMerchantInv = null;
 
+
+    // Переменная состояния
+    let isFullInventoryOpen = false;
+
+    // Функции управления
+    function openFullInventory() {
+        if (isFullInventoryOpen) return;
+        isFullInventoryOpen = true;
+        busy = true; // Блокируем игру
+    
+        // Скрываем UI панели, но НЕ скрываем оверлей (он нужен для модалки)
+        toggleUI(false); 
+    
+        const overlay = document.getElementById('modal-overlay');
+        const modal = document.getElementById('inventory-modal');
+    
+        if (overlay && modal) {
+            overlay.style.display = 'flex';
+            overlay.style.visibility = 'visible';
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.classList.remove('hidden');
+        
+            // Заполняем данными
+            if (typeof RenderModule.renderFullInventory === 'function') {
+                RenderModule.renderFullInventory(player);
+            }
+        }
+    }
+
+    function closeFullInventory() {
+        if (!isFullInventoryOpen) return;
+        isFullInventoryOpen = false;
+        busy = false;
+    
+        const overlay = document.getElementById('modal-overlay');
+        const modal = document.getElementById('inventory-modal');
+    
+        if (overlay && modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            // Если других окон нет, скрываем оверлей
+            if (!isShopOpen && !isInnOpen && !isReadingQuest && !isTwineActive && !isEraWindowOpen) {
+                overlay.style.display = 'none';
+            }
+        }
+    
+        toggleUI(true);
+        RenderModule.requestRedraw();
+    }
+
+
+
+
+
+    
     // === УПРАВЛЕНИЕ ВИДИМОСТЬЮ UI ===
     function toggleUI(isVisible) {
         const panels = document.querySelectorAll('.ui-panel');
@@ -400,7 +456,7 @@ const GameModule = (function() {
         // Обновляем UI после любого действия
         updateInnUI();
     }
-    
+  
     function openShop() {
         console.log("🔍 Попытка открыть магазин. isShopOpen:", isShopOpen);
         if (isShopOpen) return;
@@ -631,7 +687,12 @@ const GameModule = (function() {
             if (e.key === "Escape") closeInn();
             return; 
         }
-
+        // Добавить в handleInput проверку Escape для инвентаря
+        // Вставьте перед проверкой магазина:
+        if (isFullInventoryOpen) {
+            if (e.key === "Escape") closeFullInventory();
+            return; 
+        }  
         // 3. ПРОВЕРКА МАГАЗИНА (Приоритет №2)
         if (isShopOpen) {
             if (e.key === "Escape") closeShop();
@@ -3792,7 +3853,9 @@ function checkTrapTrigger(x, y) {
         getPlayerArmy: () => tacticalState ? tacticalState.playerArmy : [],
         exitToGlobal,
         getVisibleTraps: () => [...visibleTraps], // Возвращает копию массива видимых ловушек
-        
+        // Экспорт в return GameModule:
+        openFullInventory,
+        closeFullInventory,        
         // === ФУНКЦИИ МАГАЗИНА ===
         openShop: openShop,
         closeShop: closeShop,
