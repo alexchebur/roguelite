@@ -915,6 +915,91 @@ const RenderModule = (function() {
             if (statusEl) statusEl.textContent = '';
         }, 3000);
     }
+
+
+    function renderFullInventory(player) {
+        if (!player) return;
+    
+        // Категории
+        const categories = {
+            weapon: [], armor: [], potion: [], misc: []
+        };
+
+        // 1. Группируем предметы
+        const grouped = {};
+        player.inventory.forEach((item, index) => {
+            const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
+            if (!grouped[key]) {
+                grouped[key] = { item: item, count: 0, indices: [] };
+            }
+            grouped[key].count++;
+            grouped[key].indices.push(index);
+        });
+
+        // Распределяем по категориям
+        Object.values(grouped).forEach(group => {
+            const item = group.item;
+            let cat = 'misc';
+            if (item.type === 'weapon') cat = 'weapon';
+            else if (item.type === 'armor') cat = 'armor';
+            else if (item.type.includes('potion') || item.type === 'food' || item.effect === 'heal' || item.effect === 'restore_stamina') cat = 'potion';
+        
+            categories[cat].push(group);
+        });
+
+        // 2. Отрисовка колонок
+        const drawColumn = (id, items) => {
+            const list = document.querySelector(`#${id} .inv-list`);
+            if (!list) return;
+            list.innerHTML = '';
+        
+            items.forEach(group => {
+                const item = group.item;
+                const div = document.createElement('div');
+                div.className = 'inv-full-item';
+            
+                // Название + количество
+                let nameHtml = `<div class="inv-item-name" style="color:${item.isUnique ? '#d29922' : item.color}">`;
+                if (item.isUnique) nameHtml += '🌟 ';
+                nameHtml += item.name;
+                if (group.count > 1) nameHtml += ` (${group.count})`;
+                else if (item.maxAmmo > 0) nameHtml += ` [${item.currentAmmo}/${item.maxAmmo}]`;
+                nameHtml += '</div>';
+            
+                // Описание
+                let desc = item.desc || '';
+                if (!desc) {
+                    // Генерируем базовое описание если нет уникального
+                    if (item.stat) desc = `${item.stat.toUpperCase()} +${item.val}`;
+                    if (item.effect) desc += ` | Эффект: ${item.effect}`;
+                }
+                const descHtml = desc ? `<div class="inv-item-desc">${desc}</div>` : '';
+            
+                div.innerHTML = nameHtml + descHtml;
+            
+                // Клик = использование (берем первый индекс)
+                div.onclick = () => {
+                    CombatModule.useItem(player, group.indices[0], RenderModule.log, () => {
+                        // После использования обновляем и сайдбар, и полное окно
+                        RenderModule.updateUI(player, null, null); 
+                        RenderModule.renderFullInventory(player);
+                    });
+                };
+            
+                list.appendChild(div);
+            });
+        
+            if (items.length === 0) {
+                list.innerHTML = '<div style="color:#444; font-size:11px; text-align:center; padding:10px;">Пусто</div>';
+            }
+        };
+
+        drawColumn('inv-col-weapon', categories.weapon);
+        drawColumn('inv-col-armor', categories.armor);
+        drawColumn('inv-col-potion', categories.potion);
+        drawColumn('inv-col-misc', categories.misc);
+    }
+
     
     function renderShopUI(merchantInv, playerGold) {
         const merchantList = document.getElementById('shop-merchant-list');
@@ -1010,6 +1095,9 @@ const RenderModule = (function() {
         }
     };    
 
+
+
+    
     return {
         init,
         draw,
