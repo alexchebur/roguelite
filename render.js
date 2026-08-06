@@ -693,6 +693,7 @@ const RenderModule = (function() {
             if (invDiv) {
                 invDiv.innerHTML = "";
                 
+                // === ТАКТИЧЕСКИЙ РЕЖИМ (БЕЗ ИЗМЕНЕНИЙ) ===
                 if (typeof window.gameMode !== 'undefined' && window.gameMode === 'tactical') {
                     const tactics = Object.values(TacticalDataModule.PLAYER_TACTICS);
                     
@@ -719,11 +720,30 @@ const RenderModule = (function() {
                         
                         invDiv.appendChild(div);
                     });
-                } else {
+                } 
+                // === ОБЫЧНЫЙ ИНВЕНТАРЬ (ОБНОВЛЕННЫЙ) ===
+                else {
                     if (player.inventory.length === 0) {
                         invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
                     } else {
-                         const grouped = {};
+                        // 1. КНОПКА ОТКРЫТИЯ ПОЛНОГО ИНВЕНТАРЯ (ВСЕГДА ВВЕРХУ)
+                        const openBtn = document.createElement("div");
+                        openBtn.className = "inv-item";
+                        openBtn.style.color = "#58a6ff";
+                        openBtn.style.fontWeight = "bold";
+                        openBtn.style.textAlign = "center";
+                        openBtn.style.border = "1px dashed #30363d";
+                        openBtn.style.marginBottom = "4px";
+                        openBtn.textContent = "📂 Открыть инвентарь...";
+                        openBtn.onclick = () => {
+                            if (typeof GameModule !== 'undefined' && GameModule.openFullInventory) {
+                                GameModule.openFullInventory();
+                            }
+                        };
+                        invDiv.appendChild(openBtn);
+
+                        // 2. ГРУППИРОВКА ПРЕДМЕТОВ
+                        const grouped = {};
                         const order = []; 
                         player.inventory.forEach((item, originalIndex) => {
                             const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
@@ -735,9 +755,13 @@ const RenderModule = (function() {
                             grouped[key].indices.push(originalIndex);
                         });
 
-                        order.forEach(key => {
+                        // 3. ОТРИСОВКА ТОЛЬКО ПЕРВЫХ 10 ГРУПП
+                        const limit = Math.min(10, order.length);
+                        for (let k = 0; k < limit; k++) {
+                            const key = order[k];
                             const group = grouped[key];
                             const item = group.item;
+                            
                             const div = document.createElement("div");
                             div.className = "inv-item";
                             
@@ -761,9 +785,21 @@ const RenderModule = (function() {
                             }
                             
                             div.innerHTML = html;
+                            // Используем первый индекс из группы для использования
                             div.onclick = () => CombatModule.useItem(player, group.indices[0], log, () => updateUI(player, locData, worldTrend));
                             invDiv.appendChild(div);
-                        });
+                        }
+                        
+                        // 4. ПОДСКАЗКА, ЕСЛИ ПРЕДМЕТОВ БОЛЬШЕ 10
+                        if (order.length > 10) {
+                            const moreDiv = document.createElement("div");
+                            moreDiv.style.fontSize = "10px";
+                            moreDiv.style.color = "#666";
+                            moreDiv.style.textAlign = "center";
+                            moreDiv.style.padding = "4px";
+                            moreDiv.textContent = `...и еще ${order.length - 10} предм.`;
+                            invDiv.appendChild(moreDiv);
+                        }
                     }
                 }
             }
