@@ -2058,18 +2058,34 @@ function updateQuestCompass() {
         // 4. Установка позиции игрока
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
-        } else {
-            // Используем startPos, который уже корректно рассчитан в map.js
-            // в зависимости от entryPoint
-            player.x = startPos.x;
-            player.y = startPos.y;
-            
-            // Отодвигаем игрока на безопасную клетку, чтобы он не стоял ровно на лестнице
-            // и не активировал переход повторно в том же ходу
-            const safePos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : player;
-            player.x = safePos.x;
-            player.y = safePos.y;
+        } 
+        
+        // Определяем целевую точку появления
+        let targetPos = startPos; // По умолчанию - то, что дал генератор
+
+        if (entryPoint === 'down') {
+            // Спустились вниз -> появляемся у лестницы ВВЕРХ
+            if (MapModule.stairsUp) targetPos = MapModule.stairsUp;
+        } 
+        else if (entryPoint === 'up') {
+            // Поднялись вверх -> появляемся у лестницы ВНИЗ
+            if (MapModule.stairsDown) targetPos = MapModule.stairsDown;
+        } 
+        else {
+            // ПЕРВЫЙ ВХОД (entryPoint === null)
+            // Игрок входит с глобальной карты -> должен появиться у лестницы ВВЕРХ (выход)
+            if (MapModule.stairsUp) targetPos = MapModule.stairsUp;
         }
+
+        // Применяем позицию
+        player.x = targetPos.x;
+        player.y = targetPos.y;
+        
+        // Отодвигаем игрока на безопасную клетку рядом с лестницей, 
+        // чтобы он не стоял ровно на ней и не активировал переход повторно
+        const safePos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : player;
+        player.x = safePos.x;
+        player.y = safePos.y;
     
         // 5. Спавн врагов, предметов и боссов
         spawnDungeonEntities(gx, gy, depth);
