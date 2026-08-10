@@ -86,7 +86,7 @@ const MapModule = (function() {
         return pos;
     }
 
-    // Генерация или восстановление лестниц для уровня (ИСПРАВЛЕННАЯ)
+    // Генерация или восстановление лестниц для уровня (ИСПРАВЛЕННАЯ ВЕРСИЯ)
     function generateStaircase(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
         let cached = stairsCache.get(cacheKey);
@@ -96,13 +96,14 @@ const MapModule = (function() {
             const upValid = cached.stairsUp && currentMapData[cached.stairsUp.y]?.[cached.stairsUp.x] === 0;
             const downValid = cached.stairsDown && currentMapData[cached.stairsDown.y]?.[cached.stairsDown.x] === 0;
 
+            // Если кэш валиден - используем его и выходим
             if (upValid && (currentDungeonType.name === 'city' || downValid)) {
                 stairsUp = cached.stairsUp;
                 stairsDown = cached.stairsDown;
                 return;
             }
-            // Если кэш невалиден, удаляем его и перегенерируем
-            stairsCache.delete(cacheKey);
+            // ВАЖНО: Не удаляем кэш сразу! Пытаемся восстановить частично
+            // stairsCache.delete(cacheKey); // <--- УБРАЛИ УДАЛЕНИЕ
         }
 
         // 2. Определение stairsUp (СВЯЗЬ С ПРЕДЫДУЩИМ УРОВНЕМ)
@@ -116,7 +117,7 @@ const MapModule = (function() {
                 
                 // Проверка валидности: вдруг карта изменилась и там теперь стена?
                 if (currentMapData[stairsUp.y]?.[stairsUp.x] !== 0) {
-                    console.warn(`⚠️ [Stairs] Лестница вверх на ур.${depth} попала в стену! Ищу безопасное место рядом.`);
+                    console.warn(`⚠️ [Stairs] Лестница вверх на ур.${depth} попала в стену! Ищу безопасное место РЯДОМ.`);
                     // Ищем место РЯДОМ с предполагаемым входом, а не где попало
                     stairsUp = getSafePosNearby(stairsUp, 5);
                 }
@@ -129,7 +130,7 @@ const MapModule = (function() {
                 stairsUp = findRandomFloor(null, false, restoreSeed);
             }
         } else {
-            // Уровень 0: лестница вверх ведет на поверхность (случайная, но детерминированная)
+            // Уровень 0: лестница вверх ведет на поверхность
             stairsUp = findRandomFloor(null, false, `up_surface_${gx}_${gy}`);
         }
 
@@ -141,7 +142,7 @@ const MapModule = (function() {
             stairsDown = null;
         }
 
-        // 4. Сохраняем в кэш
+        // 4. Сохраняем в кэш (перезаписываем, если были изменения)
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
     }
 
