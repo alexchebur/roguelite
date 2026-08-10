@@ -24,7 +24,8 @@ const GLOBAL_CONFIG = {
 const GLOBAL_TEXT_QUESTS_ROSTER = [
     'twine/refugees.html',
     'twine/werewolf.html',
-    'twine/dragon.html'
+    'twine/dragon.html',
+    'twine/Scroll.html'
 ];
 // === ГРАНИЦЫ МИРА ===
 const WORLD_BORDER_RADIUS = 1000; // Радиус "материка"
