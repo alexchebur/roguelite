@@ -2449,22 +2449,28 @@ function updateQuestCompass() {
         }
     }
 
-    // === СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ПОКИДАНИИ УРОВНЯ ===
     function saveCurrentDungeonState() {
         if (window.gameMode === 'dungeon' && currentDepth >= 0) {
             const cacheKey = `${dungeonX}_${dungeonY}_${currentDepth}`;
             const aliveEnemies = enemies.filter(e => e.hp > 0);
-            
+        
             let bossDefeated = false;
             if (currentDungeonTypeName === 'boss') {
                 const bossAlive = aliveEnemies.some(e => e.isBoss);
                 bossDefeated = !bossAlive;
             }
-            
+        
+            // === НОВОЕ: Сохраняем позиции лестниц ===
+            const savedStairs = {
+                up: MapModule.stairsUp ? { ...MapModule.stairsUp } : null,
+                down: MapModule.stairsDown ? { ...MapModule.stairsDown } : null
+            };
+
             dungeonClearState.set(cacheKey, {
                 enemies: aliveEnemies.length,
-                bossDefeated: bossDefeated
-            });
+                bossDefeated: bossDefeated,
+                stairs: savedStairs // <--- ДОБАВЛЕНО
+           });
         }
     }
 
