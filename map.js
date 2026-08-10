@@ -181,17 +181,18 @@ const MapModule = (function() {
         
         let startPos;
         
-        // ЛОГИКА ВЫБОРА СТАРТОВОЙ ПОЗИЦИИ
+        // === ИСПРАВЛЕННАЯ ЛОГИКА ТОЧЕК ВХОДА ===
         if (entryPoint === 'down') {
+            // Игрок спустился вниз -> появляется у лестницы ВВЕРХ (чтобы мог подняться обратно)
             startPos = getSafePosNearby(stairsUp, 5);
         } else if (entryPoint === 'up') {
-            // Если вход сверху (из города или с поверхности), стартуем у stairsUp
-            startPos = getSafePosNearby(stairsUp, 5);
+            // Игрок поднялся вверх -> появляется у лестницы ВНИЗ (чтобы мог спуститься обратно)
+            startPos = getSafePosNearby(stairsDown, 5);
         } else {
-            // Стандартный вход (первый заход в данж)
+            // Стандартный вход (первый заход в данж с поверхности)
             const genStart = result.startPos;
             if (genStart && currentMapData[genStart.y]?.[genStart.x] === 0) {
-                 startPos = getSafePosNearby(stairsUp, 5);
+                 startPos = genStart;
             } else {
                  startPos = getSafePosNearby(stairsUp, 5);
             }
