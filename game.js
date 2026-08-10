@@ -2059,20 +2059,13 @@ function updateQuestCompass() {
         if (!player) {
             player = EntityModule.createPlayer(startPos.x, startPos.y);
         } else {
-            // Если вход через лестницу - ставим к соответствующей лестнице
-            if (entryPoint === 'up' && MapModule.stairsUp) {
-                player.x = MapModule.stairsUp.x;
-                player.y = MapModule.stairsUp.y;
-            } else if (entryPoint === 'down' && MapModule.stairsDown) {
-                player.x = MapModule.stairsDown.x;
-                player.y = MapModule.stairsDown.y;
-            } else {
-                // Первый вход или телепорт - используем startPos от генератора
-                player.x = startPos.x;
-                player.y = startPos.y;
-            }
+            // Используем startPos, который уже корректно рассчитан в map.js
+            // в зависимости от entryPoint
+            player.x = startPos.x;
+            player.y = startPos.y;
             
-            // Отодвигаем игрока на безопасную клетку, чтобы не стоять ровно на лестнице
+            // Отодвигаем игрока на безопасную клетку, чтобы он не стоял ровно на лестнице
+            // и не активировал переход повторно в том же ходу
             const safePos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : player;
             player.x = safePos.x;
             player.y = safePos.y;
