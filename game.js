@@ -2019,6 +2019,7 @@ function updateQuestCompass() {
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     // === ЗАГРУЗКА ПОДЗЕМЕЛЬЯ ===
     function loadDungeonLevel(gx, gy, depth, dungeonType, dungeonName, entryPoint = null) {
+        // 1. Сохраняем состояние ТЕКУЩЕГО уровня перед переходом
         saveCurrentDungeonState();
         
         // Очистка текущих сущностей
@@ -2034,54 +2035,91 @@ function updateQuestCompass() {
             visibleTraps.clear();
         }
 
-        const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType, entryPoint);
-    
+        // Обновляем глобальные переменные уровня ДО генерации
         dungeonX = gx;
         dungeonY = gy;
         currentDepth = depth;
         currentDungeonTypeName = dungeonType;
         currentDungeonFullName = dungeonName;
+
+        // 2. Генерация карты
+        const startPos = MapModule.generateWithType(gx, gy, depth, dungeonType, entryPoint);
     
-        // 1. Сначала обновляем позицию игрока!
-        if (!player) player = EntityModule.createPlayer(startPos.x, startPos.y);
-        else {
-            player.x = startPos.x;
-            player.y = startPos.y;
+        // 3. === ВОССТАНОВЛЕНИЕ ЛЕСТНИЦ ИЗ СОХРАНЕНИЙ (ФИКС БАГА С ПЕРЕХОДАМИ) ===
+        const cacheKey = `${gx}_${gy}_${depth}`;
+        const savedState = dungeonClearState.get(cacheKey);
+        
+        if (savedState && savedState.stairs) {
+            // Восстанавливаем старые позиции лестниц, чтобы они совпадали с предыдущими переходами
+            if (savedState.stairs.up) MapModule.stairsUp = savedState.stairs.up;
+            if (savedState.stairs.down) MapModule.stairsDown = savedState.stairs.down;
+        }
+
+        // 4. Установка позиции игрока
+        if (!player) {
+            player = EntityModule.createPlayer(startPos.x, startPos.y);
+        } else {
+            // Если вход через лестницу - ставим к соответствующей лестнице
+            if (entryPoint === 'up' && MapModule.stairsUp) {
+                player.x = MapModule.stairsUp.x;
+                player.y = MapModule.stairsUp.y;
+            } else if (entryPoint === 'down' && MapModule.stairsDown) {
+                player.x = MapModule.stairsDown.x;
+                player.y = MapModule.stairsDown.y;
+            } else {
+                // Первый вход или телепорт - используем startPos от генератора
+                player.x = startPos.x;
+                player.y = startPos.y;
+            }
+            
+            // Отодвигаем игрока на безопасную клетку, чтобы не стоять ровно на лестнице
+            const safePos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : player;
+            player.x = safePos.x;
+            player.y = safePos.y;
         }
     
+        // 5. Спавн врагов, предметов и боссов
         spawnDungeonEntities(gx, gy, depth);
 
         // === ГЕНЕРАЦИЯ ЛОВУШЕК ===
-        // Генерируем до 8-10 ловушек, чем глубже, тем больше шанс максимума
         const maxTraps = Math.min(15, 5 + depth/3);
         if (typeof EntityModule.spawnTraps === 'function') {
-            traps = EntityModule.spawnTraps(MapModule.currentMapData, startPos, maxTraps, depth);
+            traps = EntityModule.spawnTraps(MapModule.currentMapData, player, maxTraps, depth);
             if (traps.length > 0) {
                 RenderModule.log(`⚠️ Вы чувствуете запах опасности... здесь много ловушек.`, "info");
             }
         }
 
-        // 2. И ТОЛЬКО ТЕПЕРЬ проверяем квесты и спавним предметы
-        // Теперь player.x и player.y указывают на реальное положение на новом уровне
+        // 6. Проверка квестов и спавн квестовых предметов
         if (typeof QuestSystemModule !== 'undefined') {
             activeQuests.forEach(q => {
-                // Пропускаем уже выполненные или неактивные квесты
                 if (!q.isActive || q.isCompleted) return;
 
-                // 1. Спавн предмета для FETCH
+                // 1. Спавн предмета для FETCH (С ПРОВЕРКОЙ ГЛУБИНЫ И ДУБЛИКАТОВ)
                 if (q.type === 'FETCH' && 
                     q.target.targetX === gx && 
                     q.target.targetY === gy) {
-                    spawnQuestItem(q);
+                    
+                    // Проверка глубины: спавним только если достигли нужного уровня
+                    const reqDepth = q.target.recommendedDepth || q.target.targetDepth || 0;
+                    const isDeepEnough = !reqDepth || ((currentDepth + 1) >= reqDepth);
+                    
+                    // Проверка дубликатов: если уникальный предмет уже у игрока - не спавним
+                    let hasItem = false;
+                    if (q.target.uniqueId) {
+                        hasItem = player.inventory.some(i => i.uniqueId === q.target.uniqueId);
+                    }
+
+                    if (isDeepEnough && !hasItem) {
+                        spawnQuestItem(q);
+                    }
                 }
 
                 // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
                 if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
                     q.target.itemType === 'book') {
                     
-                    // Считаем, сколько книг уже есть на уровне (чтобы не дублировать при перезаходе)
                     const existingBooks = items.filter(i => i.type === 'book' && i.isQuestItem).length;
-                    // Сколько всего нужно для квеста (но не более 3 за раз, чтобы не захламлять)
                     const targetCount = Math.min(q.maxProgress, 3);
                     
                     if (existingBooks < targetCount) {
@@ -2121,6 +2159,7 @@ function updateQuestCompass() {
             });
         }
     
+        // 7. Финальная настройка окружения
         currentLocData = {
             fullName: `${dungeonName} [Уровень ${depth + 1}]`,
             description: `Подземелье типа ${dungeonType}, уровень ${depth + 1}`,
