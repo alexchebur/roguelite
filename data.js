@@ -335,6 +335,15 @@ const DataModule = (function() {
             color: "#00ffff", // Циан
             desc: "Пахнет озоном и древней магией."
         },
+
+        {
+            id: "unique_item_scroll_citadel",
+            baseType: "scroll_citadel",
+            baseName: "Свиток Низвержения",
+            uniquePrefix: "Последний",
+            color: "#f1c40f", // Золотой
+            desc: "Дар призрака Реммнара-Книжника."
+        },
         // В data.js, внутри массива UNIQUE_ITEM_TEMPLATES
         {
             id: "unique_armor_stone_boots",
