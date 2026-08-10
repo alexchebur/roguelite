@@ -86,11 +86,12 @@ const MapModule = (function() {
         return pos;
     }
 
-    // Генерация или восстановление лестниц для уровня
+    // Генерация или восстановление лестниц для уровня (ИСПРАВЛЕННАЯ)
     function generateStaircase(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
         let cached = stairsCache.get(cacheKey);
 
+        // 1. Попытка использовать полный кэш
         if (cached) {
             const upValid = cached.stairsUp && currentMapData[cached.stairsUp.y]?.[cached.stairsUp.x] === 0;
             const downValid = cached.stairsDown && currentMapData[cached.stairsDown.y]?.[cached.stairsDown.x] === 0;
@@ -100,32 +101,47 @@ const MapModule = (function() {
                 stairsDown = cached.stairsDown;
                 return;
             }
+            // Если кэш невалиден, удаляем его и перегенерируем
             stairsCache.delete(cacheKey);
         }
 
-        // 1. Определяем stairsUp
+        // 2. Определение stairsUp (СВЯЗЬ С ПРЕДЫДУЩИМ УРОВНЕМ)
         if (depth > 0) {
             const prevKey = `${gx}_${gy}_${depth - 1}`;
             const prevCached = stairsCache.get(prevKey); 
-            if (prevCached?.stairsDown) {
+            
+            // ПРИОРИТЕТ №1: Берем точные координаты stairsDown предыдущего уровня
+            if (prevCached && prevCached.stairsDown) {
                 stairsUp = prevCached.stairsDown;
+                
+                // Проверка валидности: вдруг карта изменилась и там теперь стена?
                 if (currentMapData[stairsUp.y]?.[stairsUp.x] !== 0) {
-                    stairsUp = findRandomFloor(null, false, `up_fb_${gx}_${gy}_${depth}`);
+                    console.warn(`⚠️ [Stairs] Лестница вверх на ур.${depth} попала в стену! Ищу безопасное место рядом.`);
+                    // Ищем место РЯДОМ с предполагаемым входом, а не где попало
+                    stairsUp = getSafePosNearby(stairsUp, 5);
                 }
             } else {
-                stairsUp = findRandomFloor(null, false, `up_${gx}_${gy}_${depth}`);
+                // ПРИОРИТЕТ №2: Кэш предыдущего уровня потерян.
+                // Используем детерминированный сид для восстановления позиции,
+                // чтобы она была одинаковой даже без кэша.
+                console.warn(`⚠️ [Stairs] Кэш для ур.${depth-1} не найден. Восстанавливаю stairsUp детерминировано.`);
+                const restoreSeed = `restore_up_${gx}_${gy}_${depth}`;
+                stairsUp = findRandomFloor(null, false, restoreSeed);
             }
         } else {
-            stairsUp = findRandomFloor(null, false, `up_${gx}_${gy}_${depth}`);
+            // Уровень 0: лестница вверх ведет на поверхность (случайная, но детерминированная)
+            stairsUp = findRandomFloor(null, false, `up_surface_${gx}_${gy}`);
         }
 
-        // 2. Определяем stairsDown
+        // 3. Определение stairsDown
         if (currentDungeonType.name !== 'city') {
+            // Исключаем зону вокруг stairsUp, чтобы не было лестниц вплотную
             stairsDown = findRandomFloor(stairsUp, true, `down_${gx}_${gy}_${depth}`);
         } else {
             stairsDown = null;
         }
 
+        // 4. Сохраняем в кэш
         stairsCache.set(cacheKey, { stairsUp, stairsDown });
     }
 
