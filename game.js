@@ -2967,10 +2967,7 @@ function updateQuestCompass() {
         }
     }
 
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Финальная версия) ===
-    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (Обновленная с поддержкой Боссов) ===
+    // === ПРОВЕРКА СМЕРТИ ВРАГОВ (ИСПРАВЛЕННАЯ ДЛЯ BOSS_HUNT) ===
     function checkDeath() {
         const deadEnemies = enemies.filter(e => e.hp <= 0);
         
@@ -2988,22 +2985,31 @@ function updateQuestCompass() {
 
                     // === СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ BOSS_HUNT ===
                     if (q.type === 'BOSS_HUNT') {
-                        // Проверяем, что это именно тот босс (по имени из квеста)
-                        // И что мы находимся в правильном подземелье
-                        if (enemy.isBoss && 
-                            enemy.name === q.target.enemyName && 
-                            dungeonX === q.target.targetX && 
-                            dungeonY === q.target.targetY) {
-                            
-                            q.progress++;
-                            q.isCompleted = true; // Босс всегда один, поэтому сразу завершаем
-                            
-                            RenderModule.log(`🏆 БОСС ПОВЕРЖЕН! Квест "${q.target.enemyName}" выполнен!`, "event");
-                            RenderModule.updateQuestBriefing(q); // Обновляем футер на "Награда"
-                            updateQuestCompass(); // Переключаем стрелку на город выдачи
-                            
-                            // Сохраняем имя убитого босса в память уровня, чтобы он не респаунился с другим именем
-                            saveBossNameToCache(dungeonX, dungeonY, currentDepth, enemy.name);
+                        // Проверяем локацию
+                        const isCorrectLocation = (dungeonX === q.target.targetX && dungeonY === q.target.targetY);
+                        
+                        if (isCorrectLocation) {
+                            // Условие выполнения:
+                            // 1. Либо убит именно БОСС с нужным именем
+                            // 2. Либо убит ОБЫЧНЫЙ ВРАГ с нужным именем (фолбэк для квестов на мобов)
+                            const isTargetBoss = enemy.isBoss && enemy.name === q.target.enemyName;
+                            const isTargetMob = !enemy.isBoss && enemy.name === q.target.enemyName;
+
+                            if (isTargetBoss || isTargetMob) {
+                                q.progress++;
+                                q.isCompleted = true; 
+                                
+                                const msgType = enemy.isBoss ? "🏆 БОСС ПОВЕРЖЕН!" : "💀 Цель ликвидирована!";
+                                RenderModule.log(`${msgType} Квест "${q.target.enemyName}" выполнен!`, "event");
+                                
+                                RenderModule.updateQuestBriefing(q); 
+                                updateQuestCompass(); 
+                                
+                                // Сохраняем в кэш только если это был реальный босс
+                                if (enemy.isBoss) {
+                                    saveBossNameToCache(dungeonX, dungeonY, currentDepth, enemy.name);
+                                }
+                            }
                         }
                     }
                     // >>> СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ СЮЖЕТНОГО BOUNTY <<<
@@ -3012,7 +3018,6 @@ function updateQuestCompass() {
                             q.progress++;
                             RenderModule.log(`🏹 Охота: ${q.target.enemyName} (${q.progress}/${q.maxProgress})`, "info");
                             
-                            // >>> ДОБАВИТЬ ЭТУ СТРОКУ ДЛЯ ОБНОВЛЕНИЯ ФУТЕРА <<<
                             RenderModule.updateQuestBriefing(q); 
                             
                             if (q.progress >= q.maxProgress) {
@@ -3023,7 +3028,7 @@ function updateQuestCompass() {
                             return; // Прерываем итерацию для этого квеста
                         }
                     }
-                    // Стандартная проверка для остальных квестов
+                    // Стандартная проверка для остальных квестов (HUNT, FETCH и т.д.)
                     else {
                         const eventData = {
                             type: 'kill',
