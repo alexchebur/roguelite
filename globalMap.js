@@ -373,6 +373,7 @@ function generatePOIs(rand, cx, cy, tiles) {
                     const questFile = GLOBAL_TEXT_QUESTS_ROSTER[questIndex];
                     globalQuestIndex++;
                     pois.push({ x: globalX, y: globalY, type: 'global_scroll', questFile: questFile });
+                    console.log(`📜 [GlobalMap] Свиток создан: X=${globalX}, Y=${globalY}, Квест: ${questFile}`);
                 }
             }
         }
