@@ -2777,16 +2777,23 @@ function updateQuestCompass() {
                             });
                             
                             if (next) {
+                                // === НОВАЯ ПРОВЕРКА: Игрок как препятствие ===
+                                const isBlockedByPlayer = (next.x === player.x && next.y === player.y);
                                 const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
                                 const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
                                 
-                                if (!isBlockedByNpc && !isBlockedByEnemy) {
+                                if (!isBlockedByNpc && !isBlockedByEnemy && !isBlockedByPlayer) {
                                     e.x = next.x;
                                     e.y = next.y;
+                                } 
+                                else if (isBlockedByPlayer) {
+                                    // Если A* ведет прямо на игрока — атакуем вместо движения
+                                    CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                                    checkDeath();
                                 }
                             }
                         }
-                    } 
+                    }
                     // Если игрок далеко (>20 в крепости или >8 в обычном данже)
                     else if (isFortress) {
                         // В крепости, если игрок далеко, враги могут стоять на страже или медленно бродить
