@@ -1960,6 +1960,10 @@ function updateQuestCompass() {
     // === ЗАГРУЗКА ГОРОДА ===
     // === ЗАГРУЗКА ГОРОДА ===
     function loadCityLevel(gx, gy, cityName) {
+        traps = []; 
+        if (typeof visibleTraps !== 'undefined') {
+            visibleTraps.clear();
+        }        
         enemies = []; 
         items = [];
         npcs = [];
