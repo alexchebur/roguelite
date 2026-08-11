@@ -24,6 +24,7 @@ const GLOBAL_CONFIG = {
 const GLOBAL_TEXT_QUESTS_ROSTER = [
     'twine/refugees.html',
     'twine/werewolf.html',
+    'twine/dead_soldier.html',
     'twine/dragon.html',
     'twine/Scroll.html'
 ];
