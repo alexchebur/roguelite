@@ -11,7 +11,8 @@ const NpcGeneratorModule = (function() {
         'twine/Quack of Duckness.html',
         // Сюда можно добавить другие файлы, когда они появятся:
         // 'The_Haunted_Mansion.html',
-        'twine/RingOfPower.html'
+        'twine/RingOfPower.html',
+        'twine/street_murder.html'
     ];
 
     // Базы данных
