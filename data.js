@@ -344,6 +344,16 @@ const DataModule = (function() {
             color: "#f1c40f", // Золотой
             desc: "Дар призрака Реммнара-Книжника."
         },
+
+        {
+            id: "unique_misc_jade_medallion",
+            baseType: "misc",
+            baseName: "Медальон-глаз",
+            uniquePrefix: "Яшмовый",
+            color: "#f1c40f", // Золотой
+            desc: "Трофей с пленного солдата Безмолвной армии."
+        },
+
         // В data.js, внутри массива UNIQUE_ITEM_TEMPLATES
         {
             id: "unique_armor_stone_boots",
