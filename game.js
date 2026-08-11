@@ -705,7 +705,8 @@ const GameModule = (function() {
             if (player && player.hp > 0) {
                 const healAmount = 100;
                 player.hp = Math.min(player.maxHp, player.hp + healAmount);
-                
+                // === НОВОЕ: Полное восстановление выносливости ===
+                player.stamina = player.maxStamina;                
                 // Добавляем золото
                 player.gold += 1000;
 
@@ -721,6 +722,7 @@ const GameModule = (function() {
                 player.hp = player.maxHp;
                 
                 RenderModule.log(`💊 ЧИТ: Восстановлено ${healAmount} HP!`, "event");
+                RenderModule.log(`⚡ ЧИТ: Выносливость полностью восстановлена!`, "event");
                 RenderModule.log(`💰 ЧИТ: Получено 1000 золотых!`, "loot");
                 RenderModule.log(`🆙 ЧИТ: Уровень повышен до ${player.level}! Характеристики обновлены.`, "event");
                 
