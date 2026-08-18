@@ -12,6 +12,7 @@ const NpcGeneratorModule = (function() {
         // Сюда можно добавить другие файлы, когда они появятся:
         // 'The_Haunted_Mansion.html',
         'twine/RingOfPower.html',
+        'twine/Order.html',
         'twine/street_murder.html'
     ];
 
