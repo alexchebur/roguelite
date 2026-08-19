@@ -98,6 +98,8 @@ const SPRITE_REGISTRY = {
     'ITEM_BOOK':             { char: '?',   tile: { file: 'item_sprites', x: 3, y: 4 }, desc: 'Книга' },
     'ITEM_SCROLL':          { char: '&',   tile: { file: 'item_sprites', x: 0, y: 4 }, desc: 'Свиток' },
     'ITEM_BED':            { char: '8',   tile: { file: 'terrain_sprites', x: 18, y: 0 }, desc: 'Кровать' }, // Если x:19 нет в вашем PNG, поменяйте на любую свободную клетку
+    // === СНАРЯД (для анимации выстрелов) ===
+    'ITEM_PROJECTILE': { char: '§', tile: { file: 'item_sprites', x: 1, y: 0 }, desc: 'Снаряд' },
 
     // === БОССЫ (2x2 спрайта) ===
     // Древний Дракон (начинается с x:0, y:18)
