@@ -3104,26 +3104,45 @@ function updateQuestCompass() {
                 // Попытка выстрела
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
                 
-                // Если выстрел прошел успешно (боеприпасы есть, цель в радиусе и т.д.)
-                // Добавляем проверку killed, так как rangedAttack возвращает true при убийстве
-                if (killed || (weapon.currentAmmo >= 0 && Math.abs(player.x - enemy.x) + Math.abs(player.y - enemy.y) <= weapon.range)) {
-                    
-                    // === АНИМАЦИЯ СНАРЯДА ===
-                    // Добавляем эффект полета снаряда от игрока к врагу
-                    RenderModule.addProjectileEffect(player.x, player.y, enemy.x, enemy.y, 300);
-                    
-                    // Запускаем цикл перерисовки для анимации
-                    RenderModule.triggerAnimation(350);
+                // Проверяем, прошел ли выстрел успешно. 
+                // Условие: либо убит враг, либо (патроны есть И цель в радиусе И нет препятствий).
+                // Но проще всего проверить, что функция вернула true (убийство) или что патроны не закончились прямо сейчас.
+                // Однако rangedAttack уже выводит лог "Нет боеприпасов", если их нет.
+                
+                // Лучший способ: проверять наличие патронов ПЕРЕД анимацией или смотреть на результат.
+                // Так как rangedAttack уменьшает патроны только при успехе, проверим текущее состояние.
+                
+                // Если выстрел был успешным (killed === true) ИЛИ если после вызова у оружия остались патроны 
+                // (значит выстрел состоялся, просто не убил), то запускаем анимацию.
+                
+                // Но есть нюанс: если игрок кликнул на врага далеко, rangedAttack вернет false и выведет лог.
+                // Поэтому надежнее всего добавить флаг успеха внутри самого rangedAttack или проверить дистанцию/препятствия здесь.
+                
+                // Давайте сделаем так: запустим анимацию, только если выстрел реально произошел.
+                // Мы можем проверить это по дистанции и наличию препятствий, как это делает combat.js
+                
+                const dist = Math.abs(player.x - enemy.x) + Math.abs(player.y - enemy.y);
+                const hasLineOfSight = (typeof CombatModule !== 'undefined' && CombatModule.hasLineOfSight) 
+                    ? CombatModule.hasLineOfSight(player.x, player.y, enemy.x, enemy.y) 
+                    : true; // Фолбэк, если функция не экспортирована
 
-                    if (killed) {
-                        checkDeath(); 
-                    }
-                    
-                    moveNpcs();
-                    moveEnemies();
-                    renderFrame();
+                const canShoot = weapon.currentAmmo > 0 && dist <= weapon.range && hasLineOfSight;
+
+                if (canShoot) {
+                    // === АНИМАЦИЯ СНАРЯДА ===
+                    RenderModule.addProjectileEffect(player.x, player.y, enemy.x, enemy.y, 300);
+                    RenderModule.triggerAnimation(350);
                 }
+
+                if (killed) {
+                    checkDeath(); 
+                }
+                
+                moveNpcs();
+                moveEnemies();
+                renderFrame();
             } 
+
             // Логика осмотра (если оружие ближнего боя или его нет)
             else {
                 if (typeof RenderModule.updateInspector === 'function') {
