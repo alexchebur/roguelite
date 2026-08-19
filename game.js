@@ -3101,17 +3101,28 @@ function updateQuestCompass() {
             
             // Логика дистанционной атаки
             if (weapon && !weapon.meleeType) {
+                // Попытка выстрела
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
                 
-                if (killed) {
-                    // ВАЖНО: Не фильтруем массив вручную! checkDeath() сделает это сам,
-                    // предварительно выдав лут, опыт и проверив квесты.
-                    checkDeath(); 
+                // Если выстрел прошел успешно (боеприпасы есть, цель в радиусе и т.д.)
+                if (killed || (weapon.currentAmmo >= 0 && Math.abs(player.x - enemy.x) + Math.abs(player.y - enemy.y) <= weapon.range)) {
+                    
+                    // === АНИМАЦИЯ СНАРЯДА ===
+                    // Добавляем эффект полета снаряда от игрока к врагу
+                    RenderModule.addProjectileEffect(player.x, player.y, enemy.x, enemy.y, 300);
+                    
+                    // Запускаем цикл перерисовки для анимации
+                    RenderModule.triggerAnimation(350);
+
+                    if (killed) {
+                        checkDeath(); 
+                    }
+                    
+                    moveNpcs();
+                    moveEnemies();
+                    // renderFrame() вызывается внутри triggerAnimation, но можно оставить и здесь для надежности
+                    renderFrame();
                 }
-                
-                moveNpcs();
-                moveEnemies();
-                renderFrame();
             } 
             // Логика осмотра (если оружие ближнего боя или его нет)
             else {
@@ -3122,6 +3133,38 @@ function updateQuestCompass() {
             }
             return;
         }
+
+        // 3. NPC (Диалог или Квест) - оставил как было, чтобы не ломать остальную логику
+        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
+        if (npc) {
+             if (npc.isQuestGiver) {
+                 tryGiveQuest(npc);
+             } else {
+                 if (typeof RenderModule.updateInspector === 'function') {
+                     RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
+                 }
+                 RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
+             }
+             return;
+        }
+
+        // 4. Предметы
+        const item = items.find(i => i.x === wx && i.y === wy);
+        if (item) {
+             let details = " ";
+             if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
+             if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
+             if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(`🎒 ${item.name}`, details, "loot");
+             }
+            RenderModule.log(`Предмет: ${item.name}`, "loot");
+            return;
+        }
+
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
+        }
+    }
 
         // 3. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
