@@ -118,9 +118,9 @@ const DataModule = (function() {
         // === УРОВЕНЬ 10+ ===
         { name: "Тролль", char: getChar('ENEMY_TROLL'), color: "#4CAF50", hp: [70, 100], atk: [8, 12], def: [2, 3], lootType: "gold", speed: 9, range: 1 },
         // Лич: магическая атака, дальность 8
-        { name: "Лич", char: getChar('ENEMY_LICH'), color: "#7B1FA2", hp: [60, 85], atk: [10, 15], def: [2, 3], lootType: "weapon", speed: 10, range: 8 },
+        { name: "Лич", char: getChar('ENEMY_LICH'), color: "#7B1FA2", hp: [60, 85], atk: [10, 12], def: [2, 3], lootType: "weapon", speed: 10, range: 5 },
         { name: "Голем", char: getChar('ENEMY_GOLEM'), color: "#90A4AE", hp: [100, 150], atk: [10, 14], def: [6, 10], lootType: "gold", speed: 8, range: 1 },
-        { name: "Дракон", char: getChar('ENEMY_DRAGON'), color: "#FF5722", hp: [90, 130], atk: [12, 18], def: [4, 7], lootType: "weapon", speed: 10, range: 1 } // Дракон пока бьет огнем вблизи
+        { name: "Дракон", char: getChar('ENEMY_DRAGON'), color: "#FF5722", hp: [90, 130], atk: [12, 18], def: [4, 7], lootType: "weapon", speed: 10, range: 10 } // Дракон пока бьет огнем вблизи
     ];
 
     const ITEM_TYPES = [
