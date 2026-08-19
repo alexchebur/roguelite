@@ -106,6 +106,7 @@ const TilesetRenderer = (function() {
         '?': { file: 'item_sprites', x: 3, y: 4 }, // ITEM_BOOK
         '$': { file: 'item_sprites', x: 13, y: 3 },  // Золото
         '&': { file: 'item_sprites', x: 0, y: 4 },
+        '§': { file: 'item_sprites', x: 1, y: 0 }, // Снаряд (projectile)
         '8': { file: 'terrain_sprites', x: 18, y: 0 } // Кровать
     };
 
