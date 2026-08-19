@@ -36,7 +36,10 @@ const TacticalBattleModule = (function() {
             realPlayer.hp = playerUnit.hp;
             RenderModule.updateUI(realPlayer, null, null);
         }
-
+        // 6.5. Запуск анимации снарядов (если были выстрелы)
+        if (typeof RenderModule !== 'undefined' && RenderModule.hasActiveEffects && RenderModule.hasActiveEffects()) {
+            RenderModule.triggerAnimation(350);
+        }
         // 7. Рендер
         RenderModule.requestRedraw();
     }
