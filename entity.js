@@ -99,7 +99,10 @@ const EntityModule = (function() {
             
             // Новые поля для механики ходов:
             speed: speed,      
-            energy: startEnergy 
+            energy: startEnergy,
+            
+            // === НОВОЕ: Дальность атаки (копируем из шаблона или ставим 1 по умолчанию) ===
+            range: template.range || 1
         };
     }
 
