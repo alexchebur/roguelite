@@ -2648,6 +2648,7 @@ function updateQuestCompass() {
         const PLAYER_SPEED_THRESHOLD = 10;
         const isFortress = (currentDungeonTypeName === 'fortress');
         window._cachedPassives = null; // Сбрасываем кэш перед циклом
+        
         // === НОВОЕ: Проверка эффекта замедления один раз за кадр ===
         let hasEnemySlow = false;
         if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
@@ -2666,11 +2667,9 @@ function updateQuestCompass() {
             // === РАСЧЕТ ЭФФЕКТИВНОЙ СКОРОСТИ ===
             let effectiveSpeed = e.speed;
             if (hasEnemySlow) {
-                // Уменьшаем скорость на 1, но не ниже 1 (чтобы враги не останавливались совсем)
                 effectiveSpeed = Math.max(1, e.speed - 3);
             }
 
-            // Начисляем энергию с учетом замедления
             e.energy += effectiveSpeed;
 
             if (e.energy >= PLAYER_SPEED_THRESHOLD) {
@@ -2682,18 +2681,18 @@ function updateQuestCompass() {
                 // === ПРОВЕРКА ПРОКЛЯТОГО КОЛЬЦА ===
                 let isCursedAttraction = false;
                 if (typeof EffectSystemModule !== 'undefined' && typeof EffectSystemModule.getPassiveEffects === 'function') {
-                    // Кэшируем результат, чтобы не вызывать функцию для каждого врага отдельно
-                    // (в идеале вынести проверку из цикла forEach, но для простоты оставим здесь, 
-                    // т.к. getPassiveEffects очень легкая функция)
                     if (!window._cachedPassives) {
                         window._cachedPassives = EffectSystemModule.getPassiveEffects(player);
                     }
                     isCursedAttraction = window._cachedPassives.includes('cursed_attraction');
                 }
-                // ==================================
 
                 // Если есть проклятие - враг видит игрока сквозь стены и на любом расстоянии
                 const inSight = isCursedAttraction || (dist <= aggroRange);
+
+                // === ОПРЕДЕЛЯЕМ ДАЛЬНОСТЬ АТАКИ ВРАГА ===
+                // По умолчанию 1 (ближний бой), если в шаблоне указано другое - берем оттуда
+                const enemyRange = e.range || 1; 
 
                 // === БОССЫ ===
                 if (e.isBoss) {
@@ -2748,7 +2747,6 @@ function updateQuestCompass() {
                                 !MapModule.isWall(nx, ny+1) && 
                                 !MapModule.isWall(nx+1, ny+1)) {
                                 
-                                // Не наступаем на игрока при блуждании
                                 const hitPlayer = (nx === player.x && ny === player.y) || 
                                                   (nx+1 === player.x && ny === player.y) ||
                                                   (nx === player.x && ny+1 === player.y) ||
@@ -2766,11 +2764,32 @@ function updateQuestCompass() {
                         e.x = nextX;
                         e.y = nextY;
                     }
-
                 } 
                 // === ОБЫЧНЫЕ ВРАГИ ===
                 else {
                     if (inSight) {
+                        // === ЛОГИКА ДИСТАНЦИОННОЙ АТАКИ ===
+                        if (dist <= enemyRange) {
+                            // Проверяем линию видимости (LOS), если нет проклятия
+                            const hasLOS = isCursedAttraction || CombatModule.hasLineOfSight(e.x, e.y, player.x, player.y);
+                            
+                            if (hasLOS) {
+                                // Враг атакует, не двигаясь!
+                                
+                                // 1. Анимация снаряда
+                                RenderModule.addProjectileEffect(e.x, e.y, player.x, player.y, 300);
+                                RenderModule.triggerAnimation(350);
+
+                                // 2. Нанесение урона
+                                CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
+                                checkDeath();
+                                
+                                // Прерываем движение, так как ход потрачен на выстрел
+                                return; 
+                            }
+                        }
+
+                        // === ЛОГИКА ДВИЖЕНИЯ (если не удалось выстрелить) ===
                         if (dist === 1) {
                             CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                             checkDeath();
@@ -2783,7 +2802,6 @@ function updateQuestCompass() {
                             });
                             
                             if (next) {
-                                // === НОВАЯ ПРОВЕРКА: Игрок как препятствие ===
                                 const isBlockedByPlayer = (next.x === player.x && next.y === player.y);
                                 const isBlockedByNpc = window.currentCityNpcs && window.currentCityNpcs.some(n => n.x === next.x && n.y === next.y);
                                 const isBlockedByEnemy = enemies.some(other => other !== e && other.hp > 0 && other.x === next.x && other.y === next.y);
@@ -2793,7 +2811,6 @@ function updateQuestCompass() {
                                     e.y = next.y;
                                 } 
                                 else if (isBlockedByPlayer) {
-                                    // Если A* ведет прямо на игрока — атакуем вместо движения
                                     CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                                     checkDeath();
                                 }
@@ -2802,7 +2819,6 @@ function updateQuestCompass() {
                     }
                     // Если игрок далеко (>20 в крепости или >8 в обычном данже)
                     else if (isFortress) {
-                        // В крепости, если игрок далеко, враги могут стоять на страже или медленно бродить
                         if (Math.random() < 0.1) {
                              const dirs = [{dx:0, dy:-1}, {dx:0, dy:1}, {dx:-1, dy:0}, {dx:1, dy:0}];
                              const dir = dirs[Math.floor(Math.random() * dirs.length)];
