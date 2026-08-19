@@ -85,9 +85,19 @@ const TacticalBattleModule = (function() {
                 }
             } else if (action.type === 'attack') {
                 if (action.target && action.target.hp > 0) {
+                    // Проверяем, является ли атакующий стрелком
+                    const attackRange = (unit.type && unit.type.range) || unit.range || 1;
+                    const dist = Math.abs(unit.x - action.target.x) + Math.abs(unit.y - action.target.y);
+                    if (attackRange > 1 && dist > 1) {
+                        // Создаём анимацию снаряда
+                        if (typeof RenderModule !== 'undefined' && RenderModule.addTacticalProjectileEffect) {
+                            RenderModule.addTacticalProjectileEffect(unit.x, unit.y, action.target.x, action.target.y, 300);
+                        }
+                    }
                     performAttack(unit, action.target);
                 }
             }
+            
         });
     }
 
