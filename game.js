@@ -3105,6 +3105,7 @@ function updateQuestCompass() {
                 const killed = CombatModule.rangedAttack(player, enemy, weapon, RenderModule.log, RenderModule.updateUI);
                 
                 // Если выстрел прошел успешно (боеприпасы есть, цель в радиусе и т.д.)
+                // Добавляем проверку killed, так как rangedAttack возвращает true при убийстве
                 if (killed || (weapon.currentAmmo >= 0 && Math.abs(player.x - enemy.x) + Math.abs(player.y - enemy.y) <= weapon.range)) {
                     
                     // === АНИМАЦИЯ СНАРЯДА ===
@@ -3120,7 +3121,6 @@ function updateQuestCompass() {
                     
                     moveNpcs();
                     moveEnemies();
-                    // renderFrame() вызывается внутри triggerAnimation, но можно оставить и здесь для надежности
                     renderFrame();
                 }
             } 
@@ -3134,7 +3134,7 @@ function updateQuestCompass() {
             return;
         }
 
-        // 3. NPC (Диалог или Квест) - оставил как было, чтобы не ломать остальную логику
+        // 3. NPC (Диалог или Квест)
         const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
         if (npc) {
              if (npc.isQuestGiver) {
@@ -3146,38 +3146,6 @@ function updateQuestCompass() {
                  RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
              }
              return;
-        }
-
-        // 4. Предметы
-        const item = items.find(i => i.x === wx && i.y === wy);
-        if (item) {
-             let details = " ";
-             if (item.stat) details += `Характеристика: ${item.stat.toUpperCase()} +${item.val}\n`;
-             if (item.effect) details += `Эффект: ${item.effect} (${item.val})`;
-             if (typeof RenderModule.updateInspector === 'function') {
-                RenderModule.updateInspector(`🎒 ${item.name}`, details, "loot");
-             }
-            RenderModule.log(`Предмет: ${item.name}`, "loot");
-            return;
-        }
-
-        if (typeof RenderModule.updateInspector === 'function') {
-            RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
-        }
-    }
-
-        // 3. NPC (Диалог или Квест)
-        const npc = window.currentCityNpcs ? window.currentCityNpcs.find(n => n.x === wx && n.y === wy) : null;
-        if (npc) {
-            if (npc.isQuestGiver) {
-                tryGiveQuest(npc);
-            } else {
-                if (typeof RenderModule.updateInspector === 'function') {
-                    RenderModule.updateInspector(`☺ ${npc.name}`, `"${npc.dialog}"`, "npc");
-                }
-                RenderModule.log(`${npc.name}: "${npc.dialog}"`, "info");
-            }
-            return;
         }
 
         // 4. Предметы
@@ -3198,6 +3166,8 @@ function updateQuestCompass() {
             RenderModule.updateInspector("Пусто", "Здесь ничего нет...", "neutral");
         }
     }
+    
+
     
     // === ОСНОВНОЙ ХОД ИГРЫ (ПОЛНАЯ ВЕРСИЯ С ЛОВУШКАМИ) ===
     function processTurn(dx, dy) {
