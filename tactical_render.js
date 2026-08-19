@@ -105,16 +105,42 @@ const TacticalRenderModule = (function() {
                     
                     // Определение спрайта с приоритетом
                     let spriteChar = '?';
-                    if (unit.char) spriteChar = unit.char;
-                    else if (unit.sprite) spriteChar = unit.sprite;
-                    else if (unit.type && typeof unit.type === 'object' && unit.type.sprite) spriteChar = unit.type.sprite;
                     
+                    // 1. Прямое свойство char (если задано вручную)
+                    if (unit.char) {
+                        spriteChar = unit.char;
+                    } 
+                    // 2. Свойство sprite (часто используется в тактике)
+                    else if (unit.sprite) {
+                        spriteChar = unit.sprite;
+                    } 
+                    // 3. Вложенный объект type (стандартная структура из tactical_army.js)
+                    else if (unit.type && typeof unit.type === 'object') {
+                        if (unit.type.sprite) spriteChar = unit.type.sprite;
+                        // Фолбэк: если спрайта нет, но есть ID типа, можно попробовать маппинг (опционально)
+                        else if (unit.type.id === 'archer') spriteChar = 's';
+                        else if (unit.type.id === 'cavalry') spriteChar = 'w';
+                        else if (unit.type.id === 'spearman') spriteChar = 'g';
+                    }
+                    // 4. Если type - это просто строка (редкий случай, но бывает)
+                    else if (typeof unit.type === 'string') {
+                         if (unit.type === 'archer') spriteChar = 's';
+                         else if (unit.type === 'cavalry') spriteChar = 'w';
+                         else if (unit.type === 'spearman') spriteChar = 'g';
+                    }
+
                     const color = TacticalArmyModule.getUnitColor(unit);
                     
                     TilesetRenderer.draw(ctx, spriteChar, gridX, gridY, color);
                     drawHPBar(gridX, gridY, unit.hp, unit.maxHp);
                 }
             });
+        }
+
+        // 7. Отрисовка снарядов (анимация выстрелов)
+        // Вызываем функцию из RenderModule, которая рисует активные эффекты типа 'projectile'
+        if (typeof RenderModule !== 'undefined' && RenderModule.drawTacticalEffects) {
+            RenderModule.drawTacticalEffects(ctx, arena);
         }
     }
 
