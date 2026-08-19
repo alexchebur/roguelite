@@ -2774,22 +2774,24 @@ function updateQuestCompass() {
                             const hasLOS = isCursedAttraction || CombatModule.hasLineOfSight(e.x, e.y, player.x, player.y);
                             
                             if (hasLOS) {
-                                // Враг атакует, не двигаясь!
+                                // Враг атакует!
                                 
-                                // 1. Анимация снаряда
-                                RenderModule.addProjectileEffect(e.x, e.y, player.x, player.y, 300);
-                                RenderModule.triggerAnimation(350);
+                                // === ИСПРАВЛЕНИЕ: Анимация только для дальнего боя ===
+                                if (enemyRange > 1) {
+                                    RenderModule.addProjectileEffect(e.x, e.y, player.x, player.y, 300);
+                                    RenderModule.triggerAnimation(350);
+                                }
 
-                                // 2. Нанесение урона
+                                // 2. Нанесение урона (работает для всех типов атаки)
                                 CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                                 checkDeath();
                                 
-                                // Прерываем движение, так как ход потрачен на выстрел
+                                // Прерываем движение, так как ход потрачен на атаку
                                 return; 
                             }
                         }
 
-                        // === ЛОГИКА ДВИЖЕНИЯ (если не удалось выстрелить) ===
+                        // === ЛОГИКА ДВИЖЕНИЯ (если не удалось атаковать) ===
                         if (dist === 1) {
                             CombatModule.attack(e, player, (m, t) => RenderModule.log(m, t));
                             checkDeath();
@@ -2817,6 +2819,7 @@ function updateQuestCompass() {
                             }
                         }
                     }
+                    // ... остальной код (блуждание в крепости) ...
                     // Если игрок далеко (>20 в крепости или >8 в обычном данже)
                     else if (isFortress) {
                         if (Math.random() < 0.1) {
