@@ -132,10 +132,12 @@ const RenderModule = (function() {
     }
 
     // === ОТРИСОВКА ЭФФЕКТОВ (вызывается внутри draw) ===
+    // === ОТРИСОВКА ЭФФЕКТОВ (вызывается внутри draw) ===
     function drawEffects(ctx, cam) {
         const now = Date.now();
-        const tileW = TILE_SIZE; 
-        const tileH = TILE_SIZE;
+        // ИСПРАВЛЕНИЕ: Используем реальный размер тайла из рендерера (16px), а не 32px
+        const tileW = TilesetRenderer.TILE_SIZE; 
+        const tileH = TilesetRenderer.TILE_SIZE;
 
         for (let i = activeEffects.length - 1; i >= 0; i--) {
             const effect = activeEffects[i];
@@ -173,22 +175,33 @@ const RenderModule = (function() {
                 const worldCurX = effect.sx + (effect.tx - effect.sx) * t;
                 const worldCurY = effect.sy + (effect.ty - effect.sy) * t;
 
+                // Центрируем спрайт в клетке
                 const screenCurX = (worldCurX - cam.x) * tileW + tileW / 2;
                 const screenCurY = (worldCurY - cam.y) * tileH + tileH / 2;
 
-                ctx.save();
-                ctx.fillStyle = "#FFFF00"; 
-                ctx.font = `bold 12px Consolas, monospace`;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.shadowColor = "black";
-                ctx.shadowBlur = 4;
-                ctx.fillText("*", screenCurX, screenCurY);
-                ctx.restore();
+                // ИСПРАВЛЕНИЕ: Рисуем спрайт вместо текста "*"
+                if (TilesetRenderer.isReady()) {
+                    // Получаем данные спрайта из реестра по ключу ITEM_PROJECTILE
+                    // Ключ должен быть добавлен в sprite_registry.js как 'ITEM_PROJECTILE': { tile: { file: 'item_sprites', x: 1, y: 0 } ... }
+                    const projData = getTileData('ITEM_PROJECTILE');
+                    
+                    if (projData) {
+                        const img = TilesetRenderer.spriteSheets[projData.file];
+                        if (img) {
+                            const size = TilesetRenderer.TILE_SIZE;
+                            const srcX = projData.x * size;
+                            const srcY = projData.y * size;
+                            
+                            // Рисуем картинку, центрированную относительно вычисленных координат
+                            ctx.drawImage(img, srcX, srcY, size, size, 
+                                          screenCurX - size / 2, screenCurY - size / 2, 
+                                          size, size);
+                        }
+                    }
+                }
             }
         }
     }
-
     function getCameraOffset(player) {
         const cam = {
             x: player.x - Math.floor(COLS / 2),
