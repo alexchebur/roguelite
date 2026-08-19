@@ -1133,6 +1133,10 @@ const RenderModule = (function() {
         COLS,
         ROWS,
         _ctx: null, 
-        TILE_SIZE   
+        TILE_SIZE,
+        addTacticalProjectileEffect,
+        drawTacticalEffects,
+        triggerAnimation,
+        hasActiveEffects
     };
 })();
