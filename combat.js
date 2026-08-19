@@ -138,6 +138,10 @@ const CombatModule = (function() {
         // --- ЕСЛИ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ: СТРЕЛЬБА ---
         
         weapon.currentAmmo--;
+        // === АНИМАЦИЯ СНАРЯДА ===
+        if (typeof RenderModule !== 'undefined' && RenderModule.addProjectileEffect) {
+            RenderModule.addProjectileEffect(player.x, player.y, target.x, target.y, 300);
+        }
         
         // Расчет урона: База игрока + Бонусы (включая оружие) - Защита врага
         // player.atk уже содержит все бонусы, так как мы их поддерживаем актуальными
