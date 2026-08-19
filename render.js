@@ -202,6 +202,96 @@ const RenderModule = (function() {
             }
         }
     }
+
+    // === ТАКТИЧЕСКИЕ СНАРЯДЫ И АНИМАЦИЯ ===
+    
+    // Добавление эффекта снаряда для тактического боя
+    function addTacticalProjectileEffect(sx, sy, tx, ty, duration) {
+        activeEffects.push({
+            type: 'projectile',
+            tactical: true,           // Флаг: этот эффект только для тактики
+            sx: sx, sy: sy,
+            tx: tx, ty: ty,
+            startTime: Date.now(),
+            endTime: Date.now() + (duration || 300),
+            duration: duration || 300
+        });
+    }
+
+    // Отрисовка тактических эффектов (вызывается из TacticalRenderModule)
+    function drawTacticalEffects(ctx, arena) {
+        if (!ctx || !arena) return;
+        
+        const now = Date.now();
+        const tileW = TilesetRenderer.TILE_SIZE;
+        const tileH = tileW;
+
+        // Центрирование арены (копируем логику из tactical_render.js)
+        const arenaPixelWidth = arena.width * tileW;
+        const arenaPixelHeight = arena.height * tileH;
+        const offsetX = Math.floor((ctx.canvas.width - arenaPixelWidth) / 2);
+        const offsetY = Math.floor((ctx.canvas.height - arenaPixelHeight) / 2);
+
+        for (let i = activeEffects.length - 1; i >= 0; i--) {
+            const effect = activeEffects[i];
+            
+            // Удаляем истекшие эффекты
+            if (now > effect.endTime) {
+                activeEffects.splice(i, 1);
+                continue;
+            }
+
+            // Рисуем ТОЛЬКО тактические эффекты типа projectile
+            if (!effect.tactical || effect.type !== 'projectile') continue;
+
+            const totalTime = effect.duration;
+            const elapsed = now - effect.startTime;
+            const t = Math.min(1, elapsed / totalTime);
+            
+            const curX = effect.sx + (effect.tx - effect.sx) * t;
+            const curY = effect.sy + (effect.ty - effect.sy) * t;
+            
+            // Экраные координаты с учетом смещения арены
+            const screenX = offsetX + curX * tileW + tileW / 2;
+            const screenY = offsetY + curY * tileH + tileH / 2;
+
+            // Рисуем спрайт
+            if (TilesetRenderer.isReady()) {
+                const projData = getTileData('ITEM_PROJECTILE');
+                if (projData) {
+                    const img = TilesetRenderer.spriteSheets[projData.file];
+                    if (img) {
+                        const size = TilesetRenderer.TILE_SIZE;
+                        const srcX = projData.x * size;
+                        const srcY = projData.y * size;
+                        
+                        ctx.drawImage(img, srcX, srcY, size, size,
+                            screenX - size / 2, screenY - size / 2, size, size);
+                    }
+                }
+            }
+        }
+    }
+
+    // Запуск цикла анимации (множественная перерисовка)
+    function triggerAnimation(duration) {
+        duration = duration || 300;
+        const intervalMs = 40; // ~25 FPS для анимации
+        const frames = Math.ceil(duration / intervalMs);
+        let count = 0;
+        
+        const interval = setInterval(() => {
+            count++;
+            if (redrawCallback) redrawCallback();
+            if (count >= frames) clearInterval(interval);
+        }, intervalMs);
+    }
+
+    // Проверка наличия активных эффектов
+    function hasActiveEffects() {
+        return activeEffects.length > 0;
+    }
+    
     function getCameraOffset(player) {
         const cam = {
             x: player.x - Math.floor(COLS / 2),
