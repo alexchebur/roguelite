@@ -6,6 +6,7 @@ const TacticalAIModule = (function() {
 
     function calculateArmyTurn(enemyUnits, playerUnit, playerArmy, arena) {
         const actions = []; 
+        
         // Создаем карту занятых клеток на начало хода
         const occupiedCells = new Set();
         
@@ -32,7 +33,7 @@ const TacticalAIModule = (function() {
             // 1. ПРОВЕРКА МОРАЛИ (Бегство при низком HP)
             if (hpPercent < 0.33) {
                 const action = getRetreatAction(unit, enemyUnits, arena, occupiedCells);
-                action.unit = unit; // <--- ВАЖНО: Привязываем действие к юниту
+                action.unit = unit; 
                 actions.push(action);
                 
                 // Обновляем карту занятых клеток для следующих юнитов
@@ -49,18 +50,25 @@ const TacticalAIModule = (function() {
             }
 
             const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
+            
+            // === ИСПРАВЛЕНИЕ: Корректное определение дальности атаки ===
+            // Проверяем наличие поля range в объекте type или напрямую в юните
+            const attackRange = (unit.type && unit.type.range) ? unit.type.range : (unit.range || 1);
+            const isRanged = attackRange > 1;
+
             let action = null;
 
             // 3. ЛОГИКА ВЫБОРА ДЕЙСТВИЯ
-            if (unit.type === 'range') {
-                // Лучники держат дистанцию
-                if (dist <= unit.range) {
+            if (isRanged) {
+                // Лучники/Маги: Атакуют, если цель в радиусе, иначе подходят
+                if (dist <= attackRange) {
                     action = { type: 'attack', target: target, unit: unit };
                 } else {
-                    action = getApproachAction(unit, target, unit.range, arena, occupiedCells);
+                    // Подходим на расстояние атаки (не вплотную, а на дистанцию выстрела)
+                    action = getApproachAction(unit, target, attackRange, arena, occupiedCells);
                 }
             } else {
-                // Ближний бой
+                // Ближний бой: Атакуют только вплотную (dist === 1)
                 if (dist === 1) {
                     action = { type: 'attack', target: target, unit: unit };
                 } else {
@@ -69,7 +77,7 @@ const TacticalAIModule = (function() {
             }
 
             if (action) {
-                action.unit = unit; // <--- ВАЖНО: Привязываем действие к юниту
+                action.unit = unit; 
                 actions.push(action);
                 
                 // Обновляем карту занятых клеток
