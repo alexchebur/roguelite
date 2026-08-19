@@ -357,6 +357,7 @@ const CombatModule = (function() {
         attack,
         rangedAttack,
         dropLoot,
-        useItem
+        useItem,
+        hasLineOfSight // <--- Добавить это
     };
 })();
