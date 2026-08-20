@@ -96,31 +96,151 @@ const DataModule = (function() {
     };
 
     const ENEMY_TYPES = [
-        // === УРОВЕНЬ 1-3 ===
-        { name: "Крыса", char: getChar('ENEMY_RAT'), color: "#795548", hp: [8, 12], atk: [1, 1], def: [0, 0], lootType: "food", speed: 10, range: 1 },
-        { name: "Гоблин", char: getChar('ENEMY_GOBLIN'), color: "#4CAF50", hp: [12, 18], atk: [1, 2], def: [0, 1], lootType: "gold", speed: 10, range: 1 },
-        { name: "Волк", char: getChar('ENEMY_WOLF'), color: "#9E9E9E", hp: [15, 22], atk: [2, 3], def: [0, 1], lootType: "food", speed: 10, range: 1 },
+        // === УРОВЕНЬ 1-3 (Начальные) ===
+        { 
+            name: "Крыса", 
+            char: getChar('ENEMY_RAT'), 
+            color: "#795548", 
+            hp: [8, 12], atk: [1, 1], def: [0, 0], 
+            lootType: "food", speed: 10, range: 1,
+            biomes: ['dungeon', 'cave', 'city'] // Встречается везде, кроме льда и руин
+        },
+        { 
+            name: "Гоблин", 
+            char: getChar('ENEMY_GOBLIN'), 
+            color: "#4CAF50", 
+            hp: [12, 18], atk: [1, 2], def: [0, 1], 
+            lootType: "gold", speed: 10, range: 1,
+            biomes: ['dungeon', 'cave', 'rogue'] // Любит темные места и руины
+        },
+        { 
+            name: "Волк", 
+            char: getChar('ENEMY_WOLF'), 
+            color: "#9E9E9E", 
+            hp: [15, 22], atk: [2, 3], def: [0, 1], 
+            lootType: "food", speed: 10, range: 1,
+            biomes: ['cave', 'icy'] // Хищник пещер и холода
+        },
         
-        // === УРОВЕНЬ 4-6 (СНИЖЕНЫ ПОКАЗАТЕЛИ) ===
-        { name: "Бандит", char: getChar('ENEMY_BANDIT'), color: "#FF9800", hp: [18, 25], atk: [2, 4], def: [0, 1], lootType: "weapon", speed: 10, range: 1 },
-        // Скелет-лучник: имеет дальность 6
-        { name: "Скелет", char: getChar('ENEMY_SKELETON'), color: "#B0BEC5", hp: [15, 22], atk: [2, 4], def: [1, 2], lootType: "gold", speed: 8, range: 6 },
-        { name: "Слизень", char: getChar('ENEMY_SLIME'), color: "#00BCD4", hp: [20, 30], atk: [1, 1], def: [1, 2], lootType: "food", speed: 3, range: 1 },
-        { name: "Орк-разведчик", char: getChar('ENEMY_ORC'), color: "#8BC34A", hp: [25, 35], atk: [3, 4], def: [1, 2], lootType: "weapon", speed: 9, range: 1 },
+        // === УРОВЕНЬ 4-6 (Средние) ===
+        { 
+            name: "Бандит", 
+            char: getChar('ENEMY_BANDIT'), 
+            color: "#FF9800", 
+            hp: [18, 25], atk: [2, 4], def: [0, 1], 
+            lootType: "weapon", speed: 10, range: 1,
+            biomes: ['rogue', 'dungeon'] // Обитает в руинах и старых подземельях
+        },
+        { 
+            name: "Скелет-лучник", 
+            char: getChar('ENEMY_SKELETON'), 
+            color: "#B0BEC5", 
+            hp: [15, 22], atk: [2, 4], def: [1, 2], 
+            lootType: "gold", speed: 8, range: 6, // Дальняя атака
+            biomes: ['dungeon', 'rogue', 'boss'] // Страж древних гробниц
+        },
+        { 
+            name: "Слизень", 
+            char: getChar('ENEMY_SLIME'), 
+            color: "#00BCD4", 
+            hp: [20, 30], atk: [1, 1], def: [1, 2], 
+            lootType: "food", speed: 3, range: 1,
+            biomes: ['cave', 'cellular'] // Живет во влажных пещерах и органических массах
+        },
+        { 
+            name: "Орк-разведчик", 
+            char: getChar('ENEMY_ORC'), 
+            color: "#8BC34A", 
+            hp: [25, 35], atk: [3, 4], def: [1, 2], 
+            lootType: "weapon", speed: 9, range: 1,
+            biomes: ['dungeon', 'arena'] // Воин арен и глубоких залов
+        },
 
-        // === УРОВЕНЬ 7-9 ===
-        { name: "Зомби", char: getChar('ENEMY_ZOMBIE'), color: "#607D8B", hp: [40, 55], atk: [4, 7], def: [1, 3], lootType: "gold", speed: 3, range: 1 },
-        // Гарпия: метает снаряды, дальность 5
-        { name: "Гарпия", char: getChar('ENEMY_HARPY'), color: "#E91E63", hp: [30, 45], atk: [6, 9], def: [0, 1], lootType: "weapon", speed: 12, range: 5 },
-        { name: "Призрак", char: getChar('ENEMY_GHOST'), color: "#7C4DFF", hp: [25, 35], atk: [5, 8], def: [0, 1], lootType: "gold", speed: 8, range: 1 },
-        { name: "Вампир", char: getChar('ENEMY_VAMPIRE'), color: "#C62828", hp: [50, 70], atk: [7, 10], def: [2, 4], lootType: "weapon", speed: 8, range: 1 },
+        // === УРОВЕНЬ 7-9 (Продвинутые) ===
+        { 
+            name: "Зомби", 
+            char: getChar('ENEMY_ZOMBIE'), 
+            color: "#607D8B", 
+            hp: [40, 55], atk: [4, 7], def: [1, 3], 
+            lootType: "gold", speed: 3, range: 1,
+            biomes: ['dungeon', 'boss'] // Медленная нежить глубин
+        },
+        { 
+            name: "Гарпия", 
+            char: getChar('ENEMY_HARPY'), 
+            color: "#E91E63", 
+            hp: [30, 45], atk: [6, 9], def: [0, 1], 
+            lootType: "weapon", speed: 12, range: 5, // Дальняя атака когтями/камнями
+            biomes: ['cave', 'arena', 'boss'] // Летает в просторных пещерах и на аренах
+        },
+        { 
+            name: "Призрак", 
+            char: getChar('ENEMY_GHOST'), 
+            color: "#7C4DFF", 
+            hp: [25, 35], atk: [5, 8], def: [0, 1], 
+            lootType: "gold", speed: 8, range: 1,
+            biomes: ['dungeon', 'rogue', 'boss'] // Беспокоит старые руины и гробницы
+        },
+        { 
+            name: "Вампир", 
+            char: getChar('ENEMY_VAMPIRE'), 
+            color: "#C62828", 
+            hp: [50, 70], atk: [7, 10], def: [2, 4], 
+            lootType: "weapon", speed: 8, range: 1,
+            biomes: ['dungeon', 'boss'] // Элита нежити
+        },
 
-        // === УРОВЕНЬ 10+ ===
-        { name: "Тролль", char: getChar('ENEMY_TROLL'), color: "#4CAF50", hp: [70, 100], atk: [8, 12], def: [2, 3], lootType: "gold", speed: 9, range: 1 },
-        // Лич: магическая атака, дальность 8
-        { name: "Лич", char: getChar('ENEMY_LICH'), color: "#7B1FA2", hp: [60, 85], atk: [10, 12], def: [2, 3], lootType: "weapon", speed: 10, range: 5 },
-        { name: "Голем", char: getChar('ENEMY_GOLEM'), color: "#90A4AE", hp: [100, 150], atk: [10, 14], def: [6, 10], lootType: "gold", speed: 8, range: 1 },
-        { name: "Дракон", char: getChar('ENEMY_DRAGON'), color: "#FF5722", hp: [90, 130], atk: [12, 18], def: [4, 7], lootType: "weapon", speed: 10, range: 10 } // Дракон пока бьет огнем вблизи
+        // === УРОВЕНЬ 10+ (Элита) ===
+        { 
+            name: "Тролль", 
+            char: getChar('ENEMY_TROLL'), 
+            color: "#4CAF50", 
+            hp: [70, 100], atk: [8, 12], def: [2, 3], 
+            lootType: "gold", speed: 9, range: 1,
+            biomes: ['cave', 'arena'] // Сильный обитатель больших залов
+        },
+        { 
+            name: "Лич", 
+            char: getChar('ENEMY_LICH'), 
+            color: "#7B1FA2", 
+            hp: [60, 85], atk: [10, 12], def: [2, 3], 
+            lootType: "weapon", speed: 10, range: 8, // Мощная магия
+            biomes: ['boss', 'rogue'] // Повелитель мертвых в древних руинах
+        },
+        { 
+            name: "Голем", 
+            char: getChar('ENEMY_GOLEM'), 
+            color: "#90A4AE", 
+            hp: [100, 150], atk: [10, 14], def: [6, 10], 
+            lootType: "gold", speed: 8, range: 1,
+            biomes: ['rogue', 'arena', 'fortress'] // Искусственный страж руин и крепостей
+        },
+        { 
+            name: "Дракон", 
+            char: getChar('ENEMY_DRAGON'), 
+            color: "#FF5722", 
+            hp: [90, 130], atk: [12, 18], def: [4, 7], 
+            lootType: "weapon", speed: 10, range: 10, // Огненное дыхание
+            biomes: ['boss', 'arena'] // Король арен и боссов
+        },
+        
+        // === СПЕЦИФИЧЕСКИЕ ДЛЯ БИОМОВ (Новые примеры) ===
+        { 
+            name: "Ледяной Паук", 
+            char: getChar('ENEMY_SPIDER'), // Убедитесь, что этот ID есть в sprite_registry
+            color: "#aaddff", 
+            hp: [15, 25], atk: [3, 5], def: [1, 2], 
+            lootType: "gold", speed: 11, range: 1,
+            biomes: ['icy'] // Только в ледяных пещерах
+        },
+        { 
+            name: "Снежный Йети", 
+            char: getChar('ENEMY_TROLL'), // Можно использовать спрайт тролля или создать новый
+            color: "#ffffff", 
+            hp: [60, 90], atk: [8, 12], def: [3, 5], 
+            lootType: "food", speed: 7, range: 1,
+            biomes: ['icy'] // Хозяин льдов
+        }
     ];
 
     const ITEM_TYPES = [
