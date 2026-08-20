@@ -478,6 +478,7 @@ function getAvailableEnemies(depth, dungeonType) {
         spawnItemsInCity,
         createBoss,
         createMerchantInventory,
-        spawnTraps// <--- ДОБАВИТЬ ЭКСПОРТ
+        spawnTraps,
+        getAvailableEnemies // <--- ДОБАВИТЬ ЭТУ СТРОКУ// <--- ДОБАВИТЬ ЭКСПОРТ
     };
 })();
