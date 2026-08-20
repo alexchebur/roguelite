@@ -188,30 +188,47 @@ const EntityModule = (function() {
         };
     }
 
-    // === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по уровню ===
-    function getAvailableEnemies(depth) {
-        if (depth <= 2) {
-            return DataModule.ENEMY_TYPES.filter(e => 
-                ["Крыса", "Гоблин", "Волк", "Слизень"].includes(e.name)
-            );
-        } else if (depth <= 6) {
-            return DataModule.ENEMY_TYPES.filter(e => 
-                ["Бандит", "Скелет", "Орк-разведчик", "Зомби", "Гарпия", "Призрак"].includes(e.name)
-            );
-        } else {
-            return DataModule.ENEMY_TYPES.filter(e => 
-                ["Тролль", "Вампир", "Лич", "Голем", "Демон", "Дракон"].includes(e.name)
-            );
-        }
+// В файле entity.js, внутри модуля EntityModule
+
+// === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по глубине И типу подземелья ===
+function getAvailableEnemies(depth, dungeonType) {
+    let available = DataModule.ENEMY_TYPES;
+
+    // 1. Фильтр по ТИПУ ПОДЗЕМЕЛЬЯ (Биом)
+    if (dungeonType && dungeonType !== 'fortress') { // В крепости могут быть все
+        available = available.filter(e => {
+            // Если у монстра нет поля biomes, считаем его универсальным (fallback)
+            if (!e.biomes || e.biomes.length === 0) return true;
+            return e.biomes.includes(dungeonType);
+        });
     }
 
+    // 2. Фильтр по ГЛУБИНЕ (Tier)
+    // Если после фильтра по биомам список пуст, возвращаем универсальных или всех доступных, чтобы игра не сломалась
+    if (available.length === 0) {
+        console.warn(`Нет монстров для типа ${dungeonType} на глубине ${depth}. Используются резервные.`);
+        return DataModule.ENEMY_TYPES.filter(e => !e.biomes || e.biomes.includes('dungeon'));
+    }
+
+    // Дополнительная фильтрация по силе (опционально, можно оставить как было)
+    // Например, на глубине 1 не должны появляться боссы или элитные мобы, даже если они подходят по биому
+    if (depth <= 2) {
+        available = available.filter(e => e.hp[1] < 25); // Пример: только слабые
+    } else if (depth >= 10) {
+        available = available.filter(e => e.hp[1] > 40); // Пример: только сильные
+    }
+
+    return available;
+}
+
+
     // Безопасное размещение врагов
-    function spawnEnemies(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3, depth = 0) {
+    function spawnEnemies(mapGrid, startPos, enemyTemplates, count, difficultyMult, minDist = 3, depth = 0, dungeonType = null) {
         const height = mapGrid.length;
         const width = mapGrid[0].length;
         const validTiles = [];
 
-        const availableTemplates = getAvailableEnemies(depth);
+        const availableTemplates = getAvailableEnemies(depth, dungeonType);
         const templatesToUse = availableTemplates.length > 0 ? availableTemplates : enemyTemplates;
 
         for (let y = 0; y < height; y++) {
