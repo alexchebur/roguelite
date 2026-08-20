@@ -2197,6 +2197,7 @@ function updateQuestCompass() {
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
     // === СПАВН СУЩНОСТЕЙ ===
+    // === СПАВН СУЩНОСТЕЙ ===
     function spawnDungeonEntities(gx, gy, depth) {
         const cacheKey = `${gx}_${gy}_${depth}`;
         const savedState = dungeonClearState.get(cacheKey);
@@ -2223,29 +2224,24 @@ function updateQuestCompass() {
         // 2. Множитель сложности врагов
         const enemyMult = WorldCurveModule.getEnemyMultiplier(gx, gy) * (1 + depth * 0.2);
         
-        // 3. Фильтрация врагов по уровню сложности
-        let availableEnemies = DataModule.ENEMY_TYPES;
-        if (!isFortress) { // В крепости могут быть любые монстры
-            if (depth < 3) {
-                availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Гоблин", "Крыса", "Волк", "Слизень"].includes(e.name));
-            } else if (depth < 7) {
-                availableEnemies = DataModule.ENEMY_TYPES.filter(e => ["Бандит", "Скелет", "Орк", "Зомби"].includes(e.name));
-            }
-        }
+        // 3. Фильтрация врагов по ТИПУ ПОДЗЕМЕЛЬЯ И ГЛУБИНЕ
+        // Используем новую функцию из entity.js, которая учитывает поле biomes у монстров
+        const availableEnemies = EntityModule.getAvailableEnemies(depth, currentDungeonTypeName);
 
         // Спавн врагов (если их больше 0)
-        if (enemyCount > 0) {
+        if (enemyCount > 0 && availableEnemies.length > 0) {
             enemies = EntityModule.spawnEnemies(
                 MapModule.currentMapData,
                 player,
-                availableEnemies,
+                availableEnemies, // Передаем отфильтрованный список
                 enemyCount,
                 enemyMult,
                 3, // Минимальная дистанция от игрока
-                depth
+                depth,
+                currentDungeonTypeName // <--- ПЕРЕДАЕМ ТИП ПОДЗЕМЕЛЬЯ ДЛЯ ДОПОЛНИТЕЛЬНОЙ ФИЛЬТРАЦИИ ВНУТРИ SPAWN
             );
         } else {
-            enemies = []; // Гарантируем пустой массив для зачищенного уровня
+            enemies = []; // Гарантируем пустой массив для зачищенного уровня или если нет подходящих монстров
         }
         
         // === ЛОГИКА КОЛИЧЕСТВА ПРЕДМЕТОВ ===
