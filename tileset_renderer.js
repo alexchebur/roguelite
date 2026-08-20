@@ -61,6 +61,7 @@ const TilesetRenderer = (function() {
         'M': { file: 'creature_sprites', x: 3, y: 4 },  // Голем
         'q': { file: 'creature_sprites', x: 0, y: 15 },  // Дракон
         '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
+        '1': { file: 'creature_sprites', x: 7,  y: 9 },  // паук
         // В файле tileset_renderer.js, внутри TILE_MAP
         // === ТАКТИЧЕСКИЕ ТАЙЛЫ ПОЛА (Добавить или обновить) ===
         '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // Равнина (Plain)
