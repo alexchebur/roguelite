@@ -43,7 +43,7 @@ const TilesetRenderer = (function() {
         'f':  { file: 'terrain_sprites', x: 9, y: 2 }, // Тайл города, но цвет зададим в render.js
 
         
-        // --- СУЩЕСТВА ---
+        // --- СУЩЕСТВА (ОБНОВЛЕННЫЙ СПИСОК) ---
         '@': { file: 'creature_sprites', x: 2,  y: 0 },  // Игрок
         'r': { file: 'creature_sprites', x: 8,  y: 9 },  // Крыса
         'g': { file: 'creature_sprites', x: 12, y: 3 },  // Гоблин
@@ -51,17 +51,59 @@ const TilesetRenderer = (function() {
         'j': { file: 'creature_sprites', x: 3,  y: 15 }, // Слизень
         'b': { file: 'creature_sprites', x: 7,  y: 0 },  // Бандит
         's': { file: 'creature_sprites', x: 4,  y: 3 },  // Скелет
-        'k': { file: 'creature_sprites', x: 14,  y: 3 },  // Орк
+        'k': { file: 'creature_sprites', x: 14, y: 3 },  // Орк
         'z': { file: 'creature_sprites', x: 1,  y: 6 },  // Зомби
-        'h': { file: 'creature_sprites', x: 15,  y: 6 },  // Гарпия
-        'G': { file: 'creature_sprites', x: 4, y: 6 },  // Призрак
-        'V': { file: 'creature_sprites', x: 6, y: 7 },  // Вампир
-        't': { file: 'creature_sprites', x: 1, y: 4 },  // Тролль
-        'L': { file: 'creature_sprites', x: 5, y: 7 },  // Лич
-        'M': { file: 'creature_sprites', x: 3, y: 4 },  // Голем
-        'q': { file: 'creature_sprites', x: 0, y: 15 },  // Дракон
+        'h': { file: 'creature_sprites', x: 15, y: 6 },  // Гарпия
+        'G': { file: 'creature_sprites', x: 4,  y: 6 },  // Призрак
+        'V': { file: 'creature_sprites', x: 6,  y: 7 },  // Вампир
+        't': { file: 'creature_sprites', x: 1,  y: 4 },  // Тролль
+        'L': { file: 'creature_sprites', x: 5,  y: 7 },  // Лич
+        'M': { file: 'creature_sprites', x: 3,  y: 4 },  // Голем
+        'q': { file: 'creature_sprites', x: 0,  y: 15 }, // Дракон
         '☺': { file: 'creature_sprites', x: 8,  y: 3 },  // NPC
-        '1': { file: 'creature_sprites', x: 7,  y: 9 },  // паук
+        '1': { file: 'creature_sprites', x: 7,  y: 9 },  // Ледяной Паук
+
+        // === ❄️ ICY (Ледяные пещеры) ===
+        // TODO: Замените координаты на реальные спрайты льда/холода
+        'Y': { file: 'creature_sprites', x: 10, y: 10 }, // Снежный Йети
+        'i': { file: 'creature_sprites', x: 11, y: 10 }, // Ледяной Элементаль
+        'W': { file: 'creature_sprites', x: 12, y: 10 }, // Морозный Виверн
+
+        // === 🕸️ CAVE (Обычные пещеры) ===
+        // TODO: Замените координаты на спрайты насекомых/животных
+        'с': { file: 'creature_sprites', x: 10, y: 11 }, // Гигантская Сороконожка
+        'С': { file: 'creature_sprites', x: 11, y: 11 }, // Каменный Краб
+        'М': { file: 'creature_sprites', x: 12, y: 11 }, // Пещерный Медведь (ВНИМАНИЕ: конфликт с боссом 'B', см. ниже)
+        'Q': { file: 'creature_sprites', x: 13, y: 11 }, // Королева Пауков
+
+        // === 🌫️ ROGUE (Руины/Заброшенные места) ===
+        // TODO: Замените координаты на спрайты людей в доспехах/теней
+        'а': { file: 'creature_sprites', x: 10, y: 12 }, // Разбойник с Арбалетом
+        'к': { file: 'creature_sprites', x: 11, y: 12 }, // Проклятый Рыцарь
+        'А': { file: 'creature_sprites', x: 12, y: 12 }, // Теневой Убийца (ВНИМАНИЕ: конфликт с армией 'A', см. ниже)
+        'Д': { file: 'creature_sprites', x: 13, y: 12 }, // Древний Страж
+
+        // === 🧿 CELLULAR (Органические/Живые пещеры) ===
+        // TODO: Замените координаты на спрайты слизи/грибов/мутантов
+        'м': { file: 'creature_sprites', x: 10, y: 13 }, // Живая Плесень
+        'ч': { file: 'creature_sprites', x: 11, y: 13 }, // Кислотный Червь (ВНИМАНИЕ: конфликт с болотом '~', см. ниже)
+        'Ф': { file: 'creature_sprites', x: 12, y: 13 }, // Мутировавший Гриб (ВНИМАНИЕ: конфликт с лесом 'F', см. ниже)
+        'П': { file: 'creature_sprites', x: 13, y: 13 }, // Пожиратель Плоти
+
+        // === 🦴 ARENA (Арены/Гладиаторские залы) ===
+        // TODO: Замените координаты на спрайты гладиаторов/зверей
+        'г': { file: 'creature_sprites', x: 10, y: 14 }, // Раб-Гладиатор
+        'К': { file: 'creature_sprites', x: 11, y: 14 }, // Боевой Кабан (ВНИМАНИЕ: конфликт с игроком 'p', см. ниже)
+        'х': { file: 'creature_sprites', x: 12, y: 14 }, // Чемпион Арены
+        'Ц': { file: 'creature_sprites', x: 13, y: 14 }, // Цербер (ВНИМАНИЕ: конфликт со снегом '3', см. ниже)
+
+        // === 👑 BOSS (Логова боссов) ===
+        // TODO: Замените координаты на спрайты магов/демонов
+        'У': { file: 'creature_sprites', x: 10, y: 15 }, // Культист Тьмы
+        'О': { file: 'creature_sprites', x: 11, y: 15 }, // Оскверненный Паладин
+        'Х': { file: 'creature_sprites', x: 12, y: 15 }, // Демон-Хранитель
+        'В': { file: 'creature_sprites', x: 13, y: 15 }, // Аватар Хаоса (ВНИМАНИЕ: конфликт с игроком '@', см. ниже)
+
         // В файле tileset_renderer.js, внутри TILE_MAP
         // === ТАКТИЧЕСКИЕ ТАЙЛЫ ПОЛА (Добавить или обновить) ===
         '░':  { file: 'terrain_sprites', x: 10, y: 2 }, // Равнина (Plain)
