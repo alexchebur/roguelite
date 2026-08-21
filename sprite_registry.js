@@ -51,22 +51,65 @@ const SPRITE_REGISTRY = {
     // ==========================================
     // 4. ВРАГИ (ENEMY_TYPES)
     // ==========================================
+    
+    // === ОБЩИЕ МОНСТРЫ ===
     'ENEMY_RAT':             { char: 'r',   tile: { file: 'creature_sprites', x: 8, y: 9 }, desc: 'Крыса' },
     'ENEMY_GOBLIN':          { char: 'g',   tile: { file: 'creature_sprites', x: 12, y: 3 }, desc: 'Гоблин' },
     'ENEMY_WOLF':            { char: 'w',   tile: { file: 'creature_sprites', x: 1, y: 9 }, desc: 'Волк' },
     'ENEMY_BANDIT':          { char: 'b',   tile: { file: 'creature_sprites', x: 7, y: 0 }, desc: 'Бандит' },
     'ENEMY_SKELETON':        { char: 's',   tile: { file: 'creature_sprites', x: 4, y: 3 }, desc: 'Скелет' },
     'ENEMY_SLIME':           { char: 'j',   tile: { file: 'creature_sprites', x: 3, y: 15 }, desc: 'Слизень' },
-    'ENEMY_ORC':             { char: 'k',   tile: { file: 'creature_sprites', x: 14, y: 3 }, desc: 'Орк' }, // Внимание: символ совпадает с WALL_ORGANIC
+    'ENEMY_ORC':             { char: 'k',   tile: { file: 'creature_sprites', x: 14, y: 3 }, desc: 'Орк' },
     'ENEMY_ZOMBIE':          { char: 'z',   tile: { file: 'creature_sprites', x: 1, y: 6 }, desc: 'Зомби' },
     'ENEMY_HARPY':           { char: 'h',   tile: { file: 'creature_sprites', x: 15, y: 6 }, desc: 'Гарпия' },
-    'ENEMY_GHOST':           { char: 'G',   tile: { file: 'creature_sprites', x: 4, y: 6 }, desc: 'Призрак' }, // Совпадает с ITEM_GLOVES
+    'ENEMY_GHOST':           { char: 'G',   tile: { file: 'creature_sprites', x: 4, y: 6 }, desc: 'Призрак' },
     'ENEMY_VAMPIRE':         { char: 'V',   tile: { file: 'creature_sprites', x: 6, y: 7 }, desc: 'Вампир' },
-    'ENEMY_TROLL':           { char: 't',   tile: { file: 'creature_sprites', x: 1, y: 4 }, desc: 'Тролль' }, // Совпадает с TILE_FOREST
+    'ENEMY_TROLL':           { char: 't',   tile: { file: 'creature_sprites', x: 1, y: 4 }, desc: 'Тролль' },
     'ENEMY_LICH':            { char: 'L',   tile: { file: 'creature_sprites', x: 5, y: 7 }, desc: 'Лич' },
     'ENEMY_GOLEM':           { char: 'M',   tile: { file: 'creature_sprites', x: 3, y: 4 }, desc: 'Голем' },
     'ENEMY_DRAGON':          { char: 'q',   tile: { file: 'creature_sprites', x: 0, y: 15 }, desc: 'Дракон' },
+
+    // === ❄️ ICY (Ледяные пещеры) ===
+    // TODO: Замените координаты на реальные спрайты льда/холода
     'ENEMY_SPIDER':          { char: '1',   tile: { file: 'creature_sprites', x: 7, y: 9 }, desc: 'Ледяной паук' },
+    'ENEMY_YETI':            { char: 'Y',   tile: { file: 'creature_sprites', x: 10, y: 10 }, desc: 'Снежный Йети' },
+    'ENEMY_ICE_ELEM':        { char: 'i',   tile: { file: 'creature_sprites', x: 11, y: 10 }, desc: 'Ледяной Элементаль' },
+    'ENEMY_WYVERN':          { char: 'W',   tile: { file: 'creature_sprites', x: 12, y: 10 }, desc: 'Морозный Виверн' },
+
+    // === 🕸️ CAVE (Обычные пещеры) ===
+    // TODO: Замените координаты на спрайты насекомых/животных
+    'ENEMY_CENTIPEDE':       { char: 'с',   tile: { file: 'creature_sprites', x: 10, y: 11 }, desc: 'Гигантская Сороконожка' },
+    'ENEMY_CRAB':            { char: 'С',   tile: { file: 'creature_sprites', x: 11, y: 11 }, desc: 'Каменный Краб' },
+    'ENEMY_BEAR':            { char: 'М',   tile: { file: 'creature_sprites', x: 12, y: 11 }, desc: 'Пещерный Медведь' },
+    'ENEMY_SPIDER_QUEEN':    { char: 'Q',   tile: { file: 'creature_sprites', x: 13, y: 11 }, desc: 'Королева Пауков' },
+
+    // === 🌫️ ROGUE (Руины/Заброшенные места) ===
+    // TODO: Замените координаты на спрайты людей в доспехах/теней
+    'ENEMY_BANDIT_ARCHER':   { char: 'а',   tile: { file: 'creature_sprites', x: 10, y: 12 }, desc: 'Разбойник с Арбалетом' },
+    'ENEMY_CURSED_KNIGHT':   { char: 'к',   tile: { file: 'creature_sprites', x: 11, y: 12 }, desc: 'Проклятый Рыцарь' },
+    'ENEMY_ASSASSIN':        { char: 'А',   tile: { file: 'creature_sprites', x: 12, y: 12 }, desc: 'Теневой Убийца' },
+    'ENEMY_ANCIENT_GUARD':   { char: 'Д',   tile: { file: 'creature_sprites', x: 13, y: 12 }, desc: 'Древний Страж' },
+
+    // === 🧿 CELLULAR (Органические/Живые пещеры) ===
+    // TODO: Замените координаты на спрайты слизи/грибов/мутантов
+    'ENEMY_MOLD':            { char: 'м',   tile: { file: 'creature_sprites', x: 10, y: 13 }, desc: 'Живая Плесень' },
+    'ENEMY_WORM':            { char: 'ч',   tile: { file: 'creature_sprites', x: 11, y: 13 }, desc: 'Кислотный Червь' },
+    'ENEMY_MUTANT_SHROOM':   { char: 'Ф',   tile: { file: 'creature_sprites', x: 12, y: 13 }, desc: 'Мутировавший Гриб' },
+    'ENEMY_FLESH_EATER':     { char: 'П',   tile: { file: 'creature_sprites', x: 13, y: 13 }, desc: 'Пожиратель Плоти' },
+
+    // === 🦴 ARENA (Арены/Гладиаторские залы) ===
+    // TODO: Замените координаты на спрайты гладиаторов/зверей
+    'ENEMY_GLADIATOR':       { char: 'г',   tile: { file: 'creature_sprites', x: 10, y: 14 }, desc: 'Раб-Гладиатор' },
+    'ENEMY_BOAR':            { char: 'К',   tile: { file: 'creature_sprites', x: 11, y: 14 }, desc: 'Боевой Кабан' },
+    'ENEMY_CHAMPION':        { char: 'х',   tile: { file: 'creature_sprites', x: 12, y: 14 }, desc: 'Чемпион Арены' },
+    'ENEMY_CERBERUS':        { char: 'Ц',   tile: { file: 'creature_sprites', x: 13, y: 14 }, desc: 'Цербер' },
+
+    // === 👑 BOSS (Логова боссов) ===
+    // TODO: Замените координаты на спрайты магов/демонов
+    'ENEMY_CULTIST':         { char: 'У',   tile: { file: 'creature_sprites', x: 10, y: 15 }, desc: 'Культист Тьмы' },
+    'ENEMY_FALLEN_PALADIN':  { char: 'О',   tile: { file: 'creature_sprites', x: 11, y: 15 }, desc: 'Оскверненный Паладин' },
+    'ENEMY_DEMON':           { char: 'Х',   tile: { file: 'creature_sprites', x: 12, y: 15 }, desc: 'Демон-Хранитель' },
+    'ENEMY_AVATAR':          { char: 'В',   tile: { file: 'creature_sprites', x: 13, y: 15 }, desc: 'Аватар Хаоса' },
 
     // ==========================================
     // 5. ПРЕДМЕТЫ (ITEM_TYPES)
