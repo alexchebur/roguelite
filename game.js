@@ -2130,18 +2130,34 @@ function updateQuestCompass() {
                     }
                 }
 
-                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
+                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR И COLLECT
                 if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
-                    q.target.itemType === 'book') {
+                    q.target.itemType === 'book' && 
+                    !q.isCompleted) { // Не спавним, если квест уже выполнен
                     
-                    const existingBooks = items.filter(i => i.type === 'book' && i.isQuestItem).length;
-                    const targetCount = Math.min(q.maxProgress, 3);
+                    // Считаем книги, которые лежат прямо сейчас на полу
+                    const existingBooksOnFloor = items.filter(i => i.type === 'book' && i.isQuestItem).length;
                     
-                    if (existingBooks < targetCount) {
-                        const booksToSpawn = targetCount - existingBooks;
-                        for(let i = 0; i < booksToSpawn; i++) {
+                    // Определяем, сколько всего нужно книг для квеста
+                    const totalNeeded = q.maxProgress;
+                    
+                    // Сколько еще нужно заспавнить, чтобы достичь цели (с запасом до 3 штук за раз, чтобы не захламлять)
+                    // Но лучше спавнить ровно столько, сколько не хватает для выполнения, или по одной за вход
+                    const missingCount = totalNeeded - q.progress; 
+                    
+                    // Ограничиваем спавн: не больше 3 книг за один вход на уровень, 
+                    // и не больше, чем реально не хватает
+                    const toSpawn = Math.min(3, missingCount, totalNeeded - existingBooksOnFloor);
+
+                    if (toSpawn > 0) {
+                        console.log(`📚 [Quest] Спавн ${toSpawn} квестовых книг для "${q.id}" (Прогресс: ${q.progress}/${totalNeeded})`);
+                        for(let i = 0; i < toSpawn; i++) {
                             spawnScholarBook(q);
                         }
+                    } else if (existingBooksOnFloor === 0 && q.progress < totalNeeded) {
+                        // Если книг нет совсем, а прогресс не полный, спавним хотя бы одну
+                        console.log(`📚 [Quest] Книги отсутствуют, спавним одну гарантированную.`);
+                        spawnScholarBook(q);
                     }
                 }
 
