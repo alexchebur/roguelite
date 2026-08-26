@@ -2456,7 +2456,6 @@ function updateQuestCompass() {
     }
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR/COLLECT ===
-    // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
     function spawnScholarBook(quest) {
         const bookTemplate = DataModule.ITEM_TYPES.find(t => t.type === 'book');
         if (!bookTemplate) return;
