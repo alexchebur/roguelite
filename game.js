@@ -848,12 +848,64 @@ const GameModule = (function() {
     }
 
 
-    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Интеграция с QuestChainModule и Окном Сюжета) ===
-    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (Исправленная версия) ===
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ЗАВЕРШЕНИЕ КВЕСТА И ВЫДАЧА НАГРАДЫ ===
+    function completeQuestTurnIn(q, npcName) {
+        if (!q || !player) return;
+
+        // 1. Очистка инвентаря от квестовых предметов
+        // Проверяем тип квеста и наличие цели предмета
+        const needsCleanup = (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT' || q.type === 'SCHOLAR') && q.target.itemType;
+        
+        if (needsCleanup) {
+            player.inventory = player.inventory.filter(item => {
+                if (!item.isQuestItem) return true;
+                
+                const isTypeMatch = (item.type === q.target.itemType);
+                const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
+                const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
+                
+                // Если предмет подходит под критерии квеста - удаляем его
+                if (isTypeMatch && isNameMatch && isUniqueMatch) {
+                    return false; 
+                }
+                return true;
+            });
+        }
+
+        // 2. Выдача награды
+        player.gold += q.rewardGold;
+        q.isTurnedIn = true; 
+
+        // 3. Обновление UI и логов
+        RenderModule.log(`🏆 Квест "${q.id}" сдан! Получено: ${q.rewardGold} золотых.`, "loot");
+        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+        RenderModule.updateQuestBriefing(null); 
+
+        // 4. Удаление из активных и добавление в выполненные
+        activeQuests = activeQuests.filter(aq => aq.id !== q.id);
+        completedQuestIds.add(q.id);
+        updateAbandonButton(activeQuests.length > 0);
+        updateQuestCompass();
+
+        // 5. Открытие окна завершения
+        if (typeof openQuestWindow === 'function') {
+            openQuestWindow(q, true);
+        } else {
+             if (q.turnInText) {
+                 RenderModule.log(`🗣️ ${npcName}: "${q.turnInText}"`, "event");
+             }
+        }
+
+        if (typeof RenderModule.updateInspector === 'function') {
+            RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
+        }
+    }
+
+    // === ЛОГИКА ВЫДАЧИ КВЕСТОВ (ПЕРЕПИСАННАЯ) ===
     function tryGiveQuest(npc) {
         if (typeof QuestSystemModule === 'undefined') return false;
-        if (!npc.isQuestGiver) return false;
-        if (!entrancePos) return false;
+        if (!npc || !npc.isQuestGiver) return false;
+        if (!entrancePos || !player) return false;
 
         const cityGx = entrancePos.x;
         const cityGy = entrancePos.y;
@@ -873,61 +925,13 @@ const GameModule = (function() {
                     // --- СЦЕНАРИЙ А: СДАЧА СЮЖЕТНОГО КВЕСТА ---
                     if (alreadyActive) {
                         const q = activeQuests.find(q => q.id === questId);
-                        
-                        if (q.isCompleted && !q.isTurnedIn) {
-                            // 1. Очистка инвентаря от квестовых предметов
-                            // === ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
-                            if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT' || q.type === 'SCHOLAR') {
-                                player.inventory = player.inventory.filter(item => {
-                                    if (!item.isQuestItem) return true;
-                     
-                                    // Проверяем соответствие предмета цели квеста
-                                    const isTypeMatch = (item.type === q.target.itemType);
-                                    const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
-                                    const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
-                     
-                                    // Если предмет подходит под критерии квеста - удаляем его (возвращаем false)
-                                    if (isTypeMatch && isNameMatch && isUniqueMatch) {
-                                        return false; 
-                                    }
-                                    return true;
-                                });
-                            }
-                            // ========================================================
-
-                            // 2. Выдача награды
-                            player.gold += q.rewardGold;
-                            q.isTurnedIn = true; 
-
-                            // 3. Обновление UI и логов
-                            RenderModule.log(`🏆 СЮЖЕТНЫЙ КВЕСТ СДАН! Получено: ${q.rewardGold} золотых.`, "loot");
-                            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-                            RenderModule.updateQuestBriefing(null); 
-
-                            // 4. Удаление из активных и добавление в выполненные
-                            activeQuests = activeQuests.filter(aq => aq.id !== questId);
-                            completedQuestIds.add(questId);
-                            updateAbandonButton(activeQuests.length > 0);
+                        if (q && q.isCompleted && !q.isTurnedIn) {
+                            completeQuestTurnIn(q, npc.name);
                             
-                            // 5. Прогресс цепочки
+                            // Прогресс цепочки
                             QuestChainModule.completeCurrentQuest();
-                            updateQuestCompass();
-
-                            // 6. ОТКРЫТИЕ ОКНА СЮЖЕТА (Сдача)
-                            if (typeof openQuestWindow === 'function') {
-                                openQuestWindow(q, true);
-                            } else {
-                                if (q.turnInText) {
-                                    RenderModule.log(`🗣️ ${npc.name}: "${q.turnInText}"`, "event");
-                                }
-                            }
-                            
-                            if (typeof RenderModule.updateInspector === 'function') {
-                                RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
-                            }
                             return true;
-                        } else {
-                            // Квест активен, но не выполнен
+                        } else if (q && !q.isCompleted) {
                             RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение. Ищи ${q.target.locationName}."`, "info");
                             return true;
                         }
@@ -952,7 +956,6 @@ const GameModule = (function() {
                         if (typeof openQuestWindow === 'function') {
                             openQuestWindow(chainQuest, false);
                         }
-                        
                         return true; 
                     }
                 } else {
@@ -970,137 +973,102 @@ const GameModule = (function() {
             }
         }
 
-    // ==========================================
-    // 2. СТАНДАРТНЫЕ СЛУЧАЙНЫЕ КВЕСТЫ (Fallback)
-    // ==========================================
-    
-    // === ПРОВЕРКА: ЕСТЬ ЛИ УЖЕ АКТИВНЫЙ НЕВЫПОЛНЕННЫЙ КВЕСТ? ===
-    const hasActiveUnfinishedQuest = activeQuests.some(q => !q.isCompleted);
-    
-    if (hasActiveUnfinishedQuest) {
-        const unfinishedQuest = activeQuests.find(q => !q.isCompleted);
-        RenderModule.log(`${npc.name}: "Сначала заверши предыдущее задание! Ищи ${unfinishedQuest.target.locationName}."`, "info");
-        return true; // Блокируем выдачу нового квеста
-    }
+        // ==========================================
+        // 2. СТАНДАРТНЫЕ СЛУЧАЙНЫЕ КВЕСТЫ (Fallback)
+        // ==========================================
+        
+        // === ПРОВЕРКА: ЕСТЬ ЛИ УЖЕ АКТИВНЫЙ НЕВЫПОЛНЕННЫЙ КВЕСТ? ===
+        const hasActiveUnfinishedQuest = activeQuests.some(q => !q.isCompleted);
+        if (hasActiveUnfinishedQuest) {
+            const unfinishedQuest = activeQuests.find(q => !q.isCompleted);
+            RenderModule.log(`${npc.name}: "Сначала заверши предыдущее задание! Ищи ${unfinishedQuest.target.locationName}."`, "info");
+            return true; 
+        }
 
-    // === ПРОВЕРКА: ЕСТЬ ЛИ КВЕСТ, КОТОРЫЙ ВЫПОЛНЕН, НО НЕ СДАН? ===
-    const hasUnclaimedReward = activeQuests.some(q => q.isCompleted && !q.isTurnedIn);
-    if (hasUnclaimedReward) {
-        const rewardQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
-        // Если этот квест был взят в ЭТОМ же городе, то сдаем его
-        if (rewardQuest.originX === cityGx && rewardQuest.originY === cityGy) {
-             // Логика сдачи квеста (копия из Сценария 0 ниже)
-             // ... (код сдачи квеста) ...
-             // Для краткости я опущу полный код сдачи здесь, так как он ниже в Сценарии 0
-             // Но важно: если мы здесь, значит мы в родном городе и можем сдать квест.
-             // Лучше всего перенаправить поток вниз к "Сценарию 0", но для этого нужно правильно сгенерировать ID.
-             // Поэтому проще всего оставить логику сдачи в "Сценарии 0", а здесь просто подсказать игроку.
-             RenderModule.log(`${npc.name}: "Ты выполнил мое поручение! Подойди ближе, чтобы получить награду."`, "info");
-             // Мы не возвращаем true, чтобы позволить коду ниже обработать клик как попытку сдачи.
-        } else {
-             RenderModule.log(`${npc.name}: "Ты выполнил чье-то поручение, но это не мое. Вернись туда, где брал задание."`, "info");
+        // === ПРОВЕРКА: ЕСТЬ ЛИ КВЕСТ, КОТОРЫЙ ВЫПОЛНЕН, НО НЕ СДАН? ===
+        const hasUnclaimedReward = activeQuests.some(q => q.isCompleted && !q.isTurnedIn);
+        if (hasUnclaimedReward) {
+            const rewardQuest = activeQuests.find(q => q.isCompleted && !q.isTurnedIn);
+            // Если этот квест был взят в ЭТОМ же городе, то сдаем его
+            if (rewardQuest && rewardQuest.originX === cityGx && rewardQuest.originY === cityGy) {
+                 completeQuestTurnIn(rewardQuest, npc.name);
+                 return true;
+            } else {
+                 RenderModule.log(`${npc.name}: "Ты выполнил чье-то поручение, но это не мое. Вернись туда, где брал задание."`, "info");
+                 return true;
+            }
+        }
+
+        // Генерация ID для случайного квеста
+        let npcIndex = 0;
+        for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
+        
+        // Создаем временный квест для проверки ID
+        const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+        const questId = tempQuest.id;
+        
+        const alreadyActive = activeQuests.some(q => q.id === questId);
+        const alreadyDone = completedQuestIds.has(questId);
+
+        // Сценарий 0: Квест активен, выполнен, но не сдан (повторная проверка для случайных квестов)
+        if (alreadyActive) {
+            const q = activeQuests.find(q => q.id === questId);
+            if (q && q.isCompleted && !q.isTurnedIn) {
+                completeQuestTurnIn(q, npc.name);
+                return true;
+            }
+        }
+
+        // Сценарий 1: Новый квест
+        if (!alreadyActive && !alreadyDone) {
+            const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
+            newQuest.isActive = true;
+            newQuest.originX = cityGx;
+            newQuest.originY = cityGy;
+            activeQuests.push(newQuest);
+            updateAbandonButton(true);
+            
+            RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
+            RenderModule.log(newQuest.briefing, "info");
+            RenderModule.updateQuestBriefing(newQuest);
+            
+            if (typeof RenderModule.updateInspector === 'function') {
+                RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
+            }
+            
+            // Открываем окно квеста
+            if (typeof openQuestWindow === 'function') {
+                openQuestWindow(newQuest, false);
+            }
+            return true; 
+        }
+        
+        // Сценарий 2: Квест активен, но цель еще не достигнута
+        else if (alreadyActive) {
+             const q = activeQuests.find(q => q.id === questId);
+             if (q) {
+                 const statusMsg = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
+                 RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение! Ищи ${q.target.locationName}."`, "info");
+                 
+                 if (typeof RenderModule.updateInspector === 'function') {
+                     RenderModule.updateInspector(`📜 ${npc.name}`, statusMsg, "npc");
+                 }
+             }
+             return true; 
+        } 
+        
+        // Сценарий 3: Квест полностью завершен (сдан)
+        else if (alreadyDone) {
+             RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
+             
+             if (typeof RenderModule.updateInspector === 'function') {
+                 RenderModule.updateInspector(`📜 ${npc.name}`, "Задание выполнено. Спасибо!", "npc");
+             }
              return true;
         }
-    }
-
-    let npcIndex = 0;
-    for(let i=0; i<npc.name.length; i++) npcIndex += npc.name.charCodeAt(i);
-
-    const tempQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
-    const questId = tempQuest.id;
-    
-    const alreadyActive = activeQuests.some(q => q.id === questId);
-    const alreadyDone = completedQuestIds.has(questId);
-
-    // Сценарий 0: Квест выполнен, но награда еще не получена (СДАЧА КВЕСТА)
-    // Этот блок сработает, если мы в том же городе, где брали квест
-    if (alreadyActive) {
-        const q = activeQuests.find(q => q.id === questId);
-        if (q.isCompleted && !q.isTurnedIn) {
-            
-            // === ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
-            if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT') {
-                player.inventory = player.inventory.filter(item => {
-                    if (!item.isQuestItem) return true;
-                    const isTypeMatch = (item.type === q.target.itemType);
-                    const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
-                    const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
-                    if (isTypeMatch && isNameMatch && isUniqueMatch) {
-                        return false; 
-                    }
-                    return true;
-                });
-            }
-            // ========================================================
-
-            player.gold += q.rewardGold;
-            q.isTurnedIn = true; 
-            
-            RenderModule.log(`🏆 Квест сдан! Получено: ${q.rewardGold} золотых.`, "loot");
-            RenderModule.updateUI(player, currentLocData, currentWorldTrend);
-            
-            RenderModule.updateQuestBriefing(null); 
-
-            activeQuests = activeQuests.filter(aq => aq.id !== questId);
-            completedQuestIds.add(questId);
-            updateAbandonButton(activeQuests.length > 0);
-            updateQuestCompass();
-            
-            // === ВАЖНО: Открываем окно завершения для всех типов квестов ===
-            if (typeof openQuestWindow === 'function') {
-                openQuestWindow(q, true);
-            }
-
-            if (typeof RenderModule.updateInspector === 'function') {
-                RenderModule.updateInspector(`📜 Квест сдан!`, `Награда: ${q.rewardGold} золотых.`, "npc");
-            }
-            return true;
-        }
-    }
-
-
-    // Сценарий 1: Новый квест
-    if (!alreadyActive && !alreadyDone) {
-        const newQuest = QuestSystemModule.createQuest(cityGx, cityGy, npcIndex % 5);
-        newQuest.isActive = true;
-        newQuest.originX = cityGx;
-        newQuest.originY = cityGy;
-        activeQuests.push(newQuest);
-        updateAbandonButton(true);
-        RenderModule.log(`📜 НОВЫЙ КВЕСТ от ${npc.name}:`, "event");
-        RenderModule.log(newQuest.briefing, "info");
         
-        RenderModule.updateQuestBriefing(newQuest);
-        
-        if (typeof RenderModule.updateInspector === 'function') {
-            RenderModule.updateInspector(`📜 Квест принят!`, newQuest.briefing, "npc");
-        }
-        return true; 
+        return false;
     }
-    // Сценарий 2: Квест активен, но цель еще не достигнута
-    else if (alreadyActive) {
-         const q = activeQuests.find(q => q.id === questId);
-         const statusMsg = `Статус: В процессе (${q.progress}/${q.maxProgress})`;
-         
-         RenderModule.log(`${npc.name}: "Ты еще не выполнил мое поручение! Ищи ${q.target.locationName}."`, "info");
-         
-         if (typeof RenderModule.updateInspector === 'function') {
-             RenderModule.updateInspector(`📜 ${npc.name}`, statusMsg, "npc");
-         }
-         return true; 
-    } 
-    // Сценарий 3: Квест полностью завершен (сдан)
-    else if (alreadyDone) {
-         RenderModule.log(`${npc.name}: "Спасибо за помощь, герой. Пока что дел нет."`, "info");
-         
-         if (typeof RenderModule.updateInspector === 'function') {
-             RenderModule.updateInspector(`📜 ${npc.name}`, "Задание выполнено. Спасибо!", "npc");
-         }
-         return true;
-    }
-    
-    return false;
-}
     
     // === НАГРАДА ЗА КВЕСТ ===
     function grantReward(quest) {
