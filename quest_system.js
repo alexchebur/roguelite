@@ -377,11 +377,17 @@ const QuestSystemModule = (function() {
         }
 
         // === SCHOLAR ===
-        if (quest.type === 'SCHOLAR' && eventData.type === 'read_book') {
-            quest.progress++;
-            updated = true;
-            if (typeof RenderModule !== 'undefined' && RenderModule.log) {
-                RenderModule.log(`Квест: Прочитано книг (${quest.progress}/${quest.maxProgress})`, "info");
+        if (quest.type === 'SCHOLAR') {
+            // Поддержка обоих типов событий: и чтения из инвентаря, и подбора с пола
+            if (eventData.type === 'read_book' || eventData.type === 'pickup') {
+                // Проверяем, что это действительно книга
+                if (eventData.itemType === 'book' || eventData.itemType === quest.target.itemType) {
+                    quest.progress++;
+                    updated = true;
+                    if (typeof RenderModule !== 'undefined' && RenderModule.log) {
+                        RenderModule.log(`Квест: Прочитано книг (${quest.progress}/${quest.maxProgress})`, "info");
+                    }
+                }
             }
         }
 
