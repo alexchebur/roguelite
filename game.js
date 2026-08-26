@@ -3370,10 +3370,12 @@ function updateQuestCompass() {
         if (itemIdx !== -1) {
             const item = items[itemIdx];
         
+            // 1. Обработка Золота
             if (item.type === 'gold') {
                 player.gold += item.val;
-                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
+                RenderModule.log(`Подобрано: ${item.name}`, "loot ");
             } 
+            // 2. Обработка Книг (Только ЛОР и добавление в инвентарь)
             else if (item.type === 'book') {
                 player.inventory.push(item);
                 
@@ -3381,36 +3383,12 @@ function updateQuestCompass() {
                     const fragment = LoreModule.getNextFragment();
                     RenderModule.log(`📖 Вы подобрали "${item.name}". Внутри написано:`, "info ");
                     RenderModule.log(fragment, "event ");
-                    
-                    // === ПРОВЕРКА КВЕСТА SCHOLAR (ЧТЕНИЕ КНИГ) ===
-                    if (typeof QuestSystemModule !== 'undefined') {
-                        let questUpdated = false;
-                        activeQuests.forEach(q => {
-                            if (!q.isCompleted && q.type === 'SCHOLAR') {
-                                const wasUpdated = QuestSystemModule.checkProgress(q, { type: 'read_book' });
-                                if (wasUpdated) questUpdated = true;
-                            }
-                        });
-                        
-                        // Если прогресс изменился, обновляем нижнюю панель
-                        if (questUpdated) {
-                            const scholarQuest = activeQuests.find(q => q.type === 'SCHOLAR' && !q.isCompleted);
-                            if (scholarQuest) {
-                                RenderModule.updateQuestBriefing(scholarQuest);
-                            }
-                            // Если квест завершился, переключаем компас на "Награда"
-                            const completedScholar = activeQuests.find(q => q.type === 'SCHOLAR' && q.isCompleted);
-                            if (completedScholar) {
-                                updateQuestCompass();
-                            }
-                        }
-                    }
                 } else {
                      RenderModule.log(`Вы подобрали "${item.name}".`, "info ");
                 }
             }  
+            // 3. Обычные предметы
             else {
-                // Обычные предметы (оружие, броня, зелья, еда)
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
             }
@@ -3427,31 +3405,28 @@ function updateQuestCompass() {
                     if (isPickupType) {
                         let isItemMatch = false;
                         
-                        // 1. Проверка по уникальному ID (для сюжетных квестов FETCH/COLLECT)
+                        // 1. Проверка по уникальному ID
                         if (q.target.uniqueId && item.uniqueId === q.target.uniqueId) {
                             isItemMatch = true;
                         } 
-                        // 2. Проверка по типу и имени (для процедурных квестов)
+                        // 2. Проверка по типу и имени
                         else if ((item.type === q.target.itemType) && 
                                  (!q.target.itemName || item.name.includes(q.target.itemName))) {
                             isItemMatch = true;
                         }
 
                         if (isItemMatch) {
-                            // Проверка локации (подземелья)
-                            // Для SCHOLAR локация может быть не важна, если targetX/Y null, но обычно важна
+                            // Проверка локации
                             const isCorrectLocation = (
                                 !q.target.targetX || 
                                 (dungeonX === q.target.targetX && dungeonY === q.target.targetY)
                             );
 
-                            // Проверка глубины (если требуется)
+                            // Проверка глубины
                             const requiredDepth = q.target.recommendedDepth || q.target.targetDepth;
                             const isCorrectDepth = !requiredDepth || ((currentDepth + 1) >= requiredDepth);
 
                             if (!isCorrectLocation) {
-                                // Не спамим лог для каждого предмета, если игрок просто подбирает мусор
-                                // RenderModule.log(`📦 Это ${item.name}, но не тот. Ищите в ${q.target.locationName}.`, "info ");
                                 return; 
                             }
 
@@ -3460,23 +3435,21 @@ function updateQuestCompass() {
                                 return; 
                             }
 
-                            // Помечаем предмет как квестовый (важно для сдачи NPC)
+                            // Помечаем предмет как квестовый
                             item.isQuestItem = true;
 
                             // --- ЛОГИКА ДЛЯ РАЗНЫХ ТИПОВ КВЕСТОВ ---
-
                             if (q.type === 'FETCH') {
-                                // FETCH завершается мгновенно при находке нужного предмета
                                 q.progress = q.maxProgress;
                                 q.isCompleted = true;
                                 RenderModule.updateQuestBriefing(q);
                                 RenderModule.log(`📦 Это тот самый предмет! Квест "${q.id}" выполнен.`, "event");
-                                updateQuestCompass(); // Переключаем стрелку на "Награда"
+                                updateQuestCompass();
                             } 
                             else if (q.type === 'COLLECT' || q.type === 'SCHOLAR') {
-                             // COLLECT и SCHOLAR накапливают прогресс
+                                // Используем единый тип события 'pickup' для всех подбираемых предметов
                                 QuestSystemModule.checkProgress(q, { 
-                                    type: 'pickup', // <--- ИСПРАВЛЕНО: было 'read_book' или отсутствовало
+                                    type: 'pickup', 
                                     itemType: item.type,
                                     itemName: item.name,
                                     uniqueId: item.uniqueId,
@@ -3485,13 +3458,12 @@ function updateQuestCompass() {
                                     currentDepth: currentDepth 
                                 });
                              
-                                // Обновляем UI после каждого подбора
+                                // Обновляем UI
                                 RenderModule.updateQuestBriefing(q);
                              
                                 const typeName = q.type === 'SCHOLAR' ? 'Книга' : 'Предмет';
                                 RenderModule.log(`📚 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
                              
-                                // Если квест только что завершился
                                 if (q.isCompleted) {
                                     RenderModule.log(`🏆 Квест "${q.id}" выполнен! Вернитесь за наградой.`, "event");
                                     updateQuestCompass();
