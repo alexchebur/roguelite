@@ -876,18 +876,24 @@ const GameModule = (function() {
                         
                         if (q.isCompleted && !q.isTurnedIn) {
                             // 1. Очистка инвентаря от квестовых предметов
-                            if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT') {
+                            // === ОЧИСТКА ИНВЕНТАРЯ ОТ КВЕСТОВЫХ ПРЕДМЕТОВ ===
+                            if (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT' || q.type === 'SCHOLAR') {
                                 player.inventory = player.inventory.filter(item => {
                                     if (!item.isQuestItem) return true;
+                     
+                                    // Проверяем соответствие предмета цели квеста
                                     const isTypeMatch = (item.type === q.target.itemType);
                                     const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
                                     const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
+                     
+                                    // Если предмет подходит под критерии квеста - удаляем его (возвращаем false)
                                     if (isTypeMatch && isNameMatch && isUniqueMatch) {
                                         return false; 
                                     }
                                     return true;
                                 });
                             }
+                            // ========================================================
 
                             // 2. Выдача награды
                             player.gold += q.rewardGold;
