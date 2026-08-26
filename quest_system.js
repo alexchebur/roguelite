@@ -182,6 +182,8 @@ const QuestSystemModule = (function() {
         else if (type === 'SCHOLAR') {
             targetData.count = rng.int(1, 3);
             targetData.locationName = "древних библиотеках";
+            targetData.itemType = 'book'; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+            targetData.itemName = 'Книга'; // <--- И ЭТУ ДЛЯ НАДЕЖНОСТИ
         }
         // === НОВОЕ: ПАРАМЕТРЫ ДЛЯ БОССА ===
         else if (type === 'BOSS_HUNT') {
