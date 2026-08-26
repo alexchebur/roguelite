@@ -2105,27 +2105,27 @@ function updateQuestCompass() {
                 }
 
                 // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
-                if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && !q.isCompleted) {
-                    console.log(`🔍 [Quest Check] Квест "${q.id}" тип: ${q.type}. Цель:`, q.target);
+                if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
+                    q.target.itemType === 'book' && 
+                    !q.isCompleted) {
                     
-                    // Проверяем, требует ли квест именно книги
-                    if (q.target.itemType === 'book') {
-                        const existingBooks = items.filter(i => i.type === 'book' && i.isQuestItem).length;
-                        const targetCount = Math.min(q.maxProgress, 3);
-                        
-                        console.log(`📚 [Book Spawn] Найдено книг на полу: ${existingBooks}. Нужно: ${targetCount}`);
-
-                        if (existingBooks < targetCount) {
-                            const booksToSpawn = targetCount - existingBooks;
-                            console.log(`📚 [Book Spawn] Спавним ${booksToSpawn} книг!`);
-                            for(let i = 0; i < booksToSpawn; i++) {
-                                spawnScholarBook(q);
-                            }
-                        } else {
-                            console.log(`📚 [Book Spawn] Книг достаточно, спавн пропущен.`);
-                        }
-                    } else {
-                        console.warn(`⚠️ [Quest Check] Квест ${q.id} требует предмет типа "${q.target.itemType}", а не книгу. Спавн книг пропущен.`);
+                    // Считаем книги, которые УЖЕ лежат на полу
+                    const existingBooksOnFloor = items.filter(i => i.type === 'book' && i.isQuestItem).length;
+                    
+                    // Сколько всего нужно для квеста
+                    const totalNeeded = q.maxProgress;
+                    
+                    // Сколько не хватает до выполнения (или просто доспавним до максимума за раз)
+                    // Логика: если на полу 0 книг, а прогресс 0/3 -> спавним 1-2 книги.
+                    // Если игрок подобрал одну, вернулся на уровень -> спавним новую.
+                    
+                    if (existingBooksOnFloor < 2) { // Держим на полу хотя бы пару книг, если квест не выполнен
+                         // Не спавним больше, чем нужно для завершения квеста минус текущий прогресс
+                         const missingForQuest = totalNeeded - q.progress;
+                         if (missingForQuest > 0) {
+                             console.log(`📚 [Quest] Спавн квестовой книги для "${q.id}" (Прогресс: ${q.progress}/${totalNeeded})`);
+                             spawnScholarBook(q);
+                         }
                     }
                 }
 
@@ -2456,6 +2456,7 @@ function updateQuestCompass() {
     }
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR ===
     // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR/COLLECT ===
+    // === ГАРАНТИРОВАННЫЙ СПАВН КНИГИ ДЛЯ КВЕСТА SCHOLAR/COLLECT ===
     function spawnScholarBook(quest) {
         const bookTemplate = DataModule.ITEM_TYPES.find(t => t.type === 'book');
         if (!bookTemplate) return;
@@ -2465,30 +2466,58 @@ function updateQuestCompass() {
         questBook.isQuestItem = true;
 
         let spawnPos = null;
-        
-        // Стратегия: Ищем место рядом с игроком, но со случайным смещением
-        if (player) {
-            // Пробуем найти место в радиусе 5, но если занято - ищем дальше
-            spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 5 + Math.floor(Math.random() * 3)) : null;
-        }
-        
-        // Если рядом занято или позиция совпадает с уже существующей книгой, ищем случайно
-        if (!spawnPos || items.some(i => i.x === spawnPos.x && i.y === spawnPos.y)) {
-             spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
-        }
-        
-        if (spawnPos) {
-            // Дополнительная проверка: если в этой клетке УЖЕ есть квестовая книга, сдвигаемся
-            while (items.some(i => i.x === spawnPos.x && i.y === spawnPos.y && i.isQuestItem)) {
-                spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
-                if (!spawnPos) break;
-            }
+        let attempts = 0;
+        const maxAttempts = 50; // Защита от зависания
 
-            if (spawnPos) {
-                questBook.x = spawnPos.x;
-                questBook.y = spawnPos.y;
-                items.push(questBook);
+        // Стратегия 1: Ищем место рядом с игроком (радиус 5)
+        while (!spawnPos && attempts < maxAttempts) {
+            attempts++;
+            // Генерируем случайное смещение
+            const dx = Math.floor(Math.random() * 11) - 5; // от -5 до 5
+            const dy = Math.floor(Math.random() * 11) - 5;
+            
+            const tx = player.x + dx;
+            const ty = player.y + dy;
+
+            // Проверка границ и стен
+            if (tx >= 0 && tx < DataModule.MAP_WIDTH && ty >= 0 && ty < DataModule.MAP_HEIGHT) {
+                if (!MapModule.isWall(tx, ty)) {
+                    // Проверка занятости другими предметами или врагами
+                    const isOccupied = items.some(i => i.x === tx && i.y === ty) || 
+                                       enemies.some(e => e.x === tx && e.y === ty);
+                    
+                    if (!isOccupied) {
+                        spawnPos = { x: tx, y: ty };
+                    }
+                }
             }
+        }
+
+        // Стратегия 2: Если рядом не нашли, ищем совсем случайно (еще 50 попыток)
+        attempts = 0;
+        if (!spawnPos) {
+             while (!spawnPos && attempts < 50) {
+                 attempts++;
+                 const rx = Math.floor(Math.random() * DataModule.MAP_WIDTH);
+                 const ry = Math.floor(Math.random() * DataModule.MAP_HEIGHT);
+                 
+                 if (!MapModule.isWall(rx, ry)) {
+                     const isOccupied = items.some(i => i.x === rx && i.y === ry) || 
+                                        enemies.some(e => e.x === rx && e.y === ry);
+                     if (!isOccupied) {
+                         spawnPos = { x: rx, y: ry };
+                     }
+                 }
+             }
+        }
+
+        if (spawnPos) {
+            questBook.x = spawnPos.x;
+            questBook.y = spawnPos.y;
+            items.push(questBook);
+            // console.log(`📚 Книга заспавнена на ${spawnPos.x}, ${spawnPos.y}`);
+        } else {
+            console.warn("⚠️ Не удалось найти место для квестовой книги после 100 попыток!");
         }
     }
     function forceSpawnBookAnywhere(quest) {
