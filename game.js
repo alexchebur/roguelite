@@ -2133,31 +2133,47 @@ function updateQuestCompass() {
                 // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR И COLLECT
                 if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
                     q.target.itemType === 'book' && 
-                    !q.isCompleted) { // Не спавним, если квест уже выполнен
+                    !q.isCompleted) { 
                     
                     // Считаем книги, которые лежат прямо сейчас на полу
                     const existingBooksOnFloor = items.filter(i => i.type === 'book' && i.isQuestItem).length;
                     
-                    // Определяем, сколько всего нужно книг для квеста
+                    // Сколько всего нужно для квеста
                     const totalNeeded = q.maxProgress;
                     
-                    // Сколько еще нужно заспавнить, чтобы достичь цели (с запасом до 3 штук за раз, чтобы не захламлять)
-                    // Но лучше спавнить ровно столько, сколько не хватает для выполнения, или по одной за вход
-                    const missingCount = totalNeeded - q.progress; 
+                    // Сколько не хватает до выполнения
+                    const missingForQuest = totalNeeded - q.progress;
                     
-                    // Ограничиваем спавн: не больше 3 книг за один вход на уровень, 
-                    // и не больше, чем реально не хватает
-                    const toSpawn = Math.min(3, missingCount, totalNeeded - existingBooksOnFloor);
+                    // Логика: держим на полу хотя бы 1-2 книги, если прогресс не полный
+                    // Но не больше, чем реально не хватает сдать
+                    const targetOnFloor = Math.min(2, missingForQuest);
 
-                    if (toSpawn > 0) {
-                        console.log(`📚 [Quest] Спавн ${toSpawn} квестовых книг для "${q.id}" (Прогресс: ${q.progress}/${totalNeeded})`);
-                        for(let i = 0; i < toSpawn; i++) {
+                    if (existingBooksOnFloor < targetOnFloor) {
+                        const booksToSpawn = targetOnFloor - existingBooksOnFloor;
+                        
+                        console.log(`📚 [Quest] Попытка спавна ${booksToSpawn} книг для "${q.id}" (Прогресс: ${q.progress}/${totalNeeded})`);
+                        
+                        let spawnedCount = 0;
+                        for(let i = 0; i < booksToSpawn; i++) {
+                            // Пробуем стандартный спавн
                             spawnScholarBook(q);
+                            
+                            // Проверяем, появилась ли новая книга (сравниваем длину массива items до и после было бы идеально, 
+                            // но проще проверить наличие книги на полу снова или довериться функции)
+                            // Для надежности можно просто считать, что функция отработала.
+                            spawnedCount++;
                         }
-                    } else if (existingBooksOnFloor === 0 && q.progress < totalNeeded) {
-                        // Если книг нет совсем, а прогресс не полный, спавним хотя бы одну
-                        console.log(`📚 [Quest] Книги отсутствуют, спавним одну гарантированную.`);
-                        spawnScholarBook(q);
+                        
+                        // ПРОВЕРКА НА СБОЙ СПАВНА
+                        // Если мы пытались заспавнить, но книг на полу всё равно нет (или стало меньше чем планировали)
+                        const newExisting = items.filter(i => i.type === 'book' && i.isQuestItem).length;
+                        if (newExisting < targetOnFloor) {
+                             console.warn(`⚠️ [Quest] Стандартный спавн книг не удался или книг недостаточно (${newExisting}). Форсирую спавн в случайную точку.`);
+                             // Принудительный спавн в любую свободную клетку, даже далеко
+                             for(let k=0; k < (targetOnFloor - newExisting); k++) {
+                                 forceSpawnBookAnywhere(q);
+                             }
+                        }
                     }
                 }
 
@@ -2519,7 +2535,26 @@ function updateQuestCompass() {
             console.warn("⚠️ Не удалось найти место для спавна квестовой книги!");
         }
     }
+    function forceSpawnBookAnywhere(quest) {
+        const bookTemplate = DataModule.ITEM_TYPES.find(t => t.type === 'book');
+        if (!bookTemplate) return;
 
+        const questBook = EntityModule.createItem(bookTemplate, 0, 0, 1.0);
+        questBook.name = `✨ ${questBook.name} (Квест)`;
+        questBook.isQuestItem = true;
+
+        // Ищем абсолютно любую свободную клетку на карте
+        const spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
+        
+        if (spawnPos) {
+            questBook.x = spawnPos.x;
+            questBook.y = spawnPos.y;
+            items.push(questBook);
+            RenderModule.log(`📖 Где-то в темноте блеснула страница квестовой книги...`, "info");
+        } else {
+             console.error("❌ [Quest] КРИТИЧЕСКАЯ ОШИБКА: Нет ни одной свободной клетки для книги!");
+        }
+    }
     function saveCurrentDungeonState() {
         if (window.gameMode === 'dungeon' && currentDepth >= 0) {
             const cacheKey = `${dungeonX}_${dungeonY}_${currentDepth}`;
