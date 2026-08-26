@@ -1033,6 +1033,7 @@ const GameModule = (function() {
         if (alreadyActive) {
             const q = activeQuests.find(q => q.id === questId);
             if (q && q.isCompleted && !q.isTurnedIn) {
+                // ИСПОЛЬЗУЕМ УНИВЕРСАЛЬНУЮ ФУНКЦИЮ, КОТОРАЯ УЖЕ УМЕЕТ РАБОТАТЬ СО SCHOLAR
                 completeQuestTurnIn(q, npc.name);
                 return true;
             }
