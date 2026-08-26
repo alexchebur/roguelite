@@ -3455,9 +3455,9 @@ function updateQuestCompass() {
                                 updateQuestCompass(); // Переключаем стрелку на "Награда"
                             } 
                             else if (q.type === 'COLLECT' || q.type === 'SCHOLAR') {
-                                // COLLECT и SCHOLAR накапливают прогресс
+                             // COLLECT и SCHOLAR накапливают прогресс
                                 QuestSystemModule.checkProgress(q, { 
-                                    type: 'pickup', // Используем единый тип события для подбора
+                                    type: 'pickup', // <--- ИСПРАВЛЕНО: было 'read_book' или отсутствовало
                                     itemType: item.type,
                                     itemName: item.name,
                                     uniqueId: item.uniqueId,
@@ -3465,13 +3465,13 @@ function updateQuestCompass() {
                                     locY: dungeonY,
                                     currentDepth: currentDepth 
                                 });
-                                
+                             
                                 // Обновляем UI после каждого подбора
                                 RenderModule.updateQuestBriefing(q);
-                                
+                             
                                 const typeName = q.type === 'SCHOLAR' ? 'Книга' : 'Предмет';
                                 RenderModule.log(`📚 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
-                                
+                             
                                 // Если квест только что завершился
                                 if (q.isCompleted) {
                                     RenderModule.log(`🏆 Квест "${q.id}" выполнен! Вернитесь за наградой.`, "event");
