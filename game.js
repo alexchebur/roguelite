@@ -2130,50 +2130,28 @@ function updateQuestCompass() {
                     }
                 }
 
-                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR И COLLECT
-                if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && 
-                    q.target.itemType === 'book' && 
-                    !q.isCompleted) { 
+                // 2. ГАРАНТИРОВАННЫЙ СПАВН КНИГ ДЛЯ SCHOLAR/COLLECT
+                if ((q.type === 'SCHOLAR' || q.type === 'COLLECT') && !q.isCompleted) {
+                    console.log(`🔍 [Quest Check] Квест "${q.id}" тип: ${q.type}. Цель:`, q.target);
                     
-                    // Считаем книги, которые лежат прямо сейчас на полу
-                    const existingBooksOnFloor = items.filter(i => i.type === 'book' && i.isQuestItem).length;
-                    
-                    // Сколько всего нужно для квеста
-                    const totalNeeded = q.maxProgress;
-                    
-                    // Сколько не хватает до выполнения
-                    const missingForQuest = totalNeeded - q.progress;
-                    
-                    // Логика: держим на полу хотя бы 1-2 книги, если прогресс не полный
-                    // Но не больше, чем реально не хватает сдать
-                    const targetOnFloor = Math.min(2, missingForQuest);
+                    // Проверяем, требует ли квест именно книги
+                    if (q.target.itemType === 'book') {
+                        const existingBooks = items.filter(i => i.type === 'book' && i.isQuestItem).length;
+                        const targetCount = Math.min(q.maxProgress, 3);
+                        
+                        console.log(`📚 [Book Spawn] Найдено книг на полу: ${existingBooks}. Нужно: ${targetCount}`);
 
-                    if (existingBooksOnFloor < targetOnFloor) {
-                        const booksToSpawn = targetOnFloor - existingBooksOnFloor;
-                        
-                        console.log(`📚 [Quest] Попытка спавна ${booksToSpawn} книг для "${q.id}" (Прогресс: ${q.progress}/${totalNeeded})`);
-                        
-                        let spawnedCount = 0;
-                        for(let i = 0; i < booksToSpawn; i++) {
-                            // Пробуем стандартный спавн
-                            spawnScholarBook(q);
-                            
-                            // Проверяем, появилась ли новая книга (сравниваем длину массива items до и после было бы идеально, 
-                            // но проще проверить наличие книги на полу снова или довериться функции)
-                            // Для надежности можно просто считать, что функция отработала.
-                            spawnedCount++;
+                        if (existingBooks < targetCount) {
+                            const booksToSpawn = targetCount - existingBooks;
+                            console.log(`📚 [Book Spawn] Спавним ${booksToSpawn} книг!`);
+                            for(let i = 0; i < booksToSpawn; i++) {
+                                spawnScholarBook(q);
+                            }
+                        } else {
+                            console.log(`📚 [Book Spawn] Книг достаточно, спавн пропущен.`);
                         }
-                        
-                        // ПРОВЕРКА НА СБОЙ СПАВНА
-                        // Если мы пытались заспавнить, но книг на полу всё равно нет (или стало меньше чем планировали)
-                        const newExisting = items.filter(i => i.type === 'book' && i.isQuestItem).length;
-                        if (newExisting < targetOnFloor) {
-                             console.warn(`⚠️ [Quest] Стандартный спавн книг не удался или книг недостаточно (${newExisting}). Форсирую спавн в случайную точку.`);
-                             // Принудительный спавн в любую свободную клетку, даже далеко
-                             for(let k=0; k < (targetOnFloor - newExisting); k++) {
-                                 forceSpawnBookAnywhere(q);
-                             }
-                        }
+                    } else {
+                        console.warn(`⚠️ [Quest Check] Квест ${q.id} требует предмет типа "${q.target.itemType}", а не книгу. Спавн книг пропущен.`);
                     }
                 }
 
