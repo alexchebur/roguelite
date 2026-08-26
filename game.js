@@ -2498,20 +2498,25 @@ function updateQuestCompass() {
         questBook.isQuestItem = true;
 
         let spawnPos = null;
-        // Стратегия: Ищем место рядом с игроком
+        
+        // Стратегия 1: Ищем место рядом с игроком (радиус 5)
         if (player) {
             spawnPos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 5) : null;
         }
         
-        // Если рядом занято, ищем случайное место
+        // Стратегия 2: Если рядом занято, ищем случайное место на карте
         if (!spawnPos || items.some(i => i.x === spawnPos.x && i.y === spawnPos.y)) {
              spawnPos = MapModule.getRandomFloor ? MapModule.getRandomFloor(player) : null;
         }
-
+        
         if (spawnPos) {
             questBook.x = spawnPos.x;
             questBook.y = spawnPos.y;
             items.push(questBook);
+            // Добавим лог, чтобы видеть, где появилась книга
+            RenderModule.log(`📖 Где-то здесь лежит квестовая книга...`, "info");
+        } else {
+            console.warn("⚠️ Не удалось найти место для спавна квестовой книги!");
         }
     }
 
