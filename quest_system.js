@@ -141,6 +141,51 @@ const QuestSystemModule = (function() {
              targetData.dungeonType = 'rogue';
         }
 
+        // Рассчитываем рекомендуемую глубину для фильтрации врагов
+        const recommendedDepth = Math.max(1, Math.min(10, Math.floor(difficultyLevel / 1.5)));
+        targetData.recommendedDepth = recommendedDepth;
+
+        // === НОВОЕ: ФИЛЬТРАЦИЯ ВРАГОВ ПО БИОМУ И ГЛУБИНЕ ===
+        // Эта логика применяется для HUNT, BOUNTY и BOSS_HUNT (если босс не сгенерирован вручную)
+        let possibleEnemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
+
+        // 1. Фильтрация по ТИПУ ПОДЗЕМЕЛЬЯ (БИОМУ)
+        if (targetData.dungeonType) {
+            possibleEnemies = possibleEnemies.filter(enemy => {
+                // Если у врага нет поля biomes, он считается универсальным (доступен везде)
+                if (!enemy.biomes || enemy.biomes.length === 0) return true;
+                // Проверяем, есть ли тип текущего подземелья в списке биомов врага
+                return enemy.biomes.includes(targetData.dungeonType);
+            });
+            
+            // Если после фильтрации не осталось врагов, берем всех доступных по уровню (фолбэк)
+            if (possibleEnemies.length === 0) {
+                console.warn(`[QuestSystem] Нет врагов для биома '${targetData.dungeonType}'. Используются стандартные.`);
+                possibleEnemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
+            }
+        }
+
+        // 2. Дополнительная фильтрация по ГЛУБИНЕ (для более точного подбора)
+        // Даже если враг подходит по биому, он может быть слишком сильным/слабым для рекомендованной глубины
+        const depth = targetData.recommendedDepth || 1;
+        possibleEnemies = possibleEnemies.filter(enemy => {
+            // Простая эвристика на основе среднего HP:
+            // Слабые (HP < 25) -> до 3 уровня
+            // Средние (HP 25-60) -> 3-7 уровень
+            // Сильные (HP > 60) -> 7+ уровень
+            const avgHp = (enemy.hp[0] + enemy.hp[1]) / 2;
+            if (depth <= 3) return avgHp <= 25;
+            if (depth <= 7) return avgHp <= 60;
+            return true; // На большой глубине доступны все сильные враги
+        });
+
+        // Если снова пусто, фолбэк на полный список
+        if (possibleEnemies.length === 0) {
+             possibleEnemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
+        }
+        // ==========================================================
+
+
         // 2. Специфичные параметры для типов квестов
         if (type === 'FETCH') {
             const possibleItems = DataModule.ITEM_TYPES.filter(i => 
@@ -152,8 +197,8 @@ const QuestSystemModule = (function() {
             targetData.itemType = itemTemplate.type;
         } 
         else if (type === 'HUNT') {
-            const enemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
-            const enemyTemplate = pickRandom(rng, enemies);
+            // Используем отфильтрованный список possibleEnemies
+            const enemyTemplate = pickRandom(rng, possibleEnemies);
             
             targetData.enemyName = enemyTemplate.name;
             const baseCount = rng.int(3, 5);
@@ -173,8 +218,8 @@ const QuestSystemModule = (function() {
             targetData.count = rng.int(2, 4);
         }
         else if (type === 'BOUNTY') {
-            const enemies = EntityModule.getAvailableEnemies ? EntityModule.getAvailableEnemies(difficultyLevel) : DataModule.ENEMY_TYPES;
-            const enemyTemplate = pickRandom(rng, enemies);
+            // Используем отфильтрованный список possibleEnemies
+            const enemyTemplate = pickRandom(rng, possibleEnemies);
             
             targetData.enemyName = enemyTemplate.name;
             targetData.count = rng.int(1, 3); 
@@ -182,8 +227,8 @@ const QuestSystemModule = (function() {
         else if (type === 'SCHOLAR') {
             targetData.count = rng.int(1, 3);
             targetData.locationName = "древних библиотеках";
-            targetData.itemType = 'book'; // <--- ДОБАВИТЬ ЭТУ СТРОКУ
-            targetData.itemName = 'Книга'; // <--- И ЭТУ ДЛЯ НАДЕЖНОСТИ
+            targetData.itemType = 'book'; 
+            targetData.itemName = 'Книга'; 
         }
         // === НОВОЕ: ПАРАМЕТРЫ ДЛЯ БОССА ===
         else if (type === 'BOSS_HUNT') {
