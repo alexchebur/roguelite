@@ -367,6 +367,7 @@ const QuestSystemModule = (function() {
                 updated = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                     RenderModule.log(`Квест: ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
+                    RenderModule.updateQuestBriefing(quest);
                 }
             }
         }
@@ -378,6 +379,7 @@ const QuestSystemModule = (function() {
                 updated = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                     RenderModule.log(`Квест: Охота на ${quest.target.enemyName} (${quest.progress}/${quest.maxProgress})`, "info");
+                    RenderModule.updateQuestBriefing(quest);
                 }
             }
         }
@@ -417,6 +419,7 @@ const QuestSystemModule = (function() {
                 updated = true;
                 if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                     RenderModule.log(`Квест: Сбор ${quest.target.itemName} (${quest.progress}/${quest.maxProgress})`, "info");
+                    RenderModule.updateQuestBriefing(quest);
                 }
             }
         }
@@ -431,6 +434,7 @@ const QuestSystemModule = (function() {
                     updated = true;
                     if (typeof RenderModule !== 'undefined' && RenderModule.log) {
                         RenderModule.log(`Квест: Прочитано книг (${quest.progress}/${quest.maxProgress})`, "info");
+                        RenderModule.updateQuestBriefing(quest);
                     }
                 }
             }
