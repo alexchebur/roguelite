@@ -190,32 +190,39 @@ const EntityModule = (function() {
 
 // В файле entity.js, внутри модуля EntityModule
 
-// === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по глубине И типу подземелья ===
     // === НОВАЯ ФУНКЦИЯ: Фильтрация врагов по глубине И типу подземелья ===
     function getAvailableEnemies(depth, dungeonType) {
         let available = DataModule.ENEMY_TYPES;
 
-        // 1. Фильтр по ТИПУ ПОДЗЕМЕЛЬЯ (Биом)
+        // 1. Сначала фильтруем по СИЛЕ (Глубине), чтобы оставить "пушечное мясо" для ранних уровней
+        if (depth <= 2) {
+            // Берем всех, у кого максимальное HP меньше 35 (включая Слизней с HP 30)
+            available = available.filter(e => e.hp[1] < 35); 
+        } else if (depth >= 10) {
+            available = available.filter(e => e.hp[1] > 40); 
+        }
+
+        // 2. Теперь фильтруем оставшихся слабых монстров по ТИПУ ПОДЗЕМЕЛЬЯ (Биом)
         if (dungeonType && dungeonType !== 'fortress') { 
-            available = available.filter(e => {
+            const biomeFiltered = available.filter(e => {
                 // Если у монстра нет поля biomes, считаем его универсальным
                 if (!e.biomes || e.biomes.length === 0) return true;
                 return e.biomes.includes(dungeonType);
             });
+
+            // Если после фильтрации по биому кто-то остался — используем их
+            if (biomeFiltered.length > 0) {
+                available = biomeFiltered;
+            } else {
+                // ИНАЧЕ: Если в этом биоме нет слабых монстров, оставляем тех слабых, что есть (игнорируя биом)
+                // Это гарантирует, что на 1 уровне cellular всегда будут хотя бы Слизни или Крысы
+                console.log(`[Entity] В биоме ${dungeonType} нет слабых монстров. Используются любые доступные для уровня.`);
+            }
         }
 
-        // Если после фильтра список пуст, возвращаем резервный список (универсальные монстры)
+        // Финальная защита от пустого списка
         if (available.length === 0) {
-            console.warn(`Нет монстров для типа ${dungeonType}. Используются резервные.`);
-            return DataModule.ENEMY_TYPES.filter(e => !e.biomes || e.biomes.includes('dungeon'));
-        }
-
-        // 2. Дополнительная фильтрация по силе (опционально, чтобы на 1 уровне не было элиты)
-        // Мы используем hp[1] (максимальное HP из диапазона) как индикатор силы
-        if (depth <= 2) {
-            available = available.filter(e => e.hp[1] < 25); 
-        } else if (depth >= 10) {
-            available = available.filter(e => e.hp[1] > 40); 
+            return DataModule.ENEMY_TYPES.filter(e => e.hp[1] < 35); // Возвращаем просто слабых
         }
 
         return available;
