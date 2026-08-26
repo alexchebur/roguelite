@@ -857,19 +857,38 @@ const GameModule = (function() {
         const needsCleanup = (q.type === 'FETCH' || q.type === 'COLLECT' || q.type === 'BOSS_HUNT' || q.type === 'SCHOLAR') && q.target.itemType;
         
         if (needsCleanup) {
+            const initialCount = player.inventory.length;
+            
             player.inventory = player.inventory.filter(item => {
+                // Пропускаем предметы без флага квестовости
                 if (!item.isQuestItem) return true;
                 
+                // Проверка соответствия типу предмета (самое важное для SCHOLAR/COLLECT)
                 const isTypeMatch = (item.type === q.target.itemType);
-                const isNameMatch = (!q.target.itemName || item.name.includes(q.target.itemName));
+                
+                // Проверка уникального ID (если есть)
                 const isUniqueMatch = q.target.uniqueId ? (item.uniqueId === q.target.uniqueId) : true;
                 
+                // Проверка имени (более мягкая: если имя цели не задано или входит в имя предмета)
+                // Для книг часто имя цели может быть пустым или общим, поэтому полагаемся на тип
+                let isNameMatch = true;
+                if (q.target.itemName) {
+                    isNameMatch = item.name.includes(q.target.itemName);
+                }
+
                 // Если предмет подходит под критерии квеста - удаляем его
-                if (isTypeMatch && isNameMatch && isUniqueMatch) {
+                // ВАЖНО: Для SCHOLAR часто достаточно совпадения типа и флага isQuestItem
+                if (isTypeMatch && isUniqueMatch && (isNameMatch || !q.target.itemName)) {
                     return false; 
                 }
                 return true;
             });
+
+            // Лог для отладки, если ничего не удалилось
+            if (player.inventory.length === initialCount) {
+                console.warn(`⚠️ [Quest] Не удалось удалить предметы для квеста ${q.id}. Тип цели: ${q.target.itemType}, Имя цели: ${q.target.itemName}`);
+                console.log("Инвентарь игрока:", player.inventory.map(i => ({name: i.name, type: i.type, isQuest: i.isQuestItem})));
+            }
         }
 
         // 2. Выдача награды
