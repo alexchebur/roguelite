@@ -3446,29 +3446,30 @@ function updateQuestCompass() {
                                 RenderModule.log(`📦 Это тот самый предмет! Квест "${q.id}" выполнен.`, "event");
                                 updateQuestCompass();
                             } 
-                            else if (q.type === 'COLLECT' || q.type === 'SCHOLAR') {
-                                // Используем единый тип события 'pickup' для всех подбираемых предметов
-                                QuestSystemModule.checkProgress(q, { 
-                                    type: 'pickup', 
-                                    itemType: item.type,
-                                    itemName: item.name,
-                                    uniqueId: item.uniqueId,
-                                    locX: dungeonX,
-                                    locY: dungeonY,
-                                    currentDepth: currentDepth 
-                                });
+                          else if (q.type === 'COLLECT' || q.type === 'SCHOLAR') {
+                              // COLLECT и SCHOLAR накапливают прогресс
+                              QuestSystemModule.checkProgress(q, { 
+                                  type: 'pickup', // <--- ИСПРАВЛЕНО: было 'read_book' или отсутствовало
+                                  itemType: item.type,
+                                  itemName: item.name,
+                                  uniqueId: item.uniqueId,
+                                  locX: dungeonX,
+                                  locY: dungeonY,
+                                  currentDepth: currentDepth 
+                              });
                              
-                                // Обновляем UI
-                                RenderModule.updateQuestBriefing(q);
+                              // Обновляем UI после каждого подбора
+                              RenderModule.updateQuestBriefing(q);
                              
-                                const typeName = q.type === 'SCHOLAR' ? 'Книга' : 'Предмет';
-                                RenderModule.log(`📚 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
+                              const typeName = q.type === 'SCHOLAR' ? 'Книга' : 'Предмет';
+                              RenderModule.log(`📚 Подобрано для квеста: ${item.name} (${q.progress}/${q.maxProgress})`, "info ");
                              
-                                if (q.isCompleted) {
-                                    RenderModule.log(`🏆 Квест "${q.id}" выполнен! Вернитесь за наградой.`, "event");
-                                    updateQuestCompass();
-                                }
-                            }
+                              // Если квест только что завершился
+                              if (q.isCompleted) {
+                                  RenderModule.log(`🏆 Квест "${q.id}" выполнен! Вернитесь за наградой.`, "event");
+                                  updateQuestCompass();
+                              }
+                          }
                         }
                     }
                 });
