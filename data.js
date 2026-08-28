@@ -103,7 +103,15 @@ const DataModule = (function() {
             color: "#795548", 
             hp: [8, 12], atk: [1, 1], def: [0, 0], 
             lootType: "food", speed: 10, range: 1,
-            biomes: ['dungeon', 'cave', 'city'] // Встречается везде, кроме льда и руин
+            biomes: ['dungeon', 'cave', 'rogue', 'cellular'] // Встречается везде, кроме льда и руин
+        },
+        { 
+            name: "Кобольд", 
+            char: getChar('ENEMY_GOBLIN'), 
+            color: "#4CAF50", 
+            hp: [12, 18], atk: [1, 1], def: [0, 1], 
+            lootType: "gold", speed: 13, range: 1,
+            biomes: ['dungeon', 'cave', 'rogue', 'cellular'] // Любит темные места и руины
         },
         { 
             name: "Гоблин", 
@@ -111,7 +119,15 @@ const DataModule = (function() {
             color: "#4CAF50", 
             hp: [12, 18], atk: [1, 2], def: [0, 1], 
             lootType: "gold", speed: 10, range: 1,
-            biomes: ['dungeon', 'cave', 'rogue'] // Любит темные места и руины
+            biomes: ['dungeon', 'cave', 'rogue', 'cellular'] // Любит темные места и руины
+        },
+        { 
+            name: "Троглодит", 
+            char: getChar('ENEMY_GOBLIN'), 
+            color: "#aaddff", 
+            hp: [12, 18], atk: [1, 2], def: [0, 1], 
+            lootType: "gold", speed: 10, range: 1,
+            biomes: ['icy', 'cave', 'cellular'] // Любит темные места и руины
         },
         { 
             name: "Волк", 
@@ -119,7 +135,7 @@ const DataModule = (function() {
             color: "#9E9E9E", 
             hp: [15, 22], atk: [2, 3], def: [0, 1], 
             lootType: "food", speed: 10, range: 1,
-            biomes: ['cave', 'icy'] // Хищник пещер и холода
+            biomes: ['cave', 'icy', 'cellular', 'rogue'] // Хищник пещер и холода
         },
         
         // === УРОВЕНЬ 4-6 (Средние) ===
@@ -153,7 +169,7 @@ const DataModule = (function() {
             color: "#8BC34A", 
             hp: [25, 35], atk: [3, 4], def: [1, 2], 
             lootType: "weapon", speed: 9, range: 1,
-            biomes: ['dungeon', 'arena'] // Воин арен и глубоких залов
+            biomes: ['dungeon', 'arena', 'rogue', 'cave', 'boss'] // Воин арен и глубоких залов
         },
 
         // === УРОВЕНЬ 7-9 (Продвинутые) ===
@@ -163,7 +179,7 @@ const DataModule = (function() {
             color: "#607D8B", 
             hp: [40, 55], atk: [4, 7], def: [1, 3], 
             lootType: "gold", speed: 3, range: 1,
-            biomes: ['dungeon', 'boss'] // Медленная нежить глубин
+            biomes: ['dungeon', 'boss', 'rogue'] // Медленная нежить глубин
         },
         { 
             name: "Гарпия", 
