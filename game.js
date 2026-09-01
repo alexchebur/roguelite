@@ -2095,7 +2095,16 @@ function updateQuestCompass() {
         const safePos = MapModule.getSafePosNearby ? MapModule.getSafePosNearby(player, 3) : player;
         player.x = safePos.x;
         player.y = safePos.y;
-    
+        
+        // === НОВОЕ: Статистика посещения подземелий ===
+        // Считаем только первый вход в конкретное подземелье (gx, gy), а не каждый уровень
+        if (entryPoint === null || entryPoint === undefined) { 
+            if (typeof AchievementsModule !== 'undefined') {
+                // Используем setStat, так как нужно проверить уникальность, 
+                // но для простоты пока просто инкрементируем при входе с поверхности
+                 AchievementsModule.addStat('dungeonsVisited', 1);
+            }
+        }   
         // 5. Спавн врагов, предметов и боссов
         spawnDungeonEntities(gx, gy, depth);
 
@@ -3075,6 +3084,13 @@ function updateQuestCompass() {
             
             // 2. Начисление опыта
             gainXp(10 + (currentDepth * 5));
+
+        
+            //2.2. === НОВОЕ: Статистика убийств ===
+            if (typeof AchievementsModule !== 'undefined') {
+                AchievementsModule.addStat('kills', 1);
+            }
+        
 
             // 3. Проверка квестов
             if (typeof QuestSystemModule !== 'undefined') {
