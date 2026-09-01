@@ -4046,7 +4046,8 @@ function checkTrapTrigger(x, y) {
         getVisibleTraps: () => [...visibleTraps], // Возвращает копию массива видимых ловушек
         // Экспорт в return GameModule:
         openFullInventory,
-        closeFullInventory,        
+        closeFullInventory,
+        openAchievementsWindow: openAchievementsWindow, // <--- ДОБАВИТЬ
         // === ФУНКЦИИ МАГАЗИНА ===
         openShop: openShop,
         closeShop: closeShop,
