@@ -591,6 +591,9 @@ const GameModule = (function() {
             if (typeof RenderModule === 'undefined') throw new Error("RenderModule не загружен");
             await RenderModule.init();
             RenderModule.setRedrawCallback(renderFrame);
+            if (typeof AchievementsModule !== 'undefined') {
+                AchievementsModule.init();
+            }
         } catch (e) {
             console.error("Критическая ошибка при инициализации: ", e);
             document.body.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки игры: ${e.message}</div>`;
