@@ -431,9 +431,11 @@
 
     <!-- Верх Лево: Статы -->
     <div id="stats-panel" class="ui-panel">
+        <!-- Только ОДИН заголовок с onclick -->
         <h3 onclick="if(typeof GameModule !== 'undefined') GameModule.openAchievementsWindow();" style="cursor: pointer;" title="Открыть статистику и достижения">Персонаж</h3>
-        <h3>Персонаж</h3>
+        
         <div id="ui-stats"></div>
+        
         <h3 style="margin-top: 8px;">Экипировка</h3>
         <div id="ui-equip"></div>
     </div>
