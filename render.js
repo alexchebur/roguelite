@@ -1198,6 +1198,48 @@ const RenderModule = (function() {
         }
     };    
 
+    // В конце RenderModule, перед return
+    function renderAchievementsUI(data) {
+        if (!data) return;
+        
+        const statsContainer = document.getElementById('achiev-stats-container');
+        const listContainer = document.getElementById('achiev-list-container');
+        
+        if (!statsContainer || !listContainer) return;
+        
+        // 1. Отрисовка статистики
+        statsContainer.innerHTML = `
+            <div class="achiev-stat-row"><span>💀 Убито монстров:</span> <span>${data.stats.kills}</span></div>
+            <div class="achiev-stat-row"><span>🗺️ Посещено подземелий:</span> <span>${data.stats.dungeonsVisited}</span></div>
+            <div class="achiev-stat-row"><span>🧹 Зачищено уровней:</span> <span>${data.stats.levelsCleared}</span></div>
+            <div class="achiev-stat-row"><span>💰 Всего заработано:</span> <span style="color:#ffd700">${data.stats.totalGoldEarned}</span></div>
+            <div class="achiev-stat-row"><span>📜 Выполнено квестов:</span> <span>${data.stats.questsCompleted}</span></div>
+        `;
+        
+        // 2. Отрисовка списка достижений
+        listContainer.innerHTML = '';
+        
+        data.achievements.forEach(ach => {
+            const div = document.createElement('div');
+            div.className = 'achiev-item';
+            if (ach.unlocked) {
+                div.classList.add('unlocked');
+            }
+            
+            div.innerHTML = `
+                <div class="achiev-icon">${ach.icon}</div>
+                <div class="achiev-info">
+                    <div class="achiev-title">${ach.title}</div>
+                    <div class="achiev-desc">${ach.desc}</div>
+                </div>
+                <div class="achiev-status">${ach.unlocked ? '✅' : '🔒'}</div>
+            `;
+            
+            listContainer.appendChild(div);
+        });
+    }
+    
+
 
 
     
@@ -1227,6 +1269,7 @@ const RenderModule = (function() {
         addTacticalProjectileEffect,
         drawTacticalEffects,
         triggerAnimation,
-        hasActiveEffects
+        hasActiveEffects,
+        renderAchievementsUI: renderAchievementsUI
     };
 })();
