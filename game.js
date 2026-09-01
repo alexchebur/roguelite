@@ -1105,6 +1105,10 @@ const GameModule = (function() {
         
         player.gold += quest.rewardGold;
         RenderModule.log(`🏆 Квест выполнен! Получено: ${quest.rewardGold} золотых.`, "loot");
+        // === НОВОЕ: Статистика квестов ===
+        if (typeof AchievementsModule !== 'undefined') {
+            AchievementsModule.addStat('questsCompleted', 1);
+        }
         
         activeQuests = activeQuests.filter(q => q.id !== quest.id);
         completedQuestIds.add(quest.id);
@@ -3409,6 +3413,10 @@ function updateQuestCompass() {
             if (item.type === 'gold') {
                 player.gold += item.val;
                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
+                // === НОВОЕ: Статистика золота ===
+                if (typeof AchievementsModule !== 'undefined') {
+                    AchievementsModule.addStat('totalGoldEarned', item.val);
+                }
             } 
             // 2. Обработка Книг (Только ЛОР и добавление в инвентарь)
             else if (item.type === 'book') {
