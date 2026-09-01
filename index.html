@@ -292,8 +292,52 @@
         }
         .log-msg { margin-bottom: 1px; }
         
+
         #quest-bar { bottom: 2px; padding: 2px 6px; max-width: 50%; }
         #ui-quest-briefing { font-size: 9px; }
+
+        /* === НОВОЕ: РАДИКАЛЬНОЕ УМЕНЬШЕНИЕ ОКНА ДОСТИЖЕНИЙ === */
+        #achievements-modal {
+            width: 98% !important;       /* Почти во всю ширину */
+            height: 90vh !important;     /* Почти во всю высоту */
+            padding: 5px !important;     /* Минимальные отступы */
+        }
+
+        #achievements-modal .modal-header h3 {
+            font-size: 12px !important;  /* Очень маленький заголовок */
+        }
+
+        #achievements-modal .achiev-stat-row {
+            font-size: 9px !important;   /* Мелкий текст статистики */
+            padding: 2px 0 !important;
+        }
+
+        #achievements-modal h4 {
+            font-size: 8px !important;   /* Заголовки разделов */
+            margin: 4px 0 !important;
+        }
+
+        #achievements-modal .achiev-item {
+            padding: 4px !important;     /* Компактные карточки ачивок */
+            margin-bottom: 2px !important;
+        }
+
+        #achievements-modal .achiev-icon {
+            font-size: 14px !important;  /* Маленькие иконки */
+            width: 20px !important;
+        }
+
+        #achievements-modal .achiev-title {
+            font-size: 9px !important;   /* Название ачивки */
+        }
+
+        #achievements-modal .achiev-desc {
+            font-size: 7px !important;   /* Описание ачивки (очень мелкое) */
+        }
+
+        #achievements-modal .achiev-status {
+            font-size: 10px !important;  /* Статус (галочка/замок) */
+        }
     }
 
     /* === ДОПОЛНИТЕЛЬНАЯ ОПТИМИЗАЦИЯ ДЛЯ АЛЬБОМНОЙ ОРИЕНТАЦИИ === */
