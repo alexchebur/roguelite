@@ -3163,6 +3163,15 @@ function updateQuestCompass() {
 
         // Удаляем мертвых врагов из основного массива
         enemies = enemies.filter(e => e.hp > 0);
+
+        // === НОВОЕ: Проверка полной зачистки уровня ===
+        if (enemies.length === 0 && window.gameMode === 'dungeon') {
+             if (typeof AchievementsModule !== 'undefined') {
+                 AchievementsModule.addStat('levelsCleared', 1);
+                 RenderModule.log("✨ Уровень полностью зачищен!", "info");
+             }
+        }
+        
     }
     // === ОБРАБОТКА КЛИКА ПО КАРТЕ (ОСМОТР И ВЗАИМОДЕЙСТВИЕ) ===
     function handleMapClick(clientX, clientY) {
