@@ -4086,7 +4086,8 @@ function checkTrapTrigger(x, y) {
         // Экспорт в return GameModule:
         openFullInventory,
         closeFullInventory,
-        openAchievementsWindow: openAchievementsWindow, // <--- ДОБАВИТЬ
+        openAchievementsWindow: openAchievementsWindow,
+        closeAchievementsWindow: closeAchievementsWindow, 
         // === ФУНКЦИИ МАГАЗИНА ===
         openShop: openShop,
         closeShop: closeShop,
