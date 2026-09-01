@@ -99,7 +99,46 @@ const GameModule = (function() {
         RenderModule.requestRedraw();
     }
 
+    // === ОКНО ДОСТИЖЕНИЙ ===
+    function openAchievementsWindow() {
+        if (typeof AchievementsModule === 'undefined') return;
+        
+        busy = true;
+        toggleUI(false);
+        
+        const overlay = document.getElementById('modal-overlay');
+        const modal = document.getElementById('achievements-modal');
+        
+        if (overlay && modal) {
+            overlay.style.display = 'flex';
+            overlay.style.visibility = 'visible';
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.classList.remove('hidden');
+            
+            // Рендерим контент
+            if (typeof RenderModule.renderAchievementsUI === 'function') {
+                RenderModule.renderAchievementsUI(AchievementsModule.getData());
+            }
+        }
+    }
 
+    function closeAchievementsWindow() {
+        busy = false;
+        const overlay = document.getElementById('modal-overlay');
+        const modal = document.getElementById('achievements-modal');
+        
+        if (overlay && modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            
+            if (!isShopOpen && !isInnOpen && !isReadingQuest && !isTwineActive && !isEraWindowOpen && !isFullInventoryOpen) {
+                overlay.style.display = 'none';
+            }
+        }
+        toggleUI(true);
+        RenderModule.requestRedraw();
+    }
 
 
 
