@@ -369,26 +369,114 @@
         }
     }
 
-    /* === АЛЬБОМНАЯ ОРИЕНТАЦИЯ === */
-    @media (max-width: 800px) and (orientation: landscape) {
-        #log-panel {
-            height: 45px;
-            width: 100px;
-            opacity: 0.85;
+    /* ========================================= */
+    /* === ФИНАЛЬНАЯ ОПТИМИЗАЦИЯ ДЛЯ АЛЬБОМНОЙ ОРИЕНТАЦИИ === */
+    /* ========================================= */
+    @media (max-width: 900px) and (orientation: landscape) {
+        /* Уменьшаем общие отступы панелей */
+        .ui-panel {
+            padding: 2px !important;
+            border-radius: 2px;
+            opacity: 0.95; /* Чуть прозрачнее, чтобы видеть игру */
         }
-        #log-list { font-size: 7px; }
-        #header-panel { opacity: 0.9; }
 
-        /* Дополнительно уменьшаем заголовки в альбомном режиме, если они все еще велики */
+        /* Заголовки панелей (Персонаж, Инвентарь и т.д.) */
         .ui-panel h3 {
+            font-size: 9px !important;
+            margin-bottom: 1px !important;
+            padding-bottom: 1px !important;
+            letter-spacing: 0;
+        }
+
+        /* --- ПАНЕЛЬ СТАТОВ (Слева) --- */
+        #stats-panel {
+            width: 100px !important; /* Фиксируем узкую ширину */
+            top: 2px !important;
+            left: 2px !important;
+        }
+        .stat-row {
+            font-size: 9px !important; /* Очень мелкий текст статов */
+            margin-bottom: 0 !important;
+            line-height: 1.1;
+        }
+        .equip-slot {
+            font-size: 8px !important;
+            margin-bottom: 1px;
+        }
+
+        /* --- МИНИКАРТА (Слева внизу) --- */
+        #minimap-panel {
+            width: 60px !important; /* Компактная карта */
+            height: 60px !important;
+            bottom: 2px !important;
+            left: 2px !important;
+        }
+        #minimap {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- ИНСПЕКТОР (Над картой) --- */
+        #inspector-panel {
+            bottom: 65px !important;
+            left: 2px !important;
+            width: 100px !important;
+            max-height: 60px !important;
             font-size: 8px !important;
         }
+        #ui-inspector {
+            font-size: 8px !important;
+            line-height: 1.1;
+        }
 
-        /* Прокрутка для достижений в альбомном режиме */
+        /* --- ЛОГ СОБЫТИЙ (Справа внизу) --- */
+        #log-panel {
+            width: 140px !important;
+            height: 50px !important;
+            bottom: 2px !important;
+            right: 2px !important;
+        }
+        #log-list {
+            font-size: 8px !important;
+            line-height: 1.1;
+        }
+
+        /* --- ВЕРХНЯЯ ПАНЕЛЬ (Локация) --- */
+        #header-panel {
+            top: 2px !important;
+            padding: 1px 5px !important;
+            left: 105px !important; /* Отступаем от панели статов */
+            right: 105px !important; /* Отступаем от инвентаря */
+        }
+        .loc-name { font-size: 10px !important; }
+        .loc-coords { font-size: 9px !important; }
+
+        /* --- ИНВЕНТАРЬ (Справа) --- */
+        #inventory-panel {
+            width: 100px !important;
+            top: 2px !important;
+            right: 2px !important;
+            max-height: 40vh !important;
+        }
+        .inv-item {
+            font-size: 8px !important;
+            padding: 1px 2px;
+        }
+
+        /* --- КВЕСТ-БАР (Низ центр) --- */
+        #quest-bar {
+            bottom: 2px !important;
+            padding: 2px 10px !important;
+            max-width: 40% !important;
+        }
+        #ui-quest-briefing {
+            font-size: 9px !important;
+        }
+        
+        /* Исправление для окна достижений в альбомном режиме */
         #achievements-modal {
             max-height: 95vh !important;
             overflow-y: auto !important;
-            padding: 10px !important;
         }
     }
 
