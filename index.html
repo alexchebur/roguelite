@@ -579,7 +579,47 @@
         font-style: italic;
         line-height: 1.2;
     }
-    
+    /* === АДАПТАЦИЯ ПОЛНОГО ИНВЕНТАРЯ (Синхронизация с Достижениями) === */
+    @media (max-width: 700px) {
+        #inv-grid { 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px;
+        }
+        
+        /* Заголовки колонок (Оружие, Броня и т.д.) */
+        .inv-col h4 {
+            font-size: 9px !important;      /* Как в достижениях */
+            padding: 4px !important;
+        }
+        
+        /* Карточка предмета */
+        .inv-full-item {
+            padding: 4px !important;
+            margin-bottom: 4px !important;
+        }
+        
+        /* Название предмета */
+        .inv-item-name {
+            font-size: 9px !important;      /* Совпадает с .achiev-title */
+            line-height: 1.2;
+        }
+        
+        /* Описание предмета */
+        .inv-item-desc {
+            font-size: 8px !important;      /* Совпадает с .achiev-desc */
+            line-height: 1.1;
+        }
+
+        /* Заголовок самого окна "Рюкзак Героя" */
+        #inventory-modal .modal-header h3 {
+            font-size: 12px !important;     /* Совпадает с заголовком достижений */
+        }
+        
+        /* Кнопка закрытия */
+        #inventory-modal .close-btn {
+            font-size: 14px !important;
+        }
+    }    
 </style>
 </head>
 <body>
