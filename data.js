@@ -151,7 +151,7 @@ const DataModule = (function() {
             name: "Скелет-лучник", 
             char: getChar('ENEMY_SKELETON'), 
             color: "#B0BEC5", 
-            hp: [15, 22], atk: [2, 4], def: [1, 2], 
+            hp: [15, 15], atk: [1, 2], def: [1, 1], 
             lootType: "gold", speed: 8, range: 6, // Дальняя атака
             biomes: ['dungeon', 'rogue', 'boss'] // Страж древних гробниц
         },
