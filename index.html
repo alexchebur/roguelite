@@ -621,7 +621,31 @@
         }
     }    
 
+    /* ========================================= */
+    /* === ФИКС ПРОКРУТКИ МОДАЛЬНЫХ ОКОН === */
+    /* ========================================= */
+    
+    /* Для достижений: скроллим всё окно, если контент не влезает */
+    #achievements-modal {
+        overflow-y: auto !important;
+    }
 
+    /* Для инвентаря: скроллим именно область с предметами */
+    #inventory-modal #inv-grid {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch; /* Плавная прокрутка на iOS */
+    }
+
+    /* Для альбомной ориентации и маленьких экранов: 
+       ограничиваем высоту, чтобы точно появился скролл */
+    @media (max-height: 600px), (orientation: landscape) {
+        #achievements-modal, 
+        #inventory-modal {
+            max-height: 95vh !important;
+            height: auto !important;
+            overflow-y: auto !important;
+        }
+    }
 
     
 </style>
