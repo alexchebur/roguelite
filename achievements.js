@@ -72,6 +72,7 @@ const AchievementsModule = (function() {
         totalGoldEarned: 0,
         questsCompleted: 0,
         cityItemsCollected: 0, // <--- НОВОЕ ПОЛЕ
+        fortressSeen: false, // <--- НОВОЕ ПОЛЕ
         unlockedAchievements: [] // Массив ID полученных ачивок
     };
 
