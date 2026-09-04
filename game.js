@@ -3452,6 +3452,7 @@ function updateQuestCompass() {
             if (item.type === 'gold') {
                 player.gold += item.val;
                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
+                
                 // === НОВОЕ: Статистика золота ===
                 if (typeof AchievementsModule !== 'undefined') {
                     AchievementsModule.addStat('totalGoldEarned', item.val);
@@ -3461,6 +3462,14 @@ function updateQuestCompass() {
             else if (item.type === 'book') {
                 player.inventory.push(item);
                 
+                // === НОВОЕ: Достижение "Попрошайка" (сбор в городах) ===
+                // Проверяем, находимся ли мы в городе
+                if (currentDungeonTypeName === 'city') {
+                    if (typeof AchievementsModule !== 'undefined') {
+                        AchievementsModule.addStat('cityItemsCollected', 1);
+                    }
+                }
+
                 if (typeof LoreModule !== 'undefined') {
                     const fragment = LoreModule.getNextFragment();
                     RenderModule.log(`📖 Вы подобрали "${item.name}". Внутри написано:`, "info ");
@@ -3473,6 +3482,14 @@ function updateQuestCompass() {
             else {
                 player.inventory.push(item);
                 RenderModule.log(`Подобрано: ${item.name}`, "loot ");
+
+                // === НОВОЕ: Достижение "Попрошайка" (сбор в городах) ===
+                // Проверяем, находимся ли мы в городе
+                if (currentDungeonTypeName === 'city') {
+                    if (typeof AchievementsModule !== 'undefined') {
+                        AchievementsModule.addStat('cityItemsCollected', 1);
+                    }
+                }
             }
 
             // === ОБЩАЯ ПРОВЕРКА КВЕСТОВ НА ПОДБОР (FETCH / COLLECT / SCHOLAR) ===
@@ -3563,7 +3580,6 @@ function updateQuestCompass() {
             // Удаляем предмет с карты
             items.splice(itemIdx, 1);
         }
-
     // 9. Лестницы
     if (MapModule.stairsDown && nx === MapModule.stairsDown.x && ny === MapModule.stairsDown.y) {
         const nextDepth = currentDepth + 1;
