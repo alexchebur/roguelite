@@ -42,6 +42,13 @@ const AchievementsModule = (function() {
             condition: (stats) => stats.totalGoldEarned >= 10000
         },
         {
+            id: 'beggar',
+            title: 'Попрошайка',
+            desc: 'Соберите более 20 любых предметов в городах.',
+            icon: '🥣',
+            condition: (stats) => stats.cityItemsCollected >= 20
+        },
+        {
             id: 'quest_master',
             title: 'Герой Гильдии',
             desc: 'Выполните 20 квестов.',
