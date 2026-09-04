@@ -64,6 +64,7 @@ const AchievementsModule = (function() {
         levelsCleared: 0,
         totalGoldEarned: 0,
         questsCompleted: 0,
+        cityItemsCollected: 0, // <--- НОВОЕ ПОЛЕ
         unlockedAchievements: [] // Массив ID полученных ачивок
     };
 
