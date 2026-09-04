@@ -2017,6 +2017,7 @@ function updateQuestCompass() {
         explored.clear();
         isShopOpen = false; 
         currentMerchantInv = null;
+        currentDungeonTypeName = 'city'; 
         
         // 1. Генерируем город
         const startPos = MapModule.generateCity(gx, gy, 0);
