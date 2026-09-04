@@ -49,6 +49,13 @@ const AchievementsModule = (function() {
             condition: (stats) => stats.cityItemsCollected >= 20
         },
         {
+            id: 'messenger_of_fate',
+            title: 'Посланник Судьбы',
+            desc: 'Найти Крепость, Выросшую Из-Под Земли.',
+            icon: '🏰',
+            condition: (stats) => stats.fortressSeen === true
+        },
+        {
             id: 'quest_master',
             title: 'Герой Гильдии',
             desc: 'Выполните 20 квестов.',
