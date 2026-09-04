@@ -523,6 +523,9 @@ const RenderModule = (function() {
         const halfW = Math.floor(COLS / 2);
         const halfH = Math.floor(ROWS / 2);
 
+        // === НОВОЕ: Переменная для отслеживания видимости крепости ===
+        let isFortressVisibleOnScreen = false;
+
         // 1. РИСУЕМ ЛАНДШАФТ
         for (let sy = 0; sy < ROWS; sy++) {
             for (let sx = 0; sx < COLS; sx++) {
@@ -532,6 +535,11 @@ const RenderModule = (function() {
                 let tileType = 'plain';
                 if (typeof GlobalMapModule !== 'undefined') {
                     tileType = GlobalMapModule.getDisplayTileType ? GlobalMapModule.getDisplayTileType(gx, gy) : GlobalMapModule.getTileType(gx, gy);
+                }
+
+                // === ПРОВЕРКА НА КРЕПОСТЬ ===
+                if (tileType === 'fortress') {
+                    isFortressVisibleOnScreen = true;
                 }
 
                 let ch, fg;
@@ -606,6 +614,12 @@ const RenderModule = (function() {
                     }
                 }
             }
+        }
+
+        // === ЕСЛИ КРЕПОСТЬ БЫЛА ВИДНА, АКТИВИРУЕМ ДОСТИЖЕНИЕ ===
+        if (isFortressVisibleOnScreen && typeof AchievementsModule !== 'undefined') {
+             // Используем setStat, так как это булево значение
+             AchievementsModule.setStat('fortressSeen', true);
         }
 
         // 2. РИСУЕМ АРМИИ
