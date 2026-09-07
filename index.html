@@ -616,6 +616,9 @@
     .game-modal {
         z-index: 10000 !important;
         position: relative;
+        /* Базовое поведение для всех модалок: flex-колонка */
+        display: flex !important; 
+        flex-direction: column !important;
     }
     
     .hidden { 
@@ -629,23 +632,36 @@
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
+        flex-shrink: 0; /* Заголовок никогда не сжимается */
     }
     .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
     .close-btn:hover { color: #ff7b72; }
 
-    .shop-columns { display: flex; gap: 20px; }
-    .shop-col { flex: 1; min-width: 200px; }
-    .shop-col h4 { color: #8b949e; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+    /* --- Магазин --- */
+    .shop-columns { display: flex; gap: 20px; flex: 1; min-height: 0; }
+    .shop-col { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+    .shop-col h4 { color: #8b949e; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 5px; flex-shrink: 0; }
     .shop-item { padding: 6px 8px; border-bottom: 1px solid #30363d; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
     .shop-item:hover { background: rgba(255,255,255,0.1); }
-    .shop-footer { margin-top: 15px; border-top: 1px solid #30363d; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; color: #ffd700; font-weight: bold; }
+    .shop-footer { margin-top: 15px; border-top: 1px solid #30363d; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; color: #ffd700; font-weight: bold; flex-shrink: 0; }
     .pagination-controls button { background: #21262d; border: 1px solid #30363d; color: #58a6ff; padding: 4px 10px; margin: 0 2px; cursor: pointer; border-radius: 4px; }
     .pagination-controls button:hover { background: #30363d; }
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
+    /* --- Постоялый Двор --- */
     .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
     .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
     .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
+
+    /* --- Полный Инвентарь --- */
+    #inventory-modal {
+        /* Жестко задаем flex-контекст именно для инвентаря */
+        display: flex !important;
+        flex-direction: column !important;
+        height: 90vh !important; /* Фиксированная высота */
+        max-height: 90vh !important;
+        overflow: hidden !important; /* Скролл только внутри колонок */
+    }
 
     .inv-col {
         display: flex;
@@ -654,6 +670,7 @@
         border: 1px solid #30363d;
         border-radius: 4px;
         overflow: hidden;
+        min-height: 0; /* КРИТИЧНО: разрешает сжатие во flex/grid */
     }
     .inv-col h4 {
         margin: 0;
@@ -665,11 +682,13 @@
         font-size: 13px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        flex-shrink: 0;
     }
     .inv-list {
         flex: 1;
         overflow-y: auto;
         padding: 5px;
+        min-height: 0; /* КРИТИЧНО: разрешает скроллбар */
     }
     .inv-full-item {
         padding: 6px;
@@ -698,11 +717,14 @@
         line-height: 1.2;
     }
     
-    /* === АДАПТАЦИЯ ПОЛНОГО ИНВЕНТАРЯ === */
+    /* === АДАПТАЦИЯ ПОЛНОГО ИНВЕНТАРЯ (МОБИЛЬНАЯ) === */
     @media (max-width: 700px) {
         #inv-grid { 
             grid-template-columns: repeat(2, 1fr); 
             gap: 8px;
+            flex: 1;       /* Занимает всё место */
+            min-height: 0; /* Разрешает сжатие */
+            overflow: hidden; /* Скролл внутри колонок */
         }
         
         .inv-col h4 {
@@ -738,12 +760,20 @@
     /* === АДАПТАЦИЯ МОДАЛЬНЫХ ОКОН ДЛЯ МОБИЛЬНЫХ === */
     /* ========================================= */
     @media (max-width: 600px) {
-        .game-modal {
+        /* Общие правила для модалок, КРОМЕ инвентаря */
+        .game-modal:not(#inventory-modal) {
             min-width: 90vw !important;
             max-width: 95vw !important;
-            min-height: auto !important;
             max-height: 85vh !important;
             padding: 15px !important;
+        }
+        
+        /* Инвентарь на мобильных сохраняет фиксированную высоту */
+        #inventory-modal {
+            width: 95vw !important;
+            height: 90vh !important;
+            max-height: 90vh !important;
+            padding: 10px !important;
         }
         
         #shop-modal {
@@ -759,34 +789,33 @@
             min-width: auto !important;
             max-height: 30vh !important;
         }
-        
-        #inv-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 8px !important;
-        }
     }
 
     /* ========================================= */
-    /* === ФИКС ПРОКРУТКИ МОДАЛЬНЫХ ОКОН === */
+    /* === ФИКС ПРОКРУТКИ И ЛАНДШАФТНОЙ ОРИЕНТАЦИИ === */
     /* ========================================= */
     #achievements-modal {
         overflow-y: auto !important;
     }
 
+    /* Убираем глобальный скролл с самого грида инвентаря - скроллим только колонки */
     #inventory-modal #inv-grid {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden !important; 
     }
 
     @media (max-height: 600px), (orientation: landscape) {
-        #achievements-modal, 
-        #inventory-modal {
+        #achievements-modal {
             max-height: 95vh !important;
             height: auto !important;
             overflow-y: auto !important;
         }
+        
+        /* В ландшафте инвентарь тоже занимает максимум, но не больше 95vh */
+        #inventory-modal {
+            height: 95vh !important;
+            max-height: 95vh !important;
+        }
     }
-
     
 </style>
 </head>
