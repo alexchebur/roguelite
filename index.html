@@ -199,9 +199,9 @@
         color: #c9d1d9;
         padding: 20px;
         border-radius: 8px;
-        width: 95%;
-        max-width: 600px;
-        height: 80vh;
+        width: 95%;           /* Занимает 95% ширины экрана */
+        max-width: 1000px;    /* Увеличен лимит, как у инвентаря */
+        height: 90vh;         /* Фиксированная высота, как у инвентаря */
         font-family: 'Consolas', monospace;
         box-shadow: 0 0 20px rgba(0,0,0,0.5);
         overflow: hidden;
@@ -215,6 +215,8 @@
         overflow-y: auto;
         min-height: 0;
     }
+    
+    /* Остальные стили достижений (.achiev-stats-block, .achiev-item и т.д.) остаются без изменений */
     
     .achiev-stats-block {
         background: rgba(255, 255, 255, 0.05);
