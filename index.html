@@ -366,6 +366,10 @@
     #modal-overlay {
         z-index: 9999 !important;
         pointer-events: auto !important;
+        /* Убеждаемся, что оверлей тоже flex для центрирования */
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
     }
 
     .game-modal {
@@ -373,6 +377,13 @@
         position: relative;
         display: flex !important; 
         flex-direction: column !important;
+        
+        /* === КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ШИРИНЫ === */
+        width: 95vw !important;      /* Занимает 95% ширины экрана */
+        max-width: 1200px !important; /* Лимит для больших мониторов */
+        height: 90vh !important;      /* Фиксированная высота */
+        max-height: 90vh !important;
+        overflow: hidden !important;  /* Скролл внутри контента */
     }
     
     .hidden { 
