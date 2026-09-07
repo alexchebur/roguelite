@@ -14,32 +14,11 @@ const AchievementsModule = (function() {
             condition: (stats) => stats.kills >= 1
         },
         {
-            id: 'hunter_100',
-            title: 'Охотник',
-            desc: 'Убейте 100 монстров.',
-            icon: '🏹',
-            condition: (stats) => stats.kills >= 100
-        },
-        {
             id: 'explorer',
             title: 'Исследователь',
-            desc: 'Посетите 10 разных подземелий.',
+            desc: 'Спуститься 30 раз в подземелья.',
             icon: '🗺️',
-            condition: (stats) => stats.dungeonsVisited >= 10
-        },
-        {
-            id: 'cleaner',
-            title: 'Чистильщик',
-            desc: 'Полностью зачистите 5 уровней подземелий.',
-            icon: '🧹',
-            condition: (stats) => stats.levelsCleared >= 5
-        },
-        {
-            id: 'rich',
-            title: 'Богач',
-            desc: 'Заработайте суммарно 10,000 золота.',
-            icon: '💰',
-            condition: (stats) => stats.totalGoldEarned >= 10000
+            condition: (stats) => stats.dungeonsVisited >= 30
         },
         {
             id: 'beggar',
@@ -49,11 +28,25 @@ const AchievementsModule = (function() {
             condition: (stats) => stats.cityItemsCollected >= 20
         },
         {
-            id: 'messenger_of_fate',
-            title: 'Посланник Судьбы',
-            desc: 'Найти Крепость, Выросшую Из-Под Земли.',
-            icon: '🏰',
-            condition: (stats) => stats.fortressSeen === true
+            id: 'hunter_100',
+            title: 'Охотник',
+            desc: 'Убейте 100 монстров.',
+            icon: '🏹',
+            condition: (stats) => stats.kills >= 100
+        },
+        {
+            id: 'cleaner',
+            title: 'Чистильщик',
+            desc: 'Полностью зачистите 20 уровней подземелий.',
+            icon: '🧹',
+            condition: (stats) => stats.levelsCleared >= 20
+        },
+        {
+            id: 'rich',
+            title: 'Богач',
+            desc: 'Заработайте суммарно 10,000 золота.',
+            icon: '💰',
+            condition: (stats) => stats.totalGoldEarned >= 10000
         },
         {
             id: 'quest_master',
@@ -61,6 +54,13 @@ const AchievementsModule = (function() {
             desc: 'Выполните 20 квестов.',
             icon: '📜',
             condition: (stats) => stats.questsCompleted >= 20
+        },
+        {
+            id: 'messenger_of_fate',
+            title: 'Посланник Судьбы',
+            desc: 'Найти Крепость, Выросшую Из-Под Земли.',
+            icon: '🏰',
+            condition: (stats) => stats.fortressSeen === true
         }
     ];
 
