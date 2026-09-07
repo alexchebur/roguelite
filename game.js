@@ -3850,10 +3850,10 @@ function checkTrapTrigger(x, y) {
                 // Создаем элемент стиля
                 const style = twineDoc.createElement('style');
                 
-                // Ваш CSS, который делает шрифт мелким и пиксельным, как в UI игры
+                // Ваш CSS, который делает шрифт мелким, моноширинным и без засечек
                 style.textContent = `
-                    /* Принудительные настройки шрифта для пиксельного вида */
-                    tw-story {
+                    /* Принудительно задаем шрифт для ВСЕХ элементов истории */
+                    tw-story, tw-passage, tw-link, body, html, div, span, p {
                         font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
                         font-size: 14px !important; /* Мелкий шрифт, как в UI */
                         line-height: 1.4 !important;
@@ -3864,6 +3864,7 @@ function checkTrapTrigger(x, y) {
                         -webkit-font-smoothing: none !important;
                         text-rendering: geometricPrecision !important;
                         font-kerning: none !important;
+                        letter-spacing: 0px !important;
                     }
 
                     /* Убираем боковую панель Twine */
@@ -3887,7 +3888,7 @@ function checkTrapTrigger(x, y) {
                     
                     tw-passage {
                         padding: 20px !important;
-                        max-width: 800px !important; /* Ограничиваем ширину текста для удобства чтения */
+                        max-width: 800px !important;
                         margin: 0 auto !important;
                     }
                 `;
