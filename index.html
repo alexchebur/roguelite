@@ -760,10 +760,11 @@
     /* === АДАПТАЦИЯ МОДАЛЬНЫХ ОКОН ДЛЯ МОБИЛЬНЫХ === */
     /* ========================================= */
     @media (max-width: 600px) {
-        /* Общие правила для модалок, КРОМЕ инвентаря */
-        .game-modal:not(#inventory-modal) {
+        /* Общие правила для модалок, КРОМЕ инвентаря и достижений */
+        .game-modal:not(#inventory-modal):not(#achievements-modal) {
             min-width: 90vw !important;
             max-width: 95vw !important;
+            min-height: auto !important;
             max-height: 85vh !important;
             padding: 15px !important;
         }
@@ -774,6 +775,14 @@
             height: 90vh !important;
             max-height: 90vh !important;
             padding: 10px !important;
+        }
+
+        /* Достижения на мобильных сохраняют фиксированную высоту */
+        #achievements-modal {
+            width: 95vw !important;
+            height: 85vh !important;
+            max-height: 85vh !important;
+            padding: 15px !important;
         }
         
         #shop-modal {
@@ -789,31 +798,39 @@
             min-width: auto !important;
             max-height: 30vh !important;
         }
+        
+        #inv-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+        }
     }
 
     /* ========================================= */
-    /* === ФИКС ПРОКРУТКИ И ЛАНДШАФТНОЙ ОРИЕНТАЦИИ === */
+    /* === ФИКС ПРОКРУТКИ И СКРЫТИЯ МОДАЛОК === */
     /* ========================================= */
+    
+    /* ЖЕСТКОЕ ПРАВИЛО: Скрытые модалки НЕ рендерятся вообще */
+    .game-modal.hidden {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
     #achievements-modal {
         overflow-y: auto !important;
     }
 
-    /* Убираем глобальный скролл с самого грида инвентаря - скроллим только колонки */
     #inventory-modal #inv-grid {
-        overflow: hidden !important; 
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     @media (max-height: 600px), (orientation: landscape) {
-        #achievements-modal {
-            max-height: 95vh !important;
-            height: auto !important;
-            overflow-y: auto !important;
-        }
-        
-        /* В ландшафте инвентарь тоже занимает максимум, но не больше 95vh */
+        #achievements-modal, 
         #inventory-modal {
-            height: 95vh !important;
             max-height: 95vh !important;
+            height: 95vh !important; /* Фиксируем высоту даже в ландшафте */
+            overflow-y: auto !important;
         }
     }
     
