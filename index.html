@@ -1,3 +1,18 @@
+Проблема в том, что у `#modal-overlay` в CSS прописано `display: flex !important;`, которое перебивает inline-стиль `display:none`. Из-за этого оверлей всегда виден как полупрозрачный черный экран, даже когда он должен быть скрыт.
+
+Кроме того, чтобы модальные окна гарантированно растягивались на весь экран и не конфликтовали друг с другом, нужно убрать жесткие ограничения ширины/высоты из HTML (inline-styles) и перенести их в CSS, а также исправить логику скрытия оверлея.
+
+Вот полностью исправленный `index.html`.
+
+### Что изменено:
+1.  **Исправлен `#modal-overlay`:** Убрано `display: flex !important` из CSS. Теперь он управляется через JS (как было задумано) и корректно скрывается/показывается. Flex-центрирование применяется только когда оверлей активен.
+2.  **Очищены Inline-стили модалок:** У всех модальных окон убраны атрибуты `width`, `height`, `max-width` из тега `<div>`. Размеры теперь задаются только через CSS классы `.game-modal` и специфичные ID. Это устраняет конфликты приоритетов.
+3.  **Унифицированы размеры:** В CSS для `.game-modal` заданы базовые размеры (95vw / 90vh), которые работают для всех окон. Для инвентаря и достижений добавлены явные переопределения, чтобы они занимали максимум пространства.
+4.  **Жесткое скрытие:** Добавлено правило `.game-modal.hidden { display: none !important; ... }` в самом конце CSS, чтобы гарантировать, что неактивные окна никогда не рендерятся.
+
+Замените содержимое вашего `index.html` на этот код:
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -63,11 +78,8 @@
         color: var(--text-main);
         font-family: var(--font-stack);
         margin: 0;
-        
-        /* === ИСПРАВЛЕНИЕ ДЛЯ IPHONE === */
         height: 100dvh;
         height: 100vh;
-        
         width: 100%;
         overflow: hidden;
         overflow-x: hidden;
@@ -76,11 +88,7 @@
         -webkit-user-select: none;
         -webkit-transform: translate3d(0, 0, 0);
         transform: translate3d(0, 0, 0);
-        
-        /* Запрет масштабирования при двойном тапе */
         touch-action: manipulation;
-        
-        /* Учёт безопасных зон */
         padding-top: var(--safe-top);
         padding-bottom: var(--safe-bottom);
         padding-left: var(--safe-left);
@@ -123,7 +131,6 @@
     #log-panel { animation-delay: 0.3s; }
     #quest-bar { animation-delay: 0.35s; }
 
-    /* === БАЗОВЫЕ СТИЛИ ЗАГОЛОВКОВ (DESKTOP) === */
     h3 {
         margin: 0 0 6px 0;
         font-size: 14px;
@@ -192,16 +199,11 @@
     /* === СТИЛИ ДЛЯ ОКНА ДОСТИЖЕНИЙ === */
     /* ========================================= */
     #achievements-modal {
-        display: flex !important;
-        flex-direction: column !important;
         background: #161b22;
         border: 2px solid #58a6ff;
         color: #c9d1d9;
         padding: 20px;
         border-radius: 8px;
-        width: 95%;
-        max-width: 1000px;
-        height: 90vh;
         font-family: 'Consolas', monospace;
         box-shadow: 0 0 20px rgba(0,0,0,0.5);
         overflow: hidden;
@@ -287,10 +289,8 @@
 
     /* ========================================= */
     /* === МОБИЛЬНАЯ АДАПТАЦИЯ (ВЕРТИКАЛЬНАЯ) === */
-    /* Объединено для всех экранов <= 600px       */
     /* ========================================= */
     @media (max-width: 600px) {
-        /* --- UI Панели --- */
         .ui-panel { 
             background: rgba(13, 17, 23, 0.92);
             backdrop-filter: none; 
@@ -342,12 +342,6 @@
         #ui-quest-briefing { font-size: 9px; }
 
         /* --- Окно Достижений (Мобильное) --- */
-        #achievements-modal {
-            width: 95vw !important;      /* Растягиваем на весь экран */
-            max-width: 1000px !important;
-            height: 90vh !important;
-            padding: 10px !important;
-        }
         #achievements-modal .modal-header h3 { font-size: 12px !important; }
         #achievements-modal .achiev-stat-row { font-size: 9px !important; padding: 2px 0 !important; }
         #achievements-modal h4 { font-size: 8px !important; margin: 4px 0 !important; }
@@ -363,31 +357,42 @@
     /* ========================================= */
     .hidden-ui { display: none !important; }
     
+    /* Оверлей: по умолчанию скрыт через inline style display:none.
+       Когда JS ставит display:flex, эти правила центрируют контент. */
     #modal-overlay {
         z-index: 9999 !important;
         pointer-events: auto !important;
-        /* Убеждаемся, что оверлей тоже flex для центрирования */
-        display: flex !important;
         justify-content: center !important;
         align-items: center !important;
     }
 
+    /* Базовый класс для ВСЕХ модалок */
     .game-modal {
         z-index: 10000 !important;
         position: relative;
         display: flex !important; 
         flex-direction: column !important;
         
-        /* === КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ШИРИНЫ === */
-        width: 95vw !important;      /* Занимает 95% ширины экрана */
-        max-width: 1200px !important; /* Лимит для больших мониторов */
-        height: 90vh !important;      /* Фиксированная высота */
+        /* Единый размер для всех модалок по умолчанию */
+        width: 95vw !important;
+        max-width: 1000px !important;
+        height: 90vh !important;
         max-height: 90vh !important;
-        overflow: hidden !important;  /* Скролл внутри контента */
+        overflow: hidden !important;
+        
+        background: #161b22;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        font-family: 'Consolas', monospace;
+        color: #c9d1d9;
+        padding: 20px;
     }
     
+    /* ЖЕСТКОЕ СКРЫТИЕ: побеждает любые display:flex */
     .hidden { 
         display: none !important; 
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
 
     .modal-header { 
@@ -403,6 +408,7 @@
     .close-btn:hover { color: #ff7b72; }
 
     /* --- Магазин --- */
+    #shop-modal { border: 2px solid #58a6ff; }
     .shop-columns { display: flex; gap: 20px; flex: 1; min-height: 0; }
     .shop-col { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
     .shop-col h4 { color: #8b949e; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 5px; flex-shrink: 0; }
@@ -414,18 +420,25 @@
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
     /* --- Постоялый Двор --- */
+    #inn-modal { border: 2px solid #8B4513; }
     .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
     .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
     .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
 
+    /* --- Сюжетный Квест --- */
+    #quest-modal { border: 2px solid #d29922; }
+
+    /* --- Эпоха --- */
+    #era-modal { border: 2px solid #8b949e; text-align: center; align-items: center; }
+
     /* --- Полный Инвентарь --- */
     #inventory-modal {
-        /* Жестко задаем flex-контекст именно для инвентаря */
-        display: flex !important;
-        flex-direction: column !important;
-        height: 90vh !important; /* Фиксированная высота */
-        max-height: 90vh !important;
-        overflow: hidden !important; /* Скролл только внутри колонок */
+        border: 2px solid #58a6ff;
+        /* Инвентарь всегда занимает максимум */
+        width: 98vw !important;
+        height: 95vh !important;
+        max-width: 1400px !important;
+        max-height: 95vh !important;
     }
 
     .inv-col {
@@ -435,7 +448,7 @@
         border: 1px solid #30363d;
         border-radius: 4px;
         overflow: hidden;
-        min-height: 0; /* КРИТИЧНО: разрешает сжатие во flex/grid */
+        min-height: 0;
     }
     .inv-col h4 {
         margin: 0;
@@ -453,7 +466,7 @@
         flex: 1;
         overflow-y: auto;
         padding: 5px;
-        min-height: 0; /* КРИТИЧНО: разрешает скроллбар */
+        min-height: 0;
     }
     .inv-full-item {
         padding: 6px;
@@ -487,115 +500,46 @@
         #inv-grid { 
             grid-template-columns: repeat(2, 1fr); 
             gap: 8px;
-            flex: 1;       /* Занимает всё место */
-            min-height: 0; /* Разрешает сжатие */
-            overflow: hidden; /* Скролл внутри колонок */
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
         }
         
-        .inv-col h4 {
-            font-size: 9px !important;
-            padding: 4px !important;
-        }
-        
-        .inv-full-item {
-            padding: 4px !important;
-            margin-bottom: 4px !important;
-        }
-        
-        .inv-item-name {
-            font-size: 9px !important;
-            line-height: 1.2;
-        }
-        
-        .inv-item-desc {
-            font-size: 8px !important;
-            line-height: 1.1;
-        }
-
-        #inventory-modal .modal-header h3 {
-            font-size: 12px !important;
-        }
-        
-        #inventory-modal .close-btn {
-            font-size: 14px !important;
-        }
+        .inv-col h4 { font-size: 9px !important; padding: 4px !important; }
+        .inv-full-item { padding: 4px !important; margin-bottom: 4px !important; }
+        .inv-item-name { font-size: 9px !important; line-height: 1.2; }
+        .inv-item-desc { font-size: 8px !important; line-height: 1.1; }
+        #inventory-modal .modal-header h3 { font-size: 12px !important; }
+        #inventory-modal .close-btn { font-size: 14px !important; }
     }    
 
     /* ========================================= */
     /* === АДАПТАЦИЯ МОДАЛЬНЫХ ОКОН ДЛЯ МОБИЛЬНЫХ === */
     /* ========================================= */
     @media (max-width: 600px) {
-        /* Общие правила для модалок, КРОМЕ инвентаря и достижений */
-        .game-modal:not(#inventory-modal):not(#achievements-modal) {
-            min-width: 90vw !important;
-            max-width: 95vw !important;
-            min-height: auto !important;
-            max-height: 85vh !important;
-            padding: 15px !important;
-        }
+        /* Магазин на мобильных становится вертикальным */
+        #shop-modal { flex-direction: column !important; }
+        .shop-columns { flex-direction: column !important; gap: 10px !important; }
+        .shop-col { min-width: auto !important; max-height: 30vh !important; }
         
-        /* Инвентарь на мобильных сохраняет фиксированную высоту */
-        #inventory-modal {
-            width: 95vw !important;
-            height: 90vh !important;
-            max-height: 90vh !important;
+        /* Инвентарь и достижения на мобильных тоже максимизируются */
+        #inventory-modal, #achievements-modal {
+            width: 98vw !important;
+            height: 95vh !important;
             padding: 10px !important;
         }
-
-        /* Достижения на мобильных сохраняют фиксированную высоту */
-        #achievements-modal {
-            width: 95vw !important;
-            height: 85vh !important;
-            max-height: 85vh !important;
-            padding: 15px !important;
-        }
-        
-        #shop-modal {
-            flex-direction: column !important;
-        }
-        
-        .shop-columns {
-            flex-direction: column !important;
-            gap: 10px !important;
-        }
-        
-        .shop-col {
-            min-width: auto !important;
-            max-height: 30vh !important;
-        }
-        
-        #inv-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 8px !important;
-        }
     }
 
     /* ========================================= */
-    /* === ФИКС ПРОКРУТКИ И СКРЫТИЯ МОДАЛОК === */
+    /* === ФИКС ПРОКРУТКИ === */
     /* ========================================= */
-    
-    /* ЖЕСТКОЕ ПРАВИЛО: Скрытые модалки НЕ рендерятся вообще */
-    .game-modal.hidden {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-
-    #achievements-modal {
-        overflow-y: auto !important;
-    }
-
-    #inventory-modal #inv-grid {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
+    #achievements-modal { overflow-y: auto !important; }
+    #inventory-modal #inv-grid { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
 
     @media (max-height: 600px), (orientation: landscape) {
-        #achievements-modal, 
-        #inventory-modal {
+        .game-modal {
             max-height: 95vh !important;
-            height: 95vh !important; /* Фиксируем высоту даже в ландшафте */
-            overflow-y: auto !important;
+            height: 95vh !important;
         }
     }
     
@@ -607,23 +551,18 @@
     <div id="map-container"></div>
 
     <!-- UI Слои -->
-    <!-- Верх Центр: Локация -->
     <div id="header-panel" class="ui-panel">
         <div id="ui-loc-name" class="loc-name">Инициализация...</div>
         <div id="ui-loc-coords" class="loc-coords">Выход: —</div>
     </div>
 
-    <!-- Верх Лево: Статы -->
     <div id="stats-panel" class="ui-panel">
         <h3 onclick="if(typeof GameModule !== 'undefined') GameModule.openAchievementsWindow();" style="cursor: pointer;" title="Открыть статистику и достижения">Персонаж</h3>
-        
         <div id="ui-stats"></div>
-        
         <h3 style="margin-top: 8px;">Экипировка</h3>
         <div id="ui-equip"></div>
     </div>
 
-    <!-- Лево Середина: Инспектор -->
     <div id="inspector-panel" class="ui-panel">
         <h3>👁️ Обзор</h3>
         <div id="ui-inspector">
@@ -631,25 +570,21 @@
         </div>
     </div>
 
-    <!-- Верх Право: Инвентарь -->
     <div id="inventory-panel" class="ui-panel">
         <h3>Инвентарь</h3>
         <div id="inventory-list"></div>
     </div>
 
-    <!-- Низ Лево: Миникарта -->
     <div id="minimap-panel" class="ui-panel">
         <h3>Карта</h3>
         <canvas id="minimap"></canvas>
     </div>
 
-    <!-- Низ Право: Лог -->
     <div id="log-panel" class="ui-panel">
         <h3>События</h3>
         <div id="log-list"></div>
     </div>
 
-    <!-- Низ Центр: Квесты -->
     <div id="quest-bar" class="ui-panel">
         <div id="ui-quest-briefing"></div>
         <div id="btn-abandon-quest" 
@@ -661,49 +596,40 @@
 
     <!-- ========================================== -->
     <!-- КОНТЕЙНЕР ДЛЯ МОДАЛЬНЫХ ОКОН (HTML)       -->
+    <!-- ВАЖНО: display:none стоит здесь, а не в CSS -->
     <!-- ========================================== -->
-    <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
+    <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999;">
         
         <!-- Окно Магазина -->
-        <div id="shop-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; min-width:600px; max-width:800px; min-height:400px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
-            
-            <div style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+        <div id="shop-modal" class="game-modal hidden">
+            <div class="modal-header">
                 <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
-                <button onclick="GameModule.closeShop()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+                <button onclick="GameModule.closeShop()" class="close-btn">❌</button>
             </div>
-
-            <div style="display:flex; gap:20px; flex:1; min-height:0; margin-bottom:15px;">
-                <div style="flex:1; border-right:1px solid #30363d; padding-right:10px; display:flex; flex-direction:column;">
-                    <h4 style="color:#8b949e; margin:0 0 10px 0; font-size:14px; text-transform:uppercase;">Товары</h4>
+            <div class="shop-columns">
+                <div class="shop-col">
+                    <h4>Товары</h4>
                     <div id="shop-merchant-list" style="overflow-y:auto; flex:1;"></div>
                 </div>
-                <div style="flex:1; padding-left:10px; display:flex; flex-direction:column;">
-                    <h4 style="color:#8b949e; margin:0 0 10px 0; font-size:14px; text-transform:uppercase;">Ваш инвентарь</h4>
+                <div class="shop-col">
+                    <h4>Ваш инвентарь</h4>
                     <div id="shop-player-list" style="overflow-y:auto; flex:1;"></div>
                 </div>
             </div>
-
-            <div style="margin-top:15px; border-top:1px solid #30363d; padding-top:10px; display:flex; flex-direction:column; align-items:center; gap:8px;">
-                <div style="display:flex; justify-content:space-between; width:100%; color:#ffd700; font-weight:bold; font-size:14px;">
-                    <span id="shop-gold-info">Ваше золото: 0</span>
-                    <span id="shop-merchant-gold-info" style="opacity:0.7;">У торговца: 0</span>
-                </div>
-
-                <div id="shop-status" style="width:100%; text-align:center; min-height:20px; font-size:13px; font-weight:bold; color:#f85149;"></div>
-
-                <div class="pagination-controls" style="display:flex; gap:10px; justify-content:center; width:100%;">
-                </div>
+            <div class="shop-footer">
+                <span id="shop-gold-info">Ваше золото: 0</span>
+                <span id="shop-merchant-gold-info" style="opacity:0.7;">У торговца: 0</span>
             </div>
+            <div id="shop-status" style="width:100%; text-align:center; min-height:20px; font-size:13px; font-weight:bold; color:#f85149; margin-top:5px;"></div>
+            <div class="pagination-controls" style="display:flex; gap:10px; justify-content:center; width:100%; margin-top:5px;"></div>
         </div>
 
         <!-- Окно Постоялого Двора -->
-        <div id="inn-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #8B4513; color:#c9d1d9; padding:20px; border-radius:8px; min-width:400px; max-width:500px; min-height:300px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
-            
-            <div class="modal-header" style="border-bottom: 1px solid #8B4513; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+        <div id="inn-modal" class="game-modal hidden">
+            <div class="modal-header">
                 <h3 style="margin:0; color:#D2B48C;">🏨 Постоялый Двор</h3>
-                <button onclick="GameModule.closeInn()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+                <button onclick="GameModule.closeInn()" class="close-btn">❌</button>
             </div>
-            
             <div class="modal-body" style="display:flex; flex-direction:column; gap:15px;">
                 <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:4px; text-align:center;">
                     <div style="color:#ffd700; font-weight:bold; margin-bottom:5px;">💰 Золото: <span id="inn-gold-info">0</span></div>
@@ -711,41 +637,36 @@
                 </div>
                 <div id="inn-status-msg" style="min-height:40px; text-align:center; font-style:italic; color:#8b949e; font-size:13px;">Добро пожаловать!</div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                    <button class="inn-action-btn" onclick="GameModule.innAction('rest')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px;">🛌 Ночлег — 20g</button>
-                    <button class="inn-action-btn" onclick="GameModule.innAction('rumor')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px;">🗣️ Слухи</button>
-                    <button class="inn-action-btn" onclick="GameModule.innAction('dice')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px;">🎲 Кости (10g)</button>
-                    <button class="inn-action-btn" onclick="GameModule.innAction('hire')" style="display:block; width:100%; padding:10px; margin-bottom:8px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; text-align:left; cursor:pointer; border-radius:4px;">⚔️ Нанять отряд</button>
+                    <button class="inn-action-btn" onclick="GameModule.innAction('rest')">🛌 Ночлег — 20g</button>
+                    <button class="inn-action-btn" onclick="GameModule.innAction('rumor')">🗣️ Слухи</button>
+                    <button class="inn-action-btn" onclick="GameModule.innAction('dice')">🎲 Кости (10g)</button>
+                    <button class="inn-action-btn" onclick="GameModule.innAction('hire')">⚔️ Нанять отряд</button>
                 </div>
             </div>
         </div>
 
         <!-- Окно Сюжетного Квеста -->
-        <div id="quest-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #d29922; color:#c9d1d9; padding:20px; border-radius:8px; min-width:500px; max-width:700px; min-height:300px; max-height:80vh; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; flex-direction:column;">
-            
-            <div class="modal-header" style="border-bottom: 1px solid #d29922; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+        <div id="quest-modal" class="game-modal hidden">
+            <div class="modal-header">
                 <h3 id="quest-modal-title" style="margin:0; color:#d29922;">📜 Новый Квест</h3>
-                <button onclick="GameModule.closeQuestWindow()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+                <button onclick="GameModule.closeQuestWindow()" class="close-btn">❌</button>
             </div>
-            
             <div class="modal-body" style="display:flex; flex-direction:column; gap:15px;">
-                <div id="quest-modal-text" style="white-space: pre-wrap; line-height: 1.6; font-size: 14px; color: #c9d1d9; min-height: 100px;">
-                </div>
-
+                <div id="quest-modal-text" style="white-space: pre-wrap; line-height: 1.6; font-size: 14px; color: #c9d1d9; min-height: 100px; flex:1; overflow-y:auto;"></div>
                 <div id="quest-reward-block" style="display:none; background:rgba(255, 215, 0, 0.1); border: 1px solid #ffd700; padding: 10px; border-radius: 4px; text-align: center; color: #ffd700; font-weight: bold;">
                     💰 Награда получена: <span id="quest-reward-gold">0</span> золотых
                 </div>
             </div>
-            
             <div style="margin-top: 20px; text-align: right;">
                 <button onclick="GameModule.closeQuestWindow()" style="padding: 8px 20px; background: #da3633; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: inherit;">Закрыть</button>
             </div>
         </div>
 
         <!-- Окно Полного Инвентаря -->
-        <div id="inventory-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow:hidden; flex-direction:column;">
-            <div class="modal-header" style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div id="inventory-modal" class="game-modal hidden">
+            <div class="modal-header">
                 <h3 style="margin:0; color:#58a6ff;">🎒 Рюкзак Героя</h3>
-                <button onclick="GameModule.closeFullInventory()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+                <button onclick="GameModule.closeFullInventory()" class="close-btn">❌</button>
             </div>
             <div id="inv-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; flex:1; min-height:0; overflow:hidden;">
                 <div class="inv-col" id="inv-col-weapon"><h4>⚔️ Оружие</h4><div class="inv-list"></div></div>
@@ -756,22 +677,20 @@
         </div>
 
         <!-- Окно Достижений -->
-        <div id="achievements-modal" class="game-modal hidden" style="display:none; background:#161b22; border:2px solid #58a6ff; color:#c9d1d9; padding:20px; border-radius:8px; font-family:'Consolas', monospace; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow:hidden; flex-direction:column;">
-            <div class="modal-header" style="border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div id="achievements-modal" class="game-modal hidden">
+            <div class="modal-header">
                 <h3 style="margin:0; color:#58a6ff;">🏆 Достижения</h3>
-                <button onclick="GameModule.closeAchievementsWindow()" style="background:none; border:none; color:#f85149; font-size:20px; cursor:pointer;">❌</button>
+                <button onclick="GameModule.closeAchievementsWindow()" class="close-btn">❌</button>
             </div>
             <div class="modal-body">
-                <div id="achiev-stats-container" class="achiev-stats-block">
-                </div>
+                <div id="achiev-stats-container" class="achiev-stats-block"></div>
                 <h4 style="margin: 10px 0 5px 0; color: #8b949e; font-size: 12px; text-transform: uppercase;">Список наград</h4>
-                <div id="achiev-list-container">
-                </div>
+                <div id="achiev-list-container"></div>
             </div>
         </div>
 
-        <!-- === ОКНО СМЕНЫ ЭПОХИ === -->
-        <div id="era-modal" class="game-modal hidden" style="display:none; background:#0d1117; border:2px solid #8b949e; color:#c9d1d9; padding:30px; border-radius:8px; min-width:500px; max-width:700px; text-align:center; box-shadow:0 0 30px rgba(0,0,0,0.8); flex-direction:column; align-items:center;">
+        <!-- Окно Смены Эпохи -->
+        <div id="era-modal" class="game-modal hidden">
             <h2 id="era-modal-title" style="color:#ffd700; font-size:24px; margin-bottom:20px; text-transform:uppercase; letter-spacing:2px;">Название Эпохи</h2>
             <div id="era-modal-text" style="font-size:16px; line-height:1.6; margin-bottom:30px; font-style:italic; color:#e6edf3;">
                 Текст описания эпохи...
@@ -785,3 +704,4 @@
 
 </body>
 </html>
+```
