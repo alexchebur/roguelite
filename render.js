@@ -838,7 +838,7 @@ const RenderModule = (function() {
                         invDiv.appendChild(div);
                     });
                 } 
-                // === ОБЫЧНЫЙ ИНВЕНТАРЬ (ОБНОВЛЕННЫЙ) ===
+                // === ОБЫЧНЫЙ ИНВЕНТАРЬ (ОБНОВЛЕННЫЙ: ПОКАЗЫВАЕТ ПОСЛЕДНИЕ ПРЕДМЕТЫ) ===
                 else {
                     if (player.inventory.length === 0) {
                         invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
@@ -859,20 +859,28 @@ const RenderModule = (function() {
                         };
                         invDiv.appendChild(openBtn);
 
-                        // 2. ГРУППИРОВКА ПРЕДМЕТОВ
+                        // 2. ГРУППИРОВКА ПРЕДМЕТОВ С СОХРАНЕНИЕМ ПОРЯДКА "НОВЫЕ ВВЕРХУ"
                         const grouped = {};
                         const order = []; 
+                        
+                        // Проходим по инвентарю. 
+                        // Важно: player.inventory обычно хранит предметы в порядке подбора (старые в начале).
                         player.inventory.forEach((item, originalIndex) => {
                             const key = `${item.name}_${item.type}_${item.maxAmmo || 0}`;
+                            
                             if (!grouped[key]) {
                                 grouped[key] = { item: item, count: 0, indices: [] };
-                                order.push(key);
+                                // === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ===
+                                // Используем unshift вместо push.
+                                // Это помещает ключ нового предмета в НАЧАЛО массива order.
+                                // Таким образом, order[0] будет самым последним поднятым предметом.
+                                order.unshift(key);
                             }
                             grouped[key].count++;
                             grouped[key].indices.push(originalIndex);
                         });
 
-                        // 3. ОТРИСОВКА ТОЛЬКО ПЕРВЫХ 10 ГРУПП
+                        // 3. ОТРИСОВКА ТОЛЬКО ПЕРВЫХ 10 ГРУПП (ТЕПЕРЬ ЭТО САМЫЕ СВЕЖИЕ)
                         const limit = Math.min(10, order.length);
                         for (let k = 0; k < limit; k++) {
                             const key = order[k];
@@ -881,7 +889,6 @@ const RenderModule = (function() {
                             
                             const div = document.createElement("div");
                             div.className = "inv-item";
-                            
                             div.style.color = item.isUnique ? "#d29922" : item.color; 
                             div.style.fontWeight = item.isUnique ? "bold" : "normal";
 
@@ -914,7 +921,8 @@ const RenderModule = (function() {
                             moreDiv.style.color = "#666";
                             moreDiv.style.textAlign = "center";
                             moreDiv.style.padding = "4px";
-                            moreDiv.textContent = `...и еще ${order.length - 10} предм.`;
+                            // Теперь скрыты самые СТАРЫЕ предметы
+                            moreDiv.textContent = `...и еще ${order.length - 10} старых предм.`;
                             invDiv.appendChild(moreDiv);
                         }
                     }
