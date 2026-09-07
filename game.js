@@ -3809,27 +3809,26 @@ function checkTrapTrigger(x, y) {
 
     function openTwineQuest(url) {
         if (isTwineActive) return;
+
         // === ОЧИСТКА СОСТОЯНИЯ TWINE ===
-        // Twine (Harlowe) сохраняет прогресс в sessionStorage браузера.
-        // Ключ "Saved Session" используется всеми квестами на одном домене.
-        // Очищаем его, чтобы квест ВСЕГДА начинался с самого начала.
         try {
             sessionStorage.removeItem("Saved Session");
         } catch(e) {
             console.warn("Не удалось очистить sessionStorage Twine");
         }    
+
         isTwineActive = true;
-    
+
         // 1. Создаем контейнер-затемнение
         const overlay = document.createElement('div');
         overlay.id = 'twine-overlay';
         overlay.style.cssText = `
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9); z-index: 10000;
+            background: rgba(0, 0, 0, 0.95); z-index: 10000;
             display: flex; justify-content: center; align-items: center;
         `;
 
-        // 2. Создаем Iframe с уникальным параметром времени
+        // 2. Создаем Iframe
         const iframe = document.createElement('iframe');
         
         // === ИСПРАВЛЕНИЕ: Добавляем ?t=... чтобы сбросить кэш ===
@@ -3839,12 +3838,71 @@ function checkTrapTrigger(x, y) {
         
         iframe.style.cssText = `
             width: 90%; height: 90%; border: 2px solid #58a6ff;
-            background: #fff; border-radius: 8px;
+            background: #0d1117; border-radius: 8px;
         `;
+
+        // === НОВОЕ: ПРИНУДИТЕЛЬНАЯ ВЕРСТКА ДЛЯ TWINE ===
+        iframe.onload = function() {
+            try {
+                // Получаем доступ к документу внутри iframe
+                const twineDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                // Создаем элемент стиля
+                const style = twineDoc.createElement('style');
+                
+                // Ваш CSS, который делает шрифт мелким и пиксельным, как в UI игры
+                style.textContent = `
+                    /* Принудительные настройки шрифта для пиксельного вида */
+                    tw-story {
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+                        font-size: 14px !important; /* Мелкий шрифт, как в UI */
+                        line-height: 1.4 !important;
+                        color: #c9d1d9 !important; /* Цвет текста как в игре */
+                        background-color: #0d1117 !important; /* Темный фон */
+                        
+                        /* Отключение сглаживания для пиксельности */
+                        -webkit-font-smoothing: none !important;
+                        text-rendering: geometricPrecision !important;
+                        font-kerning: none !important;
+                    }
+
+                    /* Убираем боковую панель Twine */
+                    tw-sidebar {
+                        display: none !important;
+                    }
+
+                    /* Стили для ссылок, чтобы они выглядели как команды */
+                    tw-link {
+                        color: #58a6ff !important;
+                        text-decoration: none !important;
+                        cursor: pointer !important;
+                        border-bottom: 1px dashed #58a6ff !important;
+                        font-weight: normal !important;
+                    }
+
+                    tw-link:hover {
+                        color: #ffffff !important;
+                        border-bottom-style: solid !important;
+                    }
+                    
+                    tw-passage {
+                        padding: 20px !important;
+                        max-width: 800px !important; /* Ограничиваем ширину текста для удобства чтения */
+                        margin: 0 auto !important;
+                    }
+                `;
+                
+                // Добавляем стиль в head страницы квеста
+                twineDoc.head.appendChild(style);
+                console.log("✅ Стили UI успешно применены к Twine-квесту.");
+            } catch (err) {
+                console.error("❌ Не удалось применить стили к Twine (возможно, проблема CORS):", err);
+            }
+        };
     
         // 3. Кнопка принудительного выхода (крестик)
         const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '&#10006;'; // Символ крестика
+        closeBtn.innerHTML = '&#10006;'; 
         closeBtn.style.cssText = `
             position: absolute; top: 20px; right: 20px;
             background: #da3633; color: white; border: none;
@@ -3852,7 +3910,6 @@ function checkTrapTrigger(x, y) {
             font-size: 20px; cursor: pointer; z-index: 10001;
         `;
     
-        // Обработчик закрытия без награды
         closeBtn.onclick = () => closeTwineQuest(false, url);
     
         overlay.appendChild(iframe);
@@ -3861,16 +3918,14 @@ function checkTrapTrigger(x, y) {
 
         // 4. Слушатель сообщений от Iframe
         const messageHandler = (event) => {
-            // Проверка типа сообщения
             if (event.data && event.data.type === 'TWINE_QUEST_COMPLETE') {
                 console.log("Квест завершен! Данные:", event.data.payload);
                 applyTwineReward(event.data.payload);
-                closeTwineQuest(true, url); // Передаем URL для запоминания
+                closeTwineQuest(true, url);
             }
         };
     
         window.addEventListener('message', messageHandler);
-        // Сохраняем ссылку на обработчик, чтобы удалить его потом
         overlay._msgHandler = messageHandler;
     }
 
