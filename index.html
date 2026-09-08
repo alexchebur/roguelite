@@ -174,14 +174,23 @@
     #modal-overlay {
         z-index: 9999 !important;
         pointer-events: auto !important;
-        justify-content: center !important;
-        align-items: center !important;
+        /* Убираем justify-content/align-items, так как будем позиционировать окна сами */
+        display: none; 
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.85);
     }
 
     /* Базовый класс для ВСЕХ модалок */
     .game-modal {
         z-index: 10000 !important;
-        position: relative;
+        
+        /* ЖЕСТКОЕ ПОЗИЦИОНИРОВАНИЕ ПО ЦЕНТРУ ЭКРАНА */
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        
         display: flex !important; 
         flex-direction: column !important;
         
@@ -198,13 +207,33 @@
         font-family: 'Consolas', monospace;
         color: #c9d1d9;
         padding: 20px;
+        
+        /* Важно: скрытые окна не занимают место */
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* Класс для отображения активной модалки */
+    .game-modal:not(.hidden) {
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
     }
     
-    .hidden { display: none !important; visibility: hidden !important; pointer-events: none !important; }
+    /* ЖЕСТКОЕ СКРЫТИЕ */
+    .hidden { 
+        display: none !important; 
+    }
 
     .modal-header { 
-        border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 15px; 
-        display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+        border-bottom: 1px solid #30363d; 
+        padding-bottom: 10px; 
+        margin-bottom: 15px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        flex-shrink: 0;
     }
     .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
     .close-btn:hover { color: #ff7b72; }
@@ -215,14 +244,17 @@
     
     /* Общий сброс для полноэкранных модалок */
     #shop-modal, #inventory-modal, #achievements-modal {
+        /* Переопределяем центрирование для полноэкранных окон */
+        top: 0 !important;
+        left: 0 !important;
+        transform: none !important;
+        
         width: 100vw !important;
         height: 100vh !important;
         max-width: none !important;
         max-height: none !important;
         padding: 0 !important;
         border-radius: 0 !important;
-        top: 0 !important;
-        left: 0 !important;
         margin: 0 !important;
         display: flex !important;
         flex-direction: column !important;
