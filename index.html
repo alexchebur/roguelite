@@ -566,87 +566,209 @@
     /* --- Эпоха --- */
     #era-modal { border: 2px solid #8b949e; text-align: center; align-items: center; }
 
-    /* --- Полный Инвентарь --- */
+    /* --- Полный Инвентарь (Максимальный размер) --- */
     #inventory-modal {
         border: 2px solid #58a6ff;
-        /* Инвентарь всегда занимает максимум */
-        width: 98vw !important;
-        height: 95vh !important;
-        max-width: 1400px !important;
-        max-height: 95vh !important;
+        /* Принудительно на весь экран */
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important; /* Убираем ограничение в 1000px */
+        max-height: none !important;
+        padding: 0 !important; /* Убираем внешние отступы модалки */
+        border-radius: 0;
+    }
+
+    /* Сетка внутри инвентаря */
+    #inv-grid { 
+        display: grid; 
+        /* На десктопе 4 колонки, на мобильном переключимся ниже */
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 0; /* Убираем отступы между колонками, чтобы они слились */
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        background: #0d1117;
     }
 
     .inv-col {
         display: flex;
         flex-direction: column;
         background: rgba(255,255,255,0.03);
-        border: 1px solid #30363d;
-        border-radius: 4px;
+        border-right: 1px solid #30363d; /* Разделитель колонок */
         overflow: hidden;
         min-height: 0;
     }
+    
+    .inv-col:last-child {
+        border-right: none;
+    }
+
     .inv-col h4 {
         margin: 0;
         padding: 8px;
-        background: #21262d;
+        background: #161b22;
         color: #8b949e;
         text-align: center;
         border-bottom: 1px solid #30363d;
-        font-size: 13px;
+        font-size: 11px; /* Уменьшенный шрифт заголовка */
         text-transform: uppercase;
         letter-spacing: 0.5px;
         flex-shrink: 0;
     }
+
     .inv-list {
         flex: 1;
         overflow-y: auto;
         padding: 5px;
         min-height: 0;
     }
+
     .inv-full-item {
         padding: 6px;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         background: rgba(255,255,255,0.05);
         border-radius: 3px;
         cursor: pointer;
         border: 1px solid transparent;
         transition: background 0.2s;
     }
+
     .inv-full-item:hover {
         background: rgba(88, 166, 255, 0.15);
         border-color: #58a6ff;
     }
+
     .inv-item-name {
         font-weight: bold;
-        font-size: 13px;
+        font-size: 11px; /* Уменьшенный шрифт названия */
         color: #c9d1d9;
         margin-bottom: 2px;
         line-height: 1.2;
     }
+
     .inv-item-desc {
-        font-size: 11px;
+        font-size: 9px; /* Уменьшенный шрифт описания */
         color: #8b949e;
         font-style: italic;
-        line-height: 1.2;
+        line-height: 1.1;
     }
-    
-    /* === АДАПТАЦИЯ ПОЛНОГО ИНВЕНТАРЯ (МОБИЛЬНАЯ) === */
+
+    /* --- Окно Достижений (Максимальный размер) --- */
+    #achievements-modal {
+        border: 2px solid #58a6ff;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        padding: 0 !important;
+        border-radius: 0;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    #achievements-modal .modal-header {
+        padding: 10px 15px;
+        background: #161b22;
+        border-bottom: 1px solid #30363d;
+        flex-shrink: 0;
+    }
+
+    #achievements-modal .modal-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+        padding: 10px;
+    }
+     
+    .achiev-stats-block {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #30363d;
+        flex-shrink: 0;
+        margin-bottom: 10px;
+    }
+     
+    .achiev-stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        font-size: 11px; /* Уменьшенный шрифт статистики */
+    }
+    .achiev-stat-row:last-child { border-bottom: none; }
+     
+    #achiev-list-container {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-right: 5px;
+    }
+     
+    .achiev-item {
+        display: flex;
+        align-items: center;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid #30363d;
+        padding: 6px;
+        border-radius: 4px;
+        opacity: 0.6;
+        transition: all 0.3s;
+    }
+     
+    .achiev-item.unlocked {
+        opacity: 1;
+        border-color: #d29922;
+        background: rgba(210, 153, 34, 0.1);
+    }
+     
+    .achiev-icon {
+        font-size: 18px; /* Чуть меньше иконка */
+        margin-right: 10px;
+        width: 25px;
+        text-align: center;
+    }
+     
+    .achiev-info { flex: 1; }
+     
+    .achiev-title {
+        font-weight: bold;
+        color: #c9d1d9;
+        font-size: 11px; /* Уменьшенный шрифт названия */
+    }
+     
+    .achiev-desc {
+        font-size: 9px; /* Уменьшенный шрифт описания */
+        color: #8b949e;
+        margin-top: 2px;
+    }
+     
+    .achiev-status {
+        font-size: 14px;
+        margin-left: 10px;
+    }
+
+    /* ========================================= */
+    /* === МОБИЛЬНАЯ АДАПТАЦИЯ ДЛЯ ЭТИХ ОКОН === */
+    /* ========================================= */
     @media (max-width: 700px) {
+        /* Инвентарь: 2 колонки вместо 4 на узких экранах */
         #inv-grid { 
             grid-template-columns: repeat(2, 1fr); 
-            gap: 8px;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
         }
         
-        .inv-col h4 { font-size: 9px !important; padding: 4px !important; }
-        .inv-full-item { padding: 4px !important; margin-bottom: 4px !important; }
-        .inv-item-name { font-size: 9px !important; line-height: 1.2; }
-        .inv-item-desc { font-size: 8px !important; line-height: 1.1; }
-        #inventory-modal .modal-header h3 { font-size: 12px !important; }
-        #inventory-modal .close-btn { font-size: 14px !important; }
-    }    
+        /* Еще сильнее уменьшаем шрифты на совсем маленьких экранах */
+        .inv-item-name { font-size: 10px; }
+        .inv-item-desc { font-size: 8px; }
+        .achiev-title { font-size: 10px; }
+        .achiev-desc { font-size: 8px; }
+        .achiev-stat-row { font-size: 10px; }
+    }
 
     /* ========================================= */
     /* === АДАПТАЦИЯ МОДАЛЬНЫХ ОКОН ДЛЯ МОБИЛЬНЫХ === */
