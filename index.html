@@ -193,16 +193,17 @@
         align-items: center !important;
     }
 
+    /* Базовый класс для ВСЕХ модалок */
     .game-modal {
         z-index: 10000 !important;
         position: relative;
         display: flex !important; 
         flex-direction: column !important;
         
-        /* Стандартный размер (переопределяется ниже для конкретных окон) */
-        width: 95vw !important;
-        max-width: 1000px !important;
-        height: 90vh !important;
+        /* Стандартный размер для обычных окон (Квест, Постоялый двор) */
+        width: 90vw !important;
+        max-width: 800px !important;
+        height: auto !important;
         max-height: 90vh !important;
         overflow: hidden !important;
         
@@ -214,6 +215,7 @@
         padding: 20px;
     }
     
+    /* ЖЕСТКОЕ СКРЫТИЕ */
     .hidden { 
         display: none !important; 
         visibility: hidden !important;
@@ -237,16 +239,18 @@
     /* ========================================= */
     #shop-modal { 
         border: 2px solid #58a6ff; 
-        padding: 0; 
+        padding: 0 !important; /* Убираем любые отступы */
         display: flex !important;
         flex-direction: column !important;
         overflow: hidden !important;
+        
         /* Принудительно на весь экран */
         width: 100vw !important;
         height: 100vh !important;
         max-width: none !important;
         max-height: none !important;
         border-radius: 0;
+        box-sizing: border-box;
     }
 
     #shop-modal .modal-header {
@@ -395,12 +399,14 @@
     /* ========================================= */
     #inventory-modal {
         border: 2px solid #58a6ff;
+        padding: 0 !important;
+        border-radius: 0;
+        
+        /* Принудительно на весь экран */
         width: 100vw !important;
         height: 100vh !important;
         max-width: none !important;
         max-height: none !important;
-        padding: 0 !important;
-        border-radius: 0;
     }
 
     #inv-grid { 
@@ -479,14 +485,16 @@
     /* ========================================= */
     #achievements-modal {
         border: 2px solid #58a6ff;
-        width: 100vw !important;
-        height: 100vh !important;
-        max-width: none !important;
-        max-height: none !important;
         padding: 0 !important;
         border-radius: 0;
         display: flex !important;
         flex-direction: column !important;
+        
+        /* Принудительно на весь экран */
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
     }
 
     #achievements-modal .modal-header {
