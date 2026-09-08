@@ -393,17 +393,161 @@
     .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
     .close-btn:hover { color: #ff7b72; }
 
-    /* --- Магазин --- */
-    #shop-modal { border: 2px solid #58a6ff; }
-    .shop-columns { display: flex; gap: 20px; flex: 1; min-height: 0; }
-    .shop-col { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
-    .shop-col h4 { color: #8b949e; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 5px; flex-shrink: 0; }
-    .shop-item { padding: 6px 8px; border-bottom: 1px solid #30363d; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-    .shop-item:hover { background: rgba(255,255,255,0.1); }
-    .shop-footer { margin-top: 15px; border-top: 1px solid #30363d; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; color: #ffd700; font-weight: bold; flex-shrink: 0; }
-    .pagination-controls button { background: #21262d; border: 1px solid #30363d; color: #58a6ff; padding: 4px 10px; margin: 0 2px; cursor: pointer; border-radius: 4px; }
+    /* --- Магазин (Обновленный) --- */
+    #shop-modal { 
+        border: 2px solid #58a6ff; 
+        padding: 0; /* Убираем внутренний отступ у контейнера, чтобы панели были во весь экран */
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* Заголовок магазина */
+    #shop-modal .modal-header {
+        flex-shrink: 0;
+        padding: 15px 20px;
+        background: #161b22;
+        z-index: 10;
+    }
+
+    /* Контейнер для двух панелей (Продавец / Игрок) */
+    .shop-columns { 
+        display: flex; 
+        flex: 1; /* Занимает все доступное пространство по вертикали */
+        min-height: 0; 
+        overflow: hidden; /* Скрываем вылезающий контент */
+    }
+
+    /* Левая и правая панели */
+    .shop-col { 
+        flex: 1; /* Каждая панель занимает 50% ширины */
+        min-width: 0; 
+        display: flex; 
+        flex-direction: column;
+        border-right: 1px solid #30363d; /* Разделитель */
+    }
+    
+    .shop-col:last-child {
+        border-right: none;
+    }
+
+    /* Заголовки внутри панелей */
+    .shop-col h4 { 
+        color: #8b949e; 
+        margin: 0; 
+        padding: 10px;
+        background: rgba(0,0,0,0.2);
+        border-bottom: 1px solid #30363d; 
+        font-size: 12px; 
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    /* Списки товаров (скроллируемая область) */
+    #shop-merchant-list, #shop-player-list {
+        overflow-y: auto; 
+        flex: 1;
+        padding: 5px;
+    }
+
+    /* Элемент товара в магазине (стиль как в инвентаре) */
+    .shop-item { 
+        padding: 8px; 
+        margin-bottom: 6px;
+        border-radius: 4px;
+        cursor: pointer; 
+        display: flex; 
+        flex-direction: column; /* Вертикальное расположение названия и описания */
+        background: rgba(255,255,255,0.03);
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .shop-item:hover { 
+        background: rgba(88, 166, 255, 0.15); 
+        border-color: #58a6ff;
+    }
+
+    /* Название предмета */
+    .shop-item-name {
+        font-weight: bold;
+        font-size: 13px;
+        line-height: 1.2;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    /* Описание предмета */
+    .shop-item-desc {
+        font-size: 11px;
+        color: #8b949e;
+        font-style: italic;
+        margin-top: 2px;
+        line-height: 1.1;
+    }
+
+    /* Цена или действие справа */
+    .shop-item-action {
+        float: right;
+        font-weight: normal;
+        opacity: 0.8;
+    }
+
+    /* Нижняя панель управления (Золото, Пагинация, Статус) */
+    .shop-footer-container {
+        flex-shrink: 0;
+        background: #161b22;
+        border-top: 1px solid #30363d;
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 10;
+    }
+
+    .shop-gold-row {
+        display: flex; 
+        justify-content: space-between; 
+        color: #ffd700; 
+        font-weight: bold; 
+        font-size: 13px;
+    }
+
+    #shop-status {
+        width: 100%; 
+        text-align: center; 
+        min-height: 18px; 
+        font-size: 12px; 
+        font-weight: bold; 
+        color: #f85149;
+    }
+
+    .pagination-controls {
+        display: flex; 
+        gap: 10px; 
+        justify-content: center; 
+        width: 100%;
+    }
+
+    .pagination-controls button { 
+        background: #21262d; 
+        border: 1px solid #30363d; 
+        color: #58a6ff; 
+        padding: 4px 10px; 
+        margin: 0 2px; 
+        cursor: pointer; 
+        border-radius: 4px; 
+        font-size: 12px;
+    }
     .pagination-controls button:hover { background: #30363d; }
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
+
+    /* Адаптация для мобильных: делаем панели друг под другом, если экран очень узкий */
+    @media (max-width: 600px) {
+        .shop-columns { flex-direction: column; }
+        .shop-col { border-right: none; border-bottom: 1px solid #30363d; max-height: 40vh; }
+    }
 
     /* --- Постоялый Двор --- */
     #inn-modal { border: 2px solid #8B4513; }
