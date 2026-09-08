@@ -393,16 +393,15 @@
     .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
     .close-btn:hover { color: #ff7b72; }
 
-    /* --- Магазин (Финальная версия) --- */
+    /* --- Магазин (Обновленный) --- */
     #shop-modal { 
         border: 2px solid #58a6ff; 
         padding: 0; 
         display: flex !important;
         flex-direction: column !important;
-        overflow: hidden !important; /* Важно для мобильных */
+        overflow: hidden !important;
     }
 
-    /* Заголовок магазина */
     #shop-modal .modal-header {
         flex-shrink: 0;
         padding: 10px 15px;
@@ -411,30 +410,29 @@
         border-bottom: 1px solid #30363d;
     }
 
-    /* Контейнер для двух панелей (Продавец / Игрок) */
+    /* Контейнер колонок - строго горизонтальный всегда */
     .shop-columns { 
-        display: flex; 
-        flex: 1; /* Занимает все доступное пространство по вертикали */
+        display: flex !important; 
+        flex-direction: row !important; /* Принудительно в строку */
+        flex: 1; 
         min-height: 0; 
         overflow: hidden; 
         width: 100%;
     }
 
-    /* Левая и правая панели */
     .shop-col { 
         flex: 1; 
         min-width: 0; 
         display: flex; 
         flex-direction: column;
         border-right: 1px solid #30363d;
-        background: #0d1117; /* Темный фон для контраста */
+        background: #0d1117;
     }
     
     .shop-col:last-child {
         border-right: none;
     }
 
-    /* Заголовки внутри панелей */
     .shop-col h4 { 
         color: #8b949e; 
         margin: 0; 
@@ -448,15 +446,13 @@
         flex-shrink: 0;
     }
 
-    /* Списки товаров (скроллируемая область) */
     #shop-merchant-list, #shop-player-list {
         overflow-y: auto; 
         flex: 1;
         padding: 5px;
-        -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+        -webkit-overflow-scrolling: touch;
     }
 
-    /* Элемент товара в магазине */
     .shop-item { 
         padding: 6px 8px; 
         margin-bottom: 4px;
@@ -474,35 +470,31 @@
         border-color: #58a6ff;
     }
 
-    /* Название предмета */
     .shop-item-name {
         font-weight: bold;
-        font-size: 12px; /* Чуть меньше для экономии места */
+        font-size: 12px;
         line-height: 1.2;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    /* Описание предмета */
     .shop-item-desc {
         font-size: 10px;
         color: #8b949e;
         font-style: italic;
         margin-top: 2px;
         line-height: 1.1;
-        word-break: break-word; /* Чтобы длинные описания не ломали верстку */
+        word-break: break-word;
     }
 
-    /* Цена или действие справа */
     .shop-item-action {
         font-weight: normal;
         opacity: 0.8;
         font-size: 11px;
     }
 
-    /* Нижняя панель управления (Золото, Пагинация, Статус) */
-    /* Используем класс из HTML, но стилизуем его правильно */
+    /* Нижняя панель управления */
     .shop-footer {
         flex-shrink: 0;
         background: #161b22;
@@ -538,7 +530,7 @@
         gap: 5px; 
         justify-content: center; 
         width: 100%;
-        flex-wrap: wrap; /* Позволяет кнопкам переноситься если не влезают */
+        flex-wrap: wrap;
     }
 
     .pagination-controls button { 
@@ -555,38 +547,12 @@
     .pagination-controls button:hover { background: #30363d; }
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
-    /* ========================================= */
-    /* === АДАПТАЦИЯ МАГАЗИНА ДЛЯ МОБИЛЬНЫХ === */
-    /* ========================================= */
-    
-    /* Вертикальная ориентация (узкие экраны) */
+    /* Убираем старые мобильные стили, которые ломали верстку */
     @media (max-width: 600px) {
-        .shop-columns { 
-            flex-direction: column; 
-        }
-        .shop-col { 
-            border-right: none; 
-            border-bottom: 1px solid #30363d; 
-            max-height: 40vh; /* Ограничиваем высоту каждой панели */
-        }
-        .shop-col:last-child {
-            border-bottom: none;
-        }
+        /* Ничего не меняем для shop-columns, оставляем row */
     }
 
-    /* Альбомная ориентация или очень низкие экраны */
-    @media (max-height: 500px) {
-        #shop-modal {
-            height: 100vh !important;
-            max-height: 100vh !important;
-        }
-        .shop-col {
-            max-height: 50vh;
-        }
-        .shop-item-name { font-size: 11px; }
-        .shop-item-desc { font-size: 9px; }
-        .pagination-controls button { padding: 2px 6px; font-size: 10px; }
-    }
+
 
     /* --- Постоялый Двор --- */
     #inn-modal { border: 2px solid #8B4513; }
@@ -686,10 +652,7 @@
     /* === АДАПТАЦИЯ МОДАЛЬНЫХ ОКОН ДЛЯ МОБИЛЬНЫХ === */
     /* ========================================= */
     @media (max-width: 600px) {
-        /* Магазин на мобильных становится вертикальным */
-        #shop-modal { flex-direction: column !important; }
-        .shop-columns { flex-direction: column !important; gap: 10px !important; }
-        .shop-col { min-width: auto !important; max-height: 30vh !important; }
+
         
         /* Инвентарь и достижения на мобильных тоже максимизируются */
         #inventory-modal, #achievements-modal {
@@ -771,22 +734,26 @@
         
         <!-- Окно Магазина -->
         <!-- Окно Магазина -->
+        <!-- Окно Магазина -->
         <div id="shop-modal" class="game-modal hidden">
             <div class="modal-header">
                 <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
                 <button onclick="GameModule.closeShop()" class="close-btn">❌</button>
             </div>
+            
+            <!-- Две колонки: Продавец и Игрок -->
             <div class="shop-columns">
                 <div class="shop-col">
                     <h4>Товары</h4>
-                    <div id="shop-merchant-list" style="overflow-y:auto; flex:1;"></div>
+                    <div id="shop-merchant-list"></div>
                 </div>
                 <div class="shop-col">
                     <h4>Ваш инвентарь</h4>
-                    <div id="shop-player-list" style="overflow-y:auto; flex:1;"></div>
+                    <div id="shop-player-list"></div>
                 </div>
             </div>
-            <!-- Обновленная нижняя панель -->
+
+            <!-- Нижняя панель управления -->
             <div class="shop-footer">
                 <div class="shop-gold-row">
                     <span id="shop-gold-info">Ваше золото: 0</span>
