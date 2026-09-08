@@ -1130,17 +1130,20 @@ const RenderModule = (function() {
         const merchantList = document.getElementById('shop-merchant-list');
         const playerList = document.getElementById('shop-player-list');
         const goldInfo = document.getElementById('shop-gold-info');
+        const merchantGoldInfo = document.getElementById('shop-merchant-gold-info');
         const paginationControls = document.querySelector('.pagination-controls');
         
         if (!merchantList || !playerList) return;
 
         merchantList.innerHTML = '';
         playerList.innerHTML = '';
-        
+
         const statusEl = document.getElementById('shop-status');
         if (statusEl) statusEl.textContent = ''; 
 
-        const itemsPerPage = 8;
+        const itemsPerPage = 10; // Немного увеличили количество элементов на страницу из-за компактности
+        
+        // Расчет страниц
         const totalMerchantPages = Math.ceil(merchantInv.items.length / itemsPerPage) || 1;
         
         let player = null;
@@ -1152,14 +1155,18 @@ const RenderModule = (function() {
             }
         }
 
+        // Инициализация переменных пагинации, если их нет
         if (typeof window.shopPageMerchant === 'undefined') window.shopPageMerchant = 0;
         if (typeof window.shopPagePlayer === 'undefined') window.shopPagePlayer = 0;
 
+        // Корректировка границ пагинации
         if (window.shopPageMerchant >= totalMerchantPages) window.shopPageMerchant = totalMerchantPages - 1;
         if (window.shopPageMerchant < 0) window.shopPageMerchant = 0;
+        
         if (player && window.shopPagePlayer >= totalPlayerPages) window.shopPagePlayer = totalPlayerPages - 1;
         if (player && window.shopPagePlayer < 0) window.shopPagePlayer = 0;
 
+        // === ОТРИСОВКА ТОВАРОВ ПРОДАВЦА ===
         const startIdxM = window.shopPageMerchant * itemsPerPage;
         const endIdxM = startIdxM + itemsPerPage;
         
@@ -1167,11 +1174,28 @@ const RenderModule = (function() {
             const index = startIdxM + i;
             const div = document.createElement('div');
             div.className = 'shop-item';
-            div.innerHTML = `<span style="color:${item.color}">${item.name}</span> <span style="float:right; color:#ffd700">${item.price}g</span>`;
+            
+            // Формируем описание
+            let descText = item.desc || "";
+            if (!descText) {
+                if (item.stat) descText += `${item.stat.toUpperCase()} +${item.val} `;
+                if (item.effect) descText += `| Эффект: ${item.effect}`;
+                if (item.maxAmmo > 0) descText += ` | Боеприпасы: ${item.currentAmmo}/${item.maxAmmo}`;
+            }
+
+            div.innerHTML = `
+                <div class="shop-item-name" style="color:${item.color}">
+                    <span>${item.name}</span>
+                    <span class="shop-item-action" style="color:#ffd700">${item.price}g</span>
+                </div>
+                <div class="shop-item-desc">${descText}</div>
+            `;
+            
             div.onclick = () => GameModule.buyItem(index);
             merchantList.appendChild(div);
         });
 
+        // === ОТРИСОВКА ИНВЕНТАРЯ ИГРОКА ===
         if (player) {
             const startIdxP = window.shopPagePlayer * itemsPerPage;
             const endIdxP = startIdxP + itemsPerPage;
@@ -1180,31 +1204,46 @@ const RenderModule = (function() {
                 const index = startIdxP + i;
                 const div = document.createElement('div');
                 div.className = 'shop-item';
-                div.innerHTML = `<span style="color:${item.color}">${item.name}</span> <span style="float:right; color:#aaa">продать</span>`;
+                
+                // Формируем описание
+                let descText = item.desc || "";
+                if (!descText) {
+                    if (item.stat) descText += `${item.stat.toUpperCase()} +${item.val} `;
+                    if (item.effect) descText += `| Эффект: ${item.effect}`;
+                    if (item.maxAmmo > 0) descText += ` | Боеприпасы: ${item.currentAmmo}/${item.maxAmmo}`;
+                }
+                
+                // Расчет цены продажи
+                const sellPrice = Math.floor(item.price ? item.price * 0.5 : item.val * 2);
+
+                div.innerHTML = `
+                    <div class="shop-item-name" style="color:${item.color}">
+                        <span>${item.name}</span>
+                        <span class="shop-item-action" style="color:#aaa">Продать: ${sellPrice}g</span>
+                    </div>
+                    <div class="shop-item-desc">${descText}</div>
+                `;
+                
                 div.onclick = () => GameModule.sellItem(index);
                 playerList.appendChild(div);
             });
         }
 
-        if (goldInfo) {
-            goldInfo.textContent = `Ваше золото: ${playerGold}`;
-            
-            const merchantGoldInfo = document.getElementById('shop-merchant-gold-info');
-            if (merchantGoldInfo) {
-                merchantGoldInfo.textContent = `У торговца: ${merchantInv.gold}`;
-            }
-        }
+        // === ОБНОВЛЕНИЕ ИНФОРМАЦИИ О ЗОЛОТЕ ===
+        if (goldInfo) goldInfo.textContent = `Ваше золото: ${playerGold}`;
+        if (merchantGoldInfo) merchantGoldInfo.textContent = `У торговца: ${merchantInv.gold}`;
 
+        // === ОТРИСОВКА КНОПОК ПАГИНАЦИИ ===
         if (paginationControls) {
             paginationControls.innerHTML = `
                 <button onclick="GameModule.changeShopPage('m', -1)" ${window.shopPageMerchant === 0 ? 'disabled' : ''}>← Товары</button>
-                <span style="margin:0 10px; color:#8b949e">${window.shopPageMerchant + 1}/${totalMerchantPages}</span>
+                <span style="margin:0 10px; color:#8b949e; align-self:center;">${window.shopPageMerchant + 1}/${totalMerchantPages}</span>
                 <button onclick="GameModule.changeShopPage('m', 1)" ${window.shopPageMerchant >= totalMerchantPages - 1 ? 'disabled' : ''}>Товары →</button>
                 
-                <span style="margin-left:20px;"></span>
+                <div style="width: 20px;"></div> <!-- Разделитель -->
 
                 <button onclick="GameModule.changeShopPage('p', -1)" ${!player || window.shopPagePlayer === 0 ? 'disabled' : ''}>← Инвентарь</button>
-                <span style="margin:0 10px; color:#8b949e">${player ? window.shopPagePlayer + 1 : 0}/${totalPlayerPages}</span>
+                <span style="margin:0 10px; color:#8b949e; align-self:center;">${player ? window.shopPagePlayer + 1 : 0}/${totalPlayerPages}</span>
                 <button onclick="GameModule.changeShopPage('p', 1)" ${!player || window.shopPagePlayer >= totalPlayerPages - 1 ? 'disabled' : ''}>Инвентарь →</button>
             `;
         }
