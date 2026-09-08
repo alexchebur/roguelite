@@ -182,169 +182,10 @@
     #btn-abandon-quest:hover { opacity: 1.0; }
 
     /* ========================================= */
-    /* === СТИЛИ ДЛЯ ОКНА ДОСТИЖЕНИЙ === */
-    /* ========================================= */
-    #achievements-modal {
-        background: #161b22;
-        border: 2px solid #58a6ff;
-        color: #c9d1d9;
-        padding: 20px;
-        border-radius: 8px;
-        font-family: 'Consolas', monospace;
-        box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        overflow: hidden;
-    }
-
-    #achievements-modal .modal-body {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        flex: 1;
-        overflow-y: auto;
-        min-height: 0;
-    }
-    
-    .achiev-stats-block {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 10px;
-        border-radius: 4px;
-        border: 1px solid #30363d;
-        flex-shrink: 0;
-    }
-     
-    .achiev-stat-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 4px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        font-size: 13px;
-    }
-    .achiev-stat-row:last-child { border-bottom: none; }
-     
-    #achiev-list-container {
-        flex: 1;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding-right: 5px;
-    }
-     
-    .achiev-item {
-        display: flex;
-        align-items: center;
-        background: rgba(0,0,0,0.3);
-        border: 1px solid #30363d;
-        padding: 8px;
-        border-radius: 4px;
-        opacity: 0.6;
-        transition: all 0.3s;
-    }
-     
-    .achiev-item.unlocked {
-        opacity: 1;
-        border-color: #d29922;
-        background: rgba(210, 153, 34, 0.1);
-    }
-     
-    .achiev-icon {
-        font-size: 24px;
-        margin-right: 10px;
-        width: 30px;
-        text-align: center;
-    }
-     
-    .achiev-info { flex: 1; }
-     
-    .achiev-title {
-        font-weight: bold;
-        color: #c9d1d9;
-        font-size: 13px;
-    }
-     
-    .achiev-desc {
-        font-size: 11px;
-        color: #8b949e;
-        margin-top: 2px;
-    }
-     
-    .achiev-status {
-        font-size: 16px;
-        margin-left: 10px;
-    }
-
-    /* ========================================= */
-    /* === МОБИЛЬНАЯ АДАПТАЦИЯ (ВЕРТИКАЛЬНАЯ) === */
-    /* ========================================= */
-    @media (max-width: 600px) {
-        .ui-panel { 
-            background: rgba(13, 17, 23, 0.92);
-            backdrop-filter: none; 
-            -webkit-backdrop-filter: none; 
-            border-width: 1px; 
-            padding: 4px;
-        }
-        
-        .ui-panel h3 {
-            font-size: 9px !important;
-            margin-bottom: 2px !important;
-            padding-bottom: 1px !important;
-        }
-        
-        #header-panel { 
-            top: 2px; 
-            padding: 2px 5px; 
-            left: calc(80px + 4px);
-            right: calc(90px + 4px);
-        }
-        .loc-name { font-size: 10px; }
-        .loc-coords { font-size: 9px; }
-        
-        #stats-panel { width: 80px; top: 2px; left: 2px; }
-        .stat-row { font-size: 8px; margin-bottom: 1px; }
-        .equip-slot { font-size: 7px; }
-        
-        #inventory-panel { width: 90px; right: 2px; top: 2px; max-height: 35vh; }
-        .inv-item { font-size: 8px; padding: 2px 3px; }
-        
-        #minimap-panel { width: 70px; height: 70px; bottom: 2px; left: 2px; }
-        
-        #inspector-panel { bottom: 75px; left: 2px; width: 70px; max-height: 80px; font-size: 8px; }
-        #ui-inspector { font-size: 8px; }
-        
-        #log-panel { 
-            width: 110px;
-            height: 60px;
-            bottom: 2px; 
-            right: 2px; 
-        }
-        #log-list { 
-            font-size: 7px;
-            line-height: 1.1;
-        }
-        .log-msg { margin-bottom: 1px; }
-        
-        #quest-bar { bottom: 2px; padding: 2px 6px; max-width: 50%; }
-        #ui-quest-briefing { font-size: 9px; }
-
-        /* --- Окно Достижений (Мобильное) --- */
-        #achievements-modal .modal-header h3 { font-size: 12px !important; }
-        #achievements-modal .achiev-stat-row { font-size: 9px !important; padding: 2px 0 !important; }
-        #achievements-modal h4 { font-size: 8px !important; margin: 4px 0 !important; }
-        #achievements-modal .achiev-item { padding: 4px !important; margin-bottom: 2px !important; }
-        #achievements-modal .achiev-icon { font-size: 14px !important; width: 20px !important; }
-        #achievements-modal .achiev-title { font-size: 9px !important; }
-        #achievements-modal .achiev-desc { font-size: 7px !important; }
-        #achievements-modal .achiev-status { font-size: 10px !important; }
-    }
-
-    /* ========================================= */
-    /* === СТИЛИ ДЛЯ HTML-МОДАЛОК === */
+    /* === СТИЛИ ДЛЯ HTML-МОДАЛОК (БАЗОВЫЕ) === */
     /* ========================================= */
     .hidden-ui { display: none !important; }
     
-    /* Оверлей: по умолчанию скрыт через inline style display:none.
-       Когда JS ставит display:flex, эти правила центрируют контент. */
     #modal-overlay {
         z-index: 9999 !important;
         pointer-events: auto !important;
@@ -352,14 +193,13 @@
         align-items: center !important;
     }
 
-    /* Базовый класс для ВСЕХ модалок */
     .game-modal {
         z-index: 10000 !important;
         position: relative;
         display: flex !important; 
         flex-direction: column !important;
         
-        /* Единый размер для всех модалок по умолчанию */
+        /* Стандартный размер (переопределяется ниже для конкретных окон) */
         width: 95vw !important;
         max-width: 1000px !important;
         height: 90vh !important;
@@ -374,7 +214,6 @@
         padding: 20px;
     }
     
-    /* ЖЕСТКОЕ СКРЫТИЕ: побеждает любые display:flex */
     .hidden { 
         display: none !important; 
         visibility: hidden !important;
@@ -393,13 +232,21 @@
     .close-btn { background: none; border: none; color: #f85149; font-size: 16px; cursor: pointer; padding: 0 5px; }
     .close-btn:hover { color: #ff7b72; }
 
-    /* --- Магазин (Обновленный) --- */
+    /* ========================================= */
+    /* === МАГАЗИН (FULL SCREEN + COLUMNS) === */
+    /* ========================================= */
     #shop-modal { 
         border: 2px solid #58a6ff; 
         padding: 0; 
         display: flex !important;
         flex-direction: column !important;
         overflow: hidden !important;
+        /* Принудительно на весь экран */
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0;
     }
 
     #shop-modal .modal-header {
@@ -410,10 +257,9 @@
         border-bottom: 1px solid #30363d;
     }
 
-    /* Контейнер колонок - строго горизонтальный всегда */
     .shop-columns { 
         display: flex !important; 
-        flex-direction: row !important; /* Принудительно в строку */
+        flex-direction: row !important; /* Строго горизонтально всегда */
         flex: 1; 
         min-height: 0; 
         overflow: hidden; 
@@ -429,9 +275,7 @@
         background: #0d1117;
     }
     
-    .shop-col:last-child {
-        border-right: none;
-    }
+    .shop-col:last-child { border-right: none; }
 
     .shop-col h4 { 
         color: #8b949e; 
@@ -494,7 +338,6 @@
         font-size: 11px;
     }
 
-    /* Нижняя панель управления */
     .shop-footer {
         flex-shrink: 0;
         background: #161b22;
@@ -547,43 +390,23 @@
     .pagination-controls button:hover { background: #30363d; }
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
-    /* Убираем старые мобильные стили, которые ломали верстку */
-    @media (max-width: 600px) {
-        /* Ничего не меняем для shop-columns, оставляем row */
-    }
-
-
-
-    /* --- Постоялый Двор --- */
-    #inn-modal { border: 2px solid #8B4513; }
-    .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
-    .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
-    .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
-
-    /* --- Сюжетный Квест --- */
-    #quest-modal { border: 2px solid #d29922; }
-
-    /* --- Эпоха --- */
-    #era-modal { border: 2px solid #8b949e; text-align: center; align-items: center; }
-
-    /* --- Полный Инвентарь (Максимальный размер) --- */
+    /* ========================================= */
+    /* === ПОЛНЫЙ ИНВЕНТАРЬ (FULL SCREEN + GRID) === */
+    /* ========================================= */
     #inventory-modal {
         border: 2px solid #58a6ff;
-        /* Принудительно на весь экран */
         width: 100vw !important;
         height: 100vh !important;
-        max-width: none !important; /* Убираем ограничение в 1000px */
+        max-width: none !important;
         max-height: none !important;
-        padding: 0 !important; /* Убираем внешние отступы модалки */
+        padding: 0 !important;
         border-radius: 0;
     }
 
-    /* Сетка внутри инвентаря */
     #inv-grid { 
         display: grid; 
-        /* На десктопе 4 колонки, на мобильном переключимся ниже */
         grid-template-columns: repeat(4, 1fr); 
-        gap: 0; /* Убираем отступы между колонками, чтобы они слились */
+        gap: 0; 
         flex: 1;
         min-height: 0;
         overflow: hidden;
@@ -594,14 +417,12 @@
         display: flex;
         flex-direction: column;
         background: rgba(255,255,255,0.03);
-        border-right: 1px solid #30363d; /* Разделитель колонок */
+        border-right: 1px solid #30363d;
         overflow: hidden;
         min-height: 0;
     }
     
-    .inv-col:last-child {
-        border-right: none;
-    }
+    .inv-col:last-child { border-right: none; }
 
     .inv-col h4 {
         margin: 0;
@@ -610,7 +431,7 @@
         color: #8b949e;
         text-align: center;
         border-bottom: 1px solid #30363d;
-        font-size: 11px; /* Уменьшенный шрифт заголовка */
+        font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         flex-shrink: 0;
@@ -640,20 +461,22 @@
 
     .inv-item-name {
         font-weight: bold;
-        font-size: 11px; /* Уменьшенный шрифт названия */
+        font-size: 11px;
         color: #c9d1d9;
         margin-bottom: 2px;
         line-height: 1.2;
     }
 
     .inv-item-desc {
-        font-size: 9px; /* Уменьшенный шрифт описания */
+        font-size: 9px;
         color: #8b949e;
         font-style: italic;
         line-height: 1.1;
     }
 
-    /* --- Окно Достижений (Максимальный размер) --- */
+    /* ========================================= */
+    /* === ДОСТИЖЕНИЯ (FULL SCREEN + LIST) === */
+    /* ========================================= */
     #achievements-modal {
         border: 2px solid #58a6ff;
         width: 100vw !important;
@@ -697,7 +520,7 @@
         justify-content: space-between;
         padding: 4px 0;
         border-bottom: 1px solid rgba(255,255,255,0.1);
-        font-size: 11px; /* Уменьшенный шрифт статистики */
+        font-size: 11px;
     }
     .achiev-stat-row:last-child { border-bottom: none; }
      
@@ -728,7 +551,7 @@
     }
      
     .achiev-icon {
-        font-size: 18px; /* Чуть меньше иконка */
+        font-size: 18px;
         margin-right: 10px;
         width: 25px;
         text-align: center;
@@ -739,11 +562,11 @@
     .achiev-title {
         font-weight: bold;
         color: #c9d1d9;
-        font-size: 11px; /* Уменьшенный шрифт названия */
+        font-size: 11px;
     }
      
     .achiev-desc {
-        font-size: 9px; /* Уменьшенный шрифт описания */
+        font-size: 9px;
         color: #8b949e;
         margin-top: 2px;
     }
@@ -754,13 +577,55 @@
     }
 
     /* ========================================= */
-    /* === МОБИЛЬНАЯ АДАПТАЦИЯ ДЛЯ ЭТИХ ОКОН === */
+    /* === ПРОЧИЕ МОДАЛКИ (Inn, Quest, Era) === */
     /* ========================================= */
-    @media (max-width: 700px) {
-        /* Инвентарь: 2 колонки вместо 4 на узких экранах */
-        #inv-grid { 
-            grid-template-columns: repeat(2, 1fr); 
+    #inn-modal { border: 2px solid #8B4513; }
+    .inn-action-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; text-align: left; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
+    .inn-action-btn:hover { background: #30363d; border-color: #58a6ff; }
+    .inn-status { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-style: italic; color: #8b949e; min-height: 20px; }
+
+    #quest-modal { border: 2px solid #d29922; }
+    #era-modal { border: 2px solid #8b949e; text-align: center; align-items: center; }
+
+    /* ========================================= */
+    /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
+    /* ========================================= */
+    @media (max-width: 600px) {
+        .ui-panel { 
+            background: rgba(13, 17, 23, 0.92);
+            backdrop-filter: none; 
+            -webkit-backdrop-filter: none; 
+            border-width: 1px; 
+            padding: 4px;
         }
+        
+        .ui-panel h3 { font-size: 9px !important; margin-bottom: 2px !important; padding-bottom: 1px !important; }
+        
+        #header-panel { top: 2px; padding: 2px 5px; left: calc(80px + 4px); right: calc(90px + 4px); }
+        .loc-name { font-size: 10px; }
+        .loc-coords { font-size: 9px; }
+        
+        #stats-panel { width: 80px; top: 2px; left: 2px; }
+        .stat-row { font-size: 8px; margin-bottom: 1px; }
+        .equip-slot { font-size: 7px; }
+        
+        #inventory-panel { width: 90px; right: 2px; top: 2px; max-height: 35vh; }
+        .inv-item { font-size: 8px; padding: 2px 3px; }
+        
+        #minimap-panel { width: 70px; height: 70px; bottom: 2px; left: 2px; }
+        
+        #inspector-panel { bottom: 75px; left: 2px; width: 70px; max-height: 80px; font-size: 8px; }
+        #ui-inspector { font-size: 8px; }
+        
+        #log-panel { width: 110px; height: 60px; bottom: 2px; right: 2px; }
+        #log-list { font-size: 7px; line-height: 1.1; }
+        .log-msg { margin-bottom: 1px; }
+        
+        #quest-bar { bottom: 2px; padding: 2px 6px; max-width: 50%; }
+        #ui-quest-briefing { font-size: 9px; }
+
+        /* Инвентарь: 2 колонки вместо 4 на узких экранах */
+        #inv-grid { grid-template-columns: repeat(2, 1fr); }
         
         /* Еще сильнее уменьшаем шрифты на совсем маленьких экранах */
         .inv-item-name { font-size: 10px; }
@@ -770,33 +635,9 @@
         .achiev-stat-row { font-size: 10px; }
     }
 
-    /* ========================================= */
-    /* === АДАПТАЦИЯ МОДАЛЬНЫХ ОКОН ДЛЯ МОБИЛЬНЫХ === */
-    /* ========================================= */
-    @media (max-width: 600px) {
-
-        
-        /* Инвентарь и достижения на мобильных тоже максимизируются */
-        #inventory-modal, #achievements-modal {
-            width: 98vw !important;
-            height: 95vh !important;
-            padding: 10px !important;
-        }
-    }
-
-    /* ========================================= */
-    /* === ФИКС ПРОКРУТКИ === */
-    /* ========================================= */
-    #achievements-modal { overflow-y: auto !important; }
-    #inventory-modal #inv-grid { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
-
     @media (max-height: 600px), (orientation: landscape) {
-        .game-modal {
-            max-height: 95vh !important;
-            height: 95vh !important;
-        }
+        .game-modal { max-height: 95vh !important; height: 95vh !important; }
     }
-    
 </style>
 </head>
 <body>
