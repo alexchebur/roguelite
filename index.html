@@ -704,8 +704,6 @@
     <div id="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999;">
         
         <!-- Окно Магазина -->
-        <!-- Окно Магазина -->
-        <!-- Окно Магазина -->
         <div id="shop-modal" class="game-modal hidden">
             <div class="modal-header">
                 <h3 style="margin:0; color:#d29922;">🏪 Лавка Торговца</h3>
@@ -779,7 +777,8 @@
                 <h3 style="margin:0; color:#58a6ff;">🎒 Рюкзак Героя</h3>
                 <button onclick="GameModule.closeFullInventory()" class="close-btn">❌</button>
             </div>
-            <div id="inv-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; flex:1; min-height:0; overflow:hidden;">
+            <!-- Убраны inline-стили, теперь всё управляется через CSS (#inv-grid) -->
+            <div id="inv-grid">
                 <div class="inv-col" id="inv-col-weapon"><h4>⚔️ Оружие</h4><div class="inv-list"></div></div>
                 <div class="inv-col" id="inv-col-armor"><h4>🛡️ Броня</h4><div class="inv-list"></div></div>
                 <div class="inv-col" id="inv-col-potion"><h4>🧪 Зелья</h4><div class="inv-list"></div></div>
