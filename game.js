@@ -3841,48 +3841,64 @@ function checkTrapTrigger(x, y) {
             background: #0d1117; border-radius: 8px;
         `;
 
-        // === НОВОЕ: ПРИНУДИТЕЛЬНАЯ ВЕРСТКА ДЛЯ TWINE ===
         iframe.onload = function() {
             try {
                 const twineDoc = iframe.contentDocument || iframe.contentWindow.document;
                 const style = twineDoc.createElement('style');
                 
                 style.textContent = `
-                    /* ... ваши существующие стили для tw-story ... */
-                    
-                    /* === ИСПРАВЛЕННЫЕ СТИЛИ ДЛЯ ССЫЛОК === */
-                    tw-link, [data-raw] {
-                        display: inline-block !important;   /* Делает ссылку блоком */
-                        padding: 4px 8px !important;        /* Добавляет "воздух" вокруг текста для клика */
-                        margin: 2px 0 !important;           /* Небольшой отступ между ссылками */
-                        
-                        color: #58a6ff !important;
-                        text-decoration: none !important;   /* Убираем стандартное подчёркивание */
-                        border-bottom: 1px dashed #58a6ff !important; /* Чёткий пунктир вместо линии */
-                        
-                        cursor: pointer !important;
-                        font-family: 'Consolas', monospace !important;
+                    /* === БАЗОВЫЕ НАСТРОЙКИ ТЕКСТА === */
+                    tw-story, tw-passage, body, html, div, span, p {
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
                         font-size: 14px !important;
-                        line-height: 1.4 !important;
+                        line-height: 1.6 !important; /* Увеличил межстрочный интервал для читаемости */
+                        color: #c9d1d9 !important;
+                        background-color: #0d1117 !important;
                         
-                        /* Пиксельная чёткость */
                         -webkit-font-smoothing: none !important;
                         text-rendering: geometricPrecision !important;
+                        font-kerning: none !important;
+                        letter-spacing: 0px !important;
                     }
 
-                    tw-link:hover, [data-raw]:hover {
-                        color: #ffffff !important;
-                        background-color: rgba(88, 166, 255, 0.1) !important; /* Лёгкая подсветка фона */
-                        border-bottom-style: solid !important; /* Сплошная линия при наведении */
+                    /* === ИСПРАВЛЕНИЕ ССЫЛОК (КЛИКАБЕЛЬНОСТЬ И СТИЛЬ) === */
+                    tw-link {
+                        color: #58a6ff !important;
+                        text-decoration: none !important;      /* Убираем стандартное подчеркивание */
+                        border-bottom: none !important;        /* Убираем рамку Harlowe */
+                        cursor: pointer !important;
+                        font-weight: bold !important;          /* Выделяем жирным вместо подчеркивания */
+                        
+                        /* КРИТИЧЕСКОЕ ДЛЯ КЛИКАБЕЛЬНОСТИ: */
+                        display: inline-block !important;      /* Позволяет применять padding */
+                        padding: 4px 8px !important;           /* Расширяет зону клика вокруг текста */
+                        margin: 2px 0 !important;              /* Добавляет отступы между ссылками */
+                        border-radius: 3px !important;         /* Скругление для эстетики */
+                        transition: background 0.2s !important;
                     }
+
+                    /* Эффект при наведении (визуальная обратная связь) */
+                    tw-link:hover {
+                        color: #ffffff !important;
+                        background-color: rgba(88, 166, 255, 0.2) !important; /* Легкая подсветка фона */
+                        border-bottom: none !important;
+                    }
+
+                    /* Убираем боковую панель Twine */
+                    tw-sidebar { display: none !important; }
                     
-                    /* Убираем лишние отступы у параграфов, чтобы ссылки не разлетались */
-                    p { margin-bottom: 8px !important; }
+                    /* Ограничение ширины текста для удобства чтения */
+                    tw-passage {
+                        padding: 20px !important;
+                        max-width: 800px !important;
+                        margin: 0 auto !important;
+                    }
                 `;
                 
                 twineDoc.head.appendChild(style);
+                console.log("✅ Стили UI успешно применены к Twine-квесту.");
             } catch (err) {
-                console.error("❌ Ошибка применения стилей Twine:", err);
+                console.error("❌ Не удалось применить стили к Twine:", err);
             }
         };
     
