@@ -3844,60 +3844,45 @@ function checkTrapTrigger(x, y) {
         // === НОВОЕ: ПРИНУДИТЕЛЬНАЯ ВЕРСТКА ДЛЯ TWINE ===
         iframe.onload = function() {
             try {
-                // Получаем доступ к документу внутри iframe
                 const twineDoc = iframe.contentDocument || iframe.contentWindow.document;
-                
-                // Создаем элемент стиля
                 const style = twineDoc.createElement('style');
                 
-                // Ваш CSS, который делает шрифт мелким, моноширинным и без засечек
                 style.textContent = `
-                    /* Принудительно задаем шрифт для ВСЕХ элементов истории */
-                    tw-story, tw-passage, tw-link, body, html, div, span, p {
-                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
-                        font-size: 14px !important; /* Мелкий шрифт, как в UI */
-                        line-height: 1.4 !important;
-                        color: #c9d1d9 !important; /* Цвет текста как в игре */
-                        background-color: #0d1117 !important; /* Темный фон */
+                    /* ... ваши существующие стили для tw-story ... */
+                    
+                    /* === ИСПРАВЛЕННЫЕ СТИЛИ ДЛЯ ССЫЛОК === */
+                    tw-link, [data-raw] {
+                        display: inline-block !important;   /* Делает ссылку блоком */
+                        padding: 4px 8px !important;        /* Добавляет "воздух" вокруг текста для клика */
+                        margin: 2px 0 !important;           /* Небольшой отступ между ссылками */
                         
-                        /* Отключение сглаживания для пиксельности */
+                        color: #58a6ff !important;
+                        text-decoration: none !important;   /* Убираем стандартное подчёркивание */
+                        border-bottom: 1px dashed #58a6ff !important; /* Чёткий пунктир вместо линии */
+                        
+                        cursor: pointer !important;
+                        font-family: 'Consolas', monospace !important;
+                        font-size: 14px !important;
+                        line-height: 1.4 !important;
+                        
+                        /* Пиксельная чёткость */
                         -webkit-font-smoothing: none !important;
                         text-rendering: geometricPrecision !important;
-                        font-kerning: none !important;
-                        letter-spacing: 0px !important;
                     }
 
-                    /* Убираем боковую панель Twine */
-                    tw-sidebar {
-                        display: none !important;
-                    }
-
-                    /* Стили для ссылок, чтобы они выглядели как команды */
-                    tw-link {
-                        color: #58a6ff !important;
-                        text-decoration: none !important;
-                        cursor: pointer !important;
-                        border-bottom: 1px dashed #58a6ff !important;
-                        font-weight: normal !important;
-                    }
-
-                    tw-link:hover {
+                    tw-link:hover, [data-raw]:hover {
                         color: #ffffff !important;
-                        border-bottom-style: solid !important;
+                        background-color: rgba(88, 166, 255, 0.1) !important; /* Лёгкая подсветка фона */
+                        border-bottom-style: solid !important; /* Сплошная линия при наведении */
                     }
                     
-                    tw-passage {
-                        padding: 20px !important;
-                        max-width: 800px !important;
-                        margin: 0 auto !important;
-                    }
+                    /* Убираем лишние отступы у параграфов, чтобы ссылки не разлетались */
+                    p { margin-bottom: 8px !important; }
                 `;
                 
-                // Добавляем стиль в head страницы квеста
                 twineDoc.head.appendChild(style);
-                console.log("✅ Стили UI успешно применены к Twine-квесту.");
             } catch (err) {
-                console.error("❌ Не удалось применить стили к Twine (возможно, проблема CORS):", err);
+                console.error("❌ Ошибка применения стилей Twine:", err);
             }
         };
     
