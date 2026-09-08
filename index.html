@@ -370,72 +370,95 @@
     .pagination-controls button:hover { background: #30363d; }
     .pagination-controls button:disabled { color: #484f58; cursor: default; }
 
-    /* --- ПОЛНЫЙ ИНВЕНТАРЬ --- */
-    #inventory-modal { border: 2px solid #58a6ff !important; }
+    /* --- Полный Инвентарь (Исправленный) --- */
+    #inventory-modal {
+        border: 2px solid #58a6ff;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        padding: 0 !important;
+        border-radius: 0;
+        display: flex !important;
+        flex-direction: column !important;
+    }
 
+    /* Сетка инвентаря: убираем gap, чтобы панели стояли вплотную */
     #inv-grid { 
         display: grid; 
         grid-template-columns: repeat(4, 1fr); 
-        gap: 0; 
-        flex: 1; 
-        min-height: 0; 
-        overflow: hidden; 
+        gap: 0 !important; /* ВАЖНО: Убираем отступы между колонками */
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
         background: #0d1117;
+        width: 100%;
     }
 
     .inv-col {
-        display: flex; 
-        flex-direction: column; 
+        display: flex;
+        flex-direction: column;
         background: rgba(255,255,255,0.03);
-        border-right: 1px solid #30363d; 
-        overflow: hidden; 
+        border-right: 1px solid #30363d; /* Разделитель вместо gap */
+        overflow: hidden;
         min-height: 0;
+        min-width: 0; /* Позволяет колонке сжиматься меньше содержимого */
     }
+    
     .inv-col:last-child { border-right: none; }
 
     .inv-col h4 {
-        margin: 0; 
-        padding: 8px; 
-        background: #161b22; 
-        color: #8b949e; 
+        margin: 0;
+        padding: 6px 2px; /* Уменьшили отступы заголовка */
+        background: #161b22;
+        color: #8b949e;
         text-align: center;
-        border-bottom: 1px solid #30363d; 
-        font-size: 11px; 
+        border-bottom: 1px solid #30363d;
+        font-size: 11px; /* Базовый размер уменьшен */
         text-transform: uppercase;
-        letter-spacing: 0.5px; 
+        letter-spacing: 0.5px;
         flex-shrink: 0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    .inv-list { flex: 1; overflow-y: auto; padding: 5px; min-height: 0; }
+    .inv-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px; /* Минимальный внутренний отступ */
+        min-height: 0;
+    }
 
     .inv-full-item {
-        padding: 6px; 
-        margin-bottom: 4px; 
+        padding: 5px; /* Компактный элемент */
+        margin-bottom: 3px;
         background: rgba(255,255,255,0.05);
-        border-radius: 3px; 
-        cursor: pointer; 
-        border: 1px solid transparent; 
+        border-radius: 3px;
+        cursor: pointer;
+        border: 1px solid transparent;
         transition: background 0.2s;
     }
-    .inv-full-item:hover { background: rgba(88, 166, 255, 0.15); border-color: #58a6ff; }
 
-    .inv-item-name { 
-        font-weight: bold; 
-        font-size: 11px; 
-        color: #c9d1d9; 
-        margin-bottom: 2px; 
-        line-height: 1.2; 
-        word-break: break-word;
+    .inv-full-item:hover {
+        background: rgba(88, 166, 255, 0.15);
+        border-color: #58a6ff;
     }
-    .inv-item-desc { 
-        font-size: 9px; 
-        color: #8b949e; 
-        font-style: italic; 
-        line-height: 1.1; 
-        word-break: break-word;
+
+    .inv-item-name {
+        font-weight: bold;
+        font-size: 11px; /* Уменьшенный базовый шрифт */
+        color: #c9d1d9;
+        margin-bottom: 1px;
+        line-height: 1.2;
+        word-break: break-word; /* Перенос длинных слов */
+    }
+
+    .inv-item-desc {
+        font-size: 9px; /* Очень мелкий шрифт для описания */
+        color: #8b949e;
+        font-style: italic;
+        line-height: 1.1;
     }
 
     /* --- ДОСТИЖЕНИЯ --- */
@@ -517,10 +540,14 @@
     /* ========================================= */
     /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
     /* ========================================= */
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
+        /* --- UI ПАНЕЛИ --- */
         .ui-panel { 
-            background: rgba(13, 17, 23, 0.92); backdrop-filter: none; -webkit-backdrop-filter: none; 
-            border-width: 1px; padding: 4px;
+            background: rgba(13, 17, 23, 0.95); 
+            backdrop-filter: none; 
+            -webkit-backdrop-filter: none; 
+            border-width: 1px; 
+            padding: 4px;
         }
         .ui-panel h3 { font-size: 9px !important; margin-bottom: 2px !important; padding-bottom: 1px !important; }
         
@@ -544,32 +571,68 @@
         #quest-bar { bottom: 2px; padding: 2px 6px; max-width: 50%; }
         #ui-quest-briefing { font-size: 9px; }
 
-        /* Инвентарь: 2 колонки вместо 4 на узких экранах */
-        #inv-grid { grid-template-columns: repeat(2, 1fr); }
+        /* --- МАГАЗИН (Строго горизонтально!) --- */
+        /* Принудительно ставим колонки рядом даже на телефоне */
+        .shop-columns { 
+            flex-direction: row !important; 
+            gap: 0 !important;
+        }
+        .shop-col { 
+            min-width: 0 !important; 
+            max-height: none !important; /* Снимаем ограничение высоты */
+            border-right: 1px solid #30363d;
+        }
+        .shop-col:last-child { border-right: none; }
         
-        /* Уменьшаем шрифты в модалках */
-        .inv-item-name { font-size: 10px !important; } 
-        .inv-item-desc { font-size: 8px !important; }
+        .shop-item-name { font-size: 10px !important; }
+        .shop-item-desc { font-size: 8px !important; }
+        .shop-col h4 { font-size: 9px !important; padding: 6px 2px !important; }
+        .pagination-controls button { font-size: 9px !important; padding: 2px 4px !important; }
+
+        /* --- ПОЛНЫЙ ИНВЕНТАРЬ (2 колонки + полный экран) --- */
+        #inventory-modal {
+            width: 100vw !important;
+            height: 100vh !important;
+            padding: 0 !important;
+        }
+        #inv-grid { 
+            grid-template-columns: repeat(2, 1fr) !important; 
+            gap: 0 !important;
+        }
+        .inv-col { border-right: 1px solid #30363d; }
+        .inv-col:last-child { border-right: none; }
+        
+        .inv-col h4 { font-size: 9px !important; padding: 4px 2px !important; }
+        .inv-full-item { padding: 4px !important; margin-bottom: 2px !important; }
+        .inv-item-name { font-size: 10px !important; line-height: 1.1; }
+        .inv-item-desc { font-size: 8px !important; line-height: 1.0; }
+
+        /* --- ДОСТИЖЕНИЯ --- */
+        #achievements-modal {
+            width: 100vw !important;
+            height: 100vh !important;
+            padding: 0 !important;
+        }
         .achiev-title { font-size: 10px !important; } 
         .achiev-desc { font-size: 8px !important; } 
-        .achiev-stat-row { font-size: 10px !important; }
-        
-        /* Дополнительно уменьшаем шрифты магазина на мобильных */
-        .shop-item-name { font-size: 11px !important; }
-        .shop-item-desc { font-size: 9px !important; }
-        .shop-col h4 { font-size: 10px !important; }
+        .achiev-stat-row { font-size: 9px !important; }
+        .achiev-icon { font-size: 16px !important; width: 20px !important; }
     }
 
-    /* Для совсем узких экранов */
+    /* Для совсем узких экранов (iPhone SE и т.п.) */
     @media (max-width: 400px) {
         .inv-item-name { font-size: 9px !important; }
         .inv-item-desc { font-size: 7px !important; }
-        .shop-item-name { font-size: 10px !important; }
-        .shop-item-desc { font-size: 8px !important; }
+        .shop-item-name { font-size: 9px !important; }
+        .shop-item-desc { font-size: 7px !important; }
+        .shop-col h4 { font-size: 8px !important; }
     }
 
-    @media (max-height: 600px), (orientation: landscape) {
-        .game-modal { max-height: 95vh !important; height: 95vh !important; }
+    /* Альбомная ориентация или низкие экраны */
+    @media (max-height: 600px) {
+        .game-modal { max-height: 100vh !important; height: 100vh !important; }
+        .shop-footer { padding: 4px !important; gap: 2px !important; }
+        .pagination-controls { flex-wrap: nowrap !important; overflow-x: auto !important; }
     }
 </style>
 </head>
