@@ -408,6 +408,73 @@ const GameModule = (function() {
         }
     }
 
+    // В game.js, внутри GameModule
+
+    // === ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ НАЙМА КОНКРЕТНОГО ТИПА ===
+    function hireSpecificUnit(unitTypeId) {
+        if (!player) return;
+        
+        // Проверка лимита отрядов
+        const currentSquads = player.armyUnits ? player.armyUnits.length : 0;
+        if (currentSquads >= TacticalDataModule.MAX_PLAYER_SQUADS) {
+            setInnStatus(`Вы не можете нанять больше ${TacticalDataModule.MAX_PLAYER_SQUADS} отрядов!`);
+            return;
+        }
+
+        const cost = TacticalDataModule.UNIT_COST;
+        if (player.gold < cost) {
+            setInnStatus(`Недостаточно золота! Нужно ${cost} золотых.`);
+            RenderModule.log(`Недостаточно золота! Нужно ${cost} золотых.`, "combat");
+            return;
+        }
+
+        // Поиск типа юнита в данных тактики
+        let unitType = null;
+        if (typeof TacticalDataModule !== 'undefined' && TacticalDataModule.UNIT_TYPES) {
+            // Ищем по ID (например, 'spearman', 'archer', 'cavalry')
+            unitType = Object.values(TacticalDataModule.UNIT_TYPES).find(t => t.id === unitTypeId);
+        }
+
+        if (!unitType) {
+            setInnStatus("Ошибка: Тип юнита не найден.");
+            console.error("Unit type not found for ID:", unitTypeId);
+            return;
+        }
+
+        // Списываем золото
+        player.gold -= cost;
+        
+        // Устанавливаем флаг наличия армии
+        GameModule.setGlobalFlag('player_has_squad', true);
+        if (!player.hasArmy) {
+            player.hasArmy = true;
+            player.armyUnits = [];
+        }
+
+        // Генерируем количество бойцов (5-14)
+        const count = Math.floor(5 + Math.random() * 10);
+
+        // Создаем запись об отряде
+        // Важно: мы берем базовые статы из типа, но в бою они будут усилены аурой игрока
+        player.armyUnits.push({
+            type: unitType,
+            count: count,
+            hp: unitType.hp * count,     // Текущее HP всего отряда
+            maxHp: unitType.hp * count,  // Максимальное HP всего отряда
+            // Можно сразу сохранить базовые статы для отладки, хотя в бою они пересчитываются
+            baseAtk: unitType.atk,
+            baseDef: unitType.def
+        });
+
+        setInnStatus(`Вы наняли отряд "${unitType.name}" (${count} бойцов)!`);
+        RenderModule.log(`Вы наняли отряд "${unitType.name}" (${count} бойцов) за ${cost} золотых!`, "loot");
+        
+        // Обновляем UI
+        updateInnUI();
+        RenderModule.updateUI(player, currentLocData, currentWorldTrend);
+    }
+
+    // === ОБНОВЛЕННАЯ ФУНКЦИЯ innAction ===
     function innAction(actionType) {
         if (!player) return;
 
@@ -452,48 +519,21 @@ const GameModule = (function() {
                 RenderModule.log("У вас нет даже 10 золотых, чтобы поставить!", "combat");
             }
         }
-        else if (actionType === 'hire') {
-            if (typeof TacticalDataModule === 'undefined') {
-                setInnStatus("Система найма временно недоступна.");
-                return;
-            }
-            const currentSquads = player.armyUnits ? player.armyUnits.length : 0;
-            if (currentSquads >= TacticalDataModule.MAX_PLAYER_SQUADS) {
-                setInnStatus(`Вы не можете нанять больше ${TacticalDataModule.MAX_PLAYER_SQUADS} отрядов!`);
-                return;
-            }
-            const cost = TacticalDataModule.UNIT_COST;
-            if (player.gold >= cost) {
-                player.gold -= cost;
-                GameModule.setGlobalFlag('player_has_squad', true);
-                if (!player.hasArmy) {
-                    player.hasArmy = true;
-                    player.armyUnits = [];
-                }
-                if (typeof TacticalArmyModule !== 'undefined') {
-                    const unitType = TacticalArmyModule.getRandomUnitType();
-                    const count = Math.floor(5 + Math.random() * 10);
-                    player.armyUnits.push({
-                        type: unitType,
-                        count: count,
-                        hp: unitType.hp * count,
-                        maxHp: unitType.hp * count
-                    });
-                    setInnStatus(`Вы наняли отряд "${unitType.name}" (${count} бойцов)!`);
-                    RenderModule.log(`Вы наняли отряд "${unitType.name}" (${count} бойцов) за ${cost} золотых!`, "loot");
-                } else {
-                    player.armyUnits.push({ name: "Наемники", count: 10, hp: 200, maxHp: 200 });
-                    setInnStatus(`Вы наняли отряд наемников!`);
-                    RenderModule.log(`Вы наняли отряд наемников за ${cost} золотых!`, "loot");
-                }
-            } else {
-                setInnStatus(`Недостаточно золота! Нужно ${cost} золотых.`);
-                RenderModule.log(`Недостаточно золота! Нужно ${cost} золотых.`, "combat");
-            }
+        // === НОВАЯ ЛОГИКА НАЙМА ===
+        else if (actionType === 'hire_spearman') {
+            hireSpecificUnit('spearman');
+        }
+        else if (actionType === 'hire_archer') {
+            hireSpecificUnit('archer');
+        }
+        else if (actionType === 'hire_cavalry') {
+            hireSpecificUnit('cavalry');
         }
         
-        // Обновляем UI после любого действия
-        updateInnUI();
+        // Обновляем UI после любого действия (кроме тех, что обновляют его сами, но для надежности можно оставить)
+        if (actionType !== 'hire_spearman' && actionType !== 'hire_archer' && actionType !== 'hire_cavalry') {
+             updateInnUI();
+        }
     }
   
     function openShop() {
