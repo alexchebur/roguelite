@@ -728,11 +728,21 @@
                     <div style="color:#4CAF50;">⚡ Выносливость: <span id="inn-stamina-info">0/0</span></div>
                 </div>
                 <div id="inn-status-msg" style="min-height:40px; text-align:center; font-style:italic; color:#8b949e; font-size:13px;">Добро пожаловать!</div>
+                 
+                <!-- ОБНОВЛЕННЫЙ БЛОК КНОПОК -->
                 <div style="display:flex; flex-direction:column; gap:8px;">
                     <button class="inn-action-btn" onclick="GameModule.innAction('rest')">🛌 Ночлег — 20g</button>
                     <button class="inn-action-btn" onclick="GameModule.innAction('rumor')">🗣️ Слухи</button>
                     <button class="inn-action-btn" onclick="GameModule.innAction('dice')">🎲 Кости (10g)</button>
-                    <button class="inn-action-btn" onclick="GameModule.innAction('hire')">⚔️ Нанять отряд</button>
+                     
+                    <!-- Разделитель -->
+                    <div style="border-top: 1px solid #30363d; margin: 5px 0;"></div>
+                    <div style="text-align:center; color:#8b949e; font-size:11px; margin-bottom:5px;">НАЕМНИКИ (<span id="inn-hire-cost">10000</span>g за отряд)</div>
+
+                    <!-- Новые кнопки найма -->
+                    <button class="inn-action-btn" onclick="GameModule.innAction('hire_spearman')">🛡️ Нанять копейщиков</button>
+                    <button class="inn-action-btn" onclick="GameModule.innAction('hire_archer')">🏹 Нанять лучников</button>
+                    <button class="inn-action-btn" onclick="GameModule.innAction('hire_cavalry')">🐎 Нанять всадников</button>
                 </div>
             </div>
         </div>
