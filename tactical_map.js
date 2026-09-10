@@ -35,8 +35,8 @@ const TacticalMapModule = (function() {
             floorColor: style.color,
             wallColor: '#000',
             // Точки спавна: Игрок слева (x=2), Враг справа (x=width-5)
-            startPosPlayer: { x: 2, y: Math.floor(height / 2) },
-            startPosEnemy: { x: width - 5, y: Math.floor(height / 2) }
+            startPosPlayer: { x: 3, y: Math.floor(height / 2) },
+            startPosEnemy: { x: width - 4, y: Math.floor(height / 2) }
         };
     }
 
