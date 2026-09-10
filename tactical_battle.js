@@ -44,14 +44,22 @@ const TacticalBattleModule = (function() {
         RenderModule.requestRedraw();
     }
 
+    // tactical_battle.js
+
     function handlePlayerHeroAction(player, dx, dy, enemies, arena) {
         if (dx === 0 && dy === 0) return; 
-        
+    
         const nx = player.x + dx;
         const ny = player.y + dy;
 
-        // Проверка границ арены
-        if (nx < 0 || nx >= arena.width || ny < 0 || ny >= arena.height) return;
+        // === ИЗМЕНЕНО: Жесткая проверка границ видимого экрана ===
+        // Тактическая арена теперь 20x20, и мы хотим, чтобы игрок не выходил за эти рамки.
+        // Если nx < 0 или nx >= arena.width, движение блокируется.
+        if (nx < 0 || nx >= arena.width || ny < 0 || ny >= arena.height) {
+            // Можно добавить лог, если нужно:
+            // RenderModule.log("Вы уперлись в границу поля боя!", "info");
+            return; 
+        }
 
         // Проверка коллизий (враги, союзники)
         const enemy = enemies.find(e => e.x === nx && e.y === ny && e.hp > 0);
