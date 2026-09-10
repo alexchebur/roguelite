@@ -51,29 +51,32 @@
         --danger: #f85149;
         --gold: #d29922;
         --font-stack: 'Consolas', 'Monaco', monospace;
-        --safe-top: env(safe-area-inset-top, 0px);
+        
+        /* === БЕЗОПАСНЫЕ ЗОНЫ (SAFE AREAS) === */
+        /* env() вернет 0px на ПК и реальное значение на iPhone/Android */
+        --safe-top: env(safe-area-inset-top, 10px); 
         --safe-bottom: env(safe-area-inset-bottom, 0px);
         --safe-left: env(safe-area-inset-left, 0px);
         --safe-right: env(safe-area-inset-right, 0px);
     }
 
-    * { box-sizing: border-box; } /* ВАЖНО: Глобальный box-sizing */
+    * { box-sizing: border-box; }
 
     body {
         background-color: #000;
         color: var(--text-main);
         font-family: var(--font-stack);
         margin: 0;
-        height: 100dvh;
-        height: 100vh;
+        height: 100dvh; /* Dynamic Viewport Height для мобильных браузеров */
         width: 100%;
         overflow: hidden;
-        overflow-x: hidden;
         position: relative;
         user-select: none;
         -webkit-user-select: none;
         touch-action: manipulation;
-        padding-top: var(--safe-top);
+        
+        /* === ГЛАВНОЕ ИЗМЕНЕНИЕ: Отступ сверху для всех устройств === */
+        padding-top: var(--safe-top); 
         padding-bottom: var(--safe-bottom);
         padding-left: var(--safe-left);
         padding-right: var(--safe-right);
