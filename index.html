@@ -603,13 +603,37 @@
         }
         .ui-panel h3 { font-size: 9px !important; margin-bottom: 2px !important; padding-bottom: 1px !important; }
         
-        #header-panel { top: 2px; padding: 2px 5px; left: calc(80px + 4px); right: calc(90px + 4px); }
-        .loc-name { font-size: 10px; } .loc-coords { font-size: 9px; }
+    @media (max-width: 700px) {
+        /* На мобильных возвращаем компактные размеры, но сохраняем пропорции */
         
-        #stats-panel { width: 80px; top: 2px; left: 2px; }
-        .stat-row { font-size: 8px; margin-bottom: 1px; } .equip-slot { font-size: 7px; }
+        /* Центр */
+        #header-panel { 
+            top: 2px; 
+            width: 40%; /* Чуть уже на мобильных, чтобы влезло между боковыми */
+            max-width: none;
+            padding: 2px 5px; 
+        }
+        .loc-name { font-size: 10px; } 
+        .loc-coords { font-size: 9px; }
         
-        #inventory-panel { width: 90px; right: 2px; top: 2px; max-height: 35vh; }
+        /* Лево */
+        #stats-panel { 
+            width: 25%; /* Чуть уже, так как контента меньше */
+            max-width: none;
+            top: 2px; 
+            left: 2px; 
+        }
+        .stat-row { font-size: 8px; margin-bottom: 1px; } 
+        .equip-slot { font-size: 7px; }
+        
+        /* Право */
+        #inventory-panel { 
+            width: 25%; /* Чуть уже */
+            max-width: none;
+            right: 2px; 
+            top: 2px; 
+            max-height: 35vh; 
+        }
         .inv-item { font-size: 8px; padding: 2px 3px; }
         
         #minimap-panel { width: 70px; height: 70px; bottom: 2px; left: 2px; }
