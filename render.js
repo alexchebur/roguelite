@@ -2,7 +2,7 @@
 const RenderModule = (function() {
     let display = null;
     let fov = null;
-    const COLS = 30;
+    const COLS = 20;
     const ROWS = 20;
     const FONT_SIZE = 16; 
     const TILE_SIZE = 32; 
