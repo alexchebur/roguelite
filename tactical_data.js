@@ -55,8 +55,8 @@ const TacticalDataModule = (function() {
     };
 
     // === ВАЖНО: УМЕНЬШАЕМ РАЗМЕР АРЕНЫ ПОД ЭКРАН 30x20 ===
-    const BATTLEFIELD_WIDTH = 28; 
-    const BATTLEFIELD_HEIGHT = 18; 
+    const BATTLEFIELD_WIDTH = 30; 
+    const BATTLEFIELD_HEIGHT = 20; 
     
     const MAX_UNITS_PER_ARMY = 10;
     const MAX_PLAYER_SQUADS = 5; 
