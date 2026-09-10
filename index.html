@@ -256,33 +256,42 @@
     /* Панель КВЕСТОВ (По центру внизу) */
     #quest-bar { 
         bottom: 10px; 
-        left: 30%; 
+        left: 50%; /* Исправлено для точного центрирования */
         transform: translateX(-50%); 
+        
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        gap: 10px; 
-        padding: 6px 15px; 
-        max-width: 40%; 
-        min-width: 150px;
+        gap: 8px; /* Чуть уменьшили расстояние между элементами */
+        
+        padding: 4px 10px; /* Уменьшили отступы для компактности */
+        
+        max-width: 60%; /* Ограничили ширину, чтобы не была слишком широкой */
+        min-width: 120px; /* Минимальная ширина, чтобы кнопка не сплющилась */
+        
+        border-radius: 4px; /* Скругление углов */
     }
+
     #ui-quest-briefing { 
         color: var(--gold); 
         font-weight: bold; 
-        font-size: 13px; 
+        font-size: 9px; /* Уменьшили шрифт */
         white-space: normal; 
         word-wrap: break-word; 
-        line-height: 1.2; 
+        line-height: 1.1; /* Более плотный межстрочный интервал */
         text-align: center;
     }
+
     #btn-abandon-quest { 
         color: #f85149; 
-        font-size: 12px; 
+        font-size: 9px; /* Уменьшили шрифт кнопки */
         cursor: pointer; 
         opacity: 0.7; 
         white-space: nowrap; 
-        margin-left: 10px;
+        margin-left: 5px; /* Уменьшили отступ слева */
+        padding: 2px 4px; /* Добавили небольшие отступы самой кнопке для удобства тапа */
     }
+    
     #btn-abandon-quest:hover { opacity: 1.0; }
 
 
