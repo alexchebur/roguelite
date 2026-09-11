@@ -443,10 +443,17 @@
         
         #log-panel { bottom: 5px; right: 5px; width: 140px; height: 140px; }
         #log-list { font-size: 10px; }
+
         
-        /*#quest-bar { bottom: 5px; max-width: 20%; padding: 4px 4px; }
-        #ui-quest-briefing { font-size: 10px; }
-        #btn-abandon-quest { font-size: 10px; }*/
+        #quest-bar { 
+            bottom: 5px; 
+            left: calc(100px + 10px); /* Привязка к мобильной мини-карте */
+            max-width: calc(100vw - 260px); /* Коррекция под мобильные размеры панелей */
+            padding: 3px 6px;
+        }
+        #ui-quest-briefing { font-size: 8px; }
+        #btn-abandon-quest { font-size: 8px; }
+    
 
         /* Модалки на мобильном */
         .shop-item-name { font-size: 11px; }
