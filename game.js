@@ -720,7 +720,7 @@ const GameModule = (function() {
             });
         }
         
-        RenderModule.log("Игра загружена. Режим: ГЛОБАЛЬНАЯ КАРТА", "info");
+        RenderModule.log("Добро пожаловать на континент Террис, искатель приключений!", "info");
         updateAbandonButton(false);
     }
 
