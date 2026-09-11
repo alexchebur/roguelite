@@ -1393,7 +1393,7 @@ function updateQuestCompass() {
         }, { passive: false });
         
         if (isMobileDevice()) {
-            RenderModule.log("💡 Тапните по объекту для осмотра или по краю экрана для движения", "info");
+            RenderModule.log("💡 Тапните по объекту для осмотра или по экрану для движения", "info");
         }
     }    
 
@@ -2709,14 +2709,14 @@ function updateQuestCompass() {
         
         if (player) {
             const globalLocData = {
-                fullName: "Глобальная карта",
+                fullName: "Террис",
                 description: "Исследуйте мир, находите города и подземелья",
                 themeName: "Поверхность"
             };
             RenderModule.updateUI(player, globalLocData, null);
         } else {
-            document.getElementById("ui-loc-name").textContent = "Глобальная карта";
-            document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Глобальный режим</span></div>";
+            document.getElementById("ui-loc-name").textContent = "Террис";
+            document.getElementById("ui-stats").innerHTML = "<div class='stat-row'><span>Карта мира</span></div>";
             document.getElementById("ui-equip").innerHTML = "<div class='equip-slot'>─</div>";
             const invDiv = document.getElementById("inventory-list");
             if (invDiv) invDiv.innerHTML = "<div style='color:#555;font-size:11px'>Пусто</div>";
