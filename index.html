@@ -254,22 +254,24 @@
     .log-lore { color: #d2b48c; font-style: italic; border-left: 2px solid #8b7355; padding-left: 4px; background: rgba(139, 115, 85, 0.1); margin-top: 2px; }
 
     /* Панель КВЕСТОВ (По центру внизу) */
+    /* Панель КВЕСТОВ (Привязана к мини-карте) */
     #quest-bar { 
-        /* === НАДЕЖНОЕ ЦЕНТРИРОВАНИЕ === */
         bottom: 10px; 
-        left: 50%;
-        right: auto; /* Сбрасываем right, чтобы не конфликтовал с left */
-        transform: translateX(-50%); 
+        
+        /* === ЖЕСТКАЯ ПРИВЯЗКА К МИНИ-КАРТЕ === */
+        left: calc(160px + 20px); /* 160px (ширина карты) + 20px (отступ) */
+        right: auto; /* Сбрасываем правый край */
+        transform: none; /* Убираем центрирование по центру экрана */
         
         display: flex; 
         align-items: center; 
-        justify-content: center; 
-        gap: 6px; 
+        justify-content: flex-start; /* Текст прижат к левому краю панели */
+        gap: 8px; 
         
-        padding: 4px 8px; 
+        padding: 4px 10px; 
         
-        /* Ограничиваем ширину, чтобы не наезжала на боковые панели */
-        max-width: 45vw; 
+        /* Ограничиваем ширину, чтобы не дотягивалась до журнала событий */
+        max-width: calc(100vw - 340px); /* Вычитаем ширину карты+отступ и ширину журнала+отступ */
         min-width: 120px; 
         
         border-radius: 4px;
@@ -283,7 +285,7 @@
         white-space: normal; 
         word-wrap: break-word; 
         line-height: 1.1; 
-        text-align: center;
+        text-align: left; /* Текст выровнен по левому краю для лучшей читаемости в узкой панели */
         max-width: 100%;
     }
 
@@ -295,7 +297,7 @@
         white-space: nowrap; 
         margin-left: 4px; 
         padding: 2px;
-        flex-shrink: 0; /* Запрещаем кнопке сжиматься */
+        flex-shrink: 0;
     }
     
     #btn-abandon-quest:hover { opacity: 1.0; }
