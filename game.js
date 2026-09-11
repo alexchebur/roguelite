@@ -1245,7 +1245,7 @@ function updateQuestCompass() {
             targetY = turnInQuest.originY;
             color = "#00ff00"; // Зеленый для награды
         } else {
-            coordsEl.textContent = `X: ${playerPos.x}, Y: ${playerPos.y}`;
+            coordsEl.textContent = `Долгота: ${playerPos.x}, Широта: ${playerPos.y}`;
             return;
         }
     } else if (activeQuest && activeQuest.target) {
